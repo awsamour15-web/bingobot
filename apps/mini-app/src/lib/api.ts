@@ -1,0 +1,168 @@
+import type {
+  LoginResponse,
+  PlayerProfile,
+  RoundListItem,
+  RoundDetail,
+  CartelaAvailability,
+  JoinRoundResponse,
+  HistoryEntry,
+  HistoryDetail,
+  TransactionListItem,
+  DepositResponse,
+  ReferralStats,
+  PaginatedResponse,
+} from '@beteseb/shared';
+
+// Re-export types for screens that can't resolve the workspace package directly
+export type {
+  LoginResponse,
+  PlayerProfile,
+  RoundListItem,
+  RoundDetail,
+  CartelaAvailability,
+  JoinRoundResponse,
+  HistoryEntry,
+  HistoryDetail,
+  TransactionListItem,
+  DepositResponse,
+  ReferralStats,
+  PaginatedResponse,
+};
+
+// Re-export WebSocket payload types
+export type {
+  NumberCalledPayload,
+  RoundStartedPayload,
+  RoundWonPayload,
+  RoundVoidPayload,
+  RoundCancelledPayload,
+  PlayerJoinedPayload,
+  WinRejectedPayload,
+} from '@beteseb/shared';
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+
+function getJwt(): string | null {
+  return localStorage.getItem('jwt');
+}
+
+function buildHeaders(hasBody = false): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const jwt = getJwt();
+  if (jwt) {
+    headers['Authorization'] = `Bearer ${jwt}`;
+  }
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+}
+
+export async function apiRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const hasBody = body !== undefined;
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: buildHeaders(hasBody),
+    body: hasBody ? JSON.stringify(body) : undefined,
+  });
+
+  if (response.status === 401) {
+    localStorage.clear();
+    window.location.href = '/';
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
+      status: response.status,
+      code: errorData.error,
+    });
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export function login(initData: string, start?: string): Promise<LoginResponse> {
+  return apiRequest<LoginResponse>('POST', '/api/auth/login', { initData, start });
+}
+
+// ---------------------------------------------------------------------------
+// Player
+// ---------------------------------------------------------------------------
+
+export function getProfile(): Promise<PlayerProfile> {
+  return apiRequest<PlayerProfile>('GET', '/api/players/me');
+}
+
+// ---------------------------------------------------------------------------
+// Rounds
+// ---------------------------------------------------------------------------
+
+export function getRounds(): Promise<RoundListItem[]> {
+  return apiRequest<RoundListItem[]>('GET', '/api/rounds');
+}
+
+export function getRound(id: string): Promise<RoundDetail> {
+  return apiRequest<RoundDetail>('GET', `/api/rounds/${id}`);
+}
+
+export function getCartelaAvailability(roundId: string): Promise<CartelaAvailability> {
+  return apiRequest<CartelaAvailability>('GET', `/api/rounds/${roundId}/cartelas`);
+}
+
+export function joinRound(roundId: string, cartelaNumber: number): Promise<JoinRoundResponse> {
+  return apiRequest<JoinRoundResponse>('POST', `/api/rounds/${roundId}/join`, { cartelaNumber });
+}
+
+// ---------------------------------------------------------------------------
+// History
+// ---------------------------------------------------------------------------
+
+export function getHistory(page = 1): Promise<PaginatedResponse<HistoryEntry>> {
+  return apiRequest<PaginatedResponse<HistoryEntry>>('GET', `/api/history?page=${page}`);
+}
+
+export function getHistoryDetail(roundId: string): Promise<HistoryDetail> {
+  return apiRequest<HistoryDetail>('GET', `/api/history/${roundId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Wallet
+// ---------------------------------------------------------------------------
+
+export function getWalletTransactions(page = 1): Promise<PaginatedResponse<TransactionListItem>> {
+  return apiRequest<PaginatedResponse<TransactionListItem>>('GET', `/api/wallet/transactions?page=${page}`);
+}
+
+export function depositFunds(amount: number): Promise<DepositResponse> {
+  return apiRequest<DepositResponse>('POST', '/api/wallet/deposit', { amount });
+}
+
+export function withdrawFunds(amount: number, phone: string): Promise<void> {
+  return apiRequest<void>('POST', '/api/wallet/withdraw', { amount, phone });
+}
+
+// ---------------------------------------------------------------------------
+// Referral
+// ---------------------------------------------------------------------------
+
+export function getReferralLink(): Promise<ReferralStats> {
+  return apiRequest<ReferralStats>('GET', '/api/referral/link');
+}
+
+// ---------------------------------------------------------------------------
+// Phone verification
+// ---------------------------------------------------------------------------
+
+export function verifyPhone(phone: string): Promise<void> {
+  return apiRequest<void>('POST', '/api/players/verify-phone', { phone });
+}

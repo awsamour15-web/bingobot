@@ -1,0 +1,179 @@
+import type {
+  AdminPlayer,
+  AdminCreditRequest,
+  AdminRound,
+  CreateRoundRequest,
+  WithdrawalRequest,
+  RevenueStats,
+  ConfigEntry,
+  AdminAccount,
+  CreateAdminRequest,
+  UpdateAdminRequest,
+  PaginatedResponse,
+} from '@beteseb/shared';
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+
+export function getAdminJwt(): string | null {
+  return localStorage.getItem('adminJwt');
+}
+
+function buildAdminHeaders(hasBody = false): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const jwt = getAdminJwt();
+  if (jwt) {
+    headers['Authorization'] = `Bearer ${jwt}`;
+  }
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+}
+
+export async function adminApiRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const hasBody = body !== undefined;
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: buildAdminHeaders(hasBody),
+    ...(hasBody ? { body: JSON.stringify(body) } : {}),
+  });
+
+  if (response.status === 401) {
+    localStorage.clear();
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
+      status: response.status,
+      code: errorData.error,
+    });
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export function adminLogin(
+  username: string,
+  password: string,
+): Promise<{ token: string; adminId: string; role: import('@beteseb/shared').AdminRole }> {
+  return adminApiRequest('POST', '/api/admin/auth/login', { username, password });
+}
+
+// ---------------------------------------------------------------------------
+// Players
+// ---------------------------------------------------------------------------
+
+export function getPlayers(
+  page: number,
+  search?: string,
+): Promise<PaginatedResponse<AdminPlayer>> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (search) params.set('search', search);
+  return adminApiRequest<PaginatedResponse<AdminPlayer>>('GET', `/api/admin/players?${params}`);
+}
+
+export function getPlayer(id: string): Promise<AdminPlayer> {
+  return adminApiRequest<AdminPlayer>('GET', `/api/admin/players/${id}`);
+}
+
+export function suspendPlayer(id: string): Promise<void> {
+  return adminApiRequest<void>('PATCH', `/api/admin/players/${id}/suspend`);
+}
+
+export function restorePlayer(id: string): Promise<void> {
+  return adminApiRequest<void>('PATCH', `/api/admin/players/${id}/restore`);
+}
+
+export function creditPlayer(id: string, body: AdminCreditRequest): Promise<void> {
+  return adminApiRequest<void>('POST', `/api/admin/players/${id}/credit`, body);
+}
+
+// ---------------------------------------------------------------------------
+// Rounds
+// ---------------------------------------------------------------------------
+
+export function getAdminRounds(page = 1): Promise<PaginatedResponse<AdminRound>> {
+  return adminApiRequest<PaginatedResponse<AdminRound>>(
+    'GET',
+    `/api/admin/rounds?page=${page}`,
+  );
+}
+
+export function createRound(body: CreateRoundRequest): Promise<AdminRound> {
+  return adminApiRequest<AdminRound>('POST', '/api/admin/rounds', body);
+}
+
+export function startRound(id: string): Promise<void> {
+  return adminApiRequest<void>('POST', `/api/admin/rounds/${id}/start`);
+}
+
+export function cancelRound(id: string): Promise<void> {
+  return adminApiRequest<void>('DELETE', `/api/admin/rounds/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Withdrawals
+// ---------------------------------------------------------------------------
+
+export function getWithdrawals(): Promise<WithdrawalRequest[]> {
+  return adminApiRequest<WithdrawalRequest[]>('GET', '/api/admin/withdrawals');
+}
+
+export function approveWithdrawal(id: string): Promise<void> {
+  return adminApiRequest<void>('POST', `/api/admin/withdrawals/${id}/approve`);
+}
+
+export function rejectWithdrawal(id: string): Promise<void> {
+  return adminApiRequest<void>('POST', `/api/admin/withdrawals/${id}/reject`);
+}
+
+// ---------------------------------------------------------------------------
+// Revenue
+// ---------------------------------------------------------------------------
+
+export function getRevenue(startDate?: string, endDate?: string): Promise<RevenueStats> {
+  const params = new URLSearchParams();
+  if (startDate) params.set('startDate', startDate);
+  if (endDate) params.set('endDate', endDate);
+  const query = params.toString();
+  return adminApiRequest<RevenueStats>('GET', `/api/admin/revenue${query ? `?${query}` : ''}`);
+}
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+export function getConfig(): Promise<ConfigEntry[]> {
+  return adminApiRequest<ConfigEntry[]>('GET', '/api/admin/config');
+}
+
+export function updateConfig(key: string, value: string): Promise<ConfigEntry> {
+  return adminApiRequest<ConfigEntry>('PUT', `/api/admin/config/${key}`, { value });
+}
+
+// ---------------------------------------------------------------------------
+// Admin accounts
+// ---------------------------------------------------------------------------
+
+export function getAdmins(): Promise<AdminAccount[]> {
+  return adminApiRequest<AdminAccount[]>('GET', '/api/admin/admins');
+}
+
+export function createAdmin(body: CreateAdminRequest): Promise<AdminAccount> {
+  return adminApiRequest<AdminAccount>('POST', '/api/admin/admins', body);
+}
+
+export function updateAdmin(id: string, body: UpdateAdminRequest): Promise<AdminAccount> {
+  return adminApiRequest<AdminAccount>('PATCH', `/api/admin/admins/${id}`, body);
+}

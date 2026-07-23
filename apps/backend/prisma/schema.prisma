@@ -1,0 +1,178 @@
+// Beteseb Bingo — Prisma Schema
+// Requirements: 1.1, 3.3, 6.2, 13.1, 14.1
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum WalletType {
+  main
+  play
+}
+
+enum TxType {
+  deposit
+  withdrawal
+  game_entry
+  game_win
+  referral_commission
+  admin_credit
+  admin_debit
+  refund
+}
+
+enum GameStatus {
+  pending
+  active
+  completed
+  cancelled
+  void
+}
+
+enum AdminRole {
+  admin
+  super_admin
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Player {
+  id             String   @id @default(uuid())
+  telegram_id    BigInt   @unique
+  username       String
+  phone          String?
+  phone_verified Boolean  @default(false)
+  is_suspended   Boolean  @default(false)
+  referrer_id    String?
+  created_at     DateTime @default(now())
+
+  referrer  Player?  @relation("PlayerReferrals", fields: [referrer_id], references: [id])
+  referrals Player[] @relation("PlayerReferrals")
+
+  wallets      Wallet[]
+  round_entries RoundEntry[]
+  won_rounds   GameRound[]
+
+  @@index([telegram_id])
+  @@index([referrer_id])
+  @@map("players")
+}
+
+model Wallet {
+  id         String     @id @default(uuid())
+  player_id  String
+  type       WalletType
+  balance    Decimal    @default(0) @db.Decimal(14, 2)
+  updated_at DateTime   @updatedAt
+
+  player       Player        @relation(fields: [player_id], references: [id])
+  transactions Transaction[]
+
+  @@unique([player_id, type])
+  @@index([player_id])
+  @@map("wallets")
+}
+
+model Transaction {
+  id           String   @id @default(uuid())
+  wallet_id    String
+  type         TxType
+  amount       Decimal  @db.Decimal(14, 2)
+  reference_id String?
+  note         String?
+  created_at   DateTime @default(now())
+
+  wallet Wallet @relation(fields: [wallet_id], references: [id])
+
+  @@index([wallet_id])
+  @@index([created_at])
+  @@map("transactions")
+}
+
+model GameRound {
+  id                   String     @id @default(uuid())
+  stake                Decimal    @db.Decimal(14, 2)
+  status               GameStatus @default(pending)
+  max_players          Int
+  start_time           DateTime
+  ended_at             DateTime?
+  derash               Decimal    @default(0) @db.Decimal(14, 2)
+  commission_pct       Float
+  winner_player_id     String?
+  winner_cartela_number Int?
+
+  winner       Player?      @relation(fields: [winner_player_id], references: [id])
+  round_entries RoundEntry[]
+  called_numbers CalledNumber[]
+
+  @@index([status])
+  @@index([start_time])
+  @@map("game_rounds")
+}
+
+model RoundEntry {
+  id             String   @id @default(uuid())
+  round_id       String
+  player_id      String
+  cartela_number Int
+  is_watching    Boolean  @default(false)
+  joined_at      DateTime @default(now())
+
+  round  GameRound @relation(fields: [round_id], references: [id])
+  player Player    @relation(fields: [player_id], references: [id])
+
+  @@unique([round_id, cartela_number])
+  @@unique([round_id, player_id])
+  @@index([round_id])
+  @@index([player_id])
+  @@map("round_entries")
+}
+
+model CartelaDefinition {
+  cartela_number Int   @id
+  /// 25-element flat int array (row-major). Index 12 = free space = 0.
+  grid           Int[]
+
+  @@map("cartela_definitions")
+}
+
+model CalledNumber {
+  id             String   @id @default(uuid())
+  round_id       String
+  number         Int
+  sequence_index Int
+  called_at      DateTime @default(now())
+
+  round GameRound @relation(fields: [round_id], references: [id])
+
+  @@unique([round_id, number])
+  @@unique([round_id, sequence_index])
+  @@index([round_id])
+  @@map("called_numbers")
+}
+
+model Admin {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  password_hash String
+  role          AdminRole @default(admin)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+
+  @@map("admins")
+}
+
+model Config {
+  key        String   @id
+  value      String
+  updated_at DateTime @updatedAt
+
+  @@map("config")
+}
