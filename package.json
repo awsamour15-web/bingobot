@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @beteseb/shared build && pnpm --filter !@beteseb/shared -r build",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "type-check": "pnpm -r type-check",

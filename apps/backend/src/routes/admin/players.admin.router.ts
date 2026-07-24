@@ -55,7 +55,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       round_entries: {
         orderBy: { joined_at: 'desc' },
         take: 50,
-        include: { game_round: true },
+        include: { round: true },
       },
     },
   });
