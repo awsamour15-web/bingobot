@@ -67,7 +67,7 @@ export async function apiRequest<T>(
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: buildHeaders(hasBody),
-    body: hasBody ? JSON.stringify(body) : undefined,
+    body: hasBody ? JSON.stringify(body) : null,
   });
 
   if (response.status === 401) {
