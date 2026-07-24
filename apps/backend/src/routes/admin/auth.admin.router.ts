@@ -1,12 +1,12 @@
 // POST /api/admin/auth/login — Admin username/password authentication
 // Requirements: 15.5
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../lib/prisma.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 /**
  * POST /api/admin/auth/login

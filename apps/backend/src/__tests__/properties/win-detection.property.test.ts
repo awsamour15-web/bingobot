@@ -35,7 +35,7 @@ const WINNING_LINE_INDICES: number[][] = [
  */
 function hasAnyWinningLine(grid: number[], calledNums: Set<number>): boolean {
   return WINNING_LINE_INDICES.some((lineIndices) =>
-    lineIndices.every((i) => grid[i] === 0 || calledNums.has(grid[i])),
+    lineIndices.every((i) => grid[i] === 0 || calledNums.has(grid[i] ?? 0)),
   );
 }
 
@@ -108,8 +108,8 @@ describe('Property 6: Win Detection Soundness', () => {
         // A line through the free space that has all other cells called should win
         // Use the middle row [10,11,12,13,14]: grid[12]=0, call the others
         const middleRow = [10, 11, 12, 13, 14];
-        const calledNums = new Set(
-          middleRow.filter((i) => i !== FREE_SPACE_INDEX).map((i) => grid[i]),
+        const calledNums = new Set<number>(
+          middleRow.filter((i) => i !== FREE_SPACE_INDEX).map((i) => grid[i] ?? 0),
         );
         const result = checkWin(grid, calledNums);
         expect(result.won).toBe(true);

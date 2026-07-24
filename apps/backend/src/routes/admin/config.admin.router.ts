@@ -5,7 +5,7 @@ import { Router, type Request, type Response, type Router as RouterType } from '
 import bcrypt from 'bcryptjs';
 import prisma from '../../lib/prisma.js';
 import { requireSuperAdmin } from '../../middleware/admin-auth.middleware.js';
-import { AdminRole } from '@prisma/client';
+import { AdminRole } from '@beteseb/shared';
 
 const router: RouterType = Router();
 

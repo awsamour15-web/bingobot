@@ -115,7 +115,7 @@ router.get('/:roundId', async (req: Request, res: Response): Promise<void> => {
     result,
     prize,
     cartelaNumber: entry.cartela_number,
-    calledNumbers: round.called_numbers.map((cn) => ({
+    calledNumbers: round.called_numbers.map((cn: { number: number; sequence_index: number }) => ({
       number: cn.number,
       sequence_index: cn.sequence_index,
     })),

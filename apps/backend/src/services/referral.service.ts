@@ -1,7 +1,7 @@
 // Referral Service — commission attribution and crediting
 // Requirements: 9.2, 9.3
 
-import { TxType, WalletType } from '@prisma/client';
+import { TxType, WalletType } from '@beteseb/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 

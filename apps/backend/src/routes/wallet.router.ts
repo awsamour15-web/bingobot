@@ -3,7 +3,7 @@
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import rateLimit from 'express-rate-limit';
-import { TxType, WalletType } from '@prisma/client';
+import { TxType, WalletType } from '@beteseb/shared';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { getPaymentGateway } from '../services/payment.service.js';

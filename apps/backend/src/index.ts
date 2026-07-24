@@ -1,7 +1,7 @@
 // apps/backend — Express + Socket.IO server entry point
 
 import { createServer } from 'node:http';
-import express from 'express';
+import express, { type Express } from 'express';
 import authRouter from './routes/auth.router.js';
 import playersRouter from './routes/players.router.js';
 import roundsRouter from './routes/rounds.router.js';
@@ -17,7 +17,7 @@ import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
 
-const app = express();
+const app: Express = express();
 
 app.use(express.json());
 

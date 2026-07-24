@@ -2,7 +2,10 @@
 // Requirements: 10.4
 
 import { Bot, InlineKeyboard } from 'grammy';
+import type { PrismaClient } from '@prisma/client';
 import prisma from '../lib/prisma.js';
+
+type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 // ─── Env vars ─────────────────────────────────────────────────────────────────
 
@@ -53,7 +56,7 @@ if (BOT_TOKEN) {
       }
 
       // Upsert player
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: PrismaTx) => {
         const existing = await tx.player.findUnique({
           where: { telegram_id: telegramId },
           select: { id: true },

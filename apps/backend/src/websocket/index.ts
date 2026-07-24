@@ -2,12 +2,8 @@
 // Requirements: 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 13.3
 
 import { type Server as HttpServer } from 'node:http';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error — socket.io installed at runtime; types available after pnpm install
 import { Server as SocketIOServer } from 'socket.io';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error — ioredis installed at runtime; types available after pnpm install
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import { WinDetectionService } from '../services/win-detection.service.js';
@@ -42,9 +38,9 @@ function isClaimRateLimited(playerId: string): boolean {
 
 // ─── Redis pub/sub helpers ────────────────────────────────────────────────────
 
-function createRedisSubscriber(): InstanceType<typeof Redis> {
+function createRedisSubscriber(): Redis {
   const url = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
-  return new Redis(url) as InstanceType<typeof Redis>;
+  return new Redis(url);
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────

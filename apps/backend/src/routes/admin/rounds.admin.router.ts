@@ -1,11 +1,11 @@
 // Admin game management endpoints
 // Requirements: 13.1, 13.2, 13.3, 13.4, 13.5
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
 import { GameRoundService } from '../../services/game-round.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 // GET /api/admin/rounds — all rounds with status, player count, derash, called numbers count
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
@@ -42,7 +42,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/admin/rounds/:id/start — force-start a round
 router.post('/:id/start', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
   try {
     await GameRoundService.start(id);
@@ -55,7 +55,7 @@ router.post('/:id/start', async (req: Request, res: Response): Promise<void> => 
 
 // DELETE /api/admin/rounds/:id — cancel a round
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
   try {
     await GameRoundService.cancel(id);

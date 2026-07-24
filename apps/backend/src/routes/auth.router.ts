@@ -3,9 +3,12 @@
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import jwt from 'jsonwebtoken';
+import type { PrismaClient } from '@prisma/client';
 import { verifyTelegramInitData, TelegramAuthError } from '../lib/telegram-auth.js';
 import { authRateLimiter } from '../middleware/telegram-auth.middleware.js';
 import prisma from '../lib/prisma.js';
+
+type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 // Inline types matching shared package shapes to avoid build-order dependency
 interface LoginRequest {
@@ -88,7 +91,7 @@ router.post(
       referrerId = referrer?.id;
     }
 
-    const player = await prisma.$transaction(async (tx) => {
+    const player = await prisma.$transaction(async (tx: PrismaTx) => {
       // Try to find existing player
       const existing = await tx.player.findUnique({
         where: { telegram_id: telegramId },

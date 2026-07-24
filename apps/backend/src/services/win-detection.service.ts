@@ -1,7 +1,7 @@
 // Win Detection Service
 // Requirements: 4.5, 5.1, 5.2, 5.3
 
-import { GameStatus, TxType, WalletType } from '@prisma/client';
+import { GameStatus, TxType, WalletType } from '@beteseb/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { ReferralService } from './referral.service.js';

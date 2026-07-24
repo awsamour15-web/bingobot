@@ -15,7 +15,7 @@ import {
   RoundNotFoundError,
 } from '../services/game-round.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
-import { WalletType } from '@prisma/client';
+import { WalletType } from '@beteseb/shared';
 import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@beteseb/shared';
 
 const router: RouterType = Router();

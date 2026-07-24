@@ -1,12 +1,12 @@
 // Admin player management endpoints
 // Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 14.1
 
-import { Router, type Request, type Response } from 'express';
-import { WalletType, TxType } from '@prisma/client';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
+import { WalletType, TxType } from '@beteseb/shared';
 import prisma from '../../lib/prisma.js';
 import { WalletService } from '../../services/wallet.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 // GET /api/admin/players — paginated list with optional search
 router.get('/', async (req: Request, res: Response): Promise<void> => {
@@ -39,7 +39,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
 // GET /api/admin/players/:id — full player detail
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
   const player = await prisma.player.findUnique({
     where: { id },
@@ -70,7 +70,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 
 // PATCH /api/admin/players/:id/suspend
 router.patch('/:id/suspend', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
   const player = await prisma.player.update({
     where: { id },
@@ -87,7 +87,7 @@ router.patch('/:id/suspend', async (req: Request, res: Response): Promise<void> 
 
 // PATCH /api/admin/players/:id/restore
 router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
   const player = await prisma.player.update({
     where: { id },
@@ -104,7 +104,7 @@ router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> 
 
 // POST /api/admin/players/:id/credit — manual wallet adjustment
 router.post('/:id/credit', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const { walletType, amount, note } = req.body as {
     walletType?: string;
     amount?: number;
