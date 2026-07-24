@@ -64,7 +64,7 @@ function StatusBadge({ status }: { status: GameStatus }) {
     cancelled: { bg: '#fee2e2', color: C.danger,   label: 'Cancelled' },
     void:      { bg: '#f3f4f6', color: C.muted,    label: 'Void' },
   };
-  const entry = map[status] ?? map['void'];
+  const entry = map[status] ?? map['void']!;
   return (
     <span style={{
       display: 'inline-block', padding: '2px 10px', borderRadius: 12,
@@ -210,7 +210,7 @@ function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: Ro
                 <td style={{ ...tdStyle, fontWeight: 600 }}>{r.stake.toFixed(2)}</td>
                 <td style={tdStyle}>{r.player_count}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: C.success }}>{r.derash.toFixed(2)}</td>
-                <td style={tdStyle}>{r.called_count}</td>
+                <td style={tdStyle}>{r.called_numbers_count}</td>
                 <td style={{ ...tdStyle, color: C.muted, fontSize: 12, whiteSpace: 'nowrap' }}>
                   {new Date(r.start_time).toLocaleString()}
                 </td>
