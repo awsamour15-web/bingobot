@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "pnpm --filter @beteseb/shared build && prisma generate && tsc",
     "type-check": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
