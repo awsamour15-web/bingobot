@@ -20,6 +20,9 @@ import { bot } from './bot/index.js';
 
 const app: Express = express();
 
+// Trust the first proxy (required on Render/Heroku/etc. for rate limiting and IP detection)
+app.set('trust proxy', 1);
+
 app.use(cors({
   origin: process.env['CORS_ORIGIN'] ?? '*',
   credentials: true,
