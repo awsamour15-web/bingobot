@@ -25,7 +25,7 @@ export interface LoginResponse {
 export interface PlayerProfile {
   id: string;
   username: string;
-  phone?: string;
+  phone?: string | undefined;
   phone_verified: boolean;
   is_suspended: boolean;
   created_at: string;
@@ -55,9 +55,9 @@ export interface RoundListItem {
 
 export interface RoundDetail extends RoundListItem {
   called_numbers_count: number;
-  ended_at?: string;
-  winner_player_id?: string;
-  winner_cartela_number?: number;
+  ended_at?: string | undefined;
+  winner_player_id?: string | undefined;
+  winner_cartela_number?: number | undefined;
 }
 
 export interface JoinRoundRequest {
@@ -107,8 +107,8 @@ export interface TransactionListItem {
   type: TxType;
   amount: number;
   walletType: WalletType;
-  note?: string;
-  reference_id?: string;
+  note?: string | undefined;
+  reference_id?: string | undefined;
   created_at: string;
 }
 
@@ -144,7 +144,7 @@ export interface AdminPlayer {
   id: string;
   username: string;
   telegram_id: string;
-  phone?: string;
+  phone?: string | undefined;
   phone_verified: boolean;
   is_suspended: boolean;
   main_wallet_balance: number;
@@ -173,9 +173,9 @@ export interface AdminRound {
   derash: number;
   called_numbers_count: number;
   start_time: string;
-  ended_at?: string;
-  winner_player_id?: string;
-  winner_cartela_number?: number;
+  ended_at?: string | undefined;
+  winner_player_id?: string | undefined;
+  winner_cartela_number?: number | undefined;
   commission_pct: number;
 }
 
@@ -207,8 +207,8 @@ export interface RevenueStats {
   totalStakesCollected: number;
   totalPrizesPaid: number;
   platformCommissionEarned: number;
-  startDate?: string;
-  endDate?: string;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,9 +244,9 @@ export interface CreateAdminRequest {
 }
 
 export interface UpdateAdminRequest {
-  role?: AdminRole;
-  is_active?: boolean;
-  password?: string;
+  role?: AdminRole | undefined;
+  is_active?: boolean | undefined;
+  password?: string | undefined;
 }
 
 // ---------------------------------------------------------------------------

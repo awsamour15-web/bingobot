@@ -6,10 +6,10 @@ export interface Player {
   id: string;
   telegram_id: bigint;
   username: string;
-  phone?: string;
+  phone?: string | undefined;
   phone_verified: boolean;
   is_suspended: boolean;
-  referrer_id?: string;
+  referrer_id?: string | undefined;
   created_at: Date;
 }
 
@@ -26,8 +26,8 @@ export interface Transaction {
   wallet_id: string;
   type: TxType;
   amount: number;
-  reference_id?: string;
-  note?: string;
+  reference_id?: string | undefined;
+  note?: string | undefined;
   created_at: Date;
 }
 
@@ -37,11 +37,11 @@ export interface GameRound {
   status: GameStatus;
   max_players: number;
   start_time: Date;
-  ended_at?: Date;
+  ended_at?: Date | undefined;
   derash: number;
   commission_pct: number;
-  winner_player_id?: string;
-  winner_cartela_number?: number;
+  winner_player_id?: string | undefined;
+  winner_cartela_number?: number | undefined;
 }
 
 export interface RoundEntry {
