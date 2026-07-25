@@ -1,0 +1,5 @@
+[[context.production]]
+
+[build]
+  command = "pnpm build"
+  publish = "apps/mini-app/dist"
