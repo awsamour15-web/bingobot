@@ -38,9 +38,21 @@ function isClaimRateLimited(playerId: string): boolean {
 
 // ─── Redis pub/sub helpers ────────────────────────────────────────────────────
 
-function createRedisSubscriber(): Redis {
-  const url = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
-  return new Redis(url);
+function createRedisSubscriber(): Redis | null {
+  const url = process.env['REDIS_URL'];
+  if (!url) {
+    console.warn('[WebSocket] REDIS_URL not set — Redis pub/sub disabled, single-instance mode only.');
+    return null;
+  }
+  const client = new Redis(url, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 0,
+    retryStrategy: () => null, // don't retry
+  });
+  client.on('error', (err: Error) => {
+    console.error('[ioredis] Connection error:', err.message);
+  });
+  return client;
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
@@ -90,6 +102,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   // ── Redis subscriber for cross-process pub/sub fan-out ──────────────────────
   const subscriber = createRedisSubscriber();
 
+  if (subscriber) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   subscriber.on('message', (channel: string, message: string) => {
     // game:{roundId}:number  → NUMBER_CALLED
@@ -115,6 +128,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
       io.to(`round:${roundId}`).emit('ROUND_CANCELLED', JSON.parse(message) as object);
     }
   });
+  }
 
   // ── Wire NCE callbacks so in-process events also fan-out ───────────────────
 
@@ -161,11 +175,13 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         await socket.join(`round:${roundId}`);
 
         // Subscribe to Redis channels for this round (idempotent — ioredis deduplicates)
-        await subscriber.subscribe(
-          `game:${roundId}:number`,
-          `round:${roundId}:void`,
-          `round:${roundId}:cancelled`,
-        );
+        if (subscriber) {
+          await subscriber.subscribe(
+            `game:${roundId}:number`,
+            `round:${roundId}:void`,
+            `round:${roundId}:cancelled`,
+          );
+        }
 
         // Broadcast updated player count to the room
         const playerCount = await prisma.roundEntry.count({
