@@ -2,6 +2,7 @@
 
 import { createServer } from 'node:http';
 import express, { type Express } from 'express';
+import cors from 'cors';
 import authRouter from './routes/auth.router.js';
 import playersRouter from './routes/players.router.js';
 import roundsRouter from './routes/rounds.router.js';
@@ -19,6 +20,10 @@ import { bot } from './bot/index.js';
 
 const app: Express = express();
 
+app.use(cors({
+  origin: process.env['CORS_ORIGIN'] ?? '*',
+  credentials: true,
+}));
 app.use(express.json());
 
 // ─── Player Routes ────────────────────────────────────────────────────────────
