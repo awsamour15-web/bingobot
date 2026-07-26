@@ -15,11 +15,13 @@ declare global {
   }
 }
 
-// ─── Rate limiter: 10 requests/min per IP on auth endpoint ───────────────────
+// ─── Rate limiter: 10 req/min per IP in prod, relaxed in dev ─────────────────
+
+const isDev = process.env['NODE_ENV'] !== 'production';
 
 export const authRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: isDev ? 60 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

@@ -4,17 +4,25 @@ import { login } from './api';
 // In development, WebApp.initData may be empty. Use a mock fallback.
 const DEV_MOCK_INIT_DATA = 'mock_init_data_for_development';
 
+// In-flight promise to prevent concurrent login calls
+let authPromise: Promise<void> | null = null;
+
 export async function initAuth(): Promise<void> {
   if (isLoggedIn()) return;
+  if (authPromise) return authPromise;
 
-  const initData = WebApp.initData || DEV_MOCK_INIT_DATA;
+  authPromise = (async () => {
+    const initData = WebApp.initData || DEV_MOCK_INIT_DATA;
+    const startParam = (WebApp.initDataUnsafe as { start_param?: string }).start_param;
 
-  // Parse optional start param from WebApp.initDataUnsafe
-  const startParam = (WebApp.initDataUnsafe as { start_param?: string }).start_param;
+    const { token, playerId } = await login(initData, startParam);
+    localStorage.setItem('jwt', token);
+    localStorage.setItem('playerId', playerId);
+  })().finally(() => {
+    authPromise = null;
+  });
 
-  const { token, playerId } = await login(initData, startParam);
-  localStorage.setItem('jwt', token);
-  localStorage.setItem('playerId', playerId);
+  return authPromise;
 }
 
 export function getPlayerId(): string | null {
