@@ -257,7 +257,7 @@ export function GamesPage() {
     setFetchError(null);
     try {
       const res = await getAdminRounds(1);
-      setAllRounds(res.items);
+      setAllRounds((res as any).items ?? (Array.isArray(res) ? res : []));
     } catch (err: unknown) {
       setFetchError((err as Error).message ?? 'Failed to load rounds');
     } finally {

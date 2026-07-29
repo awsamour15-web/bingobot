@@ -17,7 +17,7 @@ This project has 3 parts to deploy:
 4. Enter a username (must end in `bot`, e.g. `beteseb_bingo_bot`)
 5. BotFather will give you a token like:
    ```
-   123456789:ABCdefGHIjklMNOpqrSTUvwxYZ
+   8643757251:AAEp5dRCld3yQTCpND8h5xV78M7M_vhauEU
    ```
 6. **Save this token** — you will need it in Step 4
 

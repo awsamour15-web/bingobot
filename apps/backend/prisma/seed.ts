@@ -3,6 +3,7 @@
 // Task 2.3: Seed default Config rows
 
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -115,9 +116,29 @@ async function seedConfig(): Promise<void> {
   console.log(`  ✓ Seeded ${defaults.length} config keys`);
 }
 
+async function seedAdmin(): Promise<void> {
+  console.log('Seeding default admin user...');
+
+  const password_hash = await bcrypt.hash('bingoadmin', 10);
+
+  await prisma.admin.upsert({
+    where: { username: 'amourbingo' },
+    update: {},
+    create: {
+      username: 'amourbingo',
+      password_hash,
+      role: 'super_admin',
+      is_active: true,
+    },
+  });
+
+  console.log('  ✓ Seeded admin user: amourbingo');
+}
+
 async function main(): Promise<void> {
   await seedCartelas();
   await seedConfig();
+  await seedAdmin();
 }
 
 main()

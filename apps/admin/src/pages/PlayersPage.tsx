@@ -437,10 +437,10 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
     setLoading(true);
     setError(null);
     getPlayers(p, q || undefined)
-      .then((res) => {
-        setPlayers(res.items);
-        setTotal(res.total);
-        setPageSize(res.pageSize);
+      .then((res: any) => {
+        setPlayers(res.items ?? res.players ?? []);
+        setTotal(res.total ?? 0);
+        setPageSize(res.pageSize ?? res.limit ?? 20);
         setLoading(false);
       })
       .catch((e: Error) => {
