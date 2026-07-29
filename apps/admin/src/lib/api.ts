@@ -12,7 +12,7 @@ import type {
   PaginatedResponse,
 } from '@beteseb/shared';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
 
 export function getAdminJwt(): string | null {
   return localStorage.getItem('adminJwt');
