@@ -1,8 +1,0 @@
-[build]
-  command = "pnpm build"
-  publish = "apps/mini-app/dist"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
