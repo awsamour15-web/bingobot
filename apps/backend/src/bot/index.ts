@@ -49,7 +49,7 @@ export function buildMainMenu(): Keyboard {
       kb.row();
     }
   }
-  return kb.resized().persistent();
+  return kb.resized();
 }
 
 /**
