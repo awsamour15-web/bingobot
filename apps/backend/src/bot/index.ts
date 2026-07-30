@@ -259,9 +259,18 @@ if (BOT_TOKEN) {
 
   // ─── 4.1: Play 🎮 handler ──────────────────────────────────────────────────
   bot.hears('Play 🎮', async (ctx) => {
-    await ctx.reply('🎮 Let\'s play!', {
-      reply_markup: buildPlayReplyMarkup(MINI_APP_URL),
-    });
+    // Use web_app only if MINI_APP_URL is a direct HTTPS URL (not a t.me link)
+    const isDirectUrl = MINI_APP_URL.startsWith('https://') && !MINI_APP_URL.startsWith('https://t.me');
+    if (isDirectUrl) {
+      await ctx.reply('🎮 Let\'s play!', {
+        reply_markup: buildPlayReplyMarkup(MINI_APP_URL),
+      });
+    } else {
+      await ctx.reply(
+        `🎮 Open the game here:\n${MINI_APP_URL}`,
+        { reply_markup: new InlineKeyboard().url('Open Beteseb Bingo 🎮', MINI_APP_URL) },
+      );
+    }
   });
 
   // ─── 4.2: Register 📝 handler ─────────────────────────────────────────────
