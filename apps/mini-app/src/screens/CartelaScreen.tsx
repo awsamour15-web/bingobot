@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getRound, getCartelaAvailability, joinRound, getProfile } from '../lib/api';
 import { socket } from '../lib/socket';
@@ -57,10 +57,9 @@ export default function CartelaScreen() {
   const [balances, setBalances] = useState<ProfileBalances | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);   // chosen but not yet joined
+  const [selected, setSelected] = useState<number | null>(null);
   const [joining, setJoining] = useState(false);
-  const [joinedCartela, setJoinedCartela] = useState<number | null>(null); // confirmed join
-  const autoNavRef = useRef(false);
+  const [joinedCartela, setJoinedCartela] = useState<number | null>(null);
 
   const { msLeft, label: countdownLabel, pct } = useServerCountdown(round?.start_time ?? null);
 
@@ -99,45 +98,31 @@ export default function CartelaScreen() {
     return () => { socket.off('PLAYER_JOINED', onJoined); };
   }, [roundId]);
 
-  // ─── Auto-navigate when countdown hits 0 and player has joined ────────
-  useEffect(() => {
-    if (msLeft === 0 && joinedCartela !== null && !autoNavRef.current) {
-      autoNavRef.current = true;
+  // ─── Select + immediately join ───────────────────────────────────────
+  const handleSelect = useCallback(async (num: number) => {
+    if (joining || joinedCartela !== null) return;
+    setSelected(num);
+    setError(null);
+    setJoining(true);
+    try {
+      await joinRound(roundId!, num);
+      setJoinedCartela(num);
       sessionStorage.setItem('selectedRoundId', roundId!);
       navigate(`/rounds/${roundId}/game`, { replace: true });
-    }
-  }, [msLeft, joinedCartela, roundId, navigate]);
-
-  // ─── Select a cartela (pre-pick before confirming) ────────────────────
-  const handleSelect = useCallback((num: number) => {
-    if (joining || joinedCartela !== null) return;
-    setSelected((prev) => prev === num ? null : num);
-    setError(null);
-  }, [joining, joinedCartela]);
-
-  // ─── Confirm join ─────────────────────────────────────────────────────
-  const handleConfirm = useCallback(async () => {
-    if (!roundId || selected === null || joining) return;
-    setJoining(true);
-    setError(null);
-    try {
-      await joinRound(roundId, selected);
-      setJoinedCartela(selected);
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'INSUFFICIENT_BALANCE') {
         setError('Insufficient balance to join this round.');
       } else if (e.code === 'CARTELA_TAKEN') {
         setError('That cartela was just taken. Please pick another.');
-        setSelected(null);
-        getCartelaAvailability(roundId).then(setAvailability).catch(() => null);
+        getCartelaAvailability(roundId!).then(setAvailability).catch(() => null);
       } else {
         setError(e.message ?? 'Failed to join round');
       }
-    } finally {
+      setSelected(null);
       setJoining(false);
     }
-  }, [roundId, selected, joining]);
+  }, [joining, joinedCartela, roundId, navigate]);
 
   // ─── Render ───────────────────────────────────────────────────────────
   if (loading) {
@@ -247,7 +232,7 @@ export default function CartelaScreen() {
         display: 'grid',
         gridTemplateColumns: 'repeat(8, 1fr)',
         gap: 5,
-        padding: '4px 12px 130px',
+        padding: '4px 12px 20px',
         alignContent: 'start',
       }}>
         {allNumbers.map((num) => {
@@ -301,45 +286,17 @@ export default function CartelaScreen() {
         })}
       </div>
 
-      {/* ── Sticky confirm bar ──────────────────────────────────────────────── */}
-      {joinedCartela === null && (
+      {/* ── Joining overlay ─────────────────────────────────────────────────── */}
+      {joining && (
         <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: '14px 16px',
-          background: 'rgba(15,12,41,0.97)',
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          backdropFilter: 'blur(8px)',
+          position: 'fixed', inset: 0,
+          background: 'rgba(15,12,41,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column', gap: 12,
+          zIndex: 50,
         }}>
-          {selected !== null ? (
-            <button
-              onClick={handleConfirm}
-              disabled={joining}
-              style={{
-                width: '100%',
-                padding: '15px',
-                background: joining ? '#6b7280' : 'linear-gradient(135deg, #22c55e, #16a34a)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 12,
-                fontSize: 16,
-                fontWeight: 800,
-                cursor: joining ? 'default' : 'pointer',
-                WebkitAppearance: 'none',
-                appearance: 'none',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            >
-              {joining ? 'Reserving…' : `Confirm Cartela #${selected} — ${round.stake} Birr`}
-            </button>
-          ) : (
-            <div style={{ textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
-              Tap a cartela number to select it
-            </div>
-          )}
+          <div style={{ fontSize: 32 }}>🎮</div>
+          <div style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>Joining game…</div>
         </div>
       )}
     </div>
