@@ -259,6 +259,13 @@ if (BOT_TOKEN) {
 
   // ─── 4.1: Play 🎮 handler ──────────────────────────────────────────────────
   bot.hears('Play 🎮', async (ctx) => {
+    if (!ctx.from) return;
+    if (!(await isRegistered(BigInt(ctx.from.id)))) {
+      await ctx.reply(
+        '⚠️ Please register first to play. Tap Register 📝 to get started.',
+      );
+      return;
+    }
     await ctx.reply('🎮 Let\'s play!', {
       reply_markup: buildPlayReplyMarkup(MINI_APP_URL),
     });
