@@ -85,14 +85,13 @@ export const REGISTER_PROMPT_TEXT =
 
 export const DEPOSIT_TEXT =
   `💰 How to Deposit\n\n` +
-  `Accepted payment methods: CBE Birr, Telebirr, Bank Transfer\n\n` +
+  `Payment method: Telebirr only\n\n` +
   `Steps to deposit:\n` +
-  `1. Send funds to our account:\n` +
-  `   • CBE Birr: 1000123456789\n` +
-  `   • Telebirr: 0911000000\n` +
-  `   • Bank Transfer: CBE 1000123456789 (Fidel Bingo)\n\n` +
-  `2. Send proof of your payment to our support team.\n` +
-  `3. Your balance will be updated within 24 hours after verification.\n\n` +
+  `1. Send funds to this Telebirr number:\n` +
+  `   📱 0934942672\n\n` +
+  `2. Take a screenshot of your payment receipt.\n` +
+  `3. Send the screenshot to our support team via Contact Support 📞.\n` +
+  `4. Your play wallet balance will be updated within 24 hours after verification.\n\n` +
   `⚠️ Always include your Telegram username in the payment note.`;
 
 export const INSTRUCTION_TEXT =
