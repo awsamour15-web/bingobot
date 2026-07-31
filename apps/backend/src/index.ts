@@ -17,6 +17,7 @@ import adminConfigRouter from './routes/admin/config.admin.router.js';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
+import { RoundScheduler } from './services/round-scheduler.service.js';
 
 const app: Express = express();
 
@@ -68,6 +69,8 @@ const PORT = process.env['PORT'] ?? 3000;
 
 httpServer.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
+  // Start auto-round scheduler after server is up
+  RoundScheduler.start();
 });
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────

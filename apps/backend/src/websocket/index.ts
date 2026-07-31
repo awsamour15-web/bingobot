@@ -9,6 +9,7 @@ import prisma from '../lib/prisma.js';
 import { WinDetectionService } from '../services/win-detection.service.js';
 import { nce } from '../services/nce.service.js';
 import { GameRoundService } from '../services/game-round.service.js';
+import { RoundScheduler } from '../services/round-scheduler.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -138,10 +139,13 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   nce.setOnRoundVoid((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId });
+    // Replenish — create a new pending round for this stake level
+    void RoundScheduler.ensureRoundsExist();
   });
 
   GameRoundService.setOnRoundCancelled((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_CANCELLED', { roundId });
+    void RoundScheduler.ensureRoundsExist();
   });
 
   // ── Connection handler ─────────────────────────────────────────────────────
@@ -233,6 +237,9 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
             cartelaNumber: round?.winner_cartela_number,
             derash: round?.derash ? Number(round.derash) : 0,
           });
+
+          // Replenish — ensure a new pending round exists for this stake level
+          void RoundScheduler.ensureRoundsExist();
 
           if (ack) ack({ ok: true });
         } else {
