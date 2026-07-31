@@ -4,6 +4,8 @@ import { initAuth } from '../lib/auth';
 import { getRounds } from '../lib/api';
 import type { RoundListItem } from '@beteseb/shared';
 
+const ALLOWED_STAKES = [10, 20, 50];
+
 export default function GameScreen() {
   const navigate = useNavigate();
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
@@ -15,7 +17,19 @@ export default function GameScreen() {
       try {
         await initAuth();
         const data = await getRounds();
-        setRounds(data);
+
+        // Keep only one round per stake (the earliest start_time), filtered to allowed stakes
+        const byStake = new Map<number, RoundListItem>();
+        for (const r of data) {
+          const stake = Number(r.stake);
+          if (!ALLOWED_STAKES.includes(stake)) continue;
+          const existing = byStake.get(stake);
+          if (!existing || new Date(r.start_time) < new Date(existing.start_time)) {
+            byStake.set(stake, r);
+          }
+        }
+        // Return in fixed order: 10, 20, 50
+        setRounds(ALLOWED_STAKES.map((s) => byStake.get(s)).filter(Boolean) as RoundListItem[]);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load rounds';
         setError(msg);

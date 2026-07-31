@@ -11,7 +11,7 @@ import { GameStatus } from '@beteseb/shared';
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 /** Stake levels (in Birr) for which rounds are auto-created. */
-const STAKE_LEVELS = [10, 20, 50, 100];
+const STAKE_LEVELS = [10, 20, 50];
 
 /** How far ahead (ms) to schedule the round start_time. */
 const LEAD_TIME_MS = 60_000; // 60 second lobby
