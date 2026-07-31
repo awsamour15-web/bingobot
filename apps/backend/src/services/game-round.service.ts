@@ -296,7 +296,7 @@ export const GameRoundService = {
 
     if (!round || round.status !== GameStatus.pending) return;
 
-    const minPlayers = minPlayersRow ? parseInt(minPlayersRow.value, 10) : 2;
+    const minPlayers = minPlayersRow ? parseInt(minPlayersRow.value, 10) : 1;
     const playerCount = round._count.round_entries;
 
     if (playerCount >= minPlayers && round.start_time <= new Date()) {

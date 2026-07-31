@@ -29,6 +29,12 @@ export const RoundScheduler = {
 
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
+    // Ensure min_players_to_start is 1 so rounds always start
+    void prisma.config.upsert({
+      where: { key: 'min_players_to_start' },
+      update: { value: '1' },
+      create: { key: 'min_players_to_start', value: '1' },
+    });
     void RoundScheduler.tick();
     RoundScheduler._timer = setInterval(() => {
       void RoundScheduler.tick();
@@ -64,26 +70,14 @@ export const RoundScheduler = {
       });
 
       for (const round of overdue) {
-        if (round._count.round_entries === 0) {
-          // No one joined — void without calling any numbers
-          await prisma.gameRound.update({
-            where: { id: round.id },
-            data: { status: GameStatus.void, ended_at: new Date() },
-          });
-          console.log(`[Scheduler] Round ${round.id} voided — no players joined`);
-
-          // Notify WebSocket layer
-          if (GameRoundService._onRoundVoidEmpty) {
-            await GameRoundService._onRoundVoidEmpty(round.id);
-          }
-        } else {
-          // Players joined but round wasn't started yet — start it now
-          try {
-            await GameRoundService.start(round.id);
-            console.log(`[Scheduler] Round ${round.id} auto-started with ${round._count.round_entries} players`);
-          } catch (err) {
-            console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
-          }
+        // Always start the round when start_time passes — even with 0 players.
+        // If no one has a cartela, numbers still get called for watchers.
+        // The NCE will trigger void after all 75 numbers if no winner claims.
+        try {
+          await GameRoundService.start(round.id);
+          console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
+        } catch (err) {
+          console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
         }
       }
     } catch (err) {

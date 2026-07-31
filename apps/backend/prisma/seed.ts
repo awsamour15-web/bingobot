@@ -66,7 +66,7 @@ async function seedConfig(): Promise<void> {
     { key: 'call_interval_ms', value: '5000' },
     { key: 'platform_commission_pct', value: '20' },
     { key: 'referral_commission_pct', value: '2' },
-    { key: 'min_players_to_start', value: '2' },
+    { key: 'min_players_to_start', value: '1' },
   ];
 
   for (const row of defaults) {
