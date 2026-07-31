@@ -40,6 +40,7 @@ export class RoundNotFoundError extends Error {
 // ─── Callback type for cancel broadcast ──────────────────────────────────────
 
 export type OnRoundCancelled = (roundId: string) => void | Promise<void>;
+export type OnRoundVoidEmpty = (roundId: string) => void | Promise<void>;
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,13 @@ export const GameRoundService = {
 
   setOnRoundCancelled(cb: OnRoundCancelled): void {
     GameRoundService._onRoundCancelled = cb;
+  },
+
+  /** Optional callback invoked when a round is voided due to no players. */
+  _onRoundVoidEmpty: undefined as OnRoundVoidEmpty | undefined,
+
+  setOnRoundVoidEmpty(cb: OnRoundVoidEmpty): void {
+    GameRoundService._onRoundVoidEmpty = cb;
   },
 
   /**

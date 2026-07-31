@@ -143,6 +143,11 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     void RoundScheduler.ensureRoundsExist();
   });
 
+  GameRoundService.setOnRoundVoidEmpty((roundId) => {
+    io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId, reason: 'No players joined' });
+    void RoundScheduler.ensureRoundsExist();
+  });
+
   GameRoundService.setOnRoundCancelled((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_CANCELLED', { roundId });
     void RoundScheduler.ensureRoundsExist();

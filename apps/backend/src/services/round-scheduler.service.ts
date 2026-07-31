@@ -2,6 +2,7 @@
 // Automatically maintains one pending round per stake level at all times.
 // A new round is created 1 minute into the future whenever no pending round
 // exists for a given stake level.
+// When a round's start_time passes with zero entries, it is voided immediately.
 
 import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
@@ -26,15 +27,11 @@ const CHECK_INTERVAL_MS = 15_000; // 15 seconds
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
 
-  /**
-   * Start the scheduler.
-   * Runs an immediate check then polls every CHECK_INTERVAL_MS.
-   */
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
-    void RoundScheduler.ensureRoundsExist();
+    void RoundScheduler.tick();
     RoundScheduler._timer = setInterval(() => {
-      void RoundScheduler.ensureRoundsExist();
+      void RoundScheduler.tick();
     }, CHECK_INTERVAL_MS);
   },
 
@@ -45,12 +42,60 @@ export const RoundScheduler = {
     }
   },
 
+  async tick(): Promise<void> {
+    await RoundScheduler.expireEmptyRounds();
+    await RoundScheduler.ensureRoundsExist();
+  },
+
+  /**
+   * Find pending rounds whose start_time has passed but have zero entries.
+   * Mark them void immediately — no number calling, no winner.
+   */
+  async expireEmptyRounds(): Promise<void> {
+    try {
+      const overdue = await prisma.gameRound.findMany({
+        where: {
+          status: GameStatus.pending,
+          start_time: { lte: new Date() },
+        },
+        include: {
+          _count: { select: { round_entries: true } },
+        },
+      });
+
+      for (const round of overdue) {
+        if (round._count.round_entries === 0) {
+          // No one joined — void without calling any numbers
+          await prisma.gameRound.update({
+            where: { id: round.id },
+            data: { status: GameStatus.void, ended_at: new Date() },
+          });
+          console.log(`[Scheduler] Round ${round.id} voided — no players joined`);
+
+          // Notify WebSocket layer
+          if (GameRoundService._onRoundVoidEmpty) {
+            await GameRoundService._onRoundVoidEmpty(round.id);
+          }
+        } else {
+          // Players joined but round wasn't started yet — start it now
+          try {
+            await GameRoundService.start(round.id);
+            console.log(`[Scheduler] Round ${round.id} auto-started with ${round._count.round_entries} players`);
+          } catch (err) {
+            console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Scheduler] expireEmptyRounds error:', err);
+    }
+  },
+
   /**
    * For each stake level, create a pending round if none currently exists.
    */
   async ensureRoundsExist(): Promise<void> {
     try {
-      // Fetch all pending rounds in one query
       const pendingRounds = await prisma.gameRound.findMany({
         where: { status: GameStatus.pending },
         select: { stake: true },
@@ -67,7 +112,7 @@ export const RoundScheduler = {
 
       await Promise.all(
         STAKE_LEVELS.map(async (stake) => {
-          if (pendingStakes.has(stake)) return; // already exists
+          if (pendingStakes.has(stake)) return;
 
           const startTime = new Date(Date.now() + LEAD_TIME_MS);
           const roundId = await GameRoundService.create(stake, startTime, maxPlayers);
