@@ -82,38 +82,64 @@ export default function GameScreen() {
           </div>
         )}
 
-        {!loading && !error && rounds.map((round) => (
-          <button
-            key={round.id}
-            onClick={() => {
-              sessionStorage.setItem('stakeSelectedForRound', round.id);
-              navigate(`/rounds/${round.id}/cartela`);
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              width: '100%',
-              padding: '16px',
-              marginBottom: 12,
-              borderRadius: 12,
-              border: 'none',
-              background: getGradient(Number(round.stake)),
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: 18,
-              cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-            }}
-          >
-            <span style={{ fontSize: 16 }}>▷</span>
-            Play {round.stake} Birr
-            <span style={{ fontSize: 12, opacity: 0.85, fontWeight: 400 }}>
-              ({round.player_count}/{round.max_players} players)
-            </span>
-          </button>
-        ))}
+        {!loading && !error && rounds.map((round) => {
+          const isLobbyOpen = new Date(round.start_time) > new Date();
+          return (
+            <button
+              key={round.id}
+              onClick={() => {
+                const now = new Date();
+                const startTime = new Date(round.start_time);
+                sessionStorage.setItem('stakeSelectedForRound', round.id);
+                sessionStorage.setItem('selectedStake', String(round.stake));
+                if (startTime > now) {
+                  navigate(`/rounds/${round.id}/cartela`);
+                } else {
+                  sessionStorage.setItem('selectedRoundId', round.id);
+                  navigate(`/rounds/${round.id}/game`);
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                padding: '16px',
+                marginBottom: 12,
+                borderRadius: 12,
+                border: 'none',
+                background: getGradient(Number(round.stake)),
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: 18,
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>▷</span>
+                Play {round.stake} Birr
+                <span style={{ fontSize: 12, opacity: 0.85, fontWeight: 400 }}>
+                  ({round.player_count}/{round.max_players} players)
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: 20,
+                  background: isLobbyOpen ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.35)',
+                  color: isLobbyOpen ? '#86efac' : '#fca5a5',
+                  border: `1px solid ${isLobbyOpen ? '#22c55e' : '#ef4444'}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {isLobbyOpen ? '🟢 Lobby open' : '🔴 Live'}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Stats */}

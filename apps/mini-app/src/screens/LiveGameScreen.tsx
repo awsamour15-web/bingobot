@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
-import { getRound, getHistoryDetail } from '../lib/api';
+import { getRound, getHistoryDetail, getRounds } from '../lib/api';
 import type {
   RoundDetail,
   HistoryDetail,
@@ -87,6 +87,7 @@ export default function LiveGameScreen() {
   const [claimPending, setClaimPending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
   const [autoMark] = useState(true);
+  const [nextCountdown, setNextCountdown] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   function playNumberSound(num: number) {
@@ -212,6 +213,56 @@ export default function LiveGameScreen() {
     };
   }, [roundId, soundOn]);
 
+
+  // ─── Next-round countdown: start when game ends ─────────────────────────
+  useEffect(() => {
+    if (game.phase !== 'won' && game.phase !== 'void' && game.phase !== 'cancelled') return;
+
+    setNextCountdown(10);
+    const interval = setInterval(() => {
+      setNextCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [game.phase]);
+
+  // ─── When countdown hits 0, poll for the next pending round ─────────────
+  useEffect(() => {
+    if (nextCountdown !== 0) return;
+
+    async function goToNextRound() {
+      const stake = sessionStorage.getItem('selectedStake');
+      let attempts = 0;
+
+      while (attempts < 15) {
+        try {
+          const rounds = await getRounds();
+          const next = rounds.find((r) => String(r.stake) === stake && r.status === 'pending');
+          if (next) {
+            sessionStorage.setItem('stakeSelectedForRound', next.id);
+            sessionStorage.setItem('selectedRoundId', next.id);
+            navigate(`/rounds/${next.id}/cartela`, { replace: true });
+            return;
+          }
+        } catch {
+          // swallow fetch errors and retry
+        }
+        await new Promise<void>((res) => setTimeout(res, 2000));
+        attempts++;
+      }
+
+      // Fallback: return to game list after 15 failed attempts (~30s)
+      navigate('/', { replace: true });
+    }
+
+    void goToNextRound();
+  }, [nextCountdown, navigate]);
 
   const toggleSound = useCallback(() => {
     setSoundOn((v) => {
@@ -512,8 +563,26 @@ export default function LiveGameScreen() {
         </div>
       )}
 
-      {/* Back button after game ends */}
-      {(game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled') && (
+      {/* Next-round countdown banner */}
+      {nextCountdown !== null && (
+        <div
+          style={{
+            background: '#1e3a5f',
+            color: '#fff',
+            padding: '16px',
+            textAlign: 'center',
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
+          {nextCountdown > 0
+            ? `Next round starts in ${nextCountdown}s...`
+            : 'Finding next round...'}
+        </div>
+      )}
+
+      {/* Back button after game ends (hidden once countdown starts) */}
+      {(game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled') && nextCountdown === null && (
         <div style={{ padding: '12px 16px' }}>
           <button
             onClick={() => navigate('/')}
