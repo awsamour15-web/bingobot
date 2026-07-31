@@ -13,13 +13,13 @@ import { GameStatus } from '@beteseb/shared';
 const STAKE_LEVELS = [10, 20, 50, 100];
 
 /** How far ahead (ms) to schedule the round start_time. */
-const LEAD_TIME_MS = 10_000; // 10 seconds
+const LEAD_TIME_MS = 60_000; // 60 second lobby
 
 /** How many players can join each auto-created round. */
 const DEFAULT_MAX_PLAYERS = 800;
 
 /** How often to check for missing pending rounds (ms). */
-const CHECK_INTERVAL_MS = 10_000; // 10 seconds
+const CHECK_INTERVAL_MS = 15_000; // 15 seconds
 
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 
