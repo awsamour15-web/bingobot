@@ -38,7 +38,7 @@ function useServerCountdown(targetIso: string | null) {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const TOTAL = 272;
+const TOTAL = 800;
 
 export default function CartelaScreen() {
   const { id: roundId } = useParams<{ id: string }>();
@@ -142,7 +142,7 @@ export default function CartelaScreen() {
   // ─── Render ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0f0c29', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: 16 }}>
+      <div style={{ height: '100dvh', background: '#0f0c29', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: 16 }}>
         Loading cartelas…
       </div>
     );
@@ -150,7 +150,7 @@ export default function CartelaScreen() {
 
   if (!round || !availability) {
     return (
-      <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>
+      <div style={{ height: '100dvh', background: '#0f0c29', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', color: '#e53e3e' }}>
         {error ?? 'Could not load round data'}
       </div>
     );
@@ -161,7 +161,7 @@ export default function CartelaScreen() {
   const urgent = msLeft > 0 && msLeft < 15_000;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0c29', color: '#fff', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', background: '#0f0c29', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '14px 16px' }}>
@@ -243,10 +243,12 @@ export default function CartelaScreen() {
       <div style={{
         flex: 1,
         overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         display: 'grid',
         gridTemplateColumns: 'repeat(8, 1fr)',
         gap: 5,
-        padding: '4px 12px 120px',
+        padding: '4px 12px 130px',
+        alignContent: 'start',
       }}>
         {allNumbers.map((num) => {
           const taken = takenSet.has(num);

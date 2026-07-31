@@ -103,8 +103,8 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
 
   const takenSet = new Set(takenEntries.map((e) => e.cartela_number));
 
-  // All cartela numbers 1–272
-  const ALL_CARTELAS = Array.from({ length: 272 }, (_, i) => i + 1);
+  // All cartela numbers 1–800
+  const ALL_CARTELAS = Array.from({ length: 800 }, (_, i) => i + 1);
   const available = ALL_CARTELAS.filter((n) => !takenSet.has(n));
   const taken = ALL_CARTELAS.filter((n) => takenSet.has(n));
 
@@ -124,11 +124,11 @@ router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {
     typeof body.cartelaNumber !== 'number' ||
     !Number.isInteger(body.cartelaNumber) ||
     body.cartelaNumber < 1 ||
-    body.cartelaNumber > 272
+    body.cartelaNumber > 800
   ) {
     res.status(400).json({
       error: 'BAD_REQUEST',
-      message: 'cartelaNumber must be an integer between 1 and 272',
+      message: 'cartelaNumber must be an integer between 1 and 800',
     });
     return;
   }

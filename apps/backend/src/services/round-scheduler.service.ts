@@ -16,7 +16,7 @@ const STAKE_LEVELS = [10, 20, 50, 100];
 const LEAD_TIME_MS = 60_000; // 1 minute
 
 /** How many players can join each auto-created round. */
-const DEFAULT_MAX_PLAYERS = 100;
+const DEFAULT_MAX_PLAYERS = 800;
 
 /** How often to check for missing pending rounds (ms). */
 const CHECK_INTERVAL_MS = 30_000; // 30 seconds
