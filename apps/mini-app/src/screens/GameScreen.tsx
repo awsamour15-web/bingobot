@@ -4,34 +4,6 @@ import { initAuth } from '../lib/auth';
 import { getRounds } from '../lib/api';
 import type { RoundListItem } from '@beteseb/shared';
 
-const cardStyle: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 12,
-  padding: 16,
-  margin: '12px 16px',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  cursor: 'pointer',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-};
-
-const stakeStyle: React.CSSProperties = {
-  fontSize: 22,
-  fontWeight: 700,
-  color: '#4f46e5',
-};
-
-const metaStyle: React.CSSProperties = {
-  fontSize: 13,
-  color: '#666',
-  marginTop: 4,
-};
-
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 export default function GameScreen() {
   const navigate = useNavigate();
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
@@ -54,83 +26,105 @@ export default function GameScreen() {
     load();
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>
-        Loading games…
-      </div>
-    );
-  }
+  const stakeColors: Record<number, string> = {
+    10: 'linear-gradient(135deg, #00c853, #00e676)',
+    20: 'linear-gradient(135deg, #2979ff, #448aff)',
+    50: 'linear-gradient(135deg, #ff6d00, #ff9100)',
+    100: 'linear-gradient(135deg, #d500f9, #aa00ff)',
+  };
 
-  if (error) {
-    return (
-      <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>
-        {error}
-      </div>
-    );
-  }
+  const getGradient = (stake: number) =>
+    stakeColors[stake] ?? 'linear-gradient(135deg, #4f46e5, #7c3aed)';
 
   return (
-    <div>
-      <div
-        style={{
-          background: '#4f46e5',
-          color: '#fff',
-          padding: '20px 16px 16px',
-          fontSize: 20,
-          fontWeight: 700,
-        }}
-      >
-        🎱 Beteseb Bingo
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #1a1035 0%, #2d1b69 60%, #1a1035 100%)', color: '#fff', paddingBottom: 80 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #c9a227, #f5d06b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16 }}>FB</div>
+          <span style={{ fontWeight: 700, fontSize: 16 }}>Fidel Bingo</span>
+        </div>
+        <button
+          onClick={() => navigate('/history')}
+          style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 20, padding: '6px 14px', color: '#fff', fontSize: 13, cursor: 'pointer' }}
+        >
+          ? Rules
+        </button>
       </div>
 
-      {rounds.length === 0 ? (
-        <div style={{ padding: 32, textAlign: 'center', color: '#888' }}>
-          No rounds available right now.
-          <br />
-          <span style={{ fontSize: 13, marginTop: 8, display: 'block' }}>
-            Check back soon for upcoming games.
-          </span>
+      {/* Welcome */}
+      <div style={{ textAlign: 'center', padding: '10px 20px 24px' }}>
+        <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, lineHeight: 1.2 }}>
+          Welcome to{' '}
+          <span style={{ color: '#c9a227' }}>Fidel<br />Bingo</span>
+        </h2>
+      </div>
+
+      {/* Stake Selection Box */}
+      <div style={{ margin: '0 16px', background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(201,162,39,0.4)', borderRadius: 16, padding: '20px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, color: '#c9a227', fontWeight: 700, fontSize: 15 }}>
+          <span>▷</span> Choose Your Stake
         </div>
-      ) : (
-        <div>
-          <div style={{ padding: '12px 16px 4px', fontSize: 13, color: '#888', fontWeight: 600 }}>
-            AVAILABLE GAMES
+
+        {loading && (
+          <div style={{ textAlign: 'center', color: '#aaa', padding: 20 }}>Loading games…</div>
+        )}
+
+        {error && (
+          <div style={{ textAlign: 'center', color: '#ff6b6b', padding: 20 }}>{error}</div>
+        )}
+
+        {!loading && !error && rounds.length === 0 && (
+          <div style={{ textAlign: 'center', color: '#aaa', padding: 20 }}>
+            No games available right now.<br />
+            <span style={{ fontSize: 12 }}>Check back soon!</span>
           </div>
-          {rounds.map((round) => (
-            <div
-              key={round.id}
-              style={cardStyle}
-              onClick={() => navigate(`/rounds/${round.id}/cartela`)}
-            >
-              <div>
-                <div style={stakeStyle}>{round.stake} Birr</div>
-                <div style={metaStyle}>
-                  👥 {round.player_count}/{round.max_players} players
-                </div>
-                <div style={metaStyle}>
-                  🏆 Prize: {round.derash} Birr
-                </div>
-                <div style={metaStyle}>
-                  ⏰ Starts: {formatTime(round.start_time)}
-                </div>
-              </div>
-              <div
-                style={{
-                  background: '#4f46e5',
-                  color: '#fff',
-                  borderRadius: 8,
-                  padding: '8px 16px',
-                  fontWeight: 700,
-                  fontSize: 14,
-                }}
-              >
-                Play →
-              </div>
-            </div>
-          ))}
+        )}
+
+        {!loading && !error && rounds.map((round) => (
+          <button
+            key={round.id}
+            onClick={() => navigate(`/rounds/${round.id}/cartela`)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              width: '100%',
+              padding: '16px',
+              marginBottom: 12,
+              borderRadius: 12,
+              border: 'none',
+              background: getGradient(Number(round.stake)),
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 18,
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>▷</span>
+            Play {round.stake} Birr
+            <span style={{ fontSize: 12, opacity: 0.85, fontWeight: 400 }}>
+              ({round.player_count}/{round.max_players} players)
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Stats */}
+      <div style={{ margin: '20px 16px 0', background: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: '24px 16px', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+        <div>
+          <div style={{ fontSize: 26, fontWeight: 800 }}>45,000+</div>
+          <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>Active Players</div>
         </div>
-      )}
+        <div style={{ width: 1, background: 'rgba(255,255,255,0.15)' }} />
+        <div>
+          <div style={{ fontSize: 26, fontWeight: 800 }}>60,000+</div>
+          <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>Games Played</div>
+        </div>
+      </div>
     </div>
   );
 }
