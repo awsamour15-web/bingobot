@@ -165,25 +165,16 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
       async (data: { roundId: string }, ack?: (res: object) => void) => {
         const { roundId } = data;
 
-        // Verify the player has a RoundEntry for this round
+        // Check if player has a RoundEntry (player) or is watching
         const entry = await prisma.roundEntry.findUnique({
           where: {
             round_id_player_id: { round_id: roundId, player_id: playerId },
           },
         });
 
-        if (!entry) {
-          socket.emit('ERROR', {
-            code: 'NOT_JOINED',
-            message: 'You do not have an entry in this round',
-          });
-          if (ack) ack({ ok: false, code: 'NOT_JOINED' });
-          return;
-        }
-
+        // Always allow joining the socket room — watchers get live updates too
         await socket.join(`round:${roundId}`);
 
-        // Subscribe to Redis channels for this round (idempotent — ioredis deduplicates)
         if (subscriber) {
           await subscriber.subscribe(
             `game:${roundId}:number`,
@@ -192,12 +183,13 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
           );
         }
 
-        // Broadcast updated player count to the room
-        const playerCount = await prisma.roundEntry.count({
-          where: { round_id: roundId },
-        });
-
-        io.to(`round:${roundId}`).emit('PLAYER_JOINED', { playerCount });
+        // Only broadcast player count if the player actually has an entry
+        if (entry) {
+          const playerCount = await prisma.roundEntry.count({
+            where: { round_id: roundId },
+          });
+          io.to(`round:${roundId}`).emit('PLAYER_JOINED', { playerCount });
+        }
 
         if (ack) ack({ ok: true });
       },
