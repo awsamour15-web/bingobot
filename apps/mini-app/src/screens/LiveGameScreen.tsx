@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
 import { getRound, getHistoryDetail, getRounds } from '../lib/api';
@@ -15,6 +15,8 @@ import type {
 } from '../lib/api';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
+// Column ranges: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75
+const COL_COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#dc2626'];
 
 type GamePhase = 'waiting' | 'active' | 'won' | 'void' | 'cancelled';
 
@@ -28,55 +30,16 @@ interface GameState {
   endMessage: string | null;
 }
 
-function BingoCell({
-  value,
-  marked,
-  isFree,
-  isWinLine,
-}: {
-  value: number;
-  marked: boolean;
-  isFree: boolean;
-  isWinLine: boolean;
-}) {
-  let bg = '#fff';
-  let color = '#222';
-  if (isFree) { bg = '#4f46e5'; color = '#fff'; }
-  else if (isWinLine) { bg = '#fbbf24'; color = '#1a1a1a'; }
-  else if (marked) { bg = '#4f46e5'; color = '#fff'; }
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        aspectRatio: '1',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: bg,
-        color,
-        borderRadius: 6,
-        fontWeight: marked || isFree ? 700 : 400,
-        fontSize: 14,
-        border: '1px solid #e0e0e0',
-        transition: 'background 0.2s',
-      }}
-    >
-      {isFree ? '*' : value}
-    </div>
-  );
-}
+function getColIndex(n: number) { return Math.floor((n - 1) / 15); }
+function getColLabel(n: number) { return COLS[getColIndex(n)] ?? ''; }
 
 export default function LiveGameScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Guard: must come from cartela or game selection
   useEffect(() => {
     const stakeSelected = sessionStorage.getItem('stakeSelectedForRound');
-    if (!stakeSelected) {
-      navigate('/', { replace: true });
-    }
+    if (!stakeSelected) navigate('/', { replace: true });
   }, [navigate]);
 
   const [round, setRound] = useState<RoundDetail | null>(null);
@@ -86,28 +49,8 @@ export default function LiveGameScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimPending, setClaimPending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
-  const [autoMark] = useState(true);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  function playNumberSound(num: number) {
-    if (!soundOn) return;
-    try {
-      // Reuse audio element; swap src only when number changes
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-      }
-      const audio = audioRef.current;
-      audio.pause();
-      audio.src = `/boy sound/${num}.wav`;
-      audio.currentTime = 0;
-      audio.play().catch(() => {
-        // Autoplay blocked or file missing — silent fallback
-      });
-    } catch {
-      // Audio not available
-    }
-  }
 
   const [game, setGame] = useState<GameState>({
     phase: 'waiting',
@@ -119,6 +62,19 @@ export default function LiveGameScreen() {
     endMessage: null,
   });
 
+  function playSound(num: number) {
+    if (!soundOn) return;
+    try {
+      if (!audioRef.current) audioRef.current = new Audio();
+      const a = audioRef.current;
+      a.pause();
+      a.src = `/boy sound/${num}.wav`;
+      a.currentTime = 0;
+      a.play().catch(() => {});
+    } catch {}
+  }
+
+  // ─── Load round + player entry ───────────────────────────────────────────
   useEffect(() => {
     if (!roundId) return;
     async function load() {
@@ -149,133 +105,89 @@ export default function LiveGameScreen() {
     load();
   }, [roundId]);
 
+  // ─── Socket ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!roundId) return;
-
     if (!socket.connected) socket.connect();
     socket.emit('JOIN_ROUND', { roundId, token: localStorage.getItem('jwt') ?? '' });
 
-    const onNumberCalled = (p: NumberCalledPayload) => {
+    const onNumber = (p: NumberCalledPayload) => {
       setGame((g) => {
         const next = new Set(g.calledNumbers);
         next.add(p.number);
-        return {
-          ...g,
-          calledNumbers: next,
-          lastCalled: p.number,
-          phase: g.phase === 'waiting' ? 'active' : g.phase,
-        };
+        return { ...g, calledNumbers: next, lastCalled: p.number, phase: g.phase === 'waiting' ? 'active' : g.phase };
       });
-      if (soundOn) playNumberSound(p.number);
+      if (soundOn) playSound(p.number);
     };
-
-    const onRoundStarted = (p: RoundStartedPayload) => {
+    const onStarted = (p: RoundStartedPayload) =>
       setGame((g) => ({ ...g, phase: 'active', derash: p.derash, playerCount: p.playerCount }));
-    };
-
-    const onPlayerJoined = (p: PlayerJoinedPayload) => {
+    const onJoined = (p: PlayerJoinedPayload) =>
       setGame((g) => ({ ...g, playerCount: p.playerCount }));
-    };
-
-    const onRoundWon = (p: RoundWonPayload) => {
+    const onWon = (p: RoundWonPayload) =>
       setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.derash }));
-    };
-
-    const onRoundVoid = (_p: RoundVoidPayload) => {
-      setGame((g) => ({ ...g, phase: 'void', endMessage: 'Round ended with no winner. Stake refunded.' }));
-    };
-
-    const onRoundCancelled = (_p: RoundCancelledPayload) => {
-      setGame((g) => ({ ...g, phase: 'cancelled', endMessage: 'Round was cancelled. Stake refunded.' }));
-    };
-
-    const onWinRejected = (p: WinRejectedPayload) => {
+    const onVoid = (_p: RoundVoidPayload) =>
+      setGame((g) => ({ ...g, phase: 'void', endMessage: 'No winner — stake refunded.' }));
+    const onCancelled = (_p: RoundCancelledPayload) =>
+      setGame((g) => ({ ...g, phase: 'cancelled', endMessage: 'Round cancelled — stake refunded.' }));
+    const onRejected = (p: WinRejectedPayload) => {
       setClaimError('Win rejected: ' + p.reason);
       setClaimPending(false);
     };
 
-    socket.on('NUMBER_CALLED', onNumberCalled);
-    socket.on('ROUND_STARTED', onRoundStarted);
-    socket.on('PLAYER_JOINED', onPlayerJoined);
-    socket.on('ROUND_WON', onRoundWon);
-    socket.on('ROUND_VOID', onRoundVoid);
-    socket.on('ROUND_CANCELLED', onRoundCancelled);
-    socket.on('WIN_REJECTED', onWinRejected);
-
+    socket.on('NUMBER_CALLED', onNumber);
+    socket.on('ROUND_STARTED', onStarted);
+    socket.on('PLAYER_JOINED', onJoined);
+    socket.on('ROUND_WON', onWon);
+    socket.on('ROUND_VOID', onVoid);
+    socket.on('ROUND_CANCELLED', onCancelled);
+    socket.on('WIN_REJECTED', onRejected);
     return () => {
-      socket.off('NUMBER_CALLED', onNumberCalled);
-      socket.off('ROUND_STARTED', onRoundStarted);
-      socket.off('PLAYER_JOINED', onPlayerJoined);
-      socket.off('ROUND_WON', onRoundWon);
-      socket.off('ROUND_VOID', onRoundVoid);
-      socket.off('ROUND_CANCELLED', onRoundCancelled);
-      socket.off('WIN_REJECTED', onWinRejected);
+      socket.off('NUMBER_CALLED', onNumber);
+      socket.off('ROUND_STARTED', onStarted);
+      socket.off('PLAYER_JOINED', onJoined);
+      socket.off('ROUND_WON', onWon);
+      socket.off('ROUND_VOID', onVoid);
+      socket.off('ROUND_CANCELLED', onCancelled);
+      socket.off('WIN_REJECTED', onRejected);
     };
   }, [roundId, soundOn]);
 
-
-  // ─── Next-round countdown: start when game ends ─────────────────────────
+  // ─── Next-round countdown ────────────────────────────────────────────────
   useEffect(() => {
     if (game.phase !== 'won' && game.phase !== 'void' && game.phase !== 'cancelled') return;
-
     setNextCountdown(10);
-    const interval = setInterval(() => {
-      setNextCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
+    const iv = setInterval(() => {
+      setNextCountdown((p) => { if (p === null || p <= 1) { clearInterval(iv); return 0; } return p - 1; });
     }, 1000);
-
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [game.phase]);
 
-  // ─── When countdown hits 0, poll for the next pending round ─────────────
   useEffect(() => {
     if (nextCountdown !== 0) return;
-
-    async function goToNextRound() {
+    async function go() {
       const stake = sessionStorage.getItem('selectedStake');
-      let attempts = 0;
-
-      while (attempts < 15) {
+      for (let i = 0; i < 15; i++) {
         try {
           const rounds = await getRounds();
-          // Prefer pending (lobby), fall back to active
           const next =
             rounds.find((r) => String(r.stake) === stake && r.status === 'pending') ??
             rounds.find((r) => String(r.stake) === stake && r.status === 'active');
           if (next) {
             sessionStorage.setItem('stakeSelectedForRound', next.id);
             sessionStorage.setItem('selectedRoundId', next.id);
-            if (next.status === 'pending') {
-              navigate(`/rounds/${next.id}/cartela`, { replace: true });
-            } else {
-              navigate(`/rounds/${next.id}/game`, { replace: true });
-            }
+            navigate(next.status === 'pending' ? `/rounds/${next.id}/cartela` : `/rounds/${next.id}/game`, { replace: true });
             return;
           }
-        } catch {
-          // swallow fetch errors and retry
-        }
-        await new Promise<void>((res) => setTimeout(res, 2000));
-        attempts++;
+        } catch {}
+        await new Promise<void>((r) => setTimeout(r, 2000));
       }
-
       navigate('/', { replace: true });
     }
-
-    void goToNextRound();
+    void go();
   }, [nextCountdown, navigate]);
 
   const toggleSound = useCallback(() => {
-    setSoundOn((v) => {
-      const next = !v;
-      localStorage.setItem('soundOn', String(next));
-      return next;
-    });
+    setSoundOn((v) => { const n = !v; localStorage.setItem('soundOn', String(n)); return n; });
   }, []);
 
   const handleClaimWin = useCallback(() => {
@@ -285,329 +197,253 @@ export default function LiveGameScreen() {
     socket.emit('CLAIM_WIN', { roundId, cartelaId: detail.cartelaNumber });
   }, [roundId, detail, claimPending]);
 
-  const markedSet = game.calledNumbers;
+  // ─── Cartela win detection ───────────────────────────────────────────────
   const grid: number[] = (detail?.cartelaGrid ?? []) as number[];
+  const marked = game.calledNumbers;
 
-  function isMarked(i: number): boolean {
+  function isMarked(i: number) {
     if (i === 12) return true;
-    const val = grid[i];
-    if (val === undefined) return false;
-    return markedSet.has(val);
+    const v = grid[i];
+    return v !== undefined && marked.has(v);
   }
-
-  function hasWin(): boolean {
+  function hasWin() {
     if (!grid.length) return false;
-    for (let r = 0; r < 5; r++) {
-      if ([0, 1, 2, 3, 4].every((c) => isMarked(r * 5 + c))) return true;
-    }
-    for (let c = 0; c < 5; c++) {
-      if ([0, 1, 2, 3, 4].every((r) => isMarked(r * 5 + c))) return true;
-    }
-    if ([0, 6, 12, 18, 24].every(isMarked)) return true;
-    if ([4, 8, 12, 16, 20].every(isMarked)) return true;
+    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarked(r*5+c))) return true;
+    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarked(r*5+c))) return true;
+    if ([0,6,12,18,24].every(isMarked)) return true;
+    if ([4,8,12,16,20].every(isMarked)) return true;
     return false;
   }
-
-  function getWinningCells(): Set<number> {
-    const win = new Set<number>();
-    if (!grid.length) return win;
-    for (let r = 0; r < 5; r++) {
-      if ([0, 1, 2, 3, 4].every((c) => isMarked(r * 5 + c))) {
-        [0, 1, 2, 3, 4].forEach((c) => win.add(r * 5 + c));
-      }
-    }
-    for (let c = 0; c < 5; c++) {
-      if ([0, 1, 2, 3, 4].every((r) => isMarked(r * 5 + c))) {
-        [0, 1, 2, 3, 4].forEach((r) => win.add(r * 5 + c));
-      }
-    }
-    if ([0, 6, 12, 18, 24].every(isMarked)) [0, 6, 12, 18, 24].forEach((i) => win.add(i));
-    if ([4, 8, 12, 16, 20].every(isMarked)) [4, 8, 12, 16, 20].forEach((i) => win.add(i));
-    return win;
+  function winCells() {
+    const w = new Set<number>();
+    if (!grid.length) return w;
+    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarked(r*5+c))) [0,1,2,3,4].forEach((c) => w.add(r*5+c));
+    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarked(r*5+c))) [0,1,2,3,4].forEach((r) => w.add(r*5+c));
+    if ([0,6,12,18,24].every(isMarked)) [0,6,12,18,24].forEach((i) => w.add(i));
+    if ([4,8,12,16,20].every(isMarked)) [4,8,12,16,20].forEach((i) => w.add(i));
+    return w;
   }
 
-  const winCells = getWinningCells();
+  const wCells = winCells();
   const playerHasBingo = hasWin();
   const isWatching = !detail;
+  const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
-  if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading game...</div>;
-  }
+  if (loading) return (
+    <div style={{ height: '100dvh', background: '#1a1035', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>
+      Loading game...
+    </div>
+  );
+  if (error || !round) return (
+    <div style={{ height: '100dvh', background: '#1a1035', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e53e3e', padding: 24, textAlign: 'center' }}>
+      {error ?? 'Could not load game'}
+    </div>
+  );
 
-  if (error || !round) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>{error ?? 'Could not load game'}</div>;
-  }
-
-  const lastCalledCol = game.lastCalled
-    ? COLS[Math.floor((game.lastCalled - 1) / 15)]
-    : null;
+  const lastCol = game.lastCalled ? getColLabel(game.lastCalled) : null;
 
   return (
-    <div style={{ background: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ background: '#4f46e5', color: '#fff', padding: '14px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ cursor: 'pointer', fontSize: 18 }} onClick={() => navigate('/')}>
-              &larr;
-            </span>
-            <span style={{ fontWeight: 700, fontSize: 17 }}>
-              Beteseb Bingo
-              {isWatching && (
-                <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.85 }}> (Watching)</span>
-              )}
-            </span>
-          </div>
-          <button
-            onClick={toggleSound}
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: 'none',
-              borderRadius: 6,
-              padding: '4px 10px',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 13,
-            }}
-          >
-            {soundOn ? 'Sound ON' : 'Sound OFF'}
-          </button>
-        </div>
-        <div style={{ marginTop: 10, display: 'flex', gap: 16, fontSize: 13 }}>
-          <div>
-            <span style={{ opacity: 0.75 }}>ID: </span>
-            <strong>#{round.id.slice(-6).toUpperCase()}</strong>
-          </div>
-          <div>
-            <span style={{ opacity: 0.75 }}>Players: </span>
-            <strong>{game.playerCount}</strong>
-          </div>
-          <div>
-            <span style={{ opacity: 0.75 }}>Stake: </span>
-            <strong>{round.stake} Birr</strong>
-          </div>
-          <div>
-            <span style={{ opacity: 0.75 }}>Prize: </span>
-            <strong>{game.derash} Birr</strong>
-          </div>
-        </div>
+    <div style={{ height: '100dvh', background: '#1a1035', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
+      <div style={{ background: '#0f0c29', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+        <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
+        <span style={{ fontWeight: 800, fontSize: 16 }}>Beteseb Bingo</span>
+        <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 18, cursor: 'pointer' }}>
+          {soundOn ? '🔊' : '🔇'}
+        </button>
       </div>
 
-      {/* Last called number */}
-      <div style={{ background: '#1e1b4b', color: '#fff', padding: '14px 16px', textAlign: 'center' }}>
-        {game.phase === 'waiting' && (
-          <div style={{ color: '#a5b4fc', fontSize: 15 }}>Waiting for game to start...</div>
-        )}
-        {(game.phase === 'active' || game.phase === 'won') && (
-          <div>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Last Called</div>
-            <div style={{ fontSize: 48, fontWeight: 900, letterSpacing: 2 }}>
-              {game.lastCalled ? lastCalledCol + ' ' + game.lastCalled : '-'}
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>
-              {game.calledNumbers.size} / 75 numbers called
-            </div>
+      {/* ── Stats row ───────────────────────────────────────────────────────── */}
+      <div style={{ background: '#2d1b69', display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+        {[
+          { label: 'Game ID', value: round.id.slice(-8).toUpperCase() },
+          { label: 'Players', value: game.playerCount },
+          { label: 'Bet', value: round.stake },
+          { label: 'Derash', value: Math.round(game.derash) },
+          { label: 'Called', value: game.calledNumbers.size },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: 9, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2 }}>{value}</div>
           </div>
-        )}
-        {(game.phase === 'void' || game.phase === 'cancelled') && (
-          <div style={{ color: '#fca5a5', fontSize: 15 }}>{game.endMessage}</div>
-        )}
+        ))}
       </div>
 
-      {/* Win banner */}
-      {game.phase === 'won' && game.winnerInfo && (
-        <div
-          style={{
-            background:
-              game.winnerInfo.cartelaNumber === detail?.cartelaNumber ? '#065f46' : '#1e3a5f',
-            color: '#fff',
-            padding: '14px 16px',
-            textAlign: 'center',
-            fontSize: 16,
-            fontWeight: 700,
-          }}
-        >
-          {game.winnerInfo.cartelaNumber === detail?.cartelaNumber
-            ? 'You won! ' + game.winnerInfo.derash + ' Birr prize!'
-            : '@' + game.winnerInfo.winnerUsername + ' won ' + game.winnerInfo.derash + ' Birr'}
-        </div>
-      )}
+      {/* ── Main split layout ───────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-      {/* Recent called numbers strip */}
-      <div
-        style={{
-          background: '#fff',
-          padding: '10px 16px',
-          borderBottom: '1px solid #eee',
-          overflowX: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 6, minWidth: 'max-content' }}>
-          {Array.from(game.calledNumbers)
-            .slice(-15)
-            .map((n) => (
-              <div
-                key={n}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  background: n === game.lastCalled ? '#4f46e5' : '#e0e7ff',
-                  color: n === game.lastCalled ? '#fff' : '#4f46e5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: 12,
-                  flexShrink: 0,
-                }}
-              >
-                {n}
-              </div>
+        {/* LEFT: Full 1-75 bingo board */}
+        <div style={{ width: '42%', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0 }}>
+            {COLS.map((c, i) => (
+              <div key={c} style={{ background: COL_COLORS[i], textAlign: 'center', padding: '6px 0', fontWeight: 900, fontSize: 14 }}>{c}</div>
             ))}
-          {game.calledNumbers.size === 0 && (
-            <span style={{ color: '#aaa', fontSize: 13 }}>No numbers called yet</span>
+          </div>
+          {/* Numbers 1-75 in 5 columns, 15 rows */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(15, 1fr)', gap: 1, padding: 2 }}>
+            {Array.from({ length: 75 }, (_, i) => {
+              // Fill column by column: col 0 = 1-15, col 1 = 16-30, etc.
+              const col = i % 5;
+              const row = Math.floor(i / 5);
+              const num = col * 15 + row + 1;
+              const called = game.calledNumbers.has(num);
+              const isLast = num === game.lastCalled;
+              return (
+                <div key={num} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  aspectRatio: '1',
+                  background: isLast ? '#f5d06b' : called ? COL_COLORS[col] : 'rgba(255,255,255,0.06)',
+                  color: isLast ? '#1a1035' : called ? '#fff' : '#888',
+                  borderRadius: 4,
+                  fontWeight: called ? 800 : 400,
+                  fontSize: 12,
+                  transition: 'background 0.2s',
+                }}>
+                  {num}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT: Called number + cartela or watching panel */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+          {/* Last called number display */}
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              {game.lastCalled ? (
+                <span style={{ background: COL_COLORS[getColIndex(game.lastCalled)], color: '#fff', fontWeight: 800, fontSize: 12, padding: '2px 8px', borderRadius: 12 }}>
+                  {lastCol}-{game.lastCalled}
+                </span>
+              ) : (
+                <span style={{ color: '#555', fontSize: 12 }}>Waiting...</span>
+              )}
+              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 14, cursor: 'pointer' }}>
+                {soundOn ? '🔊' : '🔇'}
+              </button>
+            </div>
+            {/* Big ball */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 80 }}>
+              {game.lastCalled ? (
+                <div style={{
+                  width: 72, height: 72, borderRadius: '50%',
+                  background: `radial-gradient(circle at 35% 35%, #fff8, ${COL_COLORS[getColIndex(game.lastCalled)]})`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 900, fontSize: 24, color: '#fff',
+                  boxShadow: `0 0 20px ${COL_COLORS[getColIndex(game.lastCalled)]}88`,
+                  border: '3px solid rgba(255,255,255,0.3)',
+                }}>
+                  {lastCol}-{game.lastCalled}
+                </div>
+              ) : (
+                <div style={{ color: '#555', fontSize: 13 }}>{game.phase === 'waiting' ? 'Game starting...' : '—'}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Win/end banners */}
+          {game.phase === 'won' && game.winnerInfo && (
+            <div style={{ background: isWatching ? '#1e3a5f' : '#065f46', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              {!isWatching && game.winnerInfo.cartelaNumber === detail?.cartelaNumber
+                ? `🏆 You won ${game.winnerInfo.derash} Birr!`
+                : `@${game.winnerInfo.winnerUsername} won ${game.winnerInfo.derash} Birr`}
+            </div>
           )}
+          {(game.phase === 'void' || game.phase === 'cancelled') && (
+            <div style={{ background: '#7f1d1d', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              {game.endMessage}
+            </div>
+          )}
+
+          {/* Next round countdown */}
+          {nextCountdown !== null && (
+            <div style={{ background: '#1e3a5f', padding: '8px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              {nextCountdown > 0 ? `Next round in ${nextCountdown}s` : 'Finding next round...'}
+            </div>
+          )}
+
+          {/* Cartela card or watching panel */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+            {!isWatching && grid.length > 0 ? (
+              <>
+                {/* Player's cartela grid */}
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(255,255,255,0.1)' }}>
+                    {COLS.map((c, i) => (
+                      <div key={c} style={{ textAlign: 'center', padding: '4px 0', fontWeight: 800, fontSize: 11, color: COL_COLORS[i] }}>{c}</div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
+                    {grid.map((val, idx) => {
+                      const isFree = idx === 12;
+                      const m = isFree || marked.has(val);
+                      const wl = wCells.has(idx);
+                      return (
+                        <div key={idx} style={{
+                          aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: wl ? '#f5d06b' : m ? '#4f46e5' : 'rgba(255,255,255,0.08)',
+                          color: wl ? '#1a1035' : m ? '#fff' : '#aaa',
+                          borderRadius: 4, fontSize: 11, fontWeight: m ? 800 : 400,
+                          transition: 'background 0.2s',
+                        }}>
+                          {isFree ? '★' : val}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Claim win */}
+                {game.phase === 'active' && playerHasBingo && (
+                  <button onClick={handleClaimWin} disabled={claimPending} style={{
+                    width: '100%', padding: '12px', background: claimPending ? '#6b7280' : '#22c55e',
+                    color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 900, cursor: claimPending ? 'default' : 'pointer',
+                  }}>
+                    {claimPending ? 'Checking...' : '🎉 BINGO!'}
+                  </button>
+                )}
+                {claimError && <div style={{ color: '#fca5a5', fontSize: 12, marginTop: 6, textAlign: 'center' }}>{claimError}</div>}
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center', padding: 16 }}>
+                <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 12 }}>Watching Only</div>
+                <div style={{ fontSize: 13, color: '#a5b4fc', lineHeight: 1.8 }}>
+                  የዚህ ዙር ጨዋታ<br />
+                  ተጀምሯል። አዲስ ዙር<br />
+                  እስኪጀምር አዚሁ<br />
+                  ይጠብቁ።
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Bingo card */}
-      {grid.length > 0 ? (
-        <div style={{ padding: '16px 16px 8px' }}>
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 12,
-              overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            }}
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
-                background: '#4f46e5',
-              }}
-            >
-              {COLS.map((c) => (
-                <div
-                  key={c}
-                  style={{
-                    textAlign: 'center',
-                    color: '#fff',
-                    fontWeight: 900,
-                    padding: '10px 0',
-                    fontSize: 18,
-                  }}
-                >
-                  {c}
-                </div>
-              ))}
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
-                gap: 2,
-                padding: 4,
-              }}
-            >
-              {grid.map((val: number, idx: number) => (
-                <BingoCell
-                  key={idx}
-                  value={val}
-                  marked={autoMark && isMarked(idx)}
-                  isFree={idx === 12}
-                  isWinLine={winCells.has(idx)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div style={{ padding: '20px 16px', textAlign: 'center', color: '#888', fontSize: 14 }}>
-          Watching only mode
-        </div>
-      )}
-
-      {/* Claim win */}
-      {!isWatching && game.phase === 'active' && (
-        <div style={{ padding: '12px 16px' }}>
-          {claimError && (
-            <div
-              style={{
-                background: '#fff3f3',
-                color: '#e53e3e',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 10,
-                fontSize: 14,
-              }}
-            >
-              {claimError}
-            </div>
-          )}
-          {playerHasBingo && (
-            <button
-              onClick={handleClaimWin}
-              disabled={claimPending}
-              style={{
-                width: '100%',
-                padding: '16px',
-                background: claimPending ? '#a5b4fc' : '#22c55e',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 12,
-                fontSize: 18,
-                fontWeight: 900,
-                cursor: claimPending ? 'default' : 'pointer',
-              }}
-            >
-              {claimPending ? 'Checking...' : 'BINGO! Claim Win'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Next-round countdown banner */}
-      {nextCountdown !== null && (
-        <div
-          style={{
-            background: '#1e3a5f',
-            color: '#fff',
-            padding: '16px',
-            textAlign: 'center',
-            fontSize: 16,
-            fontWeight: 700,
-          }}
+      {/* ── Bottom bar ──────────────────────────────────────────────────────── */}
+      <div style={{ background: '#0f0c29', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '10px 12px', display: 'flex', gap: 8, flexShrink: 0 }}>
+        <button
+          onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}
+          style={{ flex: 1, padding: '10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
         >
-          {nextCountdown > 0
-            ? `Next round starts in ${nextCountdown}s...`
-            : 'Finding next round...'}
-        </div>
-      )}
-
-      {/* Back button after game ends (hidden once countdown starts) */}
-      {(game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled') && nextCountdown === null && (
-        <div style={{ padding: '12px 16px' }}>
+          Leave
+        </button>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+        >
+          ↺ Refresh
+        </button>
+        {!isWatching && !gameEnded && (
           <button
-            onClick={() => navigate('/')}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: '#4f46e5',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
+            style={{ flex: 1, padding: '10px', background: '#d97706', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'default', opacity: 0.8 }}
+            disabled
           >
-            Back to Games
+            Automatic
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
