@@ -202,23 +202,33 @@ export default function LiveGameScreen() {
     return () => clearInterval(iv);
   }, [game.phase]);
 
+  const nextRoundFiredRef = useRef(false);
+
   useEffect(() => {
-    if (nextCountdown !== 0) return;
+    if (nextCountdown !== 0 || nextRoundFiredRef.current) return;
+    nextRoundFiredRef.current = true;
+
     async function go() {
       const stake = sessionStorage.getItem('selectedStake');
-      for (let i = 0; i < 15; i++) {
+      console.log('[LiveGame] Looking for next round, stake:', stake);
+
+      for (let i = 0; i < 20; i++) {
         try {
           const rounds = await getRounds();
+          console.log('[LiveGame] Available rounds:', rounds.map(r => ({ id: r.id, stake: r.stake, status: r.status })));
           const next =
-            rounds.find((r) => String(r.stake) === stake && r.status === 'pending') ??
-            rounds.find((r) => String(r.stake) === stake && r.status === 'active');
+            rounds.find((r) => Number(r.stake) === Number(stake) && r.status === 'pending') ??
+            rounds.find((r) => Number(r.stake) === Number(stake) && r.status === 'active');
           if (next) {
+            console.log('[LiveGame] Found next round:', next.id, next.status);
             sessionStorage.setItem('stakeSelectedForRound', next.id);
             sessionStorage.setItem('selectedRoundId', next.id);
             navigate(next.status === 'pending' ? `/rounds/${next.id}/cartela` : `/rounds/${next.id}/game`, { replace: true });
             return;
           }
-        } catch {}
+        } catch (e) {
+          console.error('[LiveGame] getRounds error:', e);
+        }
         await new Promise<void>((r) => setTimeout(r, 2000));
       }
       navigate('/', { replace: true });
