@@ -276,7 +276,7 @@ export default function CartelaScreen() {
               style={{
                 padding: '9px 0',
                 borderRadius: 7,
-                border,
+                border: isSelected ? '2px solid #fff' : '2px solid transparent',
                 background: bg,
                 color: textColor,
                 fontWeight: 700,
@@ -285,6 +285,12 @@ export default function CartelaScreen() {
                 opacity,
                 transition: 'background 0.15s, transform 0.1s',
                 transform: isSelected ? 'scale(1.08)' : 'scale(1)',
+                WebkitAppearance: 'none',
+                appearance: 'none',
+                outline: 'none',
+                lineHeight: 1,
+                boxSizing: 'border-box',
+                userSelect: 'none',
               }}
             >
               {num}
@@ -319,6 +325,10 @@ export default function CartelaScreen() {
                 fontSize: 16,
                 fontWeight: 800,
                 cursor: joining ? 'default' : 'pointer',
+                WebkitAppearance: 'none',
+                appearance: 'none',
+                outline: 'none',
+                boxSizing: 'border-box',
               }}
             >
               {joining ? 'Reserving…' : `Confirm Cartela #${selected} — ${round.stake} Birr`}

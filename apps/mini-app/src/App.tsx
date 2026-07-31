@@ -75,8 +75,13 @@ function BottomNav() {
 }
 
 export default function App() {
+  const location = useLocation();
+  const isSubPage =
+    location.pathname.includes('/cartela') ||
+    location.pathname.includes('/game');
+
   return (
-    <div style={{ paddingBottom: 60, minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ paddingBottom: isSubPage ? 0 : 60, minHeight: '100vh', background: '#f5f5f5' }}>
       <Routes>
         <Route path="/" element={<GameScreen />} />
         <Route path="/history" element={<HistoryScreen />} />
