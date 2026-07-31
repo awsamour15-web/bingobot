@@ -50,7 +50,6 @@ export default function LiveGameScreen() {
   const [claimPending, setClaimPending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [game, setGame] = useState<GameState>({
     phase: 'waiting',
@@ -62,15 +61,33 @@ export default function LiveGameScreen() {
     endMessage: null,
   });
 
+  // ─── Preload all 75 number sounds into memory once ──────────────────────
+  const audioCache = useRef<Map<number, HTMLAudioElement>>(new Map());
+
+  useEffect(() => {
+    if (!soundOn) return;
+    // Preload 1-75 in background without blocking
+    for (let n = 1; n <= 75; n++) {
+      if (audioCache.current.has(n)) continue;
+      const audio = new Audio(`/boy sound/${n}.wav`);
+      audio.preload = 'auto';
+      audioCache.current.set(n, audio);
+    }
+  }, [soundOn]);
+
   function playSound(num: number) {
     if (!soundOn) return;
     try {
-      if (!audioRef.current) audioRef.current = new Audio();
-      const a = audioRef.current;
-      a.pause();
-      a.src = `/boy sound/${num}.wav`;
-      a.currentTime = 0;
-      a.play().catch(() => {});
+      const cached = audioCache.current.get(num);
+      if (cached) {
+        cached.currentTime = 0;
+        cached.play().catch(() => {});
+      } else {
+        // Fallback: load on demand if not cached yet
+        const a = new Audio(`/boy sound/${num}.wav`);
+        audioCache.current.set(num, a);
+        a.play().catch(() => {});
+      }
     } catch {}
   }
 
