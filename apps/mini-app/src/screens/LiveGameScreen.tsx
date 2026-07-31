@@ -243,11 +243,18 @@ export default function LiveGameScreen() {
       while (attempts < 15) {
         try {
           const rounds = await getRounds();
-          const next = rounds.find((r) => String(r.stake) === stake && r.status === 'pending');
+          // Prefer pending (lobby), fall back to active
+          const next =
+            rounds.find((r) => String(r.stake) === stake && r.status === 'pending') ??
+            rounds.find((r) => String(r.stake) === stake && r.status === 'active');
           if (next) {
             sessionStorage.setItem('stakeSelectedForRound', next.id);
             sessionStorage.setItem('selectedRoundId', next.id);
-            navigate(`/rounds/${next.id}/cartela`, { replace: true });
+            if (next.status === 'pending') {
+              navigate(`/rounds/${next.id}/cartela`, { replace: true });
+            } else {
+              navigate(`/rounds/${next.id}/game`, { replace: true });
+            }
             return;
           }
         } catch {
@@ -257,7 +264,6 @@ export default function LiveGameScreen() {
         attempts++;
       }
 
-      // Fallback: return to game list after 15 failed attempts (~30s)
       navigate('/', { replace: true });
     }
 

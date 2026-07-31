@@ -18,17 +18,27 @@ export default function GameScreen() {
         await initAuth();
         const data = await getRounds();
 
-        // Keep only one round per stake (earliest start_time), only stakes 10/20/50
+        // Group by stake — prefer pending, fall back to active. Only 10/20/50.
         const byStake = new Map<number, RoundListItem>();
         for (const r of data) {
           const stake = Number(r.stake);
           if (!ALLOWED_STAKES.includes(stake)) continue;
           const existing = byStake.get(stake);
-          if (!existing || new Date(r.start_time) < new Date(existing.start_time)) {
+          if (!existing) {
             byStake.set(stake, r);
+          } else {
+            // Prefer pending over active; among same status prefer earliest start_time
+            const existingIsPending = existing.status === 'pending';
+            const rIsPending = r.status === 'pending';
+            if (rIsPending && !existingIsPending) {
+              byStake.set(stake, r); // pending beats active
+            } else if (rIsPending === existingIsPending) {
+              if (new Date(r.start_time) < new Date(existing.start_time)) {
+                byStake.set(stake, r);
+              }
+            }
           }
         }
-        // Return in fixed order: 10, 20, 50
         setRounds(ALLOWED_STAKES.map((s) => byStake.get(s)).filter(Boolean) as RoundListItem[]);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load rounds';
@@ -97,19 +107,26 @@ export default function GameScreen() {
         )}
 
         {!loading && !error && rounds.map((round) => {
-          const isLobbyOpen = new Date(round.start_time) > new Date();
+          const isPending = round.status === 'pending';
+          const isLobbyOpen = isPending && new Date(round.start_time) > new Date();
+          const badgeText = isLobbyOpen ? '🟢 Lobby open' : isPending ? '🟡 Starting' : '🔴 Live';
+          const badgeBg = isLobbyOpen ? 'rgba(34,197,94,0.3)' : isPending ? 'rgba(251,191,36,0.3)' : 'rgba(239,68,68,0.35)';
+          const badgeColor = isLobbyOpen ? '#86efac' : isPending ? '#fde68a' : '#fca5a5';
+          const badgeBorder = isLobbyOpen ? '#22c55e' : isPending ? '#fbbf24' : '#ef4444';
+
           return (
             <button
               key={round.id}
               onClick={() => {
-                const now = new Date();
-                const startTime = new Date(round.start_time);
-                sessionStorage.setItem('stakeSelectedForRound', round.id);
                 sessionStorage.setItem('selectedStake', String(round.stake));
-                if (startTime > now) {
+                if (isPending) {
+                  // Lobby open or about to start — go to cartela selection
+                  sessionStorage.setItem('stakeSelectedForRound', round.id);
                   navigate(`/rounds/${round.id}/cartela`);
                 } else {
+                  // Already active — go straight to game as watcher
                   sessionStorage.setItem('selectedRoundId', round.id);
+                  sessionStorage.setItem('stakeSelectedForRound', round.id);
                   navigate(`/rounds/${round.id}/game`);
                 }
               }}
@@ -143,13 +160,13 @@ export default function GameScreen() {
                   fontWeight: 700,
                   padding: '3px 8px',
                   borderRadius: 20,
-                  background: isLobbyOpen ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.35)',
-                  color: isLobbyOpen ? '#86efac' : '#fca5a5',
-                  border: `1px solid ${isLobbyOpen ? '#22c55e' : '#ef4444'}`,
+                  background: badgeBg,
+                  color: badgeColor,
+                  border: `1px solid ${badgeBorder}`,
                   whiteSpace: 'nowrap',
                 }}
               >
-                {isLobbyOpen ? '🟢 Lobby open' : '🔴 Live'}
+                {badgeText}
               </span>
             </button>
           );

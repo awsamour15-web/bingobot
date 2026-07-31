@@ -27,7 +27,7 @@ router.use(jwtAuthMiddleware);
 
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const rounds = await prisma.gameRound.findMany({
-    where: { status: 'pending' },
+    where: { status: { in: ['pending', 'active'] } },
     include: {
       _count: { select: { round_entries: true } },
     },
