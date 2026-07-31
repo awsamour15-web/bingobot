@@ -93,15 +93,34 @@ export const RoundScheduler = {
 
   /**
    * For each stake level, create a pending round if none currently exists.
+   * Also cancels duplicate pending rounds (keeps only the earliest one).
    */
   async ensureRoundsExist(): Promise<void> {
     try {
       const pendingRounds = await prisma.gameRound.findMany({
         where: { status: GameStatus.pending },
-        select: { stake: true },
+        select: { id: true, stake: true, start_time: true },
+        orderBy: { start_time: 'asc' },
       });
 
-      const pendingStakes = new Set(pendingRounds.map((r) => Number(r.stake)));
+      // Group by stake — cancel all but the earliest
+      const byStake = new Map<number, typeof pendingRounds>();
+      for (const r of pendingRounds) {
+        const stake = Number(r.stake);
+        if (!byStake.has(stake)) byStake.set(stake, []);
+        byStake.get(stake)!.push(r);
+      }
+
+      for (const [, rounds] of byStake) {
+        // Keep rounds[0] (earliest), void the rest
+        for (let i = 1; i < rounds.length; i++) {
+          await prisma.gameRound.update({
+            where: { id: rounds[i]!.id },
+            data: { status: GameStatus.void, ended_at: new Date() },
+          });
+          console.log(`[Scheduler] Voided duplicate pending round ${rounds[i]!.id}`);
+        }
+      }
 
       const maxPlayersRow = await prisma.config.findUnique({
         where: { key: 'auto_round_max_players' },
@@ -109,6 +128,9 @@ export const RoundScheduler = {
       const maxPlayers = maxPlayersRow
         ? parseInt(maxPlayersRow.value, 10)
         : DEFAULT_MAX_PLAYERS;
+
+      // Only create for allowed stakes (10, 20, 50)
+      const pendingStakes = new Set([...byStake.keys()].filter((s) => STAKE_LEVELS.includes(s)));
 
       await Promise.all(
         STAKE_LEVELS.map(async (stake) => {

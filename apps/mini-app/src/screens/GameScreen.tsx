@@ -18,7 +18,7 @@ export default function GameScreen() {
         await initAuth();
         const data = await getRounds();
 
-        // Keep only one round per stake (the earliest start_time), filtered to allowed stakes
+        // Keep only one round per stake (earliest start_time), only stakes 10/20/50
         const byStake = new Map<number, RoundListItem>();
         for (const r of data) {
           const stake = Number(r.stake);
