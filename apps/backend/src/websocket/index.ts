@@ -133,6 +133,10 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   // ── Wire NCE callbacks so in-process events also fan-out ───────────────────
 
+  nce.setOnRoundStarted((roundId, payload) => {
+    io.to(`round:${roundId}`).emit('ROUND_STARTED', { ...payload, roundId });
+  });
+
   nce.setOnNumberCalled((roundId, payload) => {
     io.to(`round:${roundId}`).emit('NUMBER_CALLED', payload);
   });

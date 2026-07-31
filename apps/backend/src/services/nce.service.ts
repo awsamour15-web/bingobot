@@ -23,10 +23,12 @@ export type OnNumberCalled = (
   payload: NumberCalledPayload,
 ) => void | Promise<void>;
 
-/**
- * Callback invoked when the round ends with no winner (void flow).
- */
 export type OnRoundVoid = (roundId: string) => void | Promise<void>;
+
+export type OnRoundStarted = (
+  roundId: string,
+  payload: { playerCount: number; derash: number },
+) => void | Promise<void>;
 
 // ─── NCE ─────────────────────────────────────────────────────────────────────
 
@@ -45,21 +47,11 @@ export class NumberCallingEngine {
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
   private onRoundVoid?: OnRoundVoid;
+  private onRoundStarted?: OnRoundStarted;
 
-  // ─── Public API ─────────────────────────────────────────────────────────────
-
-  /**
-   * Register a callback that will be invoked after every called number is persisted.
-   * Intended for the WebSocket broadcast layer.
-   */
-  setOnNumberCalled(cb: OnNumberCalled): void {
-    this.onNumberCalled = cb;
-  }
-
-  /** Register a callback invoked when a round ends void. */
-  setOnRoundVoid(cb: OnRoundVoid): void {
-    this.onRoundVoid = cb;
-  }
+  setOnNumberCalled(cb: OnNumberCalled): void { this.onNumberCalled = cb; }
+  setOnRoundVoid(cb: OnRoundVoid): void { this.onRoundVoid = cb; }
+  setOnRoundStarted(cb: OnRoundStarted): void { this.onRoundStarted = cb; }
 
   /**
    * Start calling numbers for a round.
@@ -70,13 +62,23 @@ export class NumberCallingEngine {
    * - After all 75 numbers, triggers the void flow if the round has no winner.
    */
   async start(roundId: string): Promise<void> {
-    // Read call interval from config (default 5 000 ms)
     const callIntervalMs = await this.readCallInterval();
-
-    // Generate shuffled sequence
     const sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
-
     let sequenceIndex = 0;
+
+    // Broadcast ROUND_STARTED immediately
+    if (this.onRoundStarted) {
+      const round = await prisma.gameRound.findUnique({
+        where: { id: roundId },
+        include: { _count: { select: { round_entries: true } } },
+      });
+      if (round) {
+        await this.onRoundStarted(roundId, {
+          playerCount: round._count.round_entries,
+          derash: Number(round.derash),
+        });
+      }
+    }
 
     const callNext = async (): Promise<void> => {
       // Stop if the round was cancelled externally

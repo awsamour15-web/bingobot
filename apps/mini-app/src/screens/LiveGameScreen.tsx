@@ -152,7 +152,25 @@ export default function LiveGameScreen() {
     };
   }, [roundId, soundOn]);
 
-  // ─── Next-round countdown ────────────────────────────────────────────────
+  // ─── Fallback poll while waiting — catches rounds that started before we connected ──
+  useEffect(() => {
+    if (game.phase !== 'waiting' || !roundId) return;
+    const iv = setInterval(async () => {
+      try {
+        const r = await getRound(roundId);
+        if (r.status === 'active') {
+          setGame((g) => ({ ...g, phase: 'active', derash: r.derash, playerCount: r.player_count }));
+        } else if (r.status === 'void' || r.status === 'cancelled' || r.status === 'completed') {
+          setGame((g) => ({
+            ...g,
+            phase: r.status === 'completed' ? 'won' : r.status as 'void' | 'cancelled',
+            endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled.',
+          }));
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [game.phase, roundId]);
   useEffect(() => {
     if (game.phase !== 'won' && game.phase !== 'void' && game.phase !== 'cancelled') return;
     setNextCountdown(10);
