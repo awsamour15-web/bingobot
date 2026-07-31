@@ -115,6 +115,10 @@ export function getRound(id: string): Promise<RoundDetail> {
   return apiRequest<RoundDetail>('GET', `/api/rounds/${id}`);
 }
 
+export function getCalledNumbers(roundId: string): Promise<number[]> {
+  return apiRequest<number[]>('GET', `/api/rounds/${roundId}/called-numbers`);
+}
+
 export function getCartelaAvailability(roundId: string): Promise<CartelaAvailability> {
   return apiRequest<CartelaAvailability>('GET', `/api/rounds/${roundId}/cartelas`);
 }

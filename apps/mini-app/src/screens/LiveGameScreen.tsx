@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
-import { getRound, getHistoryDetail, getRounds } from '../lib/api';
+import { getRound, getHistoryDetail, getRounds, getCalledNumbers } from '../lib/api';
 import type {
   RoundDetail,
   HistoryDetail,
@@ -85,8 +85,20 @@ export default function LiveGameScreen() {
         ]);
         setRound(r);
         if (d) setDetail(d);
+
+        // If round is already active, load all called numbers from DB
+        let existingCalled = new Set<number>();
+        let lastCalled: number | null = null;
+        if (r.status === 'active' || r.status === 'completed') {
+          const nums = await getCalledNumbers(roundId!);
+          existingCalled = new Set(nums);
+          lastCalled = nums[nums.length - 1] ?? null;
+        }
+
         setGame((g) => ({
           ...g,
+          calledNumbers: existingCalled,
+          lastCalled,
           playerCount: r.player_count,
           derash: r.derash,
           phase:
@@ -159,7 +171,17 @@ export default function LiveGameScreen() {
       try {
         const r = await getRound(roundId);
         if (r.status === 'active') {
-          setGame((g) => ({ ...g, phase: 'active', derash: r.derash, playerCount: r.player_count }));
+          const nums = await getCalledNumbers(roundId);
+          const calledSet = new Set(nums);
+          const last = nums[nums.length - 1] ?? null;
+          setGame((g) => ({
+            ...g,
+            phase: 'active',
+            derash: r.derash,
+            playerCount: r.player_count,
+            calledNumbers: calledSet,
+            lastCalled: last ?? g.lastCalled,
+          }));
         } else if (r.status === 'void' || r.status === 'cancelled' || r.status === 'completed') {
           setGame((g) => ({
             ...g,

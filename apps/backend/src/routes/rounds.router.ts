@@ -83,6 +83,20 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   res.status(200).json(detail);
 });
 
+// ─── GET /api/rounds/:id/called-numbers ──────────────────────────────────────
+
+router.get('/:id/called-numbers', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+
+  const calledNumbers = await prisma.calledNumber.findMany({
+    where: { round_id: id },
+    select: { number: true, sequence_index: true },
+    orderBy: { sequence_index: 'asc' },
+  });
+
+  res.status(200).json(calledNumbers.map((cn) => cn.number));
+});
+
 // ─── GET /api/rounds/:id/cartelas ────────────────────────────────────────────
 
 router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> => {
