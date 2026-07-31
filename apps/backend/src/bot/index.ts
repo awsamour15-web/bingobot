@@ -329,8 +329,26 @@ if (BOT_TOKEN) {
         data: { phone, phone_verified: true },
       });
 
+      // Credit 20 ETB welcome bonus to the play wallet
+      await prisma.wallet.update({
+        where: { player_id_type: { player_id: player.id, type: 'play' } },
+        data: { balance: { increment: 20 } },
+      });
+
+      await prisma.transaction.create({
+        data: {
+          wallet_id: (await prisma.wallet.findUnique({
+            where: { player_id_type: { player_id: player.id, type: 'play' } },
+            select: { id: true },
+          }))!.id,
+          type: 'admin_credit',
+          amount: 20,
+          note: 'Welcome bonus',
+        },
+      });
+
       await ctx.reply(
-        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\nYou can now play and use all features.`,
+        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 20 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: buildMainMenu() },
       );
     } catch (err) {
