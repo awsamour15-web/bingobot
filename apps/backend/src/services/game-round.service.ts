@@ -72,7 +72,7 @@ export const GameRoundService = {
     const commissionRow = await prisma.config.findUnique({
       where: { key: 'platform_commission_pct' },
     });
-    const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 10;
+    const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
 
     const round = await prisma.gameRound.create({
       data: {
