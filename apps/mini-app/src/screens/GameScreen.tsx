@@ -85,7 +85,10 @@ export default function GameScreen() {
         {!loading && !error && rounds.map((round) => (
           <button
             key={round.id}
-            onClick={() => navigate(`/rounds/${round.id}/cartela`)}
+            onClick={() => {
+              sessionStorage.setItem('stakeSelectedForRound', round.id);
+              navigate(`/rounds/${round.id}/cartela`);
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -37,6 +37,14 @@ export default function CartelaScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // Guard: must come from stake selection on GameScreen
+  useEffect(() => {
+    const fromGame = sessionStorage.getItem('stakeSelectedForRound');
+    if (!fromGame || fromGame !== roundId) {
+      navigate('/', { replace: true });
+    }
+  }, [roundId, navigate]);
+
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [availability, setAvailability] = useState<CartelaAvailability | null>(null);
   const [balances, setBalances] = useState<ProfileBalances | null>(null);
@@ -74,6 +82,7 @@ export default function CartelaScreen() {
       setError(null);
       try {
         await joinRound(roundId, num);
+        sessionStorage.setItem('selectedRoundId', roundId);
         navigate(`/rounds/${roundId}/game`);
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };

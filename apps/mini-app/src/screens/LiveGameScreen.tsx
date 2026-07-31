@@ -71,6 +71,14 @@ export default function LiveGameScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // Guard: must come from cartela selection
+  useEffect(() => {
+    const selectedRound = sessionStorage.getItem('selectedRoundId');
+    if (!selectedRound || selectedRound !== roundId) {
+      navigate('/', { replace: true });
+    }
+  }, [roundId, navigate]);
+
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [detail, setDetail] = useState<HistoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
