@@ -10,7 +10,7 @@ type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 // ─── Env vars ─────────────────────────────────────────────────────────────────
 
 const BOT_TOKEN = process.env['BOT_TOKEN'];
-const MINI_APP_URL = process.env['MINI_APP_URL'] ?? 'https://t.me/beteseb_bingo_bot/app';
+const MINI_APP_URL = process.env['MINI_APP_URL'] ?? 'https://bingobot.pages.dev/';
 
 // ─── Main menu button labels ───────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ export async function isRegistered(telegramId: bigint): Promise<boolean> {
  * Builds an InlineKeyboard with a single web_app button for the Play handler.
  */
 export function buildPlayReplyMarkup(miniAppUrl: string): InlineKeyboard {
-  return new InlineKeyboard().webApp('Open Beteseb Bingo', miniAppUrl);
+  return new InlineKeyboard().webApp('Open Fidel Bingo', miniAppUrl);
 }
 
 // ─── Helper: Register button prompt text ─────────────────────────────────────
@@ -90,14 +90,14 @@ export const DEPOSIT_TEXT =
   `1. Send funds to our account:\n` +
   `   • CBE Birr: 1000123456789\n` +
   `   • Telebirr: 0911000000\n` +
-  `   • Bank Transfer: CBE 1000123456789 (Beteseb Bingo)\n\n` +
+  `   • Bank Transfer: CBE 1000123456789 (Fidel Bingo)\n\n` +
   `2. Send proof of your payment to our support team.\n` +
   `3. Your balance will be updated within 24 hours after verification.\n\n` +
   `⚠️ Always include your Telegram username in the payment note.`;
 
 export const INSTRUCTION_TEXT =
-  `📖 How to Play Beteseb Bingo\n\n` +
-  `Beteseb Bingo is an exciting online bingo game!\n\n` +
+  `📖 How to Play Fidel Bingo\n\n` +
+  `Fidel Bingo is an exciting online bingo game!\n\n` +
   `1. 🎮 Open the game by tapping Play 🎮.\n` +
   `2. 🃏 Purchase a bingo card (cartela) using your play wallet balance.\n` +
   `3. 🔢 Numbers are drawn one by one — mark them on your card.\n` +
@@ -248,7 +248,7 @@ if (BOT_TOKEN) {
 
       // Send the persistent main menu keyboard
       await ctx.reply(
-        '👋 Welcome to Beteseb Bingo! Choose an Option below.',
+        '👋 Welcome to Fidel Bingo! Choose an Option below.',
         { reply_markup: buildMainMenu() },
       );
     } catch (err) {
@@ -259,18 +259,9 @@ if (BOT_TOKEN) {
 
   // ─── 4.1: Play 🎮 handler ──────────────────────────────────────────────────
   bot.hears('Play 🎮', async (ctx) => {
-    // Use web_app only if MINI_APP_URL is a direct HTTPS URL (not a t.me link)
-    const isDirectUrl = MINI_APP_URL.startsWith('https://') && !MINI_APP_URL.startsWith('https://t.me');
-    if (isDirectUrl) {
-      await ctx.reply('🎮 Let\'s play!', {
-        reply_markup: buildPlayReplyMarkup(MINI_APP_URL),
-      });
-    } else {
-      await ctx.reply(
-        `🎮 Open the game here:\n${MINI_APP_URL}`,
-        { reply_markup: new InlineKeyboard().url('Open Beteseb Bingo 🎮', MINI_APP_URL) },
-      );
-    }
+    await ctx.reply('🎮 Let\'s play!', {
+      reply_markup: buildPlayReplyMarkup(MINI_APP_URL),
+    });
   });
 
   // ─── 4.2: Register 📝 handler ─────────────────────────────────────────────
