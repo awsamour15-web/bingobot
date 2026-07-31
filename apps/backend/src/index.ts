@@ -44,6 +44,19 @@ app.use('/api/admin/rounds', jwtAdminMiddleware, adminRoundsRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminFinanceRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminConfigRouter);
 
+// ─── Health check endpoint ────────────────────────────────────────────────────
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ─── Self-ping to prevent Render free tier from sleeping ─────────────────────
+const SELF_URL = process.env['RENDER_EXTERNAL_URL'] ?? `http://localhost:${process.env['PORT'] ?? 3000}`;
+setInterval(() => {
+  fetch(`${SELF_URL}/health`)
+    .then(() => console.log('[KeepAlive] Pinged self'))
+    .catch(() => {}); // silently ignore errors
+}, 10 * 60 * 1000); // every 10 minutes
+
 // ─── HTTP server (shared with Socket.IO) ─────────────────────────────────────
 const httpServer = createServer(app);
 
