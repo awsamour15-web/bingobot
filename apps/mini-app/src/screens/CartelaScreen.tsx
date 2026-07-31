@@ -31,7 +31,7 @@ function useServerCountdown(targetIso: string | null) {
     msLeft,
     label: msLeft <= 0 ? 'Starting…' : `${m}:${String(secs).padStart(2, '0')}`,
     pct: targetIso
-      ? Math.min(1, msLeft / 60_000) // fraction of 1-min window
+      ? Math.min(1, msLeft / 10_000) // fraction of 10-second window
       : 0,
   };
 }
@@ -158,7 +158,7 @@ export default function CartelaScreen() {
 
   const takenSet = new Set(availability.taken);
   const allNumbers = Array.from({ length: TOTAL }, (_, i) => i + 1);
-  const urgent = msLeft > 0 && msLeft < 15_000;
+  const urgent = msLeft > 0 && msLeft < 5_000;
 
   return (
     <div style={{ height: '100dvh', background: '#0f0c29', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
