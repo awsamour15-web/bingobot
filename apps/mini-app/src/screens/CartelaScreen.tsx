@@ -1,43 +1,50 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getRound, getCartelaAvailability, joinRound, getProfile } from '../lib/api';
-import type { RoundDetail, CartelaAvailability } from '@beteseb/shared';
+import { socket } from '../lib/socket';
+import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload } from '../lib/api';
 
 interface ProfileBalances {
   mainWallet: { balance: number };
   playWallet: { balance: number };
 }
 
-function useCountdown(targetTime: string): string {
-  const [label, setLabel] = useState('');
+// ─── Countdown hook synced to a server timestamp ─────────────────────────────
+
+function useServerCountdown(targetIso: string | null) {
+  const [msLeft, setMsLeft] = useState<number>(0);
 
   useEffect(() => {
-    function update() {
-      const ms = new Date(targetTime).getTime() - Date.now();
-      if (ms <= 0) {
-        setLabel('Starting…');
-        return;
-      }
-      const s = Math.floor(ms / 1000);
-      const m = Math.floor(s / 60);
-      const h = Math.floor(m / 60);
-      if (h > 0) setLabel(`${h}h ${m % 60}m ${s % 60}s`);
-      else if (m > 0) setLabel(`${m}m ${s % 60}s`);
-      else setLabel(`${s}s`);
+    if (!targetIso) return;
+    function tick() {
+      setMsLeft(Math.max(0, new Date(targetIso!).getTime() - Date.now()));
     }
-    update();
-    const id = setInterval(update, 1000);
+    tick();
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [targetTime]);
+  }, [targetIso]);
 
-  return label;
+  const s = Math.ceil(msLeft / 1000);
+  const m = Math.floor(s / 60);
+  const secs = s % 60;
+  return {
+    msLeft,
+    label: msLeft <= 0 ? 'Starting…' : `${m}:${String(secs).padStart(2, '0')}`,
+    pct: targetIso
+      ? Math.min(1, msLeft / 60_000) // fraction of 1-min window
+      : 0,
+  };
 }
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+const TOTAL = 272;
 
 export default function CartelaScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Guard: must come from stake selection on GameScreen
+  // Guard: must come from stake selection
   useEffect(() => {
     const fromGame = sessionStorage.getItem('stakeSelectedForRound');
     if (!fromGame || fromGame !== roundId) {
@@ -50,10 +57,14 @@ export default function CartelaScreen() {
   const [balances, setBalances] = useState<ProfileBalances | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);   // chosen but not yet joined
   const [joining, setJoining] = useState(false);
+  const [joinedCartela, setJoinedCartela] = useState<number | null>(null); // confirmed join
+  const autoNavRef = useRef(false);
 
-  const countdown = useCountdown(round?.start_time ?? new Date().toISOString());
+  const { msLeft, label: countdownLabel, pct } = useServerCountdown(round?.start_time ?? null);
 
+  // ─── Load initial data ────────────────────────────────────────────────────
   useEffect(() => {
     if (!roundId) return;
     async function load() {
@@ -67,7 +78,7 @@ export default function CartelaScreen() {
         setAvailability(avail);
         setBalances(profile);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load cartela');
+        setError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
         setLoading(false);
       }
@@ -75,34 +86,66 @@ export default function CartelaScreen() {
     load();
   }, [roundId]);
 
-  const handleSelect = useCallback(
-    async (num: number) => {
-      if (!roundId || joining) return;
-      setJoining(true);
-      setError(null);
-      try {
-        await joinRound(roundId, num);
-        sessionStorage.setItem('selectedRoundId', roundId);
-        navigate(`/rounds/${roundId}/game`);
-      } catch (err: unknown) {
-        const e = err as { code?: string; message?: string };
-        if (e.code === 'INSUFFICIENT_BALANCE') {
-          setError('Insufficient balance to join this round.');
-        } else if (e.code === 'CARTELA_TAKEN') {
-          setError('That cartela was just taken. Please pick another.');
-          // Refresh availability
-          getCartelaAvailability(roundId).then(setAvailability).catch(() => null);
-        } else {
-          setError(e.message ?? 'Failed to join round');
-        }
-        setJoining(false);
-      }
-    },
-    [roundId, navigate, joining],
-  );
+  // ─── Socket: keep player count fresh ────────────────────────────────────
+  useEffect(() => {
+    if (!roundId) return;
+    if (!socket.connected) socket.connect();
+    socket.emit('JOIN_ROUND', { roundId, token: localStorage.getItem('jwt') ?? '' });
 
+    const onJoined = (p: PlayerJoinedPayload) => {
+      setRound((r) => r ? { ...r, player_count: p.playerCount } : r);
+    };
+    socket.on('PLAYER_JOINED', onJoined);
+    return () => { socket.off('PLAYER_JOINED', onJoined); };
+  }, [roundId]);
+
+  // ─── Auto-navigate when countdown hits 0 and player has joined ────────
+  useEffect(() => {
+    if (msLeft === 0 && joinedCartela !== null && !autoNavRef.current) {
+      autoNavRef.current = true;
+      sessionStorage.setItem('selectedRoundId', roundId!);
+      navigate(`/rounds/${roundId}/game`, { replace: true });
+    }
+  }, [msLeft, joinedCartela, roundId, navigate]);
+
+  // ─── Select a cartela (pre-pick before confirming) ────────────────────
+  const handleSelect = useCallback((num: number) => {
+    if (joining || joinedCartela !== null) return;
+    setSelected((prev) => prev === num ? null : num);
+    setError(null);
+  }, [joining, joinedCartela]);
+
+  // ─── Confirm join ─────────────────────────────────────────────────────
+  const handleConfirm = useCallback(async () => {
+    if (!roundId || selected === null || joining) return;
+    setJoining(true);
+    setError(null);
+    try {
+      await joinRound(roundId, selected);
+      setJoinedCartela(selected);
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      if (e.code === 'INSUFFICIENT_BALANCE') {
+        setError('Insufficient balance to join this round.');
+      } else if (e.code === 'CARTELA_TAKEN') {
+        setError('That cartela was just taken. Please pick another.');
+        setSelected(null);
+        getCartelaAvailability(roundId).then(setAvailability).catch(() => null);
+      } else {
+        setError(e.message ?? 'Failed to join round');
+      }
+    } finally {
+      setJoining(false);
+    }
+  }, [roundId, selected, joining]);
+
+  // ─── Render ───────────────────────────────────────────────────────────
   if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading cartela board…</div>;
+    return (
+      <div style={{ minHeight: '100vh', background: '#0f0c29', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: 16 }}>
+        Loading cartelas…
+      </div>
+    );
   }
 
   if (!round || !availability) {
@@ -114,139 +157,134 @@ export default function CartelaScreen() {
   }
 
   const takenSet = new Set(availability.taken);
-
-  // All cartela numbers 1..272
-  const allNumbers = Array.from({ length: 272 }, (_, i) => i + 1);
+  const allNumbers = Array.from({ length: TOTAL }, (_, i) => i + 1);
+  const urgent = msLeft > 0 && msLeft < 15_000;
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ background: '#4f46e5', color: '#fff', padding: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
-            style={{ cursor: 'pointer', fontSize: 18 }}
-            onClick={() => navigate(-1)}
-          >
-            ←
-          </span>
-          <span style={{ fontWeight: 700, fontSize: 18 }}>Select Cartela</span>
+    <div style={{ minHeight: '100vh', background: '#0f0c29', color: '#fff', display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>←</span>
+          <span style={{ fontWeight: 800, fontSize: 17 }}>Select Your Cartela</span>
         </div>
-        <div style={{ marginTop: 10, display: 'flex', gap: 16, fontSize: 13 }}>
-          <div>
-            <div style={{ opacity: 0.8 }}>Stake</div>
-            <div style={{ fontWeight: 700 }}>{round.stake} Birr</div>
+
+        {/* Round stats row */}
+        <div style={{ marginTop: 10, display: 'flex', gap: 20, fontSize: 13 }}>
+          <div><span style={{ opacity: 0.6 }}>Stake </span><strong>{round.stake} Birr</strong></div>
+          <div><span style={{ opacity: 0.6 }}>Prize </span><strong style={{ color: '#f5d06b' }}>{round.derash} Birr</strong></div>
+          <div><span style={{ opacity: 0.6 }}>Players </span><strong>{round.player_count}/{round.max_players}</strong></div>
+        </div>
+
+        {/* Wallet */}
+        {balances && (
+          <div style={{ marginTop: 8, fontSize: 12, color: '#aaa' }}>
+            Play wallet: <strong style={{ color: '#fff' }}>{balances.playWallet.balance.toFixed(2)} Birr</strong>
           </div>
+        )}
+      </div>
+
+      {/* ── Countdown timer ─────────────────────────────────────────────────── */}
+      <div style={{
+        background: urgent ? 'rgba(239,68,68,0.15)' : 'rgba(79,70,229,0.2)',
+        borderBottom: `2px solid ${urgent ? '#ef4444' : '#4f46e5'}`,
+        padding: '16px 20px',
+        textAlign: 'center',
+      }}>
+        {joinedCartela !== null ? (
           <div>
-            <div style={{ opacity: 0.8 }}>Prize</div>
-            <div style={{ fontWeight: 700 }}>{round.derash} Birr</div>
+            <div style={{ fontSize: 13, color: '#86efac', marginBottom: 4 }}>✅ Cartela #{joinedCartela} reserved</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: urgent ? '#fca5a5' : '#a5b4fc', letterSpacing: 3 }}>
+              {countdownLabel}
+            </div>
+            <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>Game starts automatically when timer ends</div>
           </div>
+        ) : (
           <div>
-            <div style={{ opacity: 0.8 }}>Players</div>
-            <div style={{ fontWeight: 700 }}>
-              {round.player_count}/{round.max_players}
+            <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Time to pick
+            </div>
+            <div style={{ fontSize: 40, fontWeight: 900, color: urgent ? '#ef4444' : '#fff', letterSpacing: 4, fontVariantNumeric: 'tabular-nums' }}>
+              {countdownLabel}
             </div>
           </div>
-          <div>
-            <div style={{ opacity: 0.8 }}>Starts in</div>
-            <div style={{ fontWeight: 700 }}>{countdown}</div>
-          </div>
+        )}
+
+        {/* Progress bar */}
+        <div style={{ marginTop: 10, height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${pct * 100}%`,
+            background: urgent ? '#ef4444' : '#6366f1',
+            transition: 'width 0.25s linear',
+          }} />
         </div>
       </div>
 
-      {/* Balances */}
-      {balances && (
-        <div
-          style={{
-            background: '#fff',
-            padding: '12px 16px',
-            display: 'flex',
-            gap: 24,
-            fontSize: 13,
-            borderBottom: '1px solid #eee',
-          }}
-        >
-          <div>
-            <span style={{ color: '#888' }}>Main: </span>
-            <strong>{balances.mainWallet.balance.toFixed(2)} Birr</strong>
-          </div>
-          <div>
-            <span style={{ color: '#888' }}>Play: </span>
-            <strong>{balances.playWallet.balance.toFixed(2)} Birr</strong>
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
+      {/* ── Error ───────────────────────────────────────────────────────────── */}
       {error && (
-        <div
-          style={{
-            background: '#fff3f3',
-            color: '#e53e3e',
-            padding: '10px 16px',
-            fontSize: 14,
-            borderBottom: '1px solid #fcc',
-          }}
-        >
+        <div style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '10px 16px', fontSize: 14, borderBottom: '1px solid rgba(239,68,68,0.3)' }}>
           {error}
         </div>
       )}
 
-      {/* Legend */}
-      <div style={{ padding: '8px 16px', display: 'flex', gap: 16, fontSize: 12, color: '#666' }}>
-        <span>
-          <span
-            style={{
-              display: 'inline-block',
-              width: 12,
-              height: 12,
-              background: '#4f46e5',
-              borderRadius: 3,
-              marginRight: 4,
-            }}
-          />
-          Available
-        </span>
-        <span>
-          <span
-            style={{
-              display: 'inline-block',
-              width: 12,
-              height: 12,
-              background: '#ddd',
-              borderRadius: 3,
-              marginRight: 4,
-            }}
-          />
-          Taken
-        </span>
+      {/* ── Legend ──────────────────────────────────────────────────────────── */}
+      <div style={{ padding: '10px 16px', display: 'flex', gap: 16, fontSize: 12, color: '#aaa' }}>
+        <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#4f46e5', borderRadius: 3, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
+        <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#22c55e', borderRadius: 3, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
+        <span><span style={{ display: 'inline-block', width: 12, height: 12, background: 'rgba(255,255,255,0.1)', borderRadius: 3, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
+        {joinedCartela !== null && (
+          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#f5d06b', borderRadius: 3, marginRight: 4, verticalAlign: 'middle' }} />Yours</span>
+        )}
       </div>
 
-      {/* Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(8, 1fr)',
-          gap: 6,
-          padding: '8px 16px 24px',
-        }}
-      >
+      {/* ── Cartela grid ────────────────────────────────────────────────────── */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(8, 1fr)',
+        gap: 5,
+        padding: '4px 12px 120px',
+      }}>
         {allNumbers.map((num) => {
           const taken = takenSet.has(num);
+          const isSelected = selected === num;
+          const isJoined = joinedCartela === num;
+
+          let bg = '#4f46e5';
+          let textColor = '#fff';
+          let opacity = 1;
+          let border = 'none';
+
+          if (isJoined) {
+            bg = '#f5d06b'; textColor = '#1a1a1a';
+          } else if (isSelected) {
+            bg = '#22c55e';
+          } else if (taken) {
+            bg = 'rgba(255,255,255,0.08)'; textColor = '#555'; opacity = 0.7;
+          }
+
+          if (isSelected) border = '2px solid #fff';
+
           return (
             <button
               key={num}
-              disabled={taken || joining}
-              onClick={() => !taken && handleSelect(num)}
+              disabled={taken || joining || joinedCartela !== null}
+              onClick={() => handleSelect(num)}
               style={{
-                padding: '10px 0',
-                borderRadius: 8,
-                border: 'none',
-                background: taken ? '#e0e0e0' : '#4f46e5',
-                color: taken ? '#999' : '#fff',
+                padding: '9px 0',
+                borderRadius: 7,
+                border,
+                background: bg,
+                color: textColor,
                 fontWeight: 700,
-                fontSize: 13,
-                cursor: taken ? 'default' : 'pointer',
-                opacity: joining ? 0.7 : 1,
+                fontSize: 12,
+                cursor: (taken || joinedCartela !== null) ? 'default' : 'pointer',
+                opacity,
+                transition: 'background 0.15s, transform 0.1s',
+                transform: isSelected ? 'scale(1.08)' : 'scale(1)',
               }}
             >
               {num}
@@ -254,6 +292,44 @@ export default function CartelaScreen() {
           );
         })}
       </div>
+
+      {/* ── Sticky confirm bar ──────────────────────────────────────────────── */}
+      {joinedCartela === null && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '14px 16px',
+          background: 'rgba(15,12,41,0.97)',
+          borderTop: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(8px)',
+        }}>
+          {selected !== null ? (
+            <button
+              onClick={handleConfirm}
+              disabled={joining}
+              style={{
+                width: '100%',
+                padding: '15px',
+                background: joining ? '#6b7280' : 'linear-gradient(135deg, #22c55e, #16a34a)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 12,
+                fontSize: 16,
+                fontWeight: 800,
+                cursor: joining ? 'default' : 'pointer',
+              }}
+            >
+              {joining ? 'Reserving…' : `Confirm Cartela #${selected} — ${round.stake} Birr`}
+            </button>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
+              Tap a cartela number to select it
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

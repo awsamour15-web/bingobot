@@ -67,6 +67,21 @@ export async function isRegistered(telegramId: bigint): Promise<boolean> {
   return player !== null;
 }
 
+/**
+ * Fetches the player with their wallets in a single DB query.
+ * Returns null if not found or not registered.
+ */
+async function getRegisteredPlayerWithWallets(telegramId: bigint) {
+  return prisma.player.findFirst({
+    where: { telegram_id: telegramId, phone_verified: true },
+    select: {
+      id: true,
+      username: true,
+      wallets: { select: { id: true, type: true, balance: true } },
+    },
+  });
+}
+
 // ─── Helper: Play button — inline keyboard with web_app button ───────────────
 
 /**
@@ -307,9 +322,18 @@ if (BOT_TOKEN) {
     const phone = contact.phone_number;
 
     try {
-      // Find the player record (created on /start)
+      // Find the player with their play wallet in a single query
       const player = await prisma.player.findUnique({
         where: { telegram_id: telegramId },
+        select: {
+          id: true,
+          username: true,
+          phone_verified: true,
+          wallets: {
+            where: { type: 'play' },
+            select: { id: true },
+          },
+        },
       });
 
       if (!player) {
@@ -322,29 +346,31 @@ if (BOT_TOKEN) {
         return;
       }
 
-      // Save phone and mark as verified
-      await prisma.player.update({
-        where: { telegram_id: telegramId },
-        data: { phone, phone_verified: true },
-      });
+      const playWalletId = player.wallets[0]?.id;
+      if (!playWalletId) {
+        await ctx.reply('Something went wrong during registration. Please try again.');
+        return;
+      }
 
-      // Credit 20 ETB welcome bonus to the play wallet
-      await prisma.wallet.update({
-        where: { player_id_type: { player_id: player.id, type: 'play' } },
-        data: { balance: { increment: 20 } },
-      });
-
-      await prisma.transaction.create({
-        data: {
-          wallet_id: (await prisma.wallet.findUnique({
-            where: { player_id_type: { player_id: player.id, type: 'play' } },
-            select: { id: true },
-          }))!.id,
-          type: 'admin_credit',
-          amount: 20,
-          note: 'Welcome bonus',
-        },
-      });
+      // Run all DB updates in parallel inside a transaction
+      await prisma.$transaction([
+        prisma.player.update({
+          where: { telegram_id: telegramId },
+          data: { phone, phone_verified: true },
+        }),
+        prisma.wallet.update({
+          where: { id: playWalletId },
+          data: { balance: { increment: 20 } },
+        }),
+        prisma.transaction.create({
+          data: {
+            wallet_id: playWalletId,
+            type: 'admin_credit',
+            amount: 20,
+            note: 'Welcome bonus',
+          },
+        }),
+      ]);
 
       await ctx.reply(
         `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 20 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
@@ -361,19 +387,17 @@ if (BOT_TOKEN) {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
 
-    if (!(await isRegistered(telegramId))) {
+    // Single query: check registration + fetch wallets together
+    const player = await getRegisteredPlayerWithWallets(telegramId);
+    if (!player) {
       await ctx.reply(
         '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
       );
       return;
     }
 
-    const wallets = await prisma.wallet.findMany({
-      where: { player: { telegram_id: telegramId } },
-    });
-
-    const mainWallet = wallets.find((w) => w.type === 'main');
-    const playWallet = wallets.find((w) => w.type === 'play');
+    const mainWallet = player.wallets.find((w) => w.type === 'main');
+    const playWallet = player.wallets.find((w) => w.type === 'play');
     const mainBalance = mainWallet?.balance.toString() ?? '0';
     const playBalance = playWallet?.balance.toString() ?? '0';
 
@@ -385,16 +409,21 @@ if (BOT_TOKEN) {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
 
-    if (!(await isRegistered(telegramId))) {
+    // Run both queries in parallel
+    const [player, config] = await Promise.all([
+      prisma.player.findFirst({
+        where: { telegram_id: telegramId, phone_verified: true },
+        select: { id: true },
+      }),
+      prisma.config.findUnique({ where: { key: 'support_contact' } }),
+    ]);
+
+    if (!player) {
       await ctx.reply(
         '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
       );
       return;
     }
-
-    const config = await prisma.config.findUnique({
-      where: { key: 'support_contact' },
-    });
 
     if (config) {
       await ctx.reply(formatSupportReply(config.value));
@@ -473,7 +502,7 @@ if (BOT_TOKEN) {
       return;
     }
 
-    const link = buildInviteLink(bot!.botInfo.username, telegramId);
+    const link = buildInviteLink(ctx.me.username, telegramId);
     await ctx.reply(`🔗 Invite your friends!\n\nShare this link:\n${link}`);
   });
 
