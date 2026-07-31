@@ -273,7 +273,70 @@ if (BOT_TOKEN) {
 
   // ─── 4.2: Register 📝 handler ─────────────────────────────────────────────
   bot.hears('Register 📝', async (ctx) => {
-    await ctx.reply(REGISTER_PROMPT_TEXT);
+    if (!ctx.from) return;
+
+    // Check if already registered
+    if (await isRegistered(BigInt(ctx.from.id))) {
+      await ctx.reply('✅ You are already registered!', { reply_markup: buildMainMenu() });
+      return;
+    }
+
+    // Send a keyboard with a "Share Contact" button to collect phone number
+    await ctx.reply(
+      '📱 To register, please share your phone number by tapping the button below.',
+      {
+        reply_markup: new Keyboard()
+          .requestContact('📲 Share Phone Number')
+          .resized()
+          .oneTime(),
+      },
+    );
+  });
+
+  // ─── Contact handler — receives phone number after Register ───────────────
+  bot.on('message:contact', async (ctx) => {
+    if (!ctx.from) return;
+    const contact = ctx.message.contact;
+
+    // Only accept the user's own contact
+    if (contact.user_id !== ctx.from.id) {
+      await ctx.reply('⚠️ Please share your own phone number.');
+      return;
+    }
+
+    const telegramId = BigInt(ctx.from.id);
+    const phone = contact.phone_number;
+
+    try {
+      // Find the player record (created on /start)
+      const player = await prisma.player.findUnique({
+        where: { telegram_id: telegramId },
+      });
+
+      if (!player) {
+        await ctx.reply('⚠️ Please send /start first, then try registering again.');
+        return;
+      }
+
+      if (player.phone_verified) {
+        await ctx.reply('✅ You are already registered!', { reply_markup: buildMainMenu() });
+        return;
+      }
+
+      // Save phone and mark as verified
+      await prisma.player.update({
+        where: { telegram_id: telegramId },
+        data: { phone, phone_verified: true },
+      });
+
+      await ctx.reply(
+        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\nYou can now play and use all features.`,
+        { reply_markup: buildMainMenu() },
+      );
+    } catch (err) {
+      console.error('[Bot] Registration error:', err);
+      await ctx.reply('Something went wrong during registration. Please try again.');
+    }
   });
 
   // ─── 4.3: Check Balance 💰 handler ────────────────────────────────────────
