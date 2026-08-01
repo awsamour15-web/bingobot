@@ -233,14 +233,17 @@ export default function LiveGameScreen() {
         try {
           const rounds = await getRounds();
           console.log('[LiveGame] Available rounds:', rounds.map(r => ({ id: r.id, stake: r.stake, status: r.status })));
-          const next =
-            rounds.find((r) => Number(r.stake) === Number(stake) && r.status === 'pending') ??
-            rounds.find((r) => Number(r.stake) === Number(stake) && r.status === 'active');
+          // Only navigate to a PENDING round — never re-enter an active round
+          // (which may be the same round still finishing, or a different one mid-game).
+          // The scheduler always has a pending round ready within a few seconds.
+          const next = rounds.find(
+            (r) => Number(r.stake) === Number(stake) && r.status === 'pending' && r.id !== roundId,
+          );
           if (next) {
             console.log('[LiveGame] Found next round:', next.id, next.status);
             sessionStorage.setItem('stakeSelectedForRound', next.id);
             sessionStorage.setItem('selectedRoundId', next.id);
-            navigate(next.status === 'pending' ? `/rounds/${next.id}/cartela` : `/rounds/${next.id}/game`, { replace: true });
+            navigate(`/rounds/${next.id}/cartela`, { replace: true });
             return;
           }
         } catch (e) {
