@@ -117,6 +117,23 @@ export default function CartelaScreen() {
       setJoining(true);
       setError(null);
       try {
+        // First check current round status — it may have changed since page load
+        const currentRound = await getRound(roundId!);
+
+        if (currentRound.status === 'void' || currentRound.status === 'cancelled') {
+          // Round ended before we could join — go home
+          sessionStorage.removeItem('stakeSelectedForRound');
+          navigate('/', { replace: true });
+          return;
+        }
+
+        if (currentRound.status === 'active' || currentRound.status === 'completed') {
+          // Round already started — go straight to game as watcher
+          sessionStorage.setItem('selectedRoundId', roundId!);
+          navigate(`/rounds/${roundId}/game`, { replace: true });
+          return;
+        }
+
         if (picks.length > 0) {
           // Join each selected cartela sequentially
           for (const num of picks) {
@@ -128,6 +145,12 @@ export default function CartelaScreen() {
         navigate(`/rounds/${roundId}/game`, { replace: true });
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };
+        // If round is no longer pending, just go to the game as watcher
+        if (e.message?.includes('not pending') || e.message?.includes('void') || e.message?.includes('cancelled')) {
+          sessionStorage.setItem('selectedRoundId', roundId!);
+          navigate(`/rounds/${roundId}/game`, { replace: true });
+          return;
+        }
         setError(e.message ?? 'Failed to join round');
         setJoining(false);
         joinedRef.current = false;
