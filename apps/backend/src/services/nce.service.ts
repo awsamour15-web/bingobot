@@ -171,10 +171,10 @@ export class NumberCallingEngine {
       this.activeTimers.set(roundId, handle);
     };
 
-    // Kick off immediately after first interval
+    // Call the first number immediately (0ms delay), then every callIntervalMs after
     const handle = setTimeout(() => {
       void callNext();
-    }, callIntervalMs);
+    }, 0);
 
     this.activeTimers.set(roundId, handle);
   }
