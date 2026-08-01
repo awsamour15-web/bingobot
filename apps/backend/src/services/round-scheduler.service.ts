@@ -125,18 +125,25 @@ export const RoundScheduler = {
   },
 
   /**
-   * For each stake level, create a pending round if none currently exists.
+   * For each stake level, create a pending round if none currently exists
+   * AND no round is currently active for that stake level.
    * Also cancels duplicate pending rounds (keeps only the earliest one).
    */
   async ensureRoundsExist(): Promise<void> {
     try {
-      const pendingRounds = await prisma.gameRound.findMany({
-        where: { status: GameStatus.pending },
-        select: { id: true, stake: true, start_time: true },
-        orderBy: { start_time: 'asc' },
-      });
+      const [pendingRounds, activeRounds] = await Promise.all([
+        prisma.gameRound.findMany({
+          where: { status: GameStatus.pending },
+          select: { id: true, stake: true, start_time: true },
+          orderBy: { start_time: 'asc' },
+        }),
+        prisma.gameRound.findMany({
+          where: { status: GameStatus.active },
+          select: { id: true, stake: true },
+        }),
+      ]);
 
-      // Group by stake — cancel all but the earliest
+      // Group pending rounds by stake — cancel all but the earliest
       const byStake = new Map<number, typeof pendingRounds>();
       for (const r of pendingRounds) {
         const stake = Number(r.stake);
@@ -162,12 +169,20 @@ export const RoundScheduler = {
         ? parseInt(maxPlayersRow.value, 10)
         : DEFAULT_MAX_PLAYERS;
 
-      // Only create for allowed stakes (10, 20, 50)
+      // Track which stakes already have a pending round
       const pendingStakes = new Set([...byStake.keys()].filter((s) => STAKE_LEVELS.includes(s)));
+      // Track which stakes already have an active round
+      const activeStakes = new Set(activeRounds.map((r) => Number(r.stake)));
 
       await Promise.all(
         STAKE_LEVELS.map(async (stake) => {
+          // Skip if a pending round already exists for this stake
           if (pendingStakes.has(stake)) return;
+          // Skip if a round is currently active for this stake — wait for it to finish
+          if (activeStakes.has(stake)) {
+            console.log(`[Scheduler] Skipping round creation for stake=${stake} — a round is still active`);
+            return;
+          }
 
           const startTime = new Date(Date.now() + LEAD_TIME_MS);
           const roundId = await GameRoundService.create(stake, startTime, maxPlayers);
