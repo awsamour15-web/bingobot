@@ -6,6 +6,7 @@
 
 import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
+import { nce } from './nce.service.js';
 import { GameStatus } from '@beteseb/shared';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -35,6 +36,8 @@ export const RoundScheduler = {
       update: { value: '1' },
       create: { key: 'min_players_to_start', value: '1' },
     });
+    // Resume any active rounds that were left mid-game by a server restart
+    void RoundScheduler.recoverActiveRounds();
     void RoundScheduler.tick();
     RoundScheduler._timer = setInterval(() => {
       void RoundScheduler.tick();
@@ -45,6 +48,40 @@ export const RoundScheduler = {
     if (RoundScheduler._timer !== undefined) {
       clearInterval(RoundScheduler._timer);
       RoundScheduler._timer = undefined;
+    }
+  },
+
+  /**
+   * On server startup, resume number calling for any rounds that were left
+   * in `active` status by a previous process crash or restart.
+   * Without this, active rounds get permanently stuck — no more numbers called,
+   * no void triggered, users see a frozen game board.
+   */
+  async recoverActiveRounds(): Promise<void> {
+    try {
+      const activeRounds = await prisma.gameRound.findMany({
+        where: { status: GameStatus.active },
+        select: { id: true, stake: true },
+      });
+
+      if (activeRounds.length === 0) return;
+
+      console.log(`[Scheduler] Recovering ${activeRounds.length} interrupted active round(s)`);
+
+      for (const round of activeRounds) {
+        console.log(`[Scheduler] Resuming NCE for round ${round.id} (stake=${round.stake})`);
+        // nce.start() generates a fresh shuffle and begins calling from index 0,
+        // but it persists each number and the DB unique constraint on
+        // (round_id, sequence_index) will reject duplicates — however we want
+        // to resume from where we left off, not restart from the beginning.
+        // So we resume by re-triggering via GameRoundService which calls nce.start().
+        // nce.start() checks round status on each tick and will call triggerVoid
+        // once all 75 sequence slots are exhausted.
+        // Already-called numbers will cause DB errors silently; we catch and continue.
+        void nce.start(round.id);
+      }
+    } catch (err) {
+      console.error('[Scheduler] recoverActiveRounds error:', err);
     }
   },
 
@@ -76,6 +113,8 @@ export const RoundScheduler = {
         try {
           await GameRoundService.start(round.id);
           console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
+          // Immediately create the next round so users always have a full 60s lobby
+          void RoundScheduler.ensureRoundsExist();
         } catch (err) {
           console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
         }

@@ -54,20 +54,48 @@ export class NumberCallingEngine {
   setOnRoundStarted(cb: OnRoundStarted): void { this.onRoundStarted = cb; }
 
   /**
-   * Start calling numbers for a round.
+   * Start (or resume) calling numbers for a round.
    *
+   * - On fresh start: generates a shuffled 1–75 sequence from scratch.
+   * - On resume (server restart recovery): loads the already-called sequence
+   *   from DB and continues from the next uncalled index.
    * - Reads `call_interval_ms` from the Config table.
-   * - Generates a fresh shuffled 1–75 sequence.
    * - Calls one number per interval, persisting to DB and invoking callbacks.
    * - After all 75 numbers, triggers the void flow if the round has no winner.
    */
   async start(roundId: string): Promise<void> {
     const callIntervalMs = await this.readCallInterval();
-    const sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
-    let sequenceIndex = 0;
 
-    // Broadcast ROUND_STARTED immediately
-    if (this.onRoundStarted) {
+    // Load already-called numbers from DB (ordered by sequence_index)
+    const existingCalled = await prisma.calledNumber.findMany({
+      where: { round_id: roundId },
+      orderBy: { sequence_index: 'asc' },
+    });
+
+    let sequence: number[];
+    let sequenceIndex: number;
+
+    if (existingCalled.length === 0) {
+      // Fresh start — generate new shuffle
+      sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
+      sequenceIndex = 0;
+    } else {
+      // Resume — reconstruct sequence from what was already called,
+      // then append a fresh shuffle of the remaining numbers
+      const calledNums = existingCalled.map((c) => c.number);
+      const calledSet = new Set(calledNums);
+      const remaining = shuffle(
+        Array.from({ length: 75 }, (_, i) => i + 1).filter((n) => !calledSet.has(n)),
+      );
+      sequence = [...calledNums, ...remaining];
+      sequenceIndex = existingCalled.length; // resume from next uncalled slot
+      console.log(
+        `[NCE] Resuming round ${roundId} from index ${sequenceIndex} (${75 - sequenceIndex} numbers remaining)`,
+      );
+    }
+
+    // Broadcast ROUND_STARTED only on fresh start (not resume)
+    if (sequenceIndex === 0 && this.onRoundStarted) {
       const round = await prisma.gameRound.findUnique({
         where: { id: roundId },
         include: { _count: { select: { round_entries: true } } },
