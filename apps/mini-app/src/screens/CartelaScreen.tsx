@@ -199,7 +199,8 @@ export default function CartelaScreen() {
   const playBal = balances ? Number(balances.playWallet.balance) : 0;
   const mainBal = balances ? Number(balances.mainWallet.balance) : 0;
   const totalBalance = playBal + mainBal;
-  const canAfford = totalBalance >= stake;
+  // If balances haven't loaded yet, allow picking (don't block on loading state)
+  const canAfford = balances === null || totalBalance >= stake;
 
   return (
     <div style={{ height: '100dvh', background: '#0f0c29', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -219,7 +220,9 @@ export default function CartelaScreen() {
           <div><span style={{ opacity: 0.6 }}>Stake </span><strong>{round.stake} Birr</strong></div>
           <div><span style={{ opacity: 0.6 }}>Prize </span><strong style={{ color: '#f5d06b' }}>{round.derash} Birr</strong></div>
           <div><span style={{ opacity: 0.6 }}>Players </span><strong>{round.player_count}</strong></div>
-          {balances?.playWallet && <div><span style={{ opacity: 0.6 }}>Balance </span><strong>{Number(balances.playWallet.balance).toFixed(0)} Birr</strong></div>}
+          {balances && (
+            <div><span style={{ opacity: 0.6 }}>Balance </span><strong>{(playBal + mainBal).toFixed(0)} Birr</strong></div>
+          )}
         </div>
       </div>
 
