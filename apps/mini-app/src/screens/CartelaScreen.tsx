@@ -140,8 +140,33 @@ export default function CartelaScreen() {
   // ─── Toggle pick ─────────────────────────────────────────────────────────
   function togglePick(num: number) {
     if (joining) return;
+
+    // Allow deselecting always
+    if (picks.includes(num)) {
+      setPicks((prev) => prev.filter((n) => n !== num));
+      return;
+    }
+
+    // Check balance before allowing a new pick
+    if (round && balances) {
+      const stake = Number(round.stake);
+      const playBal = Number(balances.playWallet.balance);
+      const mainBal = Number(balances.mainWallet.balance);
+      // Each additional pick costs one more stake
+      const picksAfter = picks.length + 1;
+      const totalCost = stake * picksAfter;
+      const totalBalance = playBal + mainBal;
+
+      if (totalBalance < totalCost) {
+        setError(
+          `Insufficient balance. You need ${totalCost} Birr (play: ${playBal.toFixed(0)}, main: ${mainBal.toFixed(0)}).`,
+        );
+        return;
+      }
+    }
+
+    setError(null);
     setPicks((prev) => {
-      if (prev.includes(num)) return prev.filter((n) => n !== num); // deselect
       if (prev.length >= MAX_SELECT) return prev; // max reached
       return [...prev, num];
     });
@@ -168,6 +193,13 @@ export default function CartelaScreen() {
   const allNumbers = Array.from({ length: TOTAL }, (_, i) => i + 1);
   const urgent = msLeft > 0 && msLeft < 10_000;
   const canPick = picks.length < MAX_SELECT;
+
+  // Check if user can afford at least one cartela
+  const stake = Number(round.stake);
+  const playBal = balances ? Number(balances.playWallet.balance) : 0;
+  const mainBal = balances ? Number(balances.mainWallet.balance) : 0;
+  const totalBalance = playBal + mainBal;
+  const canAfford = totalBalance >= stake;
 
   return (
     <div style={{ height: '100dvh', background: '#0f0c29', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -256,6 +288,13 @@ export default function CartelaScreen() {
         {!canPick && <span style={{ color: '#f5d06b' }}>Max {MAX_SELECT} reached</span>}
       </div>
 
+      {/* ── No balance warning ───────────────────────────────────────────────── */}
+      {!canAfford && (
+        <div style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '8px 16px', fontSize: 13, textAlign: 'center', borderBottom: '1px solid rgba(239,68,68,0.3)' }}>
+          ⚠️ Insufficient balance to join this round (need {stake} Birr). You can still watch.
+        </div>
+      )}
+
       {/* ── Grid ────────────────────────────────────────────────────────────── */}
       <div style={{
         flex: 1,
@@ -270,10 +309,11 @@ export default function CartelaScreen() {
         {allNumbers.map((num) => {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
-          const disabled = joining || taken || (!isPicked && !canPick);
+          const noBalance = !isPicked && !canAfford;
+          const disabled = joining || taken || (!isPicked && !canPick) || noBalance;
 
-          const bg = isPicked ? '#22c55e' : taken ? 'rgba(255,255,255,0.07)' : '#3730a3';
-          const textColor = taken ? '#444' : '#fff';
+          const bg = isPicked ? '#22c55e' : taken ? 'rgba(255,255,255,0.07)' : noBalance ? 'rgba(255,255,255,0.04)' : '#3730a3';
+          const textColor = taken || noBalance ? '#444' : '#fff';
 
           return (
             <button
