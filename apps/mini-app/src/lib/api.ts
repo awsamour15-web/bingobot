@@ -123,6 +123,10 @@ export function getCartelaAvailability(roundId: string): Promise<CartelaAvailabi
   return apiRequest<CartelaAvailability>('GET', `/api/rounds/${roundId}/cartelas`);
 }
 
+export function getCartelaGrid(roundId: string, cartelaNumber: number): Promise<{ cartela_number: number; grid: number[] }> {
+  return apiRequest<{ cartela_number: number; grid: number[] }>('GET', `/api/rounds/${roundId}/cartelas/${cartelaNumber}/grid`);
+}
+
 export function joinRound(roundId: string, cartelaNumber: number): Promise<JoinRoundResponse> {
   return apiRequest<JoinRoundResponse>('POST', `/api/rounds/${roundId}/join`, { cartelaNumber });
 }

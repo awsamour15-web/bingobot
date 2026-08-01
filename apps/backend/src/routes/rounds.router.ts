@@ -126,6 +126,22 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
   res.status(200).json(response);
 });
 
+// ─── GET /api/rounds/:id/cartelas/:num/grid ──────────────────────────────────
+
+router.get('/:id/cartelas/:num/grid', async (req: Request, res: Response): Promise<void> => {
+  const num = parseInt(req.params['num'] as string, 10);
+  if (isNaN(num) || num < 1 || num > 800) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
+    return;
+  }
+  const def = await prisma.cartelaDefinition.findUnique({ where: { cartela_number: num } });
+  if (!def) {
+    res.status(404).json({ error: 'NOT_FOUND', message: 'Cartela not found' });
+    return;
+  }
+  res.json({ cartela_number: num, grid: def.grid });
+});
+
 // ─── POST /api/rounds/:id/join ────────────────────────────────────────────────
 
 router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {

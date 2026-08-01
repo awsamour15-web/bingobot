@@ -297,6 +297,16 @@ export default function LiveGameScreen() {
   const isWatching = !detail;
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
+  // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
+  const autoClaimed = useRef(false);
+  useEffect(() => {
+    if (!playerHasBingo || game.phase !== 'active' || !roundId || !detail || claimPending || autoClaimed.current) return;
+    autoClaimed.current = true;
+    setClaimPending(true);
+    setClaimError(null);
+    socket.emit('CLAIM_WIN', { roundId, cartelaId: detail.cartelaNumber });
+  }, [playerHasBingo, game.phase, roundId, detail, claimPending]);
+
   if (loading) return (
     <div style={{ height: '100dvh', background: '#1a1035', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>
       Loading game...
@@ -463,14 +473,15 @@ export default function LiveGameScreen() {
                     })}
                   </div>
                 </div>
-                {/* Claim win */}
+                {/* Auto-claim status */}
                 {game.phase === 'active' && playerHasBingo && (
-                  <button onClick={handleClaimWin} disabled={claimPending} style={{
-                    width: '100%', padding: '12px', background: claimPending ? '#6b7280' : '#22c55e',
-                    color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 900, cursor: claimPending ? 'default' : 'pointer',
+                  <div style={{
+                    width: '100%', padding: '12px', background: claimPending ? '#d97706' : '#22c55e',
+                    color: '#fff', borderRadius: 10, fontSize: 15, fontWeight: 900, textAlign: 'center',
+                    animation: 'pulse 0.5s infinite alternate',
                   }}>
-                    {claimPending ? 'Checking...' : '🎉 BINGO!'}
-                  </button>
+                    {claimPending ? '⏳ Claiming BINGO…' : '🎉 BINGO!'}
+                  </div>
                 )}
                 {claimError && <div style={{ color: '#fca5a5', fontSize: 12, marginTop: 6, textAlign: 'center' }}>{claimError}</div>}
               </>
