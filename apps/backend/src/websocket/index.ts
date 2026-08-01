@@ -163,6 +163,11 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   io.on('connection', (socket: any) => {
     const playerId = socket.data.playerId as string;
 
+    // ── LEAVE_ROUND ───────────────────────────────────────────────────────────
+    socket.on('LEAVE_ROUND', async (data: { roundId: string }) => {
+      await socket.leave(`round:${data.roundId}`);
+    });
+
     // ── JOIN_ROUND ────────────────────────────────────────────────────────────
     socket.on(
       'JOIN_ROUND',

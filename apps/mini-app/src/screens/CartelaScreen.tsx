@@ -126,7 +126,10 @@ export default function CartelaScreen() {
     const onJoined = (p: PlayerJoinedPayload) =>
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
     socket.on('PLAYER_JOINED', onJoined);
-    return () => { socket.off('PLAYER_JOINED', onJoined); };
+    return () => {
+      socket.off('PLAYER_JOINED', onJoined);
+      socket.emit('LEAVE_ROUND' as any, { roundId });
+    };
   }, [roundId]);
 
   useEffect(() => { if (msLeft > 0) countdownStartedRef.current = true; }, [msLeft]);

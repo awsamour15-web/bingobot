@@ -181,6 +181,8 @@ export default function LiveGameScreen() {
       socket.off('ROUND_VOID', onVoid);
       socket.off('ROUND_CANCELLED', onCancelled);
       socket.off('WIN_REJECTED', onRejected);
+      // Leave the round room so we stop receiving events from this round
+      socket.emit('LEAVE_ROUND', { roundId });
     };
   }, [roundId, soundOn]);
 

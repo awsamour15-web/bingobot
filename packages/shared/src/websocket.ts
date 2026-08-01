@@ -72,5 +72,6 @@ export interface ServerToClientEvents {
 /** Events emitted by the client and received by the server */
 export interface ClientToServerEvents {
   JOIN_ROUND: (event: JoinRoundEvent) => void;
+  LEAVE_ROUND: (event: { roundId: string }) => void;
   CLAIM_WIN: (event: ClaimWinEvent) => void;
 }
