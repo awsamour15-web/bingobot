@@ -91,7 +91,7 @@ export function Layout() {
   return (
     <div style={rootStyle}>
       <header style={headerStyle}>
-        <span style={titleStyle}>Beteseb Bingo Admin</span>
+        <span style={titleStyle}>Fidel Bingo Admin</span>
         <button style={logoutButtonStyle} onClick={handleLogout}>
           Logout
         </button>

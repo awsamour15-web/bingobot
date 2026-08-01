@@ -2,17 +2,31 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getProfile, getWalletTransactions, depositFunds, withdrawFunds } from '../lib/api';
 import type { PlayerProfile, TransactionListItem, PaginatedResponse } from '../lib/api';
 
-type Tab = 'overview' | 'transactions';
-
-const TX_LABELS: Record<string, string> = {
-  deposit: '⬇ ተቀባይ',
-  withdrawal: '⬆ ልኬ',
-  stake: '🎯 ዋጋ',
-  prize: '🏆 ሽልማት',
-  refund: '↩ ተመላሽ',
-  referral_commission: '👥 ምክረ ሽልማት',
-  admin_credit: '🔧 አስተዳዳሪ ክሬዲት',
+const C = {
+  bg: '#0a0e1a',
+  surface: '#0d1b2e',
+  surface2: '#112240',
+  border: 'rgba(255,255,255,0.07)',
+  amber: '#f59e0b',
+  text: '#f1f5f9',
+  muted: '#64748b',
+  dim: '#475569',
+  green: '#34d399',
+  red: '#f87171',
 };
+
+const TX_META: Record<string, { label: string; color: string; sign: string }> = {
+  deposit:             { label: 'Deposit',           color: C.green,  sign: '+' },
+  withdrawal:          { label: 'Withdrawal',         color: C.red,    sign: '-' },
+  game_entry:          { label: 'Game Entry',         color: C.red,    sign: '-' },
+  game_win:            { label: 'Game Win',           color: C.green,  sign: '+' },
+  referral_commission: { label: 'Referral Bonus',     color: C.green,  sign: '+' },
+  admin_credit:        { label: 'Admin Credit',       color: C.green,  sign: '+' },
+  admin_debit:         { label: 'Admin Debit',        color: C.red,    sign: '-' },
+  refund:              { label: 'Refund',             color: C.green,  sign: '+' },
+};
+
+type Tab = 'overview' | 'transactions';
 
 export default function WalletScreen() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
@@ -23,12 +37,10 @@ export default function WalletScreen() {
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Deposit state
   const [depositAmount, setDepositAmount] = useState('');
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositError, setDepositError] = useState<string | null>(null);
 
-  // Withdraw state
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawPhone, setWithdrawPhone] = useState('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
@@ -38,261 +50,173 @@ export default function WalletScreen() {
   useEffect(() => {
     getProfile()
       .then(setProfile)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, []);
 
   const loadTx = useCallback(async (page: number) => {
     setTxLoading(true);
-    try {
-      const data = await getWalletTransactions(page);
-      setTxData(data);
-    } catch {
-      // silently fail — show previous data
-    } finally {
-      setTxLoading(false);
-    }
+    try { setTxData(await getWalletTransactions(page)); } catch {}
+    finally { setTxLoading(false); }
   }, []);
 
   useEffect(() => {
-    if (tab === 'transactions') {
-      loadTx(txPage);
-    }
+    if (tab === 'transactions') loadTx(txPage);
   }, [tab, txPage, loadTx]);
 
   const handleDeposit = useCallback(async () => {
     const amount = parseFloat(depositAmount);
-    if (!amount || amount <= 0) {
-      setDepositError('Valid amount required');
-      return;
-    }
-    setDepositLoading(true);
-    setDepositError(null);
+    if (!amount || amount <= 0) { setDepositError('Enter a valid amount'); return; }
+    setDepositLoading(true); setDepositError(null);
     try {
       const res = await depositFunds(amount);
       window.open(res.checkoutUrl, '_blank');
-    } catch (err) {
-      const e = err as { message?: string };
-      setDepositError(e.message ?? 'Deposit failed');
-    } finally {
-      setDepositLoading(false);
-    }
+    } catch (err) { setDepositError((err as { message?: string }).message ?? 'Deposit failed'); }
+    finally { setDepositLoading(false); }
   }, [depositAmount]);
 
   const handleWithdraw = useCallback(async () => {
     const amount = parseFloat(withdrawAmount);
-    if (!amount || amount <= 0) { setWithdrawError('Valid amount required'); return; }
+    if (!amount || amount <= 0) { setWithdrawError('Enter a valid amount'); return; }
     if (!withdrawPhone.trim()) { setWithdrawError('Phone number required'); return; }
-    if (profile && amount > profile.mainWallet.balance) {
-      setWithdrawError('Amount exceeds main wallet balance');
-      return;
+    if (profile && amount > Number(profile.mainWallet?.balance ?? 0)) {
+      setWithdrawError('Exceeds main wallet balance'); return;
     }
-    setWithdrawLoading(true);
-    setWithdrawError(null);
+    setWithdrawLoading(true); setWithdrawError(null);
     try {
       await withdrawFunds(amount, withdrawPhone.trim());
-      setWithdrawSuccess(true);
-      setWithdrawAmount('');
-      setWithdrawPhone('');
-    } catch (err) {
-      const e = err as { message?: string; code?: string };
-      if (e.code === 'PLAY_WALLET_WITHDRAWAL') {
-        setWithdrawError('Play wallet cannot be withdrawn');
-      } else {
-        setWithdrawError(e.message ?? 'Withdrawal failed');
-      }
-    } finally {
-      setWithdrawLoading(false);
-    }
+      setWithdrawSuccess(true); setWithdrawAmount(''); setWithdrawPhone('');
+    } catch (err) { setWithdrawError((err as { message?: string }).message ?? 'Withdrawal failed'); }
+    finally { setWithdrawLoading(false); }
   }, [withdrawAmount, withdrawPhone, profile]);
 
-  if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading…</div>;
-  }
+  if (loading) return <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>Loading…</div>;
+  if (error || !profile) return <div style={{ padding: 24, textAlign: 'center', color: C.red }}>{error ?? 'Failed to load'}</div>;
 
-  if (error || !profile || !profile.mainWallet || !profile.playWallet) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>{error ?? 'Failed to load wallet'}</div>;
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 14px',
-    border: '1px solid #ddd',
-    borderRadius: 8,
-    fontSize: 15,
-    boxSizing: 'border-box',
-  };
-
-  const btnStyle = (disabled: boolean): React.CSSProperties => ({
-    width: '100%',
-    padding: '14px',
-    background: disabled ? '#a5b4fc' : '#4f46e5',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 10,
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: disabled ? 'default' : 'pointer',
-    marginTop: 8,
-  });
-
+  const mainBal = Number(profile.mainWallet?.balance ?? 0);
+  const playBal = Number(profile.playWallet?.balance ?? 0);
   const txTotalPages = txData ? Math.ceil(txData.total / txData.pageSize) : 1;
 
+  const input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input {...props} style={{
+      width: '100%', padding: '13px 14px',
+      background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
+      borderRadius: 12, fontSize: 15, color: C.text, outline: 'none',
+      boxSizing: 'border-box', ...props.style,
+    }} />
+  );
+
+  const btn = (label: string, onClick: () => void, loading2: boolean, color = C.amber) => (
+    <button onClick={onClick} disabled={loading2} style={{
+      width: '100%', padding: '14px', background: loading2 ? 'rgba(255,255,255,0.1)' : color,
+      color: loading2 ? C.muted : '#0a0e1a', border: 'none', borderRadius: 12,
+      fontSize: 15, fontWeight: 800, cursor: loading2 ? 'default' : 'pointer', marginTop: 10,
+    }}>
+      {loading2 ? 'Please wait…' : label}
+    </button>
+  );
+
   return (
-    <div>
-      <div style={{ background: '#4f46e5', color: '#fff', padding: '20px 16px 16px' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>💰 ዋሌት</div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {/* Main wallet */}
-          <div style={{ flex: 1, background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '14px' }}>
-            <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 4 }}>ዋና ዋሌት</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>{Number(profile.mainWallet.balance ?? 0).toFixed(2)}</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>ብር</div>
-          </div>
-          {/* Play wallet */}
-          <div style={{ flex: 1, background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '14px' }}>
-            <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 4 }}>ጨዋታ ዋሌት</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>{Number(profile.playWallet.balance ?? 0).toFixed(2)}</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>ብር</div>
-          </div>
+    <div style={{ background: C.bg, minHeight: '100dvh', paddingBottom: 80 }}>
+
+      {/* ── Header ── */}
+      <div style={{ background: `linear-gradient(135deg, ${C.surface2} 0%, ${C.surface} 100%)`, padding: '20px 20px 18px', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 11, color: C.dim, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>Your Balances</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[
+            { label: 'Main Wallet', value: mainBal, color: C.green },
+            { label: 'Play Wallet', value: playBal, color: '#60a5fa' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color }}>{value.toFixed(2)}</div>
+              <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
+            </div>
+          ))}
         </div>
-        {profile.phone_verified && (
-          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.85 }}>
-            ✅ ስልክ ተረጋግጧል
-          </div>
-        )}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #eee' }}>
-        {(['overview', 'transactions'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              flex: 1,
-              padding: '12px 0',
-              border: 'none',
-              background: 'none',
-              fontWeight: tab === t ? 700 : 400,
-              color: tab === t ? '#4f46e5' : '#666',
-              borderBottom: tab === t ? '2px solid #4f46e5' : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: 14,
-            }}
-          >
-            {t === 'overview' ? 'ክፍያ' : 'ግብይቶች'}
+      {/* ── Tabs ── */}
+      <div style={{ display: 'flex', background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+        {(['overview', 'transactions'] as Tab[]).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            flex: 1, padding: '13px 0', border: 'none', background: 'none',
+            fontWeight: tab === t ? 800 : 400, fontSize: 14,
+            color: tab === t ? C.amber : C.muted,
+            borderBottom: tab === t ? `2px solid ${C.amber}` : '2px solid transparent',
+            cursor: 'pointer',
+          }}>
+            {t === 'overview' ? '💳 Payments' : '📄 Transactions'}
           </button>
         ))}
       </div>
 
       {tab === 'overview' && (
-        <div style={{ padding: 16 }}>
+        <div style={{ padding: '16px' }}>
           {/* Deposit */}
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
-            <div style={{ fontWeight: 700, marginBottom: 12 }}>⬇ ገንዘብ ተቀበል</div>
-            <input
-              type="number"
-              placeholder="Amount (Birr)"
-              value={depositAmount}
-              onChange={(e) => { setDepositAmount(e.target.value); setDepositError(null); }}
-              style={inputStyle}
-              min={1}
-            />
-            {depositError && <div style={{ color: '#e53e3e', fontSize: 13, marginTop: 6 }}>{depositError}</div>}
-            <button onClick={handleDeposit} disabled={depositLoading} style={btnStyle(depositLoading)}>
-              {depositLoading ? 'Opening…' : 'Deposit'}
-            </button>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 14 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 14 }}>⬇ Deposit</div>
+            {input({ type: 'number', placeholder: 'Amount in Birr', value: depositAmount, min: 1, onChange: e => { setDepositAmount(e.target.value); setDepositError(null); } })}
+            {depositError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{depositError}</div>}
+            {btn('Deposit Now', handleDeposit, depositLoading)}
           </div>
 
           {/* Withdraw */}
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
-            <div style={{ fontWeight: 700, marginBottom: 12 }}>⬆ ልኬ / Withdraw</div>
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 14 }}>⬆ Withdraw</div>
             {withdrawSuccess && (
-              <div style={{ background: '#ecfdf5', color: '#065f46', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 14 }}>
-                ✅ ጥያቄዎ ደርሷል። የአስተዳዳሪ ፈቃድ ይጠበቃል።
+              <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: C.green }}>
+                ✅ Request submitted — pending admin approval.
               </div>
             )}
-            <input
-              type="number"
-              placeholder={`Amount (max ${Number(profile.mainWallet.balance ?? 0).toFixed(2)} Birr)`}
-              value={withdrawAmount}
-              onChange={(e) => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }}
-              style={{ ...inputStyle, marginBottom: 8 }}
-              min={1}
-              max={profile.mainWallet.balance ?? 0}
-            />
-            <input
-              type="tel"
-              placeholder="Phone number (e.g. 09XXXXXXXX)"
-              value={withdrawPhone}
-              onChange={(e) => { setWithdrawPhone(e.target.value); setWithdrawError(null); }}
-              style={inputStyle}
-            />
-            {withdrawError && <div style={{ color: '#e53e3e', fontSize: 13, marginTop: 6 }}>{withdrawError}</div>}
-            <button onClick={handleWithdraw} disabled={withdrawLoading} style={btnStyle(withdrawLoading)}>
-              {withdrawLoading ? 'Submitting…' : 'Withdraw'}
-            </button>
+            {input({ type: 'number', placeholder: `Max ${mainBal.toFixed(2)} Birr`, value: withdrawAmount, min: 1, max: mainBal, onChange: e => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }, style: { marginBottom: 10 } })}
+            {input({ type: 'tel', placeholder: 'Phone (e.g. 09XXXXXXXX)', value: withdrawPhone, onChange: e => { setWithdrawPhone(e.target.value); setWithdrawError(null); } })}
+            {withdrawError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{withdrawError}</div>}
+            {btn('Request Withdrawal', handleWithdraw, withdrawLoading, '#0f9b8e')}
           </div>
         </div>
       )}
 
       {tab === 'transactions' && (
-        <div>
-          {txLoading && <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading…</div>}
+        <div style={{ padding: '12px 0' }}>
+          {txLoading && <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>Loading…</div>}
 
           {!txLoading && txData?.items.length === 0 && (
-            <div style={{ padding: 32, textAlign: 'center', color: '#888' }}>ምንም ግብይት የለም።</div>
+            <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>No transactions yet.</div>
           )}
 
-          {!txLoading && txData?.items.filter((tx) => tx != null && tx.amount != null).map((tx) => (
-            <div
-              key={tx.id}
-              style={{
-                background: '#fff',
-                margin: '8px 16px',
-                borderRadius: 10,
-                padding: '12px 16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {TX_LABELS[tx.type] ?? tx.type}
-                </div>
-                <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                  {new Date(tx.created_at).toLocaleDateString()} · {tx.walletType}
-                </div>
-                {tx.note && <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{tx.note}</div>}
-              </div>
-              <div style={{
-                fontWeight: 700,
-                fontSize: 16,
-                color: ['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '#065f46' : '#7f1d1d',
+          {!txLoading && txData?.items.filter(tx => tx?.amount != null).map(tx => {
+            const meta = TX_META[tx.type] ?? { label: tx.type, color: C.muted, sign: '' };
+            return (
+              <div key={tx.id} style={{
+                background: C.surface, margin: '0 14px 10px',
+                borderRadius: 14, padding: '14px 16px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                border: `1px solid ${C.border}`,
               }}>
-                {['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '+' : '-'}{Number(tx.amount ?? 0).toFixed(2)} ብር
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{meta.label}</div>
+                  <div style={{ fontSize: 11, color: C.dim, marginTop: 3 }}>
+                    {new Date(tx.created_at).toLocaleDateString()} · {tx.walletType}
+                  </div>
+                  {tx.note && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{tx.note}</div>}
+                </div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: meta.color }}>
+                  {meta.sign}{Number(tx.amount ?? 0).toFixed(2)} Birr
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {!txLoading && txData && txTotalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, padding: '16px 0' }}>
-              <button
-                onClick={() => setTxPage((p) => Math.max(1, p - 1))}
-                disabled={txPage <= 1}
-                style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: txPage <= 1 ? 'default' : 'pointer' }}
-              >
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '16px 0' }}>
+              <button onClick={() => setTxPage(p => Math.max(1, p - 1))} disabled={txPage <= 1}
+                style={{ padding: '8px 20px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, color: txPage <= 1 ? C.dim : C.amber, cursor: txPage <= 1 ? 'default' : 'pointer', fontWeight: 700 }}>
                 ‹
               </button>
-              <span style={{ alignSelf: 'center', fontSize: 13, color: '#888' }}>{txPage} / {txTotalPages}</span>
-              <button
-                onClick={() => setTxPage((p) => Math.min(txTotalPages, p + 1))}
-                disabled={txPage >= txTotalPages}
-                style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: txPage >= txTotalPages ? 'default' : 'pointer' }}
-              >
+              <span style={{ alignSelf: 'center', fontSize: 13, color: C.muted }}>{txPage} / {txTotalPages}</span>
+              <button onClick={() => setTxPage(p => Math.min(txTotalPages, p + 1))} disabled={txPage >= txTotalPages}
+                style={{ padding: '8px 20px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, color: txPage >= txTotalPages ? C.dim : C.amber, cursor: txPage >= txTotalPages ? 'default' : 'pointer', fontWeight: 700 }}>
                 ›
               </button>
             </div>

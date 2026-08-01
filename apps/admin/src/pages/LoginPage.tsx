@@ -99,7 +99,7 @@ export function LoginPage() {
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        <h1 style={titleStyle}>Beteseb Bingo Admin</h1>
+        <h1 style={titleStyle}>Fidel Bingo Admin</h1>
         <form onSubmit={handleSubmit}>
           <div style={fieldStyle}>
             <label style={labelStyle} htmlFor="username">

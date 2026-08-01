@@ -3,28 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { getHistory } from '../lib/api';
 import type { HistoryEntry, PaginatedResponse } from '@beteseb/shared';
 
-const RESULT_COLORS: Record<string, string> = {
-  win: '#065f46',
-  loss: '#7f1d1d',
-  void: '#78350f',
-  cancelled: '#374151',
+const C = {
+  bg: '#0a0e1a', surface: '#0d1b2e', surface2: '#112240',
+  border: 'rgba(255,255,255,0.07)', amber: '#f59e0b',
+  text: '#f1f5f9', muted: '#64748b', dim: '#475569',
+  green: '#34d399', red: '#f87171',
 };
 
-const RESULT_LABELS: Record<string, string> = {
-  win: '🏆 አሸነፍ',
-  loss: '😔 አልተሳካም',
-  void: '↩ ተሰርዟል',
-  cancelled: '✕ ተሰረዘ',
+const RESULT: Record<string, { label: string; color: string; bg: string }> = {
+  win:       { label: '🏆 Won',      color: C.green,  bg: 'rgba(52,211,153,0.12)' },
+  loss:      { label: '😔 Lost',     color: C.red,    bg: 'rgba(248,113,113,0.12)' },
+  void:      { label: '↩ Voided',   color: C.amber,  bg: 'rgba(245,158,11,0.12)' },
+  cancelled: { label: '✕ Cancelled', color: C.muted,  bg: 'rgba(100,116,139,0.12)' },
 };
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('am-ET', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export default function HistoryScreen() {
   const navigate = useNavigate();
@@ -34,111 +25,81 @@ export default function HistoryScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (p: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getHistory(p);
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load history');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { setData(await getHistory(p)); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Failed to load'); }
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    load(page);
-  }, [page, load]);
+  useEffect(() => { load(page); }, [page, load]);
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 1;
 
   return (
-    <div>
-      <div style={{ background: '#4f46e5', color: '#fff', padding: '20px 16px 16px', fontSize: 18, fontWeight: 700 }}>
-        📋 የጨዋታ ታሪክ
+    <div style={{ background: C.bg, minHeight: '100dvh', paddingBottom: 80 }}>
+
+      {/* ── Header ── */}
+      <div style={{ background: `linear-gradient(135deg, ${C.surface2}, ${C.surface})`, padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 11, color: C.dim, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>My Games</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: C.text }}>Game History</div>
       </div>
 
-      {loading && (
-        <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading…</div>
-      )}
-
-      {error && (
-        <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>{error}</div>
-      )}
+      {loading && <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>Loading…</div>}
+      {error && <div style={{ padding: 24, textAlign: 'center', color: C.red }}>{error}</div>}
 
       {!loading && !error && data?.items.length === 0 && (
-        <div style={{ padding: 32, textAlign: 'center', color: '#888' }}>
-          ገና ምንም ጨዋታ አልተጫወቱም።
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: C.muted }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🎮</div>
+          No games played yet.
         </div>
       )}
 
-      {!loading && data && data.items.map((entry) => (
-        <div
-          key={entry.roundId}
-          onClick={() => navigate(`/history/${entry.roundId}`)}
-          style={{
-            background: '#fff',
-            margin: '10px 16px',
-            borderRadius: 12,
-            padding: '14px 16px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.07)',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>
-              ጨዋታ #{entry.gameId.slice(-6).toUpperCase()}
-            </div>
-            <div style={{ fontSize: 13, color: '#666', marginTop: 3 }}>
-              {formatDate(entry.date)} · ካርቴላ #{entry.cartelaNumber}
-            </div>
-            <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
-              ዋጋ: {entry.stake} ብር
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{
-              background: RESULT_COLORS[entry.result] ?? '#374151',
-              color: '#fff',
-              borderRadius: 6,
-              padding: '4px 10px',
-              fontSize: 12,
-              fontWeight: 700,
-              marginBottom: 4,
-            }}>
-              {RESULT_LABELS[entry.result] ?? entry.result}
-            </div>
-            {entry.prize > 0 && (
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#065f46' }}>
-                +{entry.prize} ብር
+      <div style={{ padding: '12px 14px' }}>
+        {!loading && data?.items.map(entry => {
+          const r = RESULT[entry.result] ?? RESULT.cancelled!;
+          return (
+            <div key={entry.roundId}
+              onClick={() => navigate(`/history/${entry.roundId}`)}
+              style={{
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: 16, padding: '14px 16px', marginBottom: 10,
+                cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: C.text, marginBottom: 4 }}>
+                  Game #{entry.gameId.slice(-6).toUpperCase()}
+                </div>
+                <div style={{ fontSize: 12, color: C.muted }}>
+                  Cartela #{entry.cartelaNumber} · {entry.stake} Birr stake
+                </div>
+                <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>
+                  {new Date(entry.date).toLocaleDateString('en-ET', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      ))}
+              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                <div style={{ background: r.bg, color: r.color, borderRadius: 10, padding: '5px 10px', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                  {r.label}
+                </div>
+                {entry.prize > 0 && (
+                  <div style={{ fontSize: 14, fontWeight: 900, color: C.green }}>+{entry.prize} Birr</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Pagination */}
       {!loading && data && totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, padding: '16px 0' }}>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: page <= 1 ? 'default' : 'pointer', color: '#4f46e5' }}
-          >
-            ‹ ቀዳሚ
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '8px 0 16px' }}>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+            style={{ padding: '8px 20px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, color: page <= 1 ? C.dim : C.amber, cursor: page <= 1 ? 'default' : 'pointer', fontWeight: 700 }}>
+            ‹ Prev
           </button>
-          <span style={{ alignSelf: 'center', fontSize: 13, color: '#888' }}>
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #ddd', background: '#fff', cursor: page >= totalPages ? 'default' : 'pointer', color: '#4f46e5' }}
-          >
-            ቀጣይ ›
+          <span style={{ alignSelf: 'center', fontSize: 13, color: C.muted }}>{page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+            style={{ padding: '8px 20px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, color: page >= totalPages ? C.dim : C.amber, cursor: page >= totalPages ? 'default' : 'pointer', fontWeight: 700 }}>
+            Next ›
           </button>
         </div>
       )}

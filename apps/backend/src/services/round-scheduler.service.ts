@@ -36,6 +36,12 @@ export const RoundScheduler = {
       update: { value: '1' },
       create: { key: 'min_players_to_start', value: '1' },
     });
+    // Ensure call_interval_ms is exactly 5000ms
+    void prisma.config.upsert({
+      where: { key: 'call_interval_ms' },
+      update: { value: '5000' },
+      create: { key: 'call_interval_ms', value: '5000' },
+    });
     // Resume any active rounds that were left mid-game by a server restart
     void RoundScheduler.recoverActiveRounds();
     void RoundScheduler.tick();

@@ -313,7 +313,7 @@ export default function LiveGameScreen() {
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div style={{ background: '#0f0c29', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
         <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
-        <span style={{ fontWeight: 800, fontSize: 16 }}>Beteseb Bingo</span>
+        <span style={{ fontWeight: 800, fontSize: 16 }}>Fidel Bingo</span>
         <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 18, cursor: 'pointer' }}>
           {soundOn ? '🔊' : '🔇'}
         </button>
