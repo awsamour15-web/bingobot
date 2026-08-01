@@ -11,7 +11,7 @@ const router: RouterType = Router();
 // GET /api/admin/players — paginated list with optional search
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   const page = Math.max(1, parseInt(req.query['page'] as string) || 1);
-  const limit = Math.min(100, parseInt(req.query['limit'] as string) || 20);
+  const pageSize = Math.min(100, parseInt(req.query['limit'] as string) || 20);
   const search = (req.query['search'] as string | undefined) ?? '';
 
   const where = search
@@ -26,15 +26,32 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const [players, total] = await Promise.all([
     prisma.player.findMany({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       orderBy: { created_at: 'desc' },
-      include: { wallets: { select: { type: true, balance: true } } },
+      include: {
+        wallets: { select: { type: true, balance: true } },
+        _count: { select: { round_entries: true, referrals: true } },
+      },
     }),
     prisma.player.count({ where }),
   ]);
 
-  res.json({ players, total, page, limit });
+  const items = players.map((p) => ({
+    id: p.id,
+    username: p.username,
+    telegram_id: String(p.telegram_id),
+    phone: p.phone ?? undefined,
+    phone_verified: p.phone_verified,
+    is_suspended: p.is_suspended,
+    main_wallet_balance: Number(p.wallets.find((w) => w.type === 'main')?.balance ?? 0),
+    play_wallet_balance: Number(p.wallets.find((w) => w.type === 'play')?.balance ?? 0),
+    created_at: p.created_at.toISOString(),
+    total_games: p._count.round_entries,
+    total_referrals: p._count.referrals,
+  }));
+
+  res.json({ items, total, page, pageSize });
 });
 
 // GET /api/admin/players/:id — full player detail
@@ -44,19 +61,8 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   const player = await prisma.player.findUnique({
     where: { id },
     include: {
-      wallets: {
-        include: {
-          transactions: {
-            orderBy: { created_at: 'desc' },
-            take: 50,
-          },
-        },
-      },
-      round_entries: {
-        orderBy: { joined_at: 'desc' },
-        take: 50,
-        include: { round: true },
-      },
+      wallets: { select: { type: true, balance: true } },
+      _count: { select: { round_entries: true, referrals: true } },
     },
   });
 
@@ -65,7 +71,19 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  res.json(player);
+  res.json({
+    id: player.id,
+    username: player.username,
+    telegram_id: String(player.telegram_id),
+    phone: player.phone ?? undefined,
+    phone_verified: player.phone_verified,
+    is_suspended: player.is_suspended,
+    main_wallet_balance: Number(player.wallets.find((w) => w.type === 'main')?.balance ?? 0),
+    play_wallet_balance: Number(player.wallets.find((w) => w.type === 'play')?.balance ?? 0),
+    created_at: player.created_at.toISOString(),
+    total_games: player._count.round_entries,
+    total_referrals: player._count.referrals,
+  });
 });
 
 // PATCH /api/admin/players/:id/suspend

@@ -15,7 +15,23 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       _count: { select: { round_entries: true, called_numbers: true } },
     },
   });
-  res.json(rounds);
+
+  const items = rounds.map((r) => ({
+    id: r.id,
+    stake: Number(r.stake),
+    status: r.status,
+    player_count: r._count.round_entries,
+    max_players: r.max_players,
+    derash: Number(r.derash),
+    called_numbers_count: r._count.called_numbers,
+    start_time: r.start_time.toISOString(),
+    ended_at: r.ended_at?.toISOString() ?? undefined,
+    winner_player_id: r.winner_player_id ?? undefined,
+    winner_cartela_number: r.winner_cartela_number ?? undefined,
+    commission_pct: r.commission_pct,
+  }));
+
+  res.json({ items, total: items.length, page: 1, pageSize: items.length });
 });
 
 // POST /api/admin/rounds — create a new round
@@ -37,7 +53,25 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     Number(maxPlayers),
   );
 
-  res.status(201).json({ roundId });
+  const round = await prisma.gameRound.findUniqueOrThrow({
+    where: { id: roundId },
+    include: { _count: { select: { round_entries: true, called_numbers: true } } },
+  });
+
+  res.status(201).json({
+    id: round.id,
+    stake: Number(round.stake),
+    status: round.status,
+    player_count: round._count.round_entries,
+    max_players: round.max_players,
+    derash: Number(round.derash),
+    called_numbers_count: round._count.called_numbers,
+    start_time: round.start_time.toISOString(),
+    ended_at: round.ended_at?.toISOString() ?? undefined,
+    winner_player_id: round.winner_player_id ?? undefined,
+    winner_cartela_number: round.winner_cartela_number ?? undefined,
+    commission_pct: round.commission_pct,
+  });
 });
 
 // POST /api/admin/rounds/:id/start — force-start a round

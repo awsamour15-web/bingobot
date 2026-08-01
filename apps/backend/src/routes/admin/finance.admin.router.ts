@@ -13,8 +13,26 @@ router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> =
   const withdrawals = await prisma.transaction.findMany({
     where: { type: TxType.withdrawal, note: { startsWith: 'PENDING:' } },
     orderBy: { created_at: 'desc' },
+    include: {
+      wallet: {
+        select: {
+          player: { select: { id: true, username: true, phone: true } },
+        },
+      },
+    },
   });
-  res.json(withdrawals);
+
+  const result = withdrawals.map((tx) => ({
+    id: tx.id,
+    player_id: tx.wallet.player.id,
+    username: tx.wallet.player.username,
+    phone: tx.wallet.player.phone ?? '',
+    amount: Number(tx.amount),
+    created_at: tx.created_at.toISOString(),
+    status: 'pending' as const,
+  }));
+
+  res.json(result);
 });
 
 // POST /api/admin/withdrawals/:id/approve — approve withdrawal
@@ -118,7 +136,11 @@ router.get('/revenue', async (req: Request, res: Response): Promise<void> => {
     }
   }
 
-  res.json({ totalStakes, totalPrizes, totalCommission });
+  res.json({
+    totalStakesCollected: totalStakes,
+    totalPrizesPaid: totalPrizes,
+    platformCommissionEarned: totalCommission,
+  });
 });
 
 export default router;
