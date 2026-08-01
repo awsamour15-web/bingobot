@@ -38,7 +38,7 @@ export default function ProfileScreen() {
     return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading…</div>;
   }
 
-  if (error || !profile) {
+  if (error || !profile || !profile.mainWallet || !profile.playWallet) {
     return <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>{error ?? 'Failed to load profile'}</div>;
   }
 

@@ -110,7 +110,7 @@ export default function WalletScreen() {
     return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading…</div>;
   }
 
-  if (error || !profile) {
+  if (error || !profile || !profile.mainWallet || !profile.playWallet) {
     return <div style={{ padding: 24, textAlign: 'center', color: '#e53e3e' }}>{error ?? 'Failed to load wallet'}</div>;
   }
 
@@ -245,7 +245,7 @@ export default function WalletScreen() {
             <div style={{ padding: 32, textAlign: 'center', color: '#888' }}>ምንም ግብይት የለም።</div>
           )}
 
-          {!txLoading && txData?.items.filter((tx) => tx != null).map((tx) => (
+          {!txLoading && txData?.items.filter((tx) => tx != null && tx.amount != null).map((tx) => (
             <div
               key={tx.id}
               style={{

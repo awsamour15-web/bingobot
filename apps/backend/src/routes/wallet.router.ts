@@ -59,15 +59,17 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
     prisma.transaction.count({ where: { wallet_id: { in: walletIds } } }),
   ]);
 
-  const items: TransactionListItem[] = transactions.map((tx) => ({
-    id: tx.id,
-    type: tx.type,
-    amount: Number(tx.amount),
-    walletType: walletTypeMap.get(tx.wallet_id)!,
-    note: tx.note ?? undefined,
-    reference_id: tx.reference_id ?? undefined,
-    created_at: tx.created_at.toISOString(),
-  }));
+  const items: TransactionListItem[] = transactions
+    .filter((tx) => walletTypeMap.has(tx.wallet_id))
+    .map((tx) => ({
+      id: tx.id,
+      type: tx.type,
+      amount: Number(tx.amount ?? 0),
+      walletType: walletTypeMap.get(tx.wallet_id)!,
+      note: tx.note ?? undefined,
+      reference_id: tx.reference_id ?? undefined,
+      created_at: tx.created_at.toISOString(),
+    }));
 
   const response: PaginatedResponse<TransactionListItem> = {
     items,

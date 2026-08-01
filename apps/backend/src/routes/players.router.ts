@@ -32,6 +32,11 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
   const mainWallet = player.wallets.find((w) => w.type === 'main');
   const playWallet = player.wallets.find((w) => w.type === 'play');
 
+  if (!mainWallet || !playWallet) {
+    res.status(500).json({ error: 'WALLET_MISSING', message: 'Player wallets not found' });
+    return;
+  }
+
   const profile: PlayerProfile = {
     id: player.id,
     username: player.username,
@@ -40,14 +45,14 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
     is_suspended: player.is_suspended,
     created_at: player.created_at.toISOString(),
     mainWallet: {
-      id: mainWallet!.id,
-      type: mainWallet!.type,
-      balance: Number(mainWallet!.balance),
+      id: mainWallet.id,
+      type: mainWallet.type,
+      balance: Number(mainWallet.balance),
     },
     playWallet: {
-      id: playWallet!.id,
-      type: playWallet!.type,
-      balance: Number(playWallet!.balance),
+      id: playWallet.id,
+      type: playWallet.type,
+      balance: Number(playWallet.balance),
     },
   };
 

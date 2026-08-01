@@ -226,23 +226,21 @@ export default function LiveGameScreen() {
     nextRoundFiredRef.current = true;
 
     async function go() {
-      const stake = sessionStorage.getItem('selectedStake');
-      console.log('[LiveGame] Looking for next round, stake:', stake);
+      // Prefer sessionStorage stake, fall back to current round's stake
+      const stakeRaw = sessionStorage.getItem('selectedStake') ?? String(round?.stake ?? '');
+      const stake = Number(stakeRaw);
 
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 30; i++) {
         try {
           const rounds = await getRounds();
-          console.log('[LiveGame] Available rounds:', rounds.map(r => ({ id: r.id, stake: r.stake, status: r.status })));
-          // Only navigate to a PENDING round — never re-enter an active round
-          // (which may be the same round still finishing, or a different one mid-game).
-          // The scheduler always has a pending round ready within a few seconds.
+          // Find a pending round with matching stake that isn't the current one
           const next = rounds.find(
-            (r) => Number(r.stake) === Number(stake) && r.status === 'pending' && r.id !== roundId,
+            (r) => Number(r.stake) === stake && r.status === 'pending' && r.id !== roundId,
           );
           if (next) {
-            console.log('[LiveGame] Found next round:', next.id, next.status);
             sessionStorage.setItem('stakeSelectedForRound', next.id);
             sessionStorage.setItem('selectedRoundId', next.id);
+            sessionStorage.setItem('selectedStake', String(next.stake));
             navigate(`/rounds/${next.id}/cartela`, { replace: true });
             return;
           }
@@ -251,6 +249,7 @@ export default function LiveGameScreen() {
         }
         await new Promise<void>((r) => setTimeout(r, 2000));
       }
+      // After 60s of trying, go back to game selection
       navigate('/', { replace: true });
     }
     void go();
