@@ -49,6 +49,9 @@ export default function LiveGameScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimPending, setClaimPending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
+  // Keep a ref in sync so socket handlers always read the latest value
+  const soundOnRef = useRef(soundOn);
+  useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
 
   const [game, setGame] = useState<GameState>({
@@ -65,26 +68,26 @@ export default function LiveGameScreen() {
   const audioCache = useRef<Map<number, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
-    if (!soundOn) return;
-    // Preload 1-75 in background without blocking
+    // Preload all 75 sounds immediately on mount regardless of soundOn state
+    // so they are ready when needed with no network delay
     for (let n = 1; n <= 75; n++) {
       if (audioCache.current.has(n)) continue;
-      const audio = new Audio(`/boy sound/${n}.wav`);
+      const audio = new Audio(`/sounds/${n}.wav`);
       audio.preload = 'auto';
       audioCache.current.set(n, audio);
     }
-  }, [soundOn]);
+  }, []);
 
   function playSound(num: number) {
-    if (!soundOn) return;
+    if (!soundOnRef.current) return;
     try {
       const cached = audioCache.current.get(num);
       if (cached) {
         cached.currentTime = 0;
         cached.play().catch(() => {});
       } else {
-        // Fallback: load on demand if not cached yet
-        const a = new Audio(`/boy sound/${num}.wav`);
+        const a = new Audio(`/sounds/${num}.wav`);
+        a.preload = 'auto';
         audioCache.current.set(num, a);
         a.play().catch(() => {});
       }
@@ -146,7 +149,7 @@ export default function LiveGameScreen() {
         next.add(p.number);
         return { ...g, calledNumbers: next, lastCalled: p.number, phase: g.phase === 'waiting' ? 'active' : g.phase };
       });
-      if (soundOn) playSound(p.number);
+      playSound(p.number);
     };
     const onStarted = (p: RoundStartedPayload) =>
       setGame((g) => ({ ...g, phase: 'active', derash: p.derash, playerCount: p.playerCount }));
