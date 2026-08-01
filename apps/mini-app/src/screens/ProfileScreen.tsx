@@ -87,11 +87,11 @@ export default function ProfileScreen() {
       {/* Stats */}
       <div style={{ display: 'flex', gap: 0, margin: '10px 16px', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
         <div style={{ flex: 1, padding: '14px 8px', textAlign: 'center', borderRight: '1px solid #f3f4f6' }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#4f46e5' }}>{Number(profile.mainWallet.balance).toFixed(0)}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#4f46e5' }}>{Number(profile.mainWallet.balance ?? 0).toFixed(0)}</div>
           <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>ዋና ዋሌት (ብር)</div>
         </div>
         <div style={{ flex: 1, padding: '14px 8px', textAlign: 'center', borderRight: '1px solid #f3f4f6' }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#4f46e5' }}>{Number(profile.playWallet.balance).toFixed(0)}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#4f46e5' }}>{Number(profile.playWallet.balance ?? 0).toFixed(0)}</div>
           <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>ጨዋታ ዋሌት (ብር)</div>
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function ProfileScreen() {
             </div>
             <div>
               <div style={{ color: '#888' }}>ጠቅላላ ሽልማት</div>
-              <div style={{ fontWeight: 700, fontSize: 18, color: '#065f46' }}>{Number(referral.totalEarnings).toFixed(2)} ብር</div>
+              <div style={{ fontWeight: 700, fontSize: 18, color: '#065f46' }}>{Number(referral.totalEarnings ?? 0).toFixed(2)} ብር</div>
             </div>
           </div>
         </div>
