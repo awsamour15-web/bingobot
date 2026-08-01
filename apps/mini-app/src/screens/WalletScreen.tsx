@@ -146,13 +146,13 @@ export default function WalletScreen() {
           {/* Main wallet */}
           <div style={{ flex: 1, background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '14px' }}>
             <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 4 }}>ዋና ዋሌት</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>{profile.mainWallet.balance.toFixed(2)}</div>
+            <div style={{ fontSize: 26, fontWeight: 900 }}>{Number(profile.mainWallet.balance).toFixed(2)}</div>
             <div style={{ fontSize: 12, opacity: 0.7 }}>ብር</div>
           </div>
           {/* Play wallet */}
           <div style={{ flex: 1, background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '14px' }}>
             <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 4 }}>ጨዋታ ዋሌት</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>{profile.playWallet.balance.toFixed(2)}</div>
+            <div style={{ fontSize: 26, fontWeight: 900 }}>{Number(profile.playWallet.balance).toFixed(2)}</div>
             <div style={{ fontSize: 12, opacity: 0.7 }}>ብር</div>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function WalletScreen() {
             )}
             <input
               type="number"
-              placeholder={`Amount (max ${profile.mainWallet.balance.toFixed(2)} Birr)`}
+              placeholder={`Amount (max ${Number(profile.mainWallet.balance).toFixed(2)} Birr)`}
               value={withdrawAmount}
               onChange={(e) => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }}
               style={{ ...inputStyle, marginBottom: 8 }}
@@ -273,7 +273,7 @@ export default function WalletScreen() {
                 fontSize: 16,
                 color: ['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '#065f46' : '#7f1d1d',
               }}>
-                {['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '+' : '-'}{tx.amount.toFixed(2)} ብር
+                {['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '+' : '-'}{Number(tx.amount).toFixed(2)} ብር
               </div>
             </div>
           ))}

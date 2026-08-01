@@ -171,7 +171,7 @@ export default function CartelaScreen() {
           <div><span style={{ opacity: 0.6 }}>Stake </span><strong>{round.stake} Birr</strong></div>
           <div><span style={{ opacity: 0.6 }}>Prize </span><strong style={{ color: '#f5d06b' }}>{round.derash} Birr</strong></div>
           <div><span style={{ opacity: 0.6 }}>Players </span><strong>{round.player_count}</strong></div>
-          {balances && <div><span style={{ opacity: 0.6 }}>Balance </span><strong>{balances.playWallet.balance.toFixed(0)} Birr</strong></div>}
+          {balances && <div><span style={{ opacity: 0.6 }}>Balance </span><strong>{Number(balances.playWallet.balance).toFixed(0)} Birr</strong></div>}
         </div>
       </div>
 
