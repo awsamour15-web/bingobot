@@ -167,6 +167,12 @@ export const WinDetectionService = {
       void notifyWin(playerId, derash);
     }).catch(() => {});
 
+    // Immediately create the next pending round for this stake so clients
+    // don't have to wait up to 15s for the scheduler tick
+    import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
+      void RoundScheduler.ensureRoundsExist();
+    }).catch(() => {});
+
     return { valid: true };
   },
 };

@@ -226,6 +226,12 @@ export class NumberCallingEngine {
     if (this.onRoundVoid) {
       await this.onRoundVoid(roundId);
     }
+
+    // Immediately create the next pending round for this stake so clients
+    // don't have to wait up to 15s for the scheduler tick
+    import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
+      void RoundScheduler.ensureRoundsExist();
+    }).catch(() => {});
   }
 
   /** Read call_interval_ms from Config, falling back to 5 000 ms. */
