@@ -273,7 +273,7 @@ export default function WalletScreen() {
                 fontSize: 16,
                 color: ['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '#065f46' : '#7f1d1d',
               }}>
-                {['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '+' : '-'}{Number(tx.amount).toFixed(2)} ብር
+                {['deposit', 'prize', 'refund', 'referral_commission', 'admin_credit'].includes(tx.type) ? '+' : '-'}{Number(tx.amount ?? 0).toFixed(2)} ብር
               </div>
             </div>
           ))}
