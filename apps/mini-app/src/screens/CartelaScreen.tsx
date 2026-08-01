@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, getCartelaGrid, joinRound, getProfile } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRound, getProfile } from '../lib/api';
 import { socket } from '../lib/socket';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload } from '../lib/api';
 
@@ -9,8 +9,6 @@ interface ProfileBalances {
   playWallet: { balance: number };
 }
 
-const COLS = ['B', 'I', 'N', 'G', 'O'];
-const COL_COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#dc2626'];
 const TOTAL = 800;
 const MAX_SELECT = 2;
 
@@ -33,41 +31,6 @@ function useServerCountdown(targetIso: string | null) {
   };
 }
 
-// 5×5 cartela preview
-function CartelaPreview({ grid, label }: { grid: number[]; label: string }) {
-  if (!grid.length) return null;
-  return (
-    <div style={{ background: '#0d1b2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, overflow: 'hidden', width: '100%' }}>
-      {/* Header */}
-      <div style={{ background: '#112240', padding: '6px 0', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>
-        Cartela #{label}
-      </div>
-      {/* Column headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
-        {COLS.map((c, i) => (
-          <div key={c} style={{ background: COL_COLORS[i], textAlign: 'center', padding: '5px 0', fontWeight: 900, fontSize: 13, color: '#fff' }}>{c}</div>
-        ))}
-      </div>
-      {/* Grid cells */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
-        {grid.map((val, idx) => {
-          const isFree = idx === 12;
-          return (
-            <div key={idx} style={{
-              aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: isFree ? '#f59e0b' : '#1a2744',
-              color: isFree ? '#0a0e1a' : '#e2e8f0',
-              borderRadius: 4, fontSize: 12, fontWeight: isFree ? 900 : 600,
-            }}>
-              {isFree ? '★' : val}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function CartelaScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -84,10 +47,6 @@ export default function CartelaScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [picks, setPicks] = useState<number[]>([]);
-  // Preview grids for selected cartelas
-  const [previewGrids, setPreviewGrids] = useState<Record<number, number[]>>({});
-  const [previewLoading, setPreviewLoading] = useState<Record<number, boolean>>({});
-
   const [joining, setJoining] = useState(false);
   const joinedRef = useRef(false);
   const countdownStartedRef = useRef(false);
@@ -134,17 +93,6 @@ export default function CartelaScreen() {
 
   useEffect(() => { if (msLeft > 0) countdownStartedRef.current = true; }, [msLeft]);
 
-  // Fetch cartela grid when a number is picked
-  const fetchGrid = useCallback(async (num: number) => {
-    if (!roundId || previewGrids[num]) return;
-    setPreviewLoading(p => ({ ...p, [num]: true }));
-    try {
-      const data = await getCartelaGrid(roundId, num);
-      setPreviewGrids(p => ({ ...p, [num]: data.grid }));
-    } catch {}
-    finally { setPreviewLoading(p => ({ ...p, [num]: false })); }
-  }, [roundId, previewGrids]);
-
   // Join + navigate when timer hits 0
   useEffect(() => {
     if (!round || msLeft > 0 || (!countdownStartedRef.current && !manualTrigger) || joinedRef.current || joining) return;
@@ -189,6 +137,7 @@ export default function CartelaScreen() {
     if (joining) return;
     if (picks.includes(num)) {
       setPicks(prev => prev.filter(n => n !== num));
+      setError(null);
       return;
     }
     if (round && balances) {
@@ -206,7 +155,6 @@ export default function CartelaScreen() {
       if (prev.length >= MAX_SELECT) return prev;
       return [...prev, num];
     });
-    fetchGrid(num);
   }
 
   if (loading) return (
@@ -291,70 +239,45 @@ export default function CartelaScreen() {
         </div>
       )}
 
-      {/* ── Main content: grid + previews ── */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/* ── Legend ── */}
+      <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e3a5f', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(255,255,255,0.04)', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
+        {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
+      </div>
 
-        {/* Selected cartela previews */}
-        {picks.length > 0 && (
-          <div style={{ padding: '10px 12px 0', flexShrink: 0, display: 'grid', gridTemplateColumns: picks.length === 2 ? '1fr 1fr' : '1fr', gap: 8 }}>
-            {picks.map(num => (
-              <div key={num} style={{ position: 'relative' }}>
-                {previewLoading[num]
-                  ? <div style={{ background: '#0d1b2e', borderRadius: 12, padding: 20, textAlign: 'center', color: '#475569', fontSize: 12 }}>Loading…</div>
-                  : previewGrids[num]
-                    ? <CartelaPreview grid={previewGrids[num]!} label={String(num)} />
-                    : null
-                }
-                {/* Remove button */}
-                <button onClick={() => setPicks(p => p.filter(n => n !== num))}
-                  style={{ position: 'absolute', top: 6, right: 6, background: '#ef4444', border: 'none', borderRadius: '50%', width: 20, height: 20, color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, zIndex: 2 }}>
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* ── Number grid ── */}
+      <div style={{
+        flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
+        gap: 4, padding: '0 10px 20px', alignContent: 'start',
+      }}>
+        {allNumbers.map(num => {
+          const taken = takenSet.has(num);
+          const isPicked = picks.includes(num);
+          const noBalance = !isPicked && !canAfford;
+          const disabled = joining || taken || (!isPicked && !canPick) || noBalance;
+          const bg = isPicked ? '#f59e0b' : taken ? 'rgba(255,255,255,0.04)' : noBalance ? 'rgba(255,255,255,0.03)' : '#1e3a5f';
+          const color = isPicked ? '#0a0e1a' : taken || noBalance ? '#1e293b' : '#e2e8f0';
 
-        {/* Legend */}
-        <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
-          <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#3730a3', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
-          <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
-          <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
-          {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
-        </div>
-
-        {/* Number grid */}
-        <div style={{
-          flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
-          gap: 4, padding: '0 10px 20px', alignContent: 'start',
-        }}>
-          {allNumbers.map(num => {
-            const taken = takenSet.has(num);
-            const isPicked = picks.includes(num);
-            const noBalance = !isPicked && !canAfford;
-            const disabled = joining || taken || (!isPicked && !canPick) || noBalance;
-            const bg = isPicked ? '#f59e0b' : taken ? 'rgba(255,255,255,0.04)' : noBalance ? 'rgba(255,255,255,0.03)' : '#1e3a5f';
-            const color = isPicked ? '#0a0e1a' : taken || noBalance ? '#1e293b' : '#e2e8f0';
-
-            return (
-              <button key={num} disabled={disabled} onClick={() => togglePick(num)}
-                style={{
-                  padding: '8px 0', borderRadius: 7,
-                  border: isPicked ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.06)',
-                  background: bg, color, fontWeight: isPicked ? 900 : 600,
-                  fontSize: 11, cursor: disabled ? 'default' : 'pointer',
-                  opacity: taken ? 0.3 : noBalance ? 0.2 : 1,
-                  transform: isPicked ? 'scale(1.06)' : 'scale(1)',
-                  transition: 'transform 0.1s, background 0.15s',
-                  WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-                  lineHeight: 1, boxSizing: 'border-box', userSelect: 'none',
-                }}>
-                {num}
-              </button>
-            );
-          })}
-        </div>
+          return (
+            <button key={num} disabled={disabled} onClick={() => togglePick(num)}
+              style={{
+                padding: '8px 0', borderRadius: 7,
+                border: isPicked ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.06)',
+                background: bg, color, fontWeight: isPicked ? 900 : 600,
+                fontSize: 11, cursor: disabled ? 'default' : 'pointer',
+                opacity: taken ? 0.3 : noBalance ? 0.2 : 1,
+                transform: isPicked ? 'scale(1.06)' : 'scale(1)',
+                transition: 'transform 0.1s, background 0.15s',
+                WebkitAppearance: 'none', appearance: 'none', outline: 'none',
+                lineHeight: 1, boxSizing: 'border-box', userSelect: 'none',
+              }}>
+              {num}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Joining overlay ── */}
