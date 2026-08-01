@@ -64,6 +64,12 @@ export class NumberCallingEngine {
    * - After all 75 numbers, triggers the void flow if the round has no winner.
    */
   async start(roundId: string): Promise<void> {
+    // Guard against double-start (e.g. concurrent resume calls on server restart)
+    if (this.activeTimers.has(roundId)) {
+      console.log(`[NCE] Round ${roundId} already running — skipping duplicate start`);
+      return;
+    }
+
     const callIntervalMs = await this.readCallInterval();
 
     // Load already-called numbers from DB (ordered by sequence_index)
@@ -127,9 +133,11 @@ export class NumberCallingEngine {
         return;
       }
 
-      // Persist to DB
-      await prisma.calledNumber.create({
-        data: { round_id: roundId, number, sequence_index: sequenceIndex },
+      // Persist to DB — upsert is idempotent against duplicate (round_id, sequence_index)
+      await prisma.calledNumber.upsert({
+        where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
+        update: {},
+        create: { round_id: roundId, number, sequence_index: sequenceIndex },
       });
 
       const payload: NumberCalledPayload = { number, sequenceIndex };
