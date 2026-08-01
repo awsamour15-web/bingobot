@@ -24,8 +24,19 @@ const app: Express = express();
 // Trust the first proxy (required on Render/Heroku/etc. for rate limiting and IP detection)
 app.set('trust proxy', 1);
 
+const allowedOrigins = process.env['CORS_ORIGIN']
+  ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
+  : ['https://fidelbingo-admin.pages.dev', 'https://bingobot.pages.dev'];
+
 app.use(cors({
-  origin: process.env['CORS_ORIGIN'] ?? '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
