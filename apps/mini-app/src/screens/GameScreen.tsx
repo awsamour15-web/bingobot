@@ -26,7 +26,11 @@ export default function GameScreen() {
       try {
         await initAuth();
         const data = await getRounds();
-        if (!cancelled) setRounds(data.filter(r => ALLOWED_STAKES.includes(Number(r.stake))));
+        if (!cancelled) setRounds(
+          data
+            .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))
+            .sort((a, b) => Number(a.stake) - Number(b.stake))
+        );
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
