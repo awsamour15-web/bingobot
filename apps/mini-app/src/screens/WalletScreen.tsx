@@ -245,7 +245,7 @@ export default function WalletScreen() {
             <div style={{ padding: 32, textAlign: 'center', color: '#888' }}>ምንም ግብይት የለም።</div>
           )}
 
-          {!txLoading && txData?.items.map((tx) => (
+          {!txLoading && txData?.items.filter((tx) => tx != null).map((tx) => (
             <div
               key={tx.id}
               style={{
