@@ -34,7 +34,23 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     orderBy: { start_time: 'asc' },
   });
 
-  const items: RoundListItem[] = rounds.map((r) => ({
+  // Deduplicate: keep at most one round per stake level.
+  // Selection rule: active beats pending; within the same status, earliest
+  // start_time wins (already guaranteed by the orderBy above).
+  const canonicalByStake = new Map<number, typeof rounds[number]>();
+  for (const round of rounds) {
+    const stake = Number(round.stake);
+    const existing = canonicalByStake.get(stake);
+    if (!existing) {
+      canonicalByStake.set(stake, round);
+    } else if (round.status === 'active' && existing.status !== 'active') {
+      // active always beats pending
+      canonicalByStake.set(stake, round);
+    }
+    // among equal status, keep the earliest start_time (already guaranteed by ORDER BY)
+  }
+
+  const items: RoundListItem[] = [...canonicalByStake.values()].map((r) => ({
     id: r.id,
     stake: Number(r.stake),
     status: r.status,

@@ -11,44 +11,31 @@ export default function GameScreen() {
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         await initAuth();
         const data = await getRounds();
-
-        // Group by stake — prefer pending, fall back to active. Only 10/20/50.
-        const byStake = new Map<number, RoundListItem>();
-        for (const r of data) {
-          const stake = Number(r.stake);
-          if (!ALLOWED_STAKES.includes(stake)) continue;
-          const existing = byStake.get(stake);
-          if (!existing) {
-            byStake.set(stake, r);
-          } else {
-            // Prefer pending over active; among same status prefer earliest start_time
-            const existingIsPending = existing.status === 'pending';
-            const rIsPending = r.status === 'pending';
-            if (rIsPending && !existingIsPending) {
-              byStake.set(stake, r); // pending beats active
-            } else if (rIsPending === existingIsPending) {
-              if (new Date(r.start_time) < new Date(existing.start_time)) {
-                byStake.set(stake, r);
-              }
-            }
-          }
+        if (!cancelled) {
+          setRounds(data.filter(r => ALLOWED_STAKES.includes(Number(r.stake))));
         }
-        setRounds(ALLOWED_STAKES.map((s) => byStake.get(s)).filter(Boolean) as RoundListItem[]);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to load rounds';
-        setError(msg);
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Failed to load rounds';
+          setError(msg);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [retryCount]);
 
   const stakeColors: Record<number, string> = {
     10: 'linear-gradient(135deg, #00c853, #00e676)',
@@ -96,7 +83,15 @@ export default function GameScreen() {
         )}
 
         {error && (
-          <div style={{ textAlign: 'center', color: '#ff6b6b', padding: 20 }}>{error}</div>
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ color: '#ff6b6b', marginBottom: 8 }}>{error}</div>
+            <button
+              onClick={() => { setError(null); setRetryCount(c => c + 1); }}
+              style={{ background: '#c9a227', border: 'none', borderRadius: 8, padding: '8px 20px', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {!loading && !error && rounds.length === 0 && (

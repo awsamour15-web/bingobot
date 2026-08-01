@@ -93,7 +93,8 @@ export default function CartelaScreen() {
 
   // ─── When timer hits 0 → join all picked cartelas then go to game ────────
   useEffect(() => {
-    if (msLeft > 0 || joinedRef.current || joining) return;
+    // Don't fire until round is actually loaded (msLeft starts at 0 before load)
+    if (!round || msLeft > 0 || joinedRef.current || joining) return;
     joinedRef.current = true;
 
     async function startGame() {
