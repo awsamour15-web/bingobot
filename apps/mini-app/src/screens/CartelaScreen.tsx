@@ -47,6 +47,7 @@ export default function CartelaScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [picks, setPicks] = useState<number[]>([]);
+  const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const joinedRef = useRef(false);
   const countdownStartedRef = useRef(false);
@@ -137,7 +138,6 @@ export default function CartelaScreen() {
     if (joining) return;
     if (picks.includes(num)) {
       setPicks(prev => prev.filter(n => n !== num));
-      setError(null);
       return;
     }
     if (round && balances) {
@@ -146,11 +146,10 @@ export default function CartelaScreen() {
       const mainBal = Number(balances.mainWallet.balance);
       const totalCost = stake * (picks.length + 1);
       if (playBal + mainBal < totalCost) {
-        setError(`Insufficient balance. Need ${totalCost} Birr (have ${(playBal + mainBal).toFixed(0)} Birr).`);
+        setBalanceAlert(`ቀሪ ቀሪ ሂሳብ አይበቃም!\nNeed ${totalCost} Birr — you have ${(playBal + mainBal).toFixed(0)} Birr.\nPlease deposit to continue.`);
         return;
       }
     }
-    setError(null);
     setPicks(prev => {
       if (prev.length >= MAX_SELECT) return prev;
       return [...prev, num];
@@ -176,7 +175,6 @@ export default function CartelaScreen() {
   const stake = Number(round.stake);
   const playBal = balances ? Number(balances.playWallet.balance) : 0;
   const mainBal = balances ? Number(balances.mainWallet.balance) : 0;
-  const canAfford = balances === null || (playBal + mainBal) >= stake;
 
   return (
     <div style={{ height: '100dvh', background: '#0a0e1a', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -232,13 +230,6 @@ export default function CartelaScreen() {
         </div>
       )}
 
-      {/* ── No balance warning ── */}
-      {!canAfford && (
-        <div style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', padding: '8px 16px', fontSize: 12, textAlign: 'center', flexShrink: 0 }}>
-          ⚠️ Insufficient balance (need {stake} Birr). You can watch for free.
-        </div>
-      )}
-
       {/* ── Legend ── */}
       <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
         <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e3a5f', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
@@ -256,10 +247,9 @@ export default function CartelaScreen() {
         {allNumbers.map(num => {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
-          const noBalance = !isPicked && !canAfford;
-          const disabled = joining || taken || (!isPicked && !canPick) || noBalance;
-          const bg = isPicked ? '#f59e0b' : taken ? 'rgba(255,255,255,0.04)' : noBalance ? 'rgba(255,255,255,0.03)' : '#1e3a5f';
-          const color = isPicked ? '#0a0e1a' : taken || noBalance ? '#1e293b' : '#e2e8f0';
+          const disabled = joining || taken || (!isPicked && !canPick);
+          const bg = isPicked ? '#f59e0b' : taken ? 'rgba(255,255,255,0.04)' : '#1e3a5f';
+          const color = isPicked ? '#0a0e1a' : taken ? '#1e293b' : '#e2e8f0';
 
           return (
             <button key={num} disabled={disabled} onClick={() => togglePick(num)}
@@ -268,7 +258,7 @@ export default function CartelaScreen() {
                 border: isPicked ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.06)',
                 background: bg, color, fontWeight: isPicked ? 900 : 600,
                 fontSize: 11, cursor: disabled ? 'default' : 'pointer',
-                opacity: taken ? 0.3 : noBalance ? 0.2 : 1,
+                opacity: taken ? 0.3 : 1,
                 transform: isPicked ? 'scale(1.06)' : 'scale(1)',
                 transition: 'transform 0.1s, background 0.15s',
                 WebkitAppearance: 'none', appearance: 'none', outline: 'none',
@@ -291,6 +281,43 @@ export default function CartelaScreen() {
           <div style={{ color: '#f59e0b', fontWeight: 900, fontSize: 20 }}>Starting game…</div>
           <div style={{ color: '#64748b', fontSize: 14 }}>
             {picks.length > 0 ? `Joining with cartela ${picks.join(' & ')}` : 'Joining as watcher'}
+          </div>
+        </div>
+      )}
+
+      {/* ── Insufficient balance modal ── */}
+      {balanceAlert && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 60, padding: 24,
+        }}
+          onClick={() => setBalanceAlert(null)}
+        >
+          <div style={{
+            background: '#1a1035', border: '1px solid rgba(239,68,68,0.4)',
+            borderRadius: 16, padding: '28px 24px', maxWidth: 320, width: '100%',
+            textAlign: 'center', boxShadow: '0 0 40px rgba(239,68,68,0.2)',
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 48, marginBottom: 12 }}>💳</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#f87171', marginBottom: 8 }}>
+              Insufficient Balance
+            </div>
+            {balanceAlert.split('\n').map((line, i) => (
+              <div key={i} style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>{line}</div>
+            ))}
+            <button
+              onClick={() => setBalanceAlert(null)}
+              style={{
+                marginTop: 20, width: '100%', padding: '12px',
+                background: '#ef4444', color: '#fff', border: 'none',
+                borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer',
+              }}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
