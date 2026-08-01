@@ -55,6 +55,10 @@ export default function CartelaScreen() {
   const [picks, setPicks] = useState<number[]>([]);
   const [joining, setJoining] = useState(false);
   const joinedRef = useRef(false); // prevent double-fire
+  // Track whether the countdown was ever positive after round loaded
+  const countdownStartedRef = useRef(false);
+  // Manual trigger for when timer is already 0 on page load
+  const [manualTrigger, setManualTrigger] = useState(false);
 
   const { msLeft, label: countdownLabel, pct } = useServerCountdown(round?.start_time ?? null);
 
@@ -71,6 +75,10 @@ export default function CartelaScreen() {
         setRound(r);
         setAvailability(avail);
         setBalances(profile);
+        // If round is already active when we load, flag it so the join effect can fire
+        if (r.status === 'active' || r.status === 'completed') {
+          countdownStartedRef.current = true;
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
@@ -91,10 +99,18 @@ export default function CartelaScreen() {
     return () => { socket.off('PLAYER_JOINED', onJoined); };
   }, [roundId]);
 
+  // Mark that countdown has started (was positive at some point)
+  useEffect(() => {
+    if (msLeft > 0) countdownStartedRef.current = true;
+  }, [msLeft]);
+
   // ─── When timer hits 0 → join all picked cartelas then go to game ────────
   useEffect(() => {
-    // Don't fire until round is actually loaded (msLeft starts at 0 before load)
-    if (!round || msLeft > 0 || joinedRef.current || joining) return;
+    // Only fire after:
+    // 1. round is loaded
+    // 2. countdown reached 0 from a positive value (prevents firing on page load)
+    // 3. not already joining/joined
+    if (!round || msLeft > 0 || (!countdownStartedRef.current && !manualTrigger) || joinedRef.current || joining) return;
     joinedRef.current = true;
 
     async function startGame() {
@@ -119,7 +135,7 @@ export default function CartelaScreen() {
     }
 
     void startGame();
-  }, [msLeft, picks, joining, roundId, navigate]);
+  }, [msLeft, picks, joining, roundId, navigate, manualTrigger]);
 
   // ─── Toggle pick ─────────────────────────────────────────────────────────
   function togglePick(num: number) {
@@ -200,6 +216,28 @@ export default function CartelaScreen() {
           <div style={{ marginTop: 6, fontSize: 12, color: '#aaa' }}>
             Tap a number to pick (up to {MAX_SELECT}) — or watch without a cartela
           </div>
+        )}
+        {/* Fallback: if timer already 0 on load and user has picks, show manual join button */}
+        {!countdownStartedRef.current && msLeft === 0 && !joining && (
+          <button
+            onClick={() => {
+              joinedRef.current = false;
+              setManualTrigger(true);
+            }}
+            style={{
+              marginTop: 8,
+              padding: '8px 24px',
+              background: '#22c55e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            {picks.length > 0 ? 'Join Now' : 'Watch Game'}
+          </button>
         )}
       </div>
 
