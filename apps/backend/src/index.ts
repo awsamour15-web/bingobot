@@ -1,8 +1,13 @@
 // apps/backend — Express + Socket.IO server entry point
 
+// BigInt serialization: Prisma returns telegram_id as BigInt; JSON.stringify
+// doesn't handle BigInt natively, so we patch toJSON globally to convert to string.
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return this.toString();
+};
+
 import { createServer } from 'node:http';
 import express, { type Express } from 'express';
-import cors from 'cors';
 import authRouter from './routes/auth.router.js';
 import playersRouter from './routes/players.router.js';
 import roundsRouter from './routes/rounds.router.js';
@@ -28,21 +33,25 @@ const allowedOrigins = process.env['CORS_ORIGIN']
   ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
   : ['https://fidelbingo-admin.pages.dev', 'https://bingobot.pages.dev'];
 
-const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS: origin ${origin} not allowed`));
-    }
-  },
-  credentials: true,
-});
+// Manually set CORS headers on every response to ensure they are always present,
+// including on error responses (401, 502, etc.) that would otherwise strip them.
+app.use((req, res, next) => {
+  const origin = req.headers['origin'];
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 
-app.use(corsMiddleware);
-// Handle preflight OPTIONS for all routes before any auth middleware
-app.options('*', corsMiddleware);
+  // Respond immediately to preflight
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 app.use(express.json());
 
 // ─── Player Routes ────────────────────────────────────────────────────────────
