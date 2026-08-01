@@ -28,7 +28,7 @@ const allowedOrigins = process.env['CORS_ORIGIN']
   ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
   : ['https://fidelbingo-admin.pages.dev', 'https://bingobot.pages.dev'];
 
-app.use(cors({
+const corsMiddleware = cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin || allowedOrigins.includes(origin)) {
@@ -38,7 +38,11 @@ app.use(cors({
     }
   },
   credentials: true,
-}));
+});
+
+app.use(corsMiddleware);
+// Handle preflight OPTIONS for all routes before any auth middleware
+app.options('*', corsMiddleware);
 app.use(express.json());
 
 // ─── Player Routes ────────────────────────────────────────────────────────────
