@@ -226,15 +226,12 @@ export default function LiveGameScreen() {
     nextRoundFiredRef.current = true;
 
     async function go() {
-      // Prefer sessionStorage stake, fall back to current round's stake
-      const stakeRaw = sessionStorage.getItem('selectedStake') ?? String(round?.stake ?? '');
-      const stake = Number(stakeRaw);
+      const stake = Number(round?.stake ?? sessionStorage.getItem('selectedStake') ?? 0);
 
       for (let i = 0; i < 30; i++) {
         try {
-          const rounds = await getRounds();
-          // Find a pending round with matching stake that isn't the current one
-          const next = rounds.find(
+          const allRounds = await getRounds();
+          const next = allRounds.find(
             (r) => Number(r.stake) === stake && r.status === 'pending' && r.id !== roundId,
           );
           if (next) {
@@ -247,9 +244,8 @@ export default function LiveGameScreen() {
         } catch (e) {
           console.error('[LiveGame] getRounds error:', e);
         }
-        await new Promise<void>((r) => setTimeout(r, 2000));
+        await new Promise<void>((r) => setTimeout(r, 1500));
       }
-      // After 60s of trying, go back to game selection
       navigate('/', { replace: true });
     }
     void go();
