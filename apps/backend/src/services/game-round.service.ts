@@ -139,38 +139,63 @@ export const GameRoundService = {
       const stake = parseFloat(round.stake);
       const commissionPct = round.commission_pct;
 
-      // 4. Debit stake — WalletService uses its own transaction internally,
-      //    so we replicate the debit logic inline here to keep everything atomic.
-      const wallets = await tx.$queryRaw<Array<{ id: string; balance: string }>>`
-        SELECT id, balance
+      // 4. Debit stake — use play wallet first, then main wallet for the remainder.
+      //    This allows welcome bonus / play credits to be spent on game entry.
+      const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>`
+        SELECT id, type, balance
         FROM wallets
         WHERE player_id = ${playerId}
-          AND type = ${walletType}::"WalletType"
+          AND type IN ('play', 'main')
         FOR UPDATE
       `;
 
-      const wallet = wallets[0];
-      if (!wallet) throw new Error(`Wallet not found for player ${playerId} type ${walletType}`);
+      const playWalletRow = allWallets.find((w) => w.type === 'play');
+      const mainWalletRow = allWallets.find((w) => w.type === 'main');
 
-      const currentBalance = parseFloat(wallet.balance);
-      if (currentBalance < stake) {
+      if (!mainWalletRow) throw new Error(`Main wallet not found for player ${playerId}`);
+
+      const playBalance = playWalletRow ? parseFloat(playWalletRow.balance) : 0;
+      const mainBalance = parseFloat(mainWalletRow.balance);
+      const totalAvailable = playBalance + mainBalance;
+
+      if (totalAvailable < stake) {
         const { InsufficientFundsError } = await import('./wallet.service.js');
-        throw new InsufficientFundsError(wallet.id, currentBalance, stake);
+        throw new InsufficientFundsError(mainWalletRow.id, totalAvailable, stake);
       }
 
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: stake } },
-      });
+      // Deduct from play wallet first, then main wallet for any remainder
+      const playDebit = Math.min(playBalance, stake);
+      const mainDebit = stake - playDebit;
 
-      await tx.transaction.create({
-        data: {
-          wallet_id: wallet.id,
-          type: TxType.game_entry,
-          amount: stake,
-          reference_id: roundId,
-        },
-      });
+      if (playDebit > 0 && playWalletRow) {
+        await tx.wallet.update({
+          where: { id: playWalletRow.id },
+          data: { balance: { decrement: playDebit } },
+        });
+        await tx.transaction.create({
+          data: {
+            wallet_id: playWalletRow.id,
+            type: TxType.game_entry,
+            amount: playDebit,
+            reference_id: roundId,
+          },
+        });
+      }
+
+      if (mainDebit > 0) {
+        await tx.wallet.update({
+          where: { id: mainWalletRow.id },
+          data: { balance: { decrement: mainDebit } },
+        });
+        await tx.transaction.create({
+          data: {
+            wallet_id: mainWalletRow.id,
+            type: TxType.game_entry,
+            amount: mainDebit,
+            reference_id: roundId,
+          },
+        });
+      }
 
       // 5. Insert RoundEntry
       await tx.roundEntry.create({
