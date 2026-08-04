@@ -67,6 +67,8 @@ async function seedConfig(): Promise<void> {
     { key: 'platform_commission_pct', value: '20' },
     { key: 'referral_commission_pct', value: '2' },
     { key: 'min_players_to_start', value: '1' },
+    { key: 'deposit_telebirr_number', value: '0934942672' },
+    { key: 'support_contact', value: '@FidelBingoSupport' },
   ];
 
   for (const row of defaults) {

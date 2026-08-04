@@ -98,16 +98,31 @@ export const REGISTER_PROMPT_TEXT =
 
 // ─── Static reply text constants ─────────────────────────────────────────────
 
-export const DEPOSIT_TEXT =
-  `💰 How to Deposit\n\n` +
-  `Payment method: Telebirr only\n\n` +
-  `Steps to deposit:\n` +
-  `1. Send funds to this Telebirr number:\n` +
-  `   📱 0934942672\n\n` +
-  `2. Take a screenshot of your payment receipt.\n` +
-  `3. Send the screenshot to our support team via Contact Support 📞.\n` +
-  `4. Your play wallet balance will be updated within 24 hours after verification.\n\n` +
-  `⚠️ Always include your Telegram username in the payment note.`;
+/**
+ * Builds the deposit instructions message dynamically, reading the Telebirr
+ * number from the Config table (key: `deposit_telebirr_number`).
+ * Instructs the player to send `/txn <transaction_number>` after paying.
+ * Requirements: 2.1, 2.2, 2.3
+ */
+export async function buildDepositText(): Promise<string> {
+  const config = await prisma.config.findUnique({
+    where: { key: 'deposit_telebirr_number' },
+  });
+  const telebirrNumber = config?.value ?? 'N/A (contact support)';
+
+  return (
+    `💰 How to Deposit\n\n` +
+    `Payment method: Telebirr only\n\n` +
+    `Steps to deposit:\n` +
+    `1. Send funds to this Telebirr number:\n` +
+    `   📱 ${telebirrNumber}\n\n` +
+    `2. After payment, send the transaction number to this bot by typing:\n` +
+    `   /txn <your_transaction_number>\n` +
+    `   Example: /txn TXN123456\n\n` +
+    `3. Your main wallet balance will be credited automatically once verified.\n\n` +
+    `⚠️ Always use the exact transaction number shown on your Telebirr receipt.`
+  );
+}
 
 export const INSTRUCTION_TEXT =
   `📖 How to Play Fidel Bingo\n\n` +
@@ -441,7 +456,115 @@ if (BOT_TOKEN) {
       );
       return;
     }
-    await ctx.reply(DEPOSIT_TEXT);
+    const depositText = await buildDepositText();
+    await ctx.reply(depositText);
+  });
+
+  // ─── /txn command handler — deposit auto-verification ─────────────────────
+  // Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.2, 4.3
+  bot.command('txn', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+
+    // Guard: player must be registered
+    const player = await getRegisteredPlayerWithWallets(telegramId);
+    if (!player) {
+      await ctx.reply(
+        '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
+      );
+      return;
+    }
+
+    // Parse transaction number from command argument
+    const txNumber = (ctx.match as string)?.trim();
+    if (!txNumber) {
+      await ctx.reply(
+        '⚠️ Please provide a transaction number.\nUsage: /txn <transaction_number>\nExample: /txn TXN123456',
+      );
+      return;
+    }
+
+    try {
+      // Look up PendingDeposit by tx_number (any status) so we can give a
+      // meaningful response for already-claimed records too.
+      const deposit = await prisma.pendingDeposit.findUnique({
+        where: { tx_number: txNumber },
+      });
+
+      if (!deposit) {
+        await ctx.reply(
+          '❌ Transaction number not found. Please contact support.',
+        );
+        return;
+      }
+
+      if (deposit.status === 'claimed') {
+        await ctx.reply(
+          '❌ This transaction has already been used. Please contact support.',
+        );
+        return;
+      }
+
+      if (deposit.status === 'cancelled') {
+        await ctx.reply(
+          '❌ This transaction has been cancelled. Please contact support.',
+        );
+        return;
+      }
+
+      // deposit.status === 'pending' — proceed with atomic claim + credit
+      const amount = Number(deposit.amount);
+
+      await prisma.$transaction(async (tx) => {
+        // Mark deposit as claimed
+        await tx.pendingDeposit.update({
+          where: { id: deposit.id },
+          data: {
+            status: 'claimed',
+            player_id: player.id,
+            claimed_at: new Date(),
+          },
+        });
+
+        // Credit player's Main_Wallet — WalletService.credit handles its own
+        // internal transaction; here we replicate the credit inside our outer
+        // transaction so it's fully atomic.
+        const wallet = await tx.wallet.findUniqueOrThrow({
+          where: { player_id_type: { player_id: player.id, type: 'main' } },
+        });
+
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: { increment: amount } },
+        });
+
+        await tx.transaction.create({
+          data: {
+            wallet_id: wallet.id,
+            type: 'deposit',
+            amount,
+            reference_id: txNumber,
+          },
+        });
+      });
+
+      // Fetch updated main wallet balance for the reply
+      const updatedWallet = await prisma.wallet.findUnique({
+        where: { player_id_type: { player_id: player.id, type: 'main' } },
+        select: { balance: true },
+      });
+      const newBalance = updatedWallet?.balance.toString() ?? '0';
+
+      await ctx.reply(
+        `✅ Deposit successful!\n\nCredited: ETB ${amount}\nMain Wallet Balance: ETB ${newBalance}`,
+      );
+    } catch (err) {
+      console.error('[Bot] /txn handler error:', err);
+      await ctx.reply(
+        '❌ Something went wrong while processing your transaction. Please try again later or contact support.',
+      );
+      // PendingDeposit remains `pending` so the player can retry
+    }
   });
 
   // ─── 5.2: Instruction 📖 handler ──────────────────────────────────────────

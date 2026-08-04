@@ -42,6 +42,12 @@ enum AdminRole {
   super_admin
 }
 
+enum DepositStatus {
+  pending
+  claimed
+  cancelled
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Player {
@@ -60,6 +66,7 @@ model Player {
   wallets      Wallet[]
   round_entries RoundEntry[]
   won_rounds   GameRound[]
+  pending_deposits PendingDeposit[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -176,4 +183,21 @@ model Config {
   updated_at DateTime @updatedAt
 
   @@map("config")
+}
+
+model PendingDeposit {
+  id         String        @id @default(uuid())
+  tx_number  String        @unique
+  amount     Decimal       @db.Decimal(14, 2)
+  status     DepositStatus @default(pending)
+  player_id  String?
+  claimed_at DateTime?
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+
+  player Player? @relation(fields: [player_id], references: [id])
+
+  @@index([status])
+  @@index([player_id])
+  @@map("pending_deposits")
 }

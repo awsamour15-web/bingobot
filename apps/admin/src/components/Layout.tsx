@@ -5,6 +5,7 @@ const navItems = [
   { to: '/players', label: '👥 Players' },
   { to: '/games', label: '🎮 Games' },
   { to: '/finance', label: '💰 Finance' },
+  { to: '/deposits', label: '📥 Deposits' },
   { to: '/settings', label: '⚙️ Settings' },
 ];
 

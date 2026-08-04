@@ -11,7 +11,7 @@ import {
   REGISTER_PROMPT_TEXT,
   formatBalanceReply,
   formatSupportReply,
-  DEPOSIT_TEXT,
+  buildDepositText,
   INSTRUCTION_TEXT,
   TRANSFER_TEXT,
   WITHDRAW_TEXT,
@@ -234,19 +234,28 @@ describe('Property 6: formatSupportReply()', () => {
   });
 });
 
-// ─── Task 5.6: Static handler constant tests ─────────────────────────────────
+// ─── Task 5.6 / 6.1: buildDepositText tests ──────────────────────────────────
+// Validates: Requirements 2.1, 2.2, 2.3
 
-describe('DEPOSIT_TEXT', () => {
-  it('is non-empty', () => {
-    expect(DEPOSIT_TEXT.length).toBeGreaterThan(0);
+describe('buildDepositText()', () => {
+  it('returns a non-empty string', async () => {
+    const text = await buildDepositText();
+    expect(text.length).toBeGreaterThan(0);
   });
 
-  it('contains "deposit" keyword', () => {
-    expect(DEPOSIT_TEXT.toLowerCase()).toContain('deposit');
+  it('contains "deposit" keyword', async () => {
+    const text = await buildDepositText();
+    expect(text.toLowerCase()).toContain('deposit');
   });
 
-  it('contains "payment" keyword', () => {
-    expect(DEPOSIT_TEXT.toLowerCase()).toContain('payment');
+  it('contains "payment" keyword', async () => {
+    const text = await buildDepositText();
+    expect(text.toLowerCase()).toContain('payment');
+  });
+
+  it('contains the /txn command instruction', async () => {
+    const text = await buildDepositText();
+    expect(text).toContain('/txn');
   });
 });
 

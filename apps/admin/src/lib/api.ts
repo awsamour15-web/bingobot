@@ -163,6 +163,37 @@ export function updateConfig(key: string, value: string): Promise<ConfigEntry> {
 }
 
 // ---------------------------------------------------------------------------
+// Deposits
+// ---------------------------------------------------------------------------
+
+export interface AdminDeposit {
+  id: string;
+  tx_number: string;
+  amount: number;
+  status: 'pending' | 'claimed' | 'cancelled';
+  player_username: string | null;
+  claimed_at: string | null;
+  created_at: string;
+}
+
+export interface DepositsResponse {
+  summary: { pending: number; claimed: number; cancelled: number };
+  items: AdminDeposit[];
+}
+
+export function getDeposits(): Promise<DepositsResponse> {
+  return adminApiRequest<DepositsResponse>('GET', '/api/admin/deposits');
+}
+
+export function createDeposit(tx_number: string, amount: number): Promise<AdminDeposit> {
+  return adminApiRequest<AdminDeposit>('POST', '/api/admin/deposits', { tx_number, amount });
+}
+
+export function cancelDeposit(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest<{ success: boolean }>('POST', `/api/admin/deposits/${id}/cancel`);
+}
+
+// ---------------------------------------------------------------------------
 // Admin accounts
 // ---------------------------------------------------------------------------
 
