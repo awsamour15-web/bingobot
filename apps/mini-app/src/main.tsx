@@ -7,6 +7,7 @@ import App from './App';
 function Root() {
   useEffect(() => {
     WebApp.ready();
+    WebApp.expand(); // Request full screen / expanded mode
     // Only clear stale session on fresh app open, not on user-triggered reloads.
     // We detect a reload via the navigation type: 'reload' means the user hit refresh,
     // in which case we keep all sessionStorage so they stay on the same game screen.
