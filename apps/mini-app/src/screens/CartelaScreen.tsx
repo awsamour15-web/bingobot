@@ -126,7 +126,11 @@ export default function CartelaScreen() {
           navigate(`/rounds/${roundId}/game`, { replace: true });
           return;
         }
-        setError(e.message ?? 'Failed to join round');
+        if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
+          setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+        } else {
+          setError(e.message ?? 'Failed to join round');
+        }
         setJoining(false);
         joinedRef.current = false;
       }

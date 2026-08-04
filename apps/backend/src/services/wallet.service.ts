@@ -13,7 +13,7 @@ export class InsufficientFundsError extends Error {
     public readonly requested: number,
   ) {
     super(
-      `Insufficient funds: wallet ${walletId} has ${balance}, requested ${requested}`,
+      `ቀሪ ሂሳብ አይበቃም!\nNeed ${requested} Birr — you have ${balance.toFixed(0)} Birr.\nPlease deposit to continue.`,
     );
     this.name = 'InsufficientFundsError';
   }
