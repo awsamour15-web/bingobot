@@ -238,7 +238,7 @@ export default function CartelaScreen() {
       <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
         <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e3a5f', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
         <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(255,255,255,0.04)', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#7f1d1d', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
         {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
       </div>
 
@@ -252,17 +252,17 @@ export default function CartelaScreen() {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
           const disabled = joining || taken || (!isPicked && !canPick);
-          const bg = isPicked ? '#f59e0b' : taken ? 'rgba(255,255,255,0.04)' : '#1e3a5f';
-          const color = isPicked ? '#0a0e1a' : taken ? '#1e293b' : '#e2e8f0';
+          const bg = isPicked ? '#f59e0b' : taken ? '#7f1d1d' : '#1e3a5f';
+          const color = isPicked ? '#0a0e1a' : taken ? '#fca5a5' : '#e2e8f0';
 
           return (
             <button key={num} disabled={disabled} onClick={() => togglePick(num)}
               style={{
                 padding: '8px 0', borderRadius: 7,
-                border: isPicked ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.06)',
-                background: bg, color, fontWeight: isPicked ? 900 : 600,
+                border: isPicked ? '2px solid #fbbf24' : taken ? '1px solid #ef444466' : '1px solid rgba(255,255,255,0.06)',
+                background: bg, color, fontWeight: isPicked ? 900 : taken ? 700 : 600,
                 fontSize: 11, cursor: disabled ? 'default' : 'pointer',
-                opacity: taken ? 0.3 : 1,
+                opacity: taken ? 0.75 : 1,
                 transform: isPicked ? 'scale(1.06)' : 'scale(1)',
                 transition: 'transform 0.1s, background 0.15s',
                 WebkitAppearance: 'none', appearance: 'none', outline: 'none',
