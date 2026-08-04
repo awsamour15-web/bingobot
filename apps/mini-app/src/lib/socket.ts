@@ -7,6 +7,8 @@ const WS_URL = import.meta.env.VITE_API_URL ?? '';
 
 export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(WS_URL, {
   autoConnect: false,
+  // Prefer WebSocket directly — avoids the polling→upgrade round-trip latency
+  transports: ['websocket', 'polling'],
   auth: (cb) => {
     // Fetch the JWT dynamically at connection time so the token is always fresh.
     cb({ token: localStorage.getItem('jwt') ?? '' });

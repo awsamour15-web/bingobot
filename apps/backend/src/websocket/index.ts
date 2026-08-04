@@ -78,8 +78,8 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    // Use polling + upgrade for Telegram WebView compatibility
-    transports: ['polling', 'websocket'],
+    // Prefer WebSocket for lower latency; fall back to polling for restrictive networks
+    transports: ['websocket', 'polling'],
   }) as InstanceType<typeof SocketIOServer>;
 
   // ── JWT auth middleware on every socket connection ──────────────────────────

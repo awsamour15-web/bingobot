@@ -118,16 +118,8 @@ export class NumberCallingEngine {
       // Stop if the round was cancelled externally
       if (!this.activeTimers.has(roundId)) return;
 
-      // Re-fetch round status to check for an already-confirmed winner
-      const round = await prisma.gameRound.findUnique({ where: { id: roundId } });
-      if (!round || round.status !== GameStatus.active) {
-        this.activeTimers.delete(roundId);
-        return;
-      }
-
       const number = sequence[sequenceIndex];
       if (number === undefined) {
-        // All 75 numbers called — should not happen given array length, but guard anyway
         await this.triggerVoid(roundId);
         this.activeTimers.delete(roundId);
         return;

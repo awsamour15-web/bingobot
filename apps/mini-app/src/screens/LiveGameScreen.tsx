@@ -217,7 +217,9 @@ export default function LiveGameScreen() {
       // Leave the round room so we stop receiving events from this round
       socket.emit('LEAVE_ROUND', { roundId });
     };
-  }, [roundId, soundOn]);
+  // soundOn intentionally excluded — toggling sound must not reconnect the socket
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId]);
 
   // ─── Fallback poll while waiting — catches rounds that started before we connected ──
   useEffect(() => {
