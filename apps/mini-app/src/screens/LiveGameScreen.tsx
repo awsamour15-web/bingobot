@@ -52,6 +52,32 @@ export default function LiveGameScreen() {
   // Keep a ref in sync so socket handlers always read the latest value
   const soundOnRef = useRef(soundOn);
   useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
+
+  // Unlock audio context on first user gesture (required by browser autoplay policy)
+  const audioUnlocked = useRef(false);
+  useEffect(() => {
+    const unlock = () => {
+      if (audioUnlocked.current) return;
+      audioUnlocked.current = true;
+      // Play a silent buffer to unlock audio
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      ctx.close();
+      // Also play+pause the first cached audio element to prime it
+      const first = audioCache.current.get(1);
+      if (first) { first.play().catch(() => {}); first.pause(); first.currentTime = 0; }
+    };
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('pointerdown', unlock);
+    };
+  }, []);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
 
   const [game, setGame] = useState<GameState>({
@@ -82,14 +108,21 @@ export default function LiveGameScreen() {
     if (!soundOnRef.current) return;
     try {
       const cached = audioCache.current.get(num);
-      if (cached) {
-        cached.currentTime = 0;
-        cached.play().catch(() => {});
-      } else {
-        const a = new Audio(`/sounds/${num}.wav`);
-        a.preload = 'auto';
-        audioCache.current.set(num, a);
-        a.play().catch(() => {});
+      const audio = cached ?? new Audio(`/sounds/${num}.wav`);
+      if (!cached) {
+        audio.preload = 'auto';
+        audioCache.current.set(num, audio);
+      }
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p) {
+        p.catch((err) => {
+          // Autoplay blocked — retry once after a short delay
+          // (happens when user hasn't interacted with the page yet)
+          if (err?.name === 'NotAllowedError') {
+            setTimeout(() => { audio.currentTime = 0; audio.play().catch(() => {}); }, 300);
+          }
+        });
       }
     } catch {}
   }
@@ -449,6 +482,11 @@ export default function LiveGameScreen() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {!isWatching && grid.length > 0 ? (
               <>
+                {/* Cartela number label */}
+                <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 13, fontWeight: 800, color: '#a5b4fc', letterSpacing: 0.5 }}>
+                  ካርቴላ #{detail.cartelaNumber}
+                </div>
+
                 {/* Player's cartela grid */}
                 <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(255,255,255,0.1)' }}>
