@@ -2,9 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminDeposit, DepositsResponse } from '../lib/api';
 import { getDeposits, createDeposit, cancelDeposit } from '../lib/api';
 
-// ---------------------------------------------------------------------------
-// Colour tokens (match rest of admin UI)
-// ---------------------------------------------------------------------------
 const C = {
   primary: '#4f46e5',
   danger: '#dc2626',
@@ -16,9 +13,46 @@ const C = {
   muted: '#6b7280',
 };
 
-// ---------------------------------------------------------------------------
-// Shared button
-// ---------------------------------------------------------------------------
+const responsiveStyles = `
+  .deposits-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .deposits-form-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .deposits-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 160px;
+  }
+  .deposits-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  @media (max-width: 480px) {
+    .deposits-summary-grid {
+      grid-template-columns: 1fr;
+    }
+    .deposits-form-row {
+      flex-direction: column;
+    }
+    .deposits-form-field {
+      min-width: 0;
+    }
+  }
+`;
 
 function Btn({
   children,
@@ -33,24 +67,9 @@ function Btn({
   disabled?: boolean;
   small?: boolean;
 }) {
-  const bg: Record<string, string> = {
-    primary: C.primary,
-    danger: C.danger,
-    success: C.success,
-    ghost: 'transparent',
-  };
-  const color: Record<string, string> = {
-    primary: '#fff',
-    danger: '#fff',
-    success: '#fff',
-    ghost: C.primary,
-  };
-  const border: Record<string, string> = {
-    primary: C.primary,
-    danger: C.danger,
-    success: C.success,
-    ghost: C.primary,
-  };
+  const bg: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: 'transparent' };
+  const color: Record<string, string> = { primary: '#fff', danger: '#fff', success: '#fff', ghost: C.primary };
+  const border: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: C.primary };
   return (
     <button
       style={{
@@ -63,6 +82,7 @@ function Btn({
         fontWeight: 500,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.6 : 1,
+        whiteSpace: 'nowrap',
       }}
       onClick={onClick}
       disabled={disabled}
@@ -84,18 +104,13 @@ function msgStyle(type: 'error' | 'success'): React.CSSProperties {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Status badge
-// ---------------------------------------------------------------------------
-
 function StatusBadge({ status }: { status: AdminDeposit['status'] }) {
   const cfg: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: '#fef3c7', color: C.warning, label: 'Pending' },
     claimed: { bg: '#dcfce7', color: C.success, label: 'Claimed' },
     cancelled: { bg: '#f3f4f6', color: C.muted, label: 'Cancelled' },
   };
-  const fallback = { bg: '#fef3c7', color: C.warning, label: 'Pending' };
-  const s = cfg[status] ?? fallback;
+  const s = cfg[status] ?? cfg['pending']!;
   return (
     <span
       style={{
@@ -115,26 +130,14 @@ function StatusBadge({ status }: { status: AdminDeposit['status'] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Summary row
-// ---------------------------------------------------------------------------
-
 function SummaryRow({ summary }: { summary: DepositsResponse['summary'] }) {
   const cards = [
     { label: 'Pending', value: summary.pending, color: C.warning },
     { label: 'Claimed', value: summary.claimed, color: C.success },
     { label: 'Cancelled', value: summary.cancelled, color: C.muted },
   ];
-
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 16,
-        marginBottom: 28,
-      }}
-    >
+    <div className="deposits-summary-grid">
       {cards.map(({ label, value, color }) => (
         <div
           key={label}
@@ -145,16 +148,7 @@ function SummaryRow({ summary }: { summary: DepositsResponse['summary'] }) {
             padding: '16px 20px',
           }}
         >
-          <div
-            style={{
-              fontSize: 11,
-              color: C.muted,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: 6,
-            }}
-          >
+          <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
             {label}
           </div>
           <div style={{ fontSize: 28, fontWeight: 700, color }}>{value}</div>
@@ -163,10 +157,6 @@ function SummaryRow({ summary }: { summary: DepositsResponse['summary'] }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Add Deposit form
-// ---------------------------------------------------------------------------
 
 function AddDepositForm({ onCreated }: { onCreated: () => void }) {
   const [txNumber, setTxNumber] = useState('');
@@ -179,17 +169,9 @@ function AddDepositForm({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-
     const parsedAmount = parseFloat(amount);
-    if (!txNumber.trim()) {
-      setError('Transaction number is required.');
-      return;
-    }
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Amount must be a positive number.');
-      return;
-    }
-
+    if (!txNumber.trim()) { setError('Transaction number is required.'); return; }
+    if (isNaN(parsedAmount) || parsedAmount <= 0) { setError('Amount must be a positive number.'); return; }
     setSubmitting(true);
     try {
       const deposit = await createDeposit(txNumber.trim(), parsedAmount);
@@ -215,70 +197,29 @@ function AddDepositForm({ onCreated }: { onCreated: () => void }) {
     borderRadius: 6,
     fontSize: 14,
     color: C.text,
-    minWidth: 180,
+    width: '100%',
+    boxSizing: 'border-box',
   };
 
   return (
-    <div
-      style={{
-        background: '#fff',
-        border: `1px solid ${C.border}`,
-        borderRadius: 10,
-        padding: 24,
-        marginBottom: 28,
-      }}
-    >
-      <h2
-        style={{
-          fontSize: 16,
-          fontWeight: 700,
-          color: C.text,
-          margin: 0,
-          marginBottom: 16,
-        }}
-      >
-        Add Deposit
-      </h2>
-
+    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24, marginBottom: 28 }}>
+      <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, marginBottom: 16 }}>Add Deposit</h2>
       {error && <div style={msgStyle('error')}>{error}</div>}
       {success && <div style={msgStyle('success')}>{success}</div>}
-
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <form onSubmit={handleSubmit} className="deposits-form-row">
+        <div className="deposits-form-field">
           <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Transaction Number</label>
-          <input
-            style={inputStyle}
-            type="text"
-            placeholder="e.g. TXN123456"
-            value={txNumber}
-            onChange={(e) => setTxNumber(e.target.value)}
-            disabled={submitting}
-          />
+          <input style={inputStyle} type="text" placeholder="e.g. TXN123456" value={txNumber} onChange={(e) => setTxNumber(e.target.value)} disabled={submitting} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="deposits-form-field">
           <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Amount (ETB)</label>
-          <input
-            style={inputStyle}
-            type="number"
-            min="0.01"
-            step="0.01"
-            placeholder="e.g. 100"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            disabled={submitting}
-          />
+          <input style={inputStyle} type="number" min="0.01" step="0.01" placeholder="e.g. 100" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={submitting} />
         </div>
-        <Btn disabled={submitting}>
-          {submitting ? 'Creating…' : 'Add Deposit'}
-        </Btn>
+        <Btn disabled={submitting}>{submitting ? 'Creating…' : 'Add Deposit'}</Btn>
       </form>
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Deposits table
-// ---------------------------------------------------------------------------
 
 function DepositsTable({
   items,
@@ -303,7 +244,6 @@ function DepositsTable({
     borderBottom: `1px solid ${C.border}`,
     whiteSpace: 'nowrap',
   };
-
   const tdStyle: React.CSSProperties = {
     padding: '10px 14px',
     borderBottom: `1px solid ${C.border}`,
@@ -311,16 +251,9 @@ function DepositsTable({
     verticalAlign: 'middle',
     fontSize: 13,
   };
-
   return (
-    <div
-      style={{
-        overflowX: 'auto',
-        border: `1px solid ${C.border}`,
-        borderRadius: 8,
-      }}
-    >
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+    <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
         <thead>
           <tr>
             <th style={thStyle}>Tx Number</th>
@@ -334,42 +267,23 @@ function DepositsTable({
         </thead>
         <tbody>
           {loading ? (
-            <tr>
-              <td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>
-                Loading…
-              </td>
-            </tr>
+            <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>Loading…</td></tr>
           ) : items.length === 0 ? (
-            <tr>
-              <td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>
-                No deposits found.
-              </td>
-            </tr>
+            <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>No deposits found.</td></tr>
           ) : (
             items.map((d) => (
               <tr key={d.id}>
                 <td style={{ ...tdStyle, fontFamily: 'monospace', fontWeight: 600 }}>{d.tx_number}</td>
                 <td style={{ ...tdStyle, fontWeight: 700 }}>{d.amount.toFixed(2)}</td>
-                <td style={tdStyle}>
-                  <StatusBadge status={d.status} />
-                </td>
+                <td style={tdStyle}><StatusBadge status={d.status} /></td>
                 <td style={{ ...tdStyle, color: d.player_username ? C.text : C.muted }}>
                   {d.player_username ? `@${d.player_username}` : '—'}
                 </td>
-                <td style={{ ...tdStyle, color: C.muted, whiteSpace: 'nowrap' }}>
-                  {new Date(d.created_at).toLocaleString()}
-                </td>
-                <td style={{ ...tdStyle, color: C.muted, whiteSpace: 'nowrap' }}>
-                  {d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}
-                </td>
+                <td style={{ ...tdStyle, color: C.muted, whiteSpace: 'nowrap' }}>{new Date(d.created_at).toLocaleString()}</td>
+                <td style={{ ...tdStyle, color: C.muted, whiteSpace: 'nowrap' }}>{d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}</td>
                 <td style={tdStyle}>
                   {d.status === 'pending' && (
-                    <Btn
-                      small
-                      variant="danger"
-                      onClick={() => onCancel(d.id)}
-                      disabled={cancellingId === d.id}
-                    >
+                    <Btn small variant="danger" onClick={() => onCancel(d.id)} disabled={cancellingId === d.id}>
                       {cancellingId === d.id ? '…' : 'Cancel'}
                     </Btn>
                   )}
@@ -382,10 +296,6 @@ function DepositsTable({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Main page component
-// ---------------------------------------------------------------------------
 
 export function DepositsPage() {
   const [data, setData] = useState<DepositsResponse | null>(null);
@@ -409,17 +319,12 @@ export function DepositsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchDeposits();
-  }, [fetchDeposits]);
+  useEffect(() => { fetchDeposits(); }, [fetchDeposits]);
 
   async function handleCancel(id: string) {
     const deposit = data?.items.find((d) => d.id === id);
-    const confirmed = window.confirm(
-      `Cancel deposit ${deposit?.tx_number ?? id}? This cannot be undone.`,
-    );
+    const confirmed = window.confirm(`Cancel deposit ${deposit?.tx_number ?? id}? This cannot be undone.`);
     if (!confirmed) return;
-
     setCancellingId(id);
     setActionError(null);
     setActionSuccess(null);
@@ -437,14 +342,8 @@ export function DepositsPage() {
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 24,
-        }}
-      >
+      <style>{responsiveStyles}</style>
+      <div className="deposits-page-header">
         <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>Deposits</h1>
         <Btn small variant="ghost" onClick={fetchDeposits} disabled={loading}>
           {loading ? 'Refreshing…' : 'Refresh'}
@@ -459,17 +358,8 @@ export function DepositsPage() {
 
       <AddDepositForm onCreated={fetchDeposits} />
 
-      <div
-        style={{
-          background: '#fff',
-          border: `1px solid ${C.border}`,
-          borderRadius: 10,
-          padding: 24,
-        }}
-      >
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, marginBottom: 16 }}>
-          All Deposits
-        </h2>
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, marginBottom: 16 }}>All Deposits</h2>
         <DepositsTable
           items={data?.items ?? []}
           loading={loading && !data}

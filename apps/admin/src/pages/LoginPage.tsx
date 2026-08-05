@@ -26,88 +26,59 @@ export function LoginPage() {
     }
   }
 
-  const containerStyle: React.CSSProperties = {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f0f2f5',
-  };
-
-  const cardStyle: React.CSSProperties = {
-    background: '#fff',
-    borderRadius: 8,
-    padding: '40px 32px',
-    boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
-    width: 360,
-    maxWidth: '90vw',
-  };
-
-  const titleStyle: React.CSSProperties = {
-    margin: '0 0 24px',
-    fontSize: 22,
-    fontWeight: 700,
-    color: '#1a1a2e',
-    textAlign: 'center',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    marginBottom: 6,
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#333',
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 12px',
-    border: '1px solid #d1d5db',
-    borderRadius: 6,
-    fontSize: 14,
-    boxSizing: 'border-box',
-    outline: 'none',
-  };
-
-  const fieldStyle: React.CSSProperties = {
-    marginBottom: 16,
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '11px 0',
-    background: loading ? '#a5b4fc' : '#4f46e5',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 6,
-    fontSize: 15,
-    fontWeight: 600,
-    cursor: loading ? 'not-allowed' : 'pointer',
-    marginTop: 8,
-  };
-
-  const errorStyle: React.CSSProperties = {
-    marginTop: 14,
-    padding: '10px 12px',
-    background: '#fee2e2',
-    color: '#b91c1c',
-    borderRadius: 6,
-    fontSize: 13,
-    textAlign: 'center',
-  };
-
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        <h1 style={titleStyle}>Fidel Bingo Admin</h1>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f0f2f5',
+        padding: '16px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 8,
+          padding: '40px 32px',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
+          width: '100%',
+          maxWidth: 360,
+          boxSizing: 'border-box',
+        }}
+      >
+        <h1
+          style={{
+            margin: '0 0 24px',
+            fontSize: 22,
+            fontWeight: 700,
+            color: '#1a1a2e',
+            textAlign: 'center',
+          }}
+        >
+          Fidel Bingo Admin
+        </h1>
         <form onSubmit={handleSubmit}>
-          <div style={fieldStyle}>
-            <label style={labelStyle} htmlFor="username">
+          <div style={{ marginBottom: 16 }}>
+            <label
+              style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500, color: '#333' }}
+              htmlFor="username"
+            >
               Username
             </label>
             <input
               id="username"
-              style={inputStyle}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 14,
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -116,13 +87,24 @@ export function LoginPage() {
               disabled={loading}
             />
           </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle} htmlFor="password">
+          <div style={{ marginBottom: 16 }}>
+            <label
+              style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500, color: '#333' }}
+              htmlFor="password"
+            >
               Password
             </label>
             <input
               id="password"
-              style={inputStyle}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 14,
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -131,11 +113,40 @@ export function LoginPage() {
               disabled={loading}
             />
           </div>
-          <button style={buttonStyle} type="submit" disabled={loading}>
+          <button
+            style={{
+              width: '100%',
+              padding: '11px 0',
+              background: loading ? '#a5b4fc' : '#4f46e5',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              marginTop: 8,
+            }}
+            type="submit"
+            disabled={loading}
+          >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        {error && <div style={errorStyle}>{error}</div>}
+        {error && (
+          <div
+            style={{
+              marginTop: 14,
+              padding: '10px 12px',
+              background: '#fee2e2',
+              color: '#b91c1c',
+              borderRadius: 6,
+              fontSize: 13,
+              textAlign: 'center',
+            }}
+          >
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );

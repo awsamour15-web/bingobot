@@ -226,6 +226,7 @@ function ConfigSection() {
     width: '100%',
     borderCollapse: 'collapse',
     fontSize: 13,
+    minWidth: 500,
   };
 
   const thStyle: React.CSSProperties = {
@@ -257,8 +258,6 @@ function ConfigSection() {
     boxSizing: 'border-box',
     minWidth: 200,
   };
-
-  if (loading) {
     return (
       <div style={cardStyle}>
         <h2 style={sectionTitleStyle}>Configuration</h2>
@@ -517,6 +516,7 @@ function AdminAccountsSection() {
     width: '100%',
     borderCollapse: 'collapse',
     fontSize: 13,
+    minWidth: 480,
   };
 
   const thStyle: React.CSSProperties = {

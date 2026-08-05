@@ -187,6 +187,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
   const containerStyle: React.CSSProperties = {
     maxWidth: 720,
+    width: '100%',
   };
 
   const cardStyle: React.CSSProperties = {
@@ -205,10 +206,21 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
     marginTop: 0,
   };
 
+  const responsiveStyles = `
+    .player-detail-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 480px) {
+      .player-detail-fields {
+        grid-template-columns: 1fr;
+      }
+    }
+  `;
+
   const fieldRowStyle: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 12,
     marginBottom: 12,
   };
 
@@ -281,6 +293,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
   return (
     <div style={containerStyle}>
+      <style>{responsiveStyles}</style>
       <button
         style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, marginBottom: 16, padding: 0 }}
         onClick={onBack}
@@ -292,7 +305,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
       <div style={cardStyle}>
         <h2 style={sectionTitleStyle}>Player Profile</h2>
 
-        <div style={fieldRowStyle}>
+        <div className="player-detail-fields">
           <div>
             <div style={labelStyle}>Username</div>
             <div style={valueStyle}>{player.username}</div>
@@ -497,8 +510,9 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
     border: `1px solid ${C.border}`,
     borderRadius: 6,
     fontSize: 14,
-    width: 280,
-    maxWidth: '100%',
+    width: '100%',
+    maxWidth: 280,
+    boxSizing: 'border-box',
   };
 
   const tableContainerStyle: React.CSSProperties = {
@@ -512,6 +526,7 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
     width: '100%',
     borderCollapse: 'collapse',
     fontSize: 13,
+    minWidth: 600,
   };
 
   const thStyle: React.CSSProperties = {
