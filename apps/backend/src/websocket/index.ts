@@ -157,6 +157,11 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     void RoundScheduler.ensureRoundsExist();
   });
 
+  // ── Wire WinDetectionService ROUND_WON callback ────────────────────────────
+  WinDetectionService.setOnRoundWon((roundId, payload) => {
+    io.to(`round:${roundId}`).emit('ROUND_WON', payload);
+  });
+
   // ── Connection handler ─────────────────────────────────────────────────────
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,10 +180,8 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         const { roundId } = data;
 
         // Check if player has a RoundEntry (player) or is watching
-        const entry = await prisma.roundEntry.findUnique({
-          where: {
-            round_id_player_id: { round_id: roundId, player_id: playerId },
-          },
+        const entry = await prisma.roundEntry.findFirst({
+          where: { round_id: roundId, player_id: playerId, is_watching: false },
         });
 
         // Always allow joining the socket room — watchers get live updates too
@@ -226,27 +229,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         const result = await WinDetectionService.validateClaim(playerId, roundId);
 
         if (result.valid) {
-          // Fetch winner info for broadcast
-          const player = await prisma.player.findUnique({
-            where: { id: playerId },
-            select: { username: true },
-          });
-
-          const round = await prisma.gameRound.findUnique({
-            where: { id: roundId },
-            select: { derash: true, winner_cartela_number: true },
-          });
-
-          io.to(`round:${roundId}`).emit('ROUND_WON', {
-            winnerPlayerId: playerId,
-            winnerUsername: player?.username ?? 'Unknown',
-            cartelaNumber: round?.winner_cartela_number,
-            derash: round?.derash ? Number(round.derash) : 0,
-          });
-
-          // Replenish — ensure a new pending round exists for this stake level
-          void RoundScheduler.ensureRoundsExist();
-
+          // Claim accepted — distribution happens after claim window expires
           if (ack) ack({ ok: true });
         } else {
           socket.emit('WIN_REJECTED', {

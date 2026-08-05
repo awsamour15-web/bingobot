@@ -79,9 +79,9 @@ router.get('/:roundId', async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player!.playerId;
   const { roundId } = req.params as { roundId: string };
 
-  // Get the player's entry for this round
-  const entry = await prisma.roundEntry.findUnique({
-    where: { round_id_player_id: { round_id: roundId, player_id: playerId } },
+  // Get ALL entries for this player in this round (they may have 2 cartelas)
+  const entries = await prisma.roundEntry.findMany({
+    where: { round_id: roundId, player_id: playerId, is_watching: false },
     include: {
       round: {
         include: {
@@ -93,19 +93,22 @@ router.get('/:roundId', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
-  if (!entry) {
+  if (!entries.length) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'History entry not found' });
     return;
   }
 
+  const entry = entries[0]!;
   const round = entry.round;
   const result = toResult(round.status, playerId, round.winner_player_id);
   const prize = result === 'win' ? Number(round.derash) : 0;
 
-  // Fetch the cartela definition (grid) for this cartela number
-  const cartelaDef = await prisma.cartelaDefinition.findUnique({
-    where: { cartela_number: entry.cartela_number },
+  // Fetch cartela grids for all cartelas the player has in this round
+  const cartelaNumbers = entries.map((e) => e.cartela_number);
+  const cartelaDefs = await prisma.cartelaDefinition.findMany({
+    where: { cartela_number: { in: cartelaNumbers } },
   });
+  const gridMap = new Map(cartelaDefs.map((d) => [d.cartela_number, d.grid]));
 
   const detail: HistoryDetail = {
     roundId: round.id,
@@ -119,7 +122,12 @@ router.get('/:roundId', async (req: Request, res: Response): Promise<void> => {
       number: cn.number,
       sequence_index: cn.sequence_index,
     })),
-    cartelaGrid: cartelaDef?.grid ?? [],
+    cartelaGrid: gridMap.get(entry.cartela_number) ?? [],
+    // Extra: all cartelas for multi-cartela support in live game
+    allCartelas: cartelaNumbers.map((num) => ({
+      cartelaNumber: num,
+      cartelaGrid: gridMap.get(num) ?? [],
+    })),
   };
 
   res.status(200).json(detail);

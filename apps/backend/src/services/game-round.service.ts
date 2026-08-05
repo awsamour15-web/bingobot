@@ -134,9 +134,7 @@ export const GameRoundService = {
       const existing = await tx.roundEntry.findUnique({
         where: { round_id_cartela_number: { round_id: roundId, cartela_number: cartelaNumber } },
       });
-      if (existing) throw new CartelaTakenError(roundId, cartelaNumber);
-
-      const stake = parseFloat(round.stake);
+      if (existing) throw new CartelaTakenError(roundId, cartelaNumber);      const stake = parseFloat(round.stake);
       const commissionPct = round.commission_pct;
 
       // 4. Debit stake — use play wallet first, then main wallet for the remainder.

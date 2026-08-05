@@ -25,6 +25,15 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
+  // Requirements: 8.3 — validate claim_window_ms range
+  if (key === 'claim_window_ms') {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || parsed < 1000 || parsed > 30000) {
+      res.status(400).json({ error: 'VALIDATION_ERROR' });
+      return;
+    }
+  }
+
   const config = await prisma.config.upsert({
     where: { key },
     update: { value, updated_at: new Date() },

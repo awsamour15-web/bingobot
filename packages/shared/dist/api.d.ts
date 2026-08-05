@@ -123,6 +123,12 @@ export interface AdminRound {
     winner_player_id?: string | undefined;
     winner_cartela_number?: number | undefined;
     commission_pct: number;
+    winners?: Array<{
+        playerId: string;
+        username: string;
+        cartelaNumber: number;
+        splitAmount: number;
+    }>;
 }
 export interface CreateRoundRequest {
     stake: number;

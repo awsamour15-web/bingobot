@@ -23,6 +23,7 @@ type GamePhase = 'waiting' | 'active' | 'won' | 'void' | 'cancelled';
 interface GameState {
   phase: GamePhase;
   calledNumbers: Set<number>;
+  calledOrder: number[];   // ordered list for last-4 display
   lastCalled: number | null;
   playerCount: number;
   derash: number;
@@ -83,6 +84,7 @@ export default function LiveGameScreen() {
   const [game, setGame] = useState<GameState>({
     phase: 'waiting',
     calledNumbers: new Set(),
+    calledOrder: [],
     lastCalled: null,
     playerCount: 0,
     derash: 0,
@@ -154,6 +156,7 @@ export default function LiveGameScreen() {
           lastCalled,
           playerCount: r.player_count,
           derash: r.derash,
+          calledOrder: nums,
           phase:
             r.status === 'active' ? 'active'
             : r.status === 'completed' ? 'won'
@@ -180,7 +183,7 @@ export default function LiveGameScreen() {
       setGame((g) => {
         const next = new Set(g.calledNumbers);
         next.add(p.number);
-        return { ...g, calledNumbers: next, lastCalled: p.number, phase: g.phase === 'waiting' ? 'active' : g.phase };
+        return { ...g, calledNumbers: next, calledOrder: [...g.calledOrder, p.number], lastCalled: p.number, phase: g.phase === 'waiting' ? 'active' : g.phase };
       });
       playSound(p.number);
     };
@@ -189,7 +192,7 @@ export default function LiveGameScreen() {
     const onJoined = (p: PlayerJoinedPayload) =>
       setGame((g) => ({ ...g, playerCount: p.playerCount }));
     const onWon = (p: RoundWonPayload) =>
-      setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.derash }));
+      setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.totalDerash }));
     const onVoid = (_p: RoundVoidPayload) =>
       setGame((g) => ({ ...g, phase: 'void', endMessage: 'No winner — stake refunded.' }));
     const onCancelled = (_p: RoundCancelledPayload) =>
@@ -237,6 +240,7 @@ export default function LiveGameScreen() {
             derash: r.derash,
             playerCount: r.player_count,
             calledNumbers: calledSet,
+            calledOrder: nums,
             lastCalled: last ?? g.lastCalled,
           }));
         } else if (r.status === 'void' || r.status === 'cancelled' || r.status === 'completed') {
@@ -302,35 +306,41 @@ export default function LiveGameScreen() {
     socket.emit('CLAIM_WIN', { roundId, cartelaId: detail.cartelaNumber });
   }, [roundId, detail, claimPending]);
 
-  // ─── Cartela win detection ───────────────────────────────────────────────
-  const grid: number[] = (detail?.cartelaGrid ?? []) as number[];
+  // ─── Cartela win detection (multi-cartela) ───────────────────────────────
+  const allCartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> =
+    (detail as any)?.allCartelas ?? (detail ? [{ cartelaNumber: detail.cartelaNumber, cartelaGrid: detail.cartelaGrid }] : []);
   const marked = game.calledNumbers;
+  const [activeCartelaIdx, setActiveCartelaIdx] = useState(0);
+  const activeCartela = allCartelas[activeCartelaIdx] ?? allCartelas[0];
+  const grid: number[] = (activeCartela?.cartelaGrid ?? []) as number[];
 
-  function isMarked(i: number) {
+  function isMarkedForGrid(g: number[], i: number) {
     if (i === 12) return true;
-    const v = grid[i];
+    const v = g[i];
     return v !== undefined && marked.has(v);
   }
-  function hasWin() {
-    if (!grid.length) return false;
-    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarked(r*5+c))) return true;
-    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarked(r*5+c))) return true;
-    if ([0,6,12,18,24].every(isMarked)) return true;
-    if ([4,8,12,16,20].every(isMarked)) return true;
+  function hasWinForGrid(g: number[]) {
+    if (!g.length) return false;
+    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarkedForGrid(g, r*5+c))) return true;
+    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarkedForGrid(g, r*5+c))) return true;
+    if ([0,6,12,18,24].every((i) => isMarkedForGrid(g, i))) return true;
+    if ([4,8,12,16,20].every((i) => isMarkedForGrid(g, i))) return true;
     return false;
   }
-  function winCells() {
+  function winCellsForGrid(g: number[]) {
     const w = new Set<number>();
-    if (!grid.length) return w;
-    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarked(r*5+c))) [0,1,2,3,4].forEach((c) => w.add(r*5+c));
-    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarked(r*5+c))) [0,1,2,3,4].forEach((r) => w.add(r*5+c));
-    if ([0,6,12,18,24].every(isMarked)) [0,6,12,18,24].forEach((i) => w.add(i));
-    if ([4,8,12,16,20].every(isMarked)) [4,8,12,16,20].forEach((i) => w.add(i));
+    if (!g.length) return w;
+    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarkedForGrid(g, r*5+c))) [0,1,2,3,4].forEach((c) => w.add(r*5+c));
+    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarkedForGrid(g, r*5+c))) [0,1,2,3,4].forEach((r) => w.add(r*5+c));
+    if ([0,6,12,18,24].every((i) => isMarkedForGrid(g, i))) [0,6,12,18,24].forEach((i) => w.add(i));
+    if ([4,8,12,16,20].every((i) => isMarkedForGrid(g, i))) [4,8,12,16,20].forEach((i) => w.add(i));
     return w;
   }
 
-  const wCells = winCells();
-  const playerHasBingo = hasWin();
+  // Win on ANY cartela
+  const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid as number[]));
+  const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
+  const wCells = winCellsForGrid(grid);
   const isWatching = !detail;
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
@@ -356,14 +366,24 @@ export default function LiveGameScreen() {
   );
 
   const lastCol = game.lastCalled ? getColLabel(game.lastCalled) : null;
+  void lastCol; // kept for potential future use
 
   return (
     <div style={{ height: '100dvh', background: '#1a1035', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div style={{ background: '#0f0c29', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+      <div style={{ background: '#0f0c29', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
         <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
-        <span style={{ fontWeight: 800, fontSize: 16 }}>Fidel Bingo</span>
+        {/* BINGO header with column colors */}
+        <div style={{ display: 'flex', gap: 2 }}>
+          {['B','I','N','G','O'].map((letter, i) => (
+            <span key={letter} style={{
+              fontWeight: 900, fontSize: 20, letterSpacing: 1,
+              color: COL_COLORS[i],
+              textShadow: `0 0 8px ${COL_COLORS[i]}99`,
+            }}>{letter}</span>
+          ))}
+        </div>
         <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 18, cursor: 'pointer' }}>
           {soundOn ? '🔊' : '🔇'}
         </button>
@@ -426,47 +446,90 @@ export default function LiveGameScreen() {
         {/* RIGHT: Called number + cartela or watching panel */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          {/* Last called number display */}
+          {/* Last 4 called numbers display */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              {game.lastCalled ? (
-                <span style={{ background: COL_COLORS[getColIndex(game.lastCalled)], color: '#fff', fontWeight: 800, fontSize: 12, padding: '2px 8px', borderRadius: 12 }}>
-                  {lastCol}-{game.lastCalled}
-                </span>
-              ) : (
-                <span style={{ color: '#555', fontSize: 12 }}>Waiting...</span>
-              )}
+              <span style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Last Called</span>
               <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 14, cursor: 'pointer' }}>
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
-            {/* Big ball */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 80 }}>
-              {game.lastCalled ? (
-                <div style={{
-                  width: 72, height: 72, borderRadius: '50%',
-                  background: `radial-gradient(circle at 35% 35%, #fff8, ${COL_COLORS[getColIndex(game.lastCalled)]})`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 900, fontSize: 24, color: '#fff',
-                  boxShadow: `0 0 20px ${COL_COLORS[getColIndex(game.lastCalled)]}88`,
-                  border: '3px solid rgba(255,255,255,0.3)',
-                }}>
-                  {lastCol}-{game.lastCalled}
-                </div>
-              ) : (
+            {/* 4 balls: newest is largest on the right */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 80 }}>
+              {game.calledOrder.length === 0 ? (
                 <div style={{ color: '#555', fontSize: 13 }}>{game.phase === 'waiting' ? 'Game starting...' : '—'}</div>
-              )}
+              ) : (() => {
+                const last4 = game.calledOrder.slice(-4);
+                const sizes = [36, 44, 52, 64]; // oldest → newest
+                const offsets = last4.length;
+                return last4.map((num, idx) => {
+                  const displayIdx = 4 - offsets + idx; // align to right slots
+                  const sz = sizes[displayIdx] ?? sizes[sizes.length - 1]!;
+                  const colIdx = getColIndex(num);
+                  const isNewest = idx === last4.length - 1;
+                  return (
+                    <div key={`${num}-${idx}`} style={{
+                      width: sz, height: sz, borderRadius: '50%',
+                      background: isNewest
+                        ? `radial-gradient(circle at 35% 35%, #fff8, ${COL_COLORS[colIdx]})`
+                        : `radial-gradient(circle at 35% 35%, #fff4, ${COL_COLORS[colIdx]}88)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexDirection: 'column',
+                      fontWeight: 900,
+                      fontSize: sz >= 60 ? 16 : sz >= 50 ? 13 : sz >= 42 ? 11 : 9,
+                      color: isNewest ? '#fff' : 'rgba(255,255,255,0.7)',
+                      boxShadow: isNewest ? `0 0 16px ${COL_COLORS[colIdx]}99` : 'none',
+                      border: `2px solid ${isNewest ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
+                      transition: 'all 0.2s',
+                      lineHeight: 1.1,
+                    }}>
+                      <span style={{ fontSize: sz >= 50 ? 9 : 7, opacity: 0.8 }}>{getColLabel(num)}</span>
+                      {num}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
 
           {/* Win/end banners */}
-          {game.phase === 'won' && game.winnerInfo && (
-            <div style={{ background: isWatching ? '#1e3a5f' : '#065f46', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-              {!isWatching && game.winnerInfo.cartelaNumber === detail?.cartelaNumber
-                ? `🏆 You won ${game.winnerInfo.derash} Birr!`
-                : `@${game.winnerInfo.winnerUsername} won ${game.winnerInfo.derash} Birr`}
-            </div>
-          )}
+          {game.phase === 'won' && game.winnerInfo && (() => {
+            const wi = game.winnerInfo;
+            const myWinner = !isWatching
+              ? wi.winners.find((w) => w.cartelaNumber === detail?.cartelaNumber)
+              : null;
+
+            if (wi.winnerCount === 1) {
+              // Single winner
+              const solo = wi.winners[0];
+              return (
+                <div style={{ background: myWinner ? '#065f46' : '#1e3a5f', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                  {myWinner
+                    ? `🏆 You won ${myWinner.amount} Birr!`
+                    : solo ? `@${solo.username} won ${solo.amount} Birr` : '🏆 Round over'}
+                </div>
+              );
+            }
+
+            // Multiple winners — shared win
+            return (
+              <div style={{ background: myWinner ? '#065f46' : '#1e3a5f', padding: '10px 12px', flexShrink: 0 }}>
+                <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 14, marginBottom: 4 }}>
+                  🏆 Shared Win! — Prize pool: {wi.totalDerash} Birr
+                </div>
+                {wi.winners.map((w) => (
+                  <div key={w.playerId} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '2px 4px', fontSize: 12, fontWeight: 700,
+                    color: !isWatching && w.cartelaNumber === detail?.cartelaNumber ? '#86efac' : '#fff',
+                  }}>
+                    <span>@{w.username}</span>
+                    <span>{w.amount} Birr</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           {(game.phase === 'void' || game.phase === 'cancelled') && (
             <div style={{ background: '#7f1d1d', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
               {game.endMessage}

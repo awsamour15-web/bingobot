@@ -17,9 +17,14 @@ export interface RoundStartedPayload {
 }
 
 export interface RoundWonPayload {
-  winnerUsername: string;
-  cartelaNumber: number;
-  derash: number;
+  winners: Array<{
+    playerId: string;
+    username: string;
+    cartelaNumber: number;
+    amount: number;
+  }>;
+  totalDerash: number;
+  winnerCount: number;
 }
 
 export interface RoundVoidPayload {

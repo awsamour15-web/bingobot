@@ -66,7 +66,7 @@ export async function notifyGameStart(playerId: string, roundId: string): Promis
  *
  * Requirements: 10.2, 10.4
  */
-export async function notifyWin(playerId: string, derash: number): Promise<void> {
+export async function notifyWin(playerId: string, derash: number, totalWinners?: number): Promise<void> {
   if (!bot) return;
 
   try {
@@ -79,11 +79,11 @@ export async function notifyWin(playerId: string, derash: number): Promise<void>
       minimumFractionDigits: 2,
     }).format(derash);
 
-    await bot.api.sendMessage(
-      telegramId,
-      `🏆 Congratulations! You won!\n\n💰 Prize: ${formattedAmount} has been credited to your Main Wallet.\n\nOpen the app to continue playing!`,
-      { reply_markup: openAppKeyboard() },
-    );
+    const message = totalWinners && totalWinners > 1
+      ? `🏆 You won a shared prize! ${totalWinners} players won this round.\n\n💰 Your share: ${formattedAmount} has been credited to your Main Wallet.\n\nOpen the app to continue playing!`
+      : `🏆 Congratulations! You won!\n\n💰 Prize: ${formattedAmount} has been credited to your Main Wallet.\n\nOpen the app to continue playing!`;
+
+    await bot.api.sendMessage(telegramId, message, { reply_markup: openAppKeyboard() });
   } catch (err) {
     console.error(`[Bot] notifyWin error for player ${playerId}:`, err);
   }

@@ -13,6 +13,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     orderBy: { start_time: 'desc' },
     include: {
       _count: { select: { round_entries: true, called_numbers: true } },
+      round_winners: { include: { player: { select: { username: true } } } },
     },
   });
 
@@ -29,6 +30,12 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     winner_player_id: r.winner_player_id ?? undefined,
     winner_cartela_number: r.winner_cartela_number ?? undefined,
     commission_pct: r.commission_pct,
+    winners: r.round_winners.map((w) => ({
+      playerId: w.player_id,
+      username: w.player.username,
+      cartelaNumber: w.cartela_number,
+      splitAmount: Number(w.split_amount),
+    })),
   }));
 
   res.json({ items, total: items.length, page: 1, pageSize: items.length });
@@ -55,7 +62,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   const round = await prisma.gameRound.findUniqueOrThrow({
     where: { id: roundId },
-    include: { _count: { select: { round_entries: true, called_numbers: true } } },
+    include: {
+      _count: { select: { round_entries: true, called_numbers: true } },
+      round_winners: { include: { player: { select: { username: true } } } },
+    },
   });
 
   res.status(201).json({
@@ -71,6 +81,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     winner_player_id: round.winner_player_id ?? undefined,
     winner_cartela_number: round.winner_cartela_number ?? undefined,
     commission_pct: round.commission_pct,
+    winners: round.round_winners.map((w) => ({
+      playerId: w.player_id,
+      username: w.player.username,
+      cartelaNumber: w.cartela_number,
+      splitAmount: Number(w.split_amount),
+    })),
   });
 });
 

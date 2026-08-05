@@ -194,14 +194,21 @@ function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: Ro
             <th style={thStyle}>Derash (ETB)</th>
             <th style={thStyle}>Called</th>
             <th style={thStyle}>Start Time</th>
-            {showActions ? <th style={thStyle}>Actions</th> : <th style={thStyle}>Ended At</th>}
+            {showActions ? (
+              <th style={thStyle}>Actions</th>
+            ) : (
+              <>
+                <th style={thStyle}>Ended At</th>
+                <th style={thStyle}>Winners</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>Loading…</td></tr>
+            <tr><td colSpan={showActions ? 8 : 9} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>Loading…</td></tr>
           ) : rounds.length === 0 ? (
-            <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>No rounds found.</td></tr>
+            <tr><td colSpan={showActions ? 8 : 9} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>No rounds found.</td></tr>
           ) : (
             rounds.map((r) => (
               <tr key={r.id}>
@@ -230,9 +237,35 @@ function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: Ro
                     </div>
                   </td>
                 ) : (
-                  <td style={{ ...tdStyle, color: C.muted, fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {r.ended_at ? new Date(r.ended_at).toLocaleString() : '—'}
-                  </td>
+                  <>
+                    <td style={{ ...tdStyle, color: C.muted, fontSize: 12, whiteSpace: 'nowrap' }}>
+                      {r.ended_at ? new Date(r.ended_at).toLocaleString() : '—'}
+                    </td>
+                    <td style={tdStyle}>
+                      {!r.winners || r.winners.length === 0 ? (
+                        <span style={{ color: C.muted }}>—</span>
+                      ) : r.winners.length === 1 ? (
+                        <span style={{ fontSize: 13 }}>
+                          {r.winners[0]?.username} — {r.winners[0]?.splitAmount.toFixed(2)} ETB
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{
+                            display: 'inline-block', padding: '1px 8px', borderRadius: 10,
+                            fontSize: 11, fontWeight: 600, background: '#e0e7ff', color: '#3730a3',
+                            alignSelf: 'flex-start', marginBottom: 4,
+                          }}>
+                            Split
+                          </span>
+                          {r.winners.map((w) => (
+                            <span key={w.playerId} style={{ fontSize: 13 }}>
+                              {w.username} — {w.splitAmount.toFixed(2)} ETB
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </>
                 )}
               </tr>
             ))

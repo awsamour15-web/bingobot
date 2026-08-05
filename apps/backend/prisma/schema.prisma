@@ -63,9 +63,10 @@ model Player {
   referrer  Player?  @relation("PlayerReferrals", fields: [referrer_id], references: [id])
   referrals Player[] @relation("PlayerReferrals")
 
-  wallets      Wallet[]
-  round_entries RoundEntry[]
-  won_rounds   GameRound[]
+  wallets          Wallet[]
+  round_entries    RoundEntry[]
+  round_wins       RoundWinner[]
+  won_rounds       GameRound[]    @relation("RoundWinner")
   pending_deposits PendingDeposit[]
 
   @@index([telegram_id])
@@ -116,8 +117,9 @@ model GameRound {
   winner_player_id     String?
   winner_cartela_number Int?
 
-  winner       Player?      @relation(fields: [winner_player_id], references: [id])
-  round_entries RoundEntry[]
+  winner       Player?      @relation("RoundWinner", fields: [winner_player_id], references: [id])
+  round_entries  RoundEntry[]
+  round_winners  RoundWinner[]
   called_numbers CalledNumber[]
 
   @@index([status])
@@ -137,10 +139,25 @@ model RoundEntry {
   player Player    @relation(fields: [player_id], references: [id])
 
   @@unique([round_id, cartela_number])
-  @@unique([round_id, player_id])
   @@index([round_id])
   @@index([player_id])
   @@map("round_entries")
+}
+
+model RoundWinner {
+  id             String   @id @default(uuid())
+  round_id       String
+  player_id      String
+  cartela_number Int
+  split_amount   Decimal  @db.Decimal(14, 2)
+  created_at     DateTime @default(now())
+
+  round  GameRound @relation(fields: [round_id], references: [id])
+  player Player    @relation(fields: [player_id], references: [id])
+
+  @@unique([round_id, player_id])
+  @@index([round_id])
+  @@map("round_winners")
 }
 
 model CartelaDefinition {

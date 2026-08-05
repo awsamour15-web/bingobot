@@ -1,5 +1,5 @@
-// Win Detection Service
-// Requirements: 4.5, 5.1, 5.2, 5.3
+// Win Detection Service — multi-winner claim-window support
+// Requirements: 1.1–1.5, 2.1–2.4, 3.1–3.5, 4.1–4.4, 5.1–5.3, 9.1–9.4
 
 import { GameStatus, TxType, WalletType } from '@beteseb/shared';
 import prisma from '../lib/prisma.js';
@@ -13,165 +13,265 @@ export interface CheckWinResult {
   winningLine?: number[];
 }
 
+// ─── ClaimWindowState (in-memory, one entry per active claim window) ─────────
+
+interface ClaimWindowState {
+  timer: ReturnType<typeof setTimeout>;
+  winners: Map<string, { cartelaNumber: number }>; // playerId → winning cartela
+  closing: boolean; // true once distribution transaction has started
+}
+
+const claimWindows = new Map<string, ClaimWindowState>();
+
+// ─── Callback registered by WebSocket layer ───────────────────────────────────
+
+type OnRoundWonCb = (
+  roundId: string,
+  payload: {
+    winners: Array<{ playerId: string; username: string; cartelaNumber: number; amount: number }>;
+    totalDerash: number;
+    winnerCount: number;
+  },
+) => void | Promise<void>;
+
+let onRoundWonCb: OnRoundWonCb | undefined;
+
 // ─── Winning line indices (5×5 grid, row-major) ───────────────────────────────
-//
-// Grid layout (index):
-//   0  1  2  3  4   ← row 0 (B column)
-//   5  6  7  8  9   ← row 1 (I column)
-//  10 11 12 13 14   ← row 2 (N column, index 12 = free space)
-//  15 16 17 18 19   ← row 3 (G column)
-//  20 21 22 23 24   ← row 4 (O column)
 
 const WINNING_LINE_INDICES: number[][] = [
-  // 5 rows
   [0, 1, 2, 3, 4],
   [5, 6, 7, 8, 9],
   [10, 11, 12, 13, 14],
   [15, 16, 17, 18, 19],
   [20, 21, 22, 23, 24],
-  // 5 columns
   [0, 5, 10, 15, 20],
   [1, 6, 11, 16, 21],
   [2, 7, 12, 17, 22],
   [3, 8, 13, 18, 23],
   [4, 9, 14, 19, 24],
-  // 2 diagonals
   [0, 6, 12, 18, 24],
   [4, 8, 12, 16, 20],
 ];
 
 // ─── Pure win check ───────────────────────────────────────────────────────────
 
-/**
- * Check whether a cartela has a winning bingo pattern.
- *
- * @param grid        25-element flat array (row-major). Index 12 = free space
- *                    (value 0), which is always treated as marked.
- * @param calledNums  Set of numbers called so far in the round.
- * @returns           `{ won: true, winningLine }` on first complete line found,
- *                    or `{ won: false }` when no line is complete.
- */
-export function checkWin(
-  grid: number[],
-  calledNums: Set<number>,
-): CheckWinResult {
+export function checkWin(grid: number[], calledNums: Set<number>): CheckWinResult {
   for (const lineIndices of WINNING_LINE_INDICES) {
     const lineValues = lineIndices.map((i) => grid[i] ?? 0);
-
-    const isComplete = lineValues.every(
-      (value) =>
-        value === 0 || // free space (index 12) is always marked
-        calledNums.has(value),
-    );
-
-    if (isComplete) {
-      return { won: true, winningLine: lineValues };
-    }
+    const isComplete = lineValues.every((v) => v === 0 || calledNums.has(v));
+    if (isComplete) return { won: true, winningLine: lineValues };
   }
-
   return { won: false };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function getClaimWindowMs(): Promise<number> {
+  const row = await prisma.config.findUnique({ where: { key: 'claim_window_ms' } });
+  if (!row) return 5000;
+  const parsed = parseInt(row.value, 10);
+  return isNaN(parsed) || parsed <= 0 ? 5000 : parsed;
+}
+
+// ─── distributeWinnings ───────────────────────────────────────────────────────
+
+async function distributeWinnings(
+  roundId: string,
+  winners: Map<string, { cartelaNumber: number }>,
+): Promise<void> {
+  // Mark closing early so any concurrent calls bail out
+  const state = claimWindows.get(roundId);
+  if (state) state.closing = true;
+
+  try {
+    // All credits + round update inside a single transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Lock the round row
+      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; derash: string }>>`
+        SELECT id, status, derash FROM game_rounds WHERE id = ${roundId} FOR UPDATE
+      `;
+      const round = rounds[0];
+      if (!round || round.status !== GameStatus.active) return; // already completed/cancelled
+
+      const derash = Math.round(parseFloat(round.derash)); // work in integer birr units
+      const winnerCount = winners.size;
+      const splitAmount = Math.floor(derash / winnerCount);
+      const remainder = derash - splitAmount * winnerCount;
+
+      // Lexicographically smallest player ID receives the remainder
+      const sortedIds = [...winners.keys()].sort();
+      const smallestId = sortedIds[0]!;
+
+      // 2. Insert RoundWinner rows
+      const winnerRows = [...winners.entries()].map(([playerId, { cartelaNumber }]) => ({
+        round_id: roundId,
+        player_id: playerId,
+        cartela_number: cartelaNumber,
+        split_amount: playerId === smallestId ? splitAmount + remainder : splitAmount,
+      }));
+
+      await tx.roundWinner.createMany({ data: winnerRows });
+
+      // 3. Credit each winner's main wallet (using tx-aware raw updates to stay in transaction)
+      for (const [playerId, { cartelaNumber: _c }] of winners.entries()) {
+        const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
+        if (amount <= 0) continue;
+
+        // Find main wallet
+        const wallets = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM wallets WHERE player_id = ${playerId} AND type = 'main' LIMIT 1
+        `;
+        const walletId = wallets[0]?.id;
+        if (!walletId) continue;
+
+        await tx.wallet.update({
+          where: { id: walletId },
+          data: { balance: { increment: amount } },
+        });
+        await tx.transaction.create({
+          data: { wallet_id: walletId, type: TxType.game_win, amount, reference_id: roundId },
+        });
+      }
+
+      // 4. Update GameRound
+      const smallestWinner = winners.get(smallestId)!;
+      await tx.gameRound.update({
+        where: { id: roundId },
+        data: {
+          status: GameStatus.completed,
+          winner_player_id: smallestId,
+          winner_cartela_number: smallestWinner.cartelaNumber,
+          ended_at: new Date(),
+        },
+      });
+    });
+
+    // ── After commit: emit ROUND_WON, notify, schedule next round ─────────────
+
+    // Build payload — need usernames
+    const playerIds = [...winners.keys()];
+    const players = await prisma.player.findMany({
+      where: { id: { in: playerIds } },
+      select: { id: true, username: true },
+    });
+    const usernameMap = new Map(players.map((p) => [p.id, p.username]));
+
+    const round = await prisma.gameRound.findUnique({ where: { id: roundId } });
+    const totalDerash = round ? Number(round.derash) : 0;
+    const winnerCount = winners.size;
+
+    const sortedIds = [...winners.keys()].sort();
+    const smallestId = sortedIds[0]!;
+    const splitAmount = Math.floor(totalDerash / winnerCount);
+    const remainder = totalDerash - splitAmount * winnerCount;
+
+    const winnersPayload = [...winners.entries()].map(([playerId, { cartelaNumber }]) => ({
+      playerId,
+      username: usernameMap.get(playerId) ?? 'Unknown',
+      cartelaNumber,
+      amount: playerId === smallestId ? splitAmount + remainder : splitAmount,
+    }));
+
+    if (onRoundWonCb) {
+      await onRoundWonCb(roundId, { winners: winnersPayload, totalDerash, winnerCount });
+    }
+
+    // Telegram notifications (non-blocking)
+    import('../bot/notifications.js').then(({ notifyWin }) => {
+      for (const w of winnersPayload) {
+        void notifyWin(w.playerId, w.amount, winnerCount);
+      }
+    }).catch(() => {});
+
+    // Credit referral commissions (non-blocking)
+    for (const playerId of playerIds) {
+      void ReferralService.creditCommission(playerId, roundId);
+    }
+
+    // Replenish pending rounds
+    import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
+      void RoundScheduler.ensureRoundsExist();
+    }).catch(() => {});
+
+  } catch (err) {
+    console.error('[WinDetectionService] distribution error:', err);
+  } finally {
+    claimWindows.delete(roundId);
+  }
 }
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 export const WinDetectionService = {
-  /**
-   * Validate a win claim for a given player in a round.
-   *
-   * 1. Fetches the RoundEntry — rejects if not found or is_watching=true.
-   * 2. Fetches the CartelaDefinition for that entry.
-   * 3. Fetches all CalledNumbers for the round ordered by sequence_index.
-   * 4. Calls checkWin with the actual called numbers at claim time.
-   * 5. On valid win: credits Derash to winner's main wallet, updates GameRound.
-   *
-   * Requirements: 5.1, 5.2, 5.3
-   */
+  setOnRoundWon(cb: OnRoundWonCb): void {
+    onRoundWonCb = cb;
+  },
+
   async validateClaim(
     playerId: string,
     roundId: string,
   ): Promise<{ valid: boolean; reason?: string }> {
-    // 1. Fetch the round entry
-    const entry = await prisma.roundEntry.findUnique({
-      where: { round_id_player_id: { round_id: roundId, player_id: playerId } },
+    // ── Check existing claim window ──────────────────────────────────────────
+    const existing = claimWindows.get(roundId);
+
+    if (existing) {
+      if (existing.closing) return { valid: false, reason: 'CLAIM_WINDOW_CLOSED' };
+      if (existing.winners.has(playerId)) return { valid: false, reason: 'DUPLICATE_CLAIM' };
+    }
+
+    // ── Validate the claim ───────────────────────────────────────────────────
+
+    // 1. Fetch all non-watching entries for this player
+    const entries = await prisma.roundEntry.findMany({
+      where: { round_id: roundId, player_id: playerId, is_watching: false },
     });
+    if (!entries.length) return { valid: false, reason: 'ENTRY_NOT_FOUND' };
 
-    if (!entry) {
-      return { valid: false, reason: 'ENTRY_NOT_FOUND' };
-    }
+    // 2. Round must be active
+    const round = await prisma.gameRound.findUnique({ where: { id: roundId } });
+    if (!round || round.status !== GameStatus.active) return { valid: false, reason: 'ROUND_NOT_ACTIVE' };
 
-    // Watching-only players cannot win (Requirement 4.7)
-    if (entry.is_watching) {
-      return { valid: false, reason: 'WATCHING_ONLY' };
-    }
-
-    // 2. Fetch the round (to get derash and check status)
-    const round = await prisma.gameRound.findUnique({
-      where: { id: roundId },
+    // 3. Fetch cartela definitions
+    const cartelaNumbers = entries.map((e) => e.cartela_number);
+    const cartelas = await prisma.cartelaDefinition.findMany({
+      where: { cartela_number: { in: cartelaNumbers } },
     });
+    if (!cartelas.length) return { valid: false, reason: 'CARTELA_NOT_FOUND' };
 
-    if (!round || round.status !== GameStatus.active) {
-      return { valid: false, reason: 'ROUND_NOT_ACTIVE' };
-    }
-
-    // 3. Fetch the cartela definition
-    const cartela = await prisma.cartelaDefinition.findUnique({
-      where: { cartela_number: entry.cartela_number },
-    });
-
-    if (!cartela) {
-      return { valid: false, reason: 'CARTELA_NOT_FOUND' };
-    }
-
-    // 4. Fetch all called numbers in order
-    const calledNumberRows = await prisma.calledNumber.findMany({
+    // 4. Fetch called numbers
+    const calledRows = await prisma.calledNumber.findMany({
       where: { round_id: roundId },
       orderBy: { sequence_index: 'asc' },
     });
+    const calledSet = new Set(calledRows.map((c) => c.number));
 
-    const calledSet = new Set(calledNumberRows.map((cn) => cn.number));
-
-    // 5. Check win
-    const result = checkWin(cartela.grid as number[], calledSet);
-
-    if (!result.won) {
-      return { valid: false, reason: 'NO_WINNING_LINE' };
+    // 5. Check win on any cartela
+    let winningCartelaNumber: number | null = null;
+    for (const cartela of cartelas) {
+      if (checkWin(cartela.grid as number[], calledSet).won) {
+        winningCartelaNumber = cartela.cartela_number;
+        break;
+      }
     }
+    if (!winningCartelaNumber) return { valid: false, reason: 'NO_WINNING_LINE' };
 
-    // Valid win — credit Derash to winner's main wallet and close the round
-    const derash = Number(round.derash);
+    // ── Accept the claim ─────────────────────────────────────────────────────
 
-    await WalletService.credit(
-      playerId,
-      WalletType.main,
-      derash,
-      TxType.game_win,
-      roundId,
-    );
-
-    await prisma.gameRound.update({
-      where: { id: roundId },
-      data: {
-        status: GameStatus.completed,
-        winner_player_id: playerId,
-        winner_cartela_number: entry.cartela_number,
-        ended_at: new Date(),
-      },
-    });
-
-    // Credit referral commission to the winner's referrer (paid entry only;
-    // watching-only guard already applied above so entry.is_watching=false here)
-    await ReferralService.creditCommission(playerId, roundId);
-
-    // Notify the winner via Telegram bot (non-blocking, errors are swallowed inside)
-    import('../bot/notifications.js').then(({ notifyWin }) => {
-      void notifyWin(playerId, derash);
-    }).catch(() => {});
-
-    // Immediately create the next pending round for this stake so clients
-    // don't have to wait up to 15s for the scheduler tick
-    import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
-      void RoundScheduler.ensureRoundsExist();
-    }).catch(() => {});
+    if (existing) {
+      // Window already open — add to winners set
+      existing.winners.set(playerId, { cartelaNumber: winningCartelaNumber });
+    } else {
+      // Open a new claim window
+      const windowMs = await getClaimWindowMs();
+      const newState: ClaimWindowState = {
+        winners: new Map([[playerId, { cartelaNumber: winningCartelaNumber }]]),
+        closing: false,
+        timer: setTimeout(() => {
+          void distributeWinnings(roundId, claimWindows.get(roundId)?.winners ?? new Map([[playerId, { cartelaNumber: winningCartelaNumber! }]]));
+        }, windowMs),
+      };
+      claimWindows.set(roundId, newState);
+    }
 
     return { valid: true };
   },
