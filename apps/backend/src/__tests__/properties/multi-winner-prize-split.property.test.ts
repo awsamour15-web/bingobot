@@ -1872,7 +1872,12 @@ function mapAdminRound(r: {
   commission_pct: number;
   winners: Array<{ playerId: string; username: string; cartelaNumber: number; splitAmount: number }>;
 } {
-  return {
+ const result: {
+    id: string; stake: number; status: string; player_count: number; max_players: number;
+    derash: number; called_numbers_count: number; start_time: string; commission_pct: number;
+    ended_at?: string; winner_player_id?: string; winner_cartela_number?: number;
+    winners: Array<{ playerId: string; username: string; cartelaNumber: number; splitAmount: number }>;
+  } = {
     id: r.id,
     stake: Number(r.stake),
     status: r.status,
@@ -1881,9 +1886,6 @@ function mapAdminRound(r: {
     derash: Number(r.derash),
     called_numbers_count: r._count.called_numbers,
     start_time: r.start_time.toISOString(),
-    ended_at: r.ended_at?.toISOString() ?? undefined,
-    winner_player_id: r.winner_player_id ?? undefined,
-    winner_cartela_number: r.winner_cartela_number ?? undefined,
     commission_pct: r.commission_pct,
     winners: r.round_winners.map((w) => ({
       playerId: w.player_id,
@@ -1892,6 +1894,10 @@ function mapAdminRound(r: {
       splitAmount: Number(w.split_amount),
     })),
   };
+  if (r.ended_at != null) result.ended_at = r.ended_at.toISOString();
+  if (r.winner_player_id != null) result.winner_player_id = r.winner_player_id;
+  if (r.winner_cartela_number != null) result.winner_cartela_number = r.winner_cartela_number;
+  return result;
 }
 
 describe('Property 17: Admin API includes winners array for completed rounds', () => {
