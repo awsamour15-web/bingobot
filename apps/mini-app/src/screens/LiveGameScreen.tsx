@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
-import { getRound, getMyCartelas, getRounds, getCalledNumbers } from '../lib/api';
+import { getRound, getMyCartelas, getRounds, getCalledNumbers, getCartelaGrid } from '../lib/api';
 import { idbGet, idbPut } from '../lib/idb';
 import type {
   RoundDetail,
@@ -45,6 +45,7 @@ export default function LiveGameScreen() {
 
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [myCartelas, setMyCartelas] = useState<Array<{ cartelaNumber: number; cartelaGrid: number[] }>>([]);
+  const [winnerCartelaGrid, setWinnerCartelaGrid] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -210,8 +211,16 @@ export default function LiveGameScreen() {
       setGame((g) => ({ ...g, phase: 'active', derash: p.derash, playerCount: p.playerCount }));
     const onJoined = (p: PlayerJoinedPayload) =>
       setGame((g) => ({ ...g, playerCount: p.playerCount }));
-    const onWon = (p: RoundWonPayload) =>
+    const onWon = (p: RoundWonPayload) => {
       setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.totalDerash }));
+      // Fetch the winning cartela grid so ALL users (including watchers) can see it
+      const winnerCartelaNum = p.winners[0]?.cartelaNumber;
+      if (winnerCartelaNum && roundId) {
+        getCartelaGrid(roundId, winnerCartelaNum)
+          .then(r => setWinnerCartelaGrid(r.grid))
+          .catch(() => {});
+      }
+    };
     const onVoid = (_p: RoundVoidPayload) =>
       setGame((g) => ({ ...g, phase: 'void', endMessage: 'No winner — stake refunded.' }));
     const onCancelled = (_p: RoundCancelledPayload) =>
@@ -514,17 +523,13 @@ export default function LiveGameScreen() {
           {game.phase === 'won' && game.winnerInfo && (() => {
             const wi = game.winnerInfo;
             const isMulti = wi.winnerCount > 1;
-
-            // Pick the cartela to display: winner's cartela if single, or current player's if multi
-            const displayWinner = isMulti
-              ? (wi.winners[0])
-              : wi.winners[0];
+            const displayWinner = wi.winners[0];
             const winCartelaNumber = displayWinner?.cartelaNumber ?? null;
 
-            // Find the winning cartela grid — prefer player's own, fallback to first winner's
-            const winnerCartela = allCartelas.find((c) => c.cartelaNumber === winCartelaNumber)
-              ?? allCartelas[0];
-            const winGrid: number[] = (winnerCartela?.cartelaGrid ?? grid) as number[];
+            // Use fetched winner grid (works for ALL users including watchers)
+            const winGrid: number[] = winnerCartelaGrid.length > 0
+              ? winnerCartelaGrid
+              : (allCartelas.find(c => c.cartelaNumber === winCartelaNumber)?.cartelaGrid ?? []) as number[];
             const winCells = winCellsForGrid(winGrid);
 
             const winnerName = isMulti
