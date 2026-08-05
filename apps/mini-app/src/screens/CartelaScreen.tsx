@@ -127,19 +127,20 @@ export default function CartelaScreen() {
 
     const onJoined = (p: PlayerJoinedPayload) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
-      getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
     };
 
-    // Real-time cartela taken update — no API call needed
+    // Real-time cartela taken update
     const onCartelaTaken = (p: { cartelaNumbers: number[]; playerCount: number }) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
       setAvailability(prev => {
         if (!prev) return prev;
-        const newTaken = [...prev.taken, ...p.cartelaNumbers.filter(n => !prev.taken.includes(n))];
-        const newAvailable = prev.available.filter(n => !p.cartelaNumbers.includes(n));
-        return { taken: newTaken, available: newAvailable };
+        const takenSet = new Set([...prev.taken, ...p.cartelaNumbers]);
+        return {
+          taken: [...takenSet],
+          available: prev.available.filter(n => !takenSet.has(n)),
+        };
       });
-      // Also deselect any of our picks that just got taken by someone else
+      // Deselect our picks if just taken by someone else
       setPicks(prev => prev.filter(n => !p.cartelaNumbers.includes(n)));
     };
 
@@ -163,12 +164,18 @@ export default function CartelaScreen() {
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
+    // Poll every 3s as guaranteed fallback — catches missed socket events
+    const poll = setInterval(() => {
+      getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
+    }, 3000);
+
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
       socket.off('CARTELA_TAKEN', onCartelaTaken);
       socket.off('ROUND_STARTED', onStarted);
       socket.off('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
       socket.off('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
+      clearInterval(poll);
       socket.emit('LEAVE_ROUND' as any, { roundId });
     };
   }, [roundId, navigate]);
