@@ -109,9 +109,9 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  // Get taken cartela numbers in this round
+  // Get taken cartela numbers in this round (paying players only)
   const takenEntries = await prisma.roundEntry.findMany({
-    where: { round_id: id },
+    where: { round_id: id, is_watching: false },
     select: { cartela_number: true },
   });
 

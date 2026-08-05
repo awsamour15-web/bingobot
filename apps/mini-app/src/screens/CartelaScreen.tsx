@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getRound, getCartelaAvailability, joinRound, joinRoundBatch, getProfile } from '../lib/api';
 import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
-import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload } from '../lib/api';
+import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
 
 interface ProfileBalances {
   mainWallet: { balance: number };
@@ -48,6 +48,8 @@ export default function CartelaScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [picks, setPicks] = useState<number[]>([]);
+  const picksRef = useRef<number[]>([]);
+  useEffect(() => { picksRef.current = picks; }, [picks]);
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const joinedRef = useRef(false);
@@ -88,28 +90,66 @@ export default function CartelaScreen() {
 
     const onJoined = (p: PlayerJoinedPayload) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
-      // Refresh availability so newly taken cartelas show immediately
+      // Refresh taken cartelas when someone joins
       getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
     };
-    socket.on('PLAYER_JOINED', onJoined);
 
-    // Poll every 5s as fallback in case a socket event is missed
-    const poll = setInterval(() => {
-      getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
-    }, 5000);
+    // Round started by scheduler — join with selected cartelas then navigate
+    const onStarted = (_p: RoundStartedPayload) => {
+      if (joinedRef.current) return;
+      joinedRef.current = true;
+
+      async function doJoinAndNavigate() {
+        setJoining(true);
+        const currentPicks = picksRef.current;
+        try {
+          if (currentPicks.length === 1) {
+            await joinRound(roundId!, currentPicks[0]!);
+          } else if (currentPicks.length > 1) {
+            await joinRoundBatch(roundId!, currentPicks);
+          }
+        } catch (err: unknown) {
+          const e = err as { code?: string; message?: string };
+          if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
+            setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+            setJoining(false);
+            joinedRef.current = false;
+            return;
+          }
+          // Any other error (cartela taken, round not pending etc.) — go to game as watcher
+        }
+        sessionStorage.setItem('selectedRoundId', roundId!);
+        navigate(`/rounds/${roundId}/game`, { replace: true });
+      }
+      void doJoinAndNavigate();
+    };
+
+    // Round voided/cancelled — go back home
+    const onEnded = () => {
+      sessionStorage.removeItem('stakeSelectedForRound');
+      navigate('/', { replace: true });
+    };
+
+    socket.on('PLAYER_JOINED', onJoined);
+    socket.on('ROUND_STARTED', onStarted);
+    socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
+    socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
+      socket.off('ROUND_STARTED', onStarted);
+      socket.off('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
+      socket.off('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
       socket.emit('LEAVE_ROUND' as any, { roundId });
-      clearInterval(poll);
     };
-  }, [roundId]);
+  }, [roundId, navigate]);
 
   useEffect(() => { if (msLeft > 0) countdownStartedRef.current = true; }, [msLeft]);
 
-  // Join + navigate when timer hits 0
+  // Manual "Join Now" / "Watch Game" trigger — timer-based auto-join removed
+  // because ROUND_STARTED socket event now navigates everyone at the same time
   useEffect(() => {
-    if (!round || msLeft > 0 || (!countdownStartedRef.current && !manualTrigger) || joinedRef.current || joining) return;
+    if (!manualTrigger || joinedRef.current || joining) return;
     joinedRef.current = true;
 
     async function startGame() {
@@ -127,11 +167,12 @@ export default function CartelaScreen() {
           navigate(`/rounds/${roundId}/game`, { replace: true });
           return;
         }
-        if (picks.length > 0) {
-          if (picks.length === 1) {
-            await joinRound(roundId!, picks[0]!);
+        const currentPicks = picksRef.current;
+        if (currentPicks.length > 0) {
+          if (currentPicks.length === 1) {
+            await joinRound(roundId!, currentPicks[0]!);
           } else {
-            await joinRoundBatch(roundId!, picks);
+            await joinRoundBatch(roundId!, currentPicks);
           }
         }
         sessionStorage.setItem('selectedRoundId', roundId!);
@@ -153,7 +194,7 @@ export default function CartelaScreen() {
       }
     }
     void startGame();
-  }, [msLeft, picks, joining, roundId, navigate, manualTrigger]);
+  }, [manualTrigger, joining, picks, roundId, navigate]);
 
   function togglePick(num: number) {
     if (joining) return;

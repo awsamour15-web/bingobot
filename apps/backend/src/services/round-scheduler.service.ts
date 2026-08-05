@@ -91,8 +91,9 @@ export const RoundScheduler = {
   },
 
   /**
-   * Find pending rounds whose start_time has passed but have zero entries.
-   * Mark them void immediately — no number calling, no winner.
+   * Find pending rounds whose start_time has passed.
+   * - Rounds with 0 entries are voided immediately.
+   * - Rounds with players are started.
    */
   async expireEmptyRounds(): Promise<void> {
     try {
@@ -107,16 +108,27 @@ export const RoundScheduler = {
       });
 
       for (const round of overdue) {
-        // Always start the round when start_time passes — even with 0 players.
-        // If no one has a cartela, numbers still get called for watchers.
-        // The NCE will trigger void after all 75 numbers if no winner claims.
-        try {
-          await GameRoundService.start(round.id);
-          console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
-          // Immediately create the next round so users always have a full 60s lobby
-          void RoundScheduler.ensureRoundsExist();
-        } catch (err) {
-          console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
+        if (round._count.round_entries === 0) {
+          // No players — void silently and create a fresh round
+          try {
+            await prisma.gameRound.update({
+              where: { id: round.id },
+              data: { status: GameStatus.void, ended_at: new Date() },
+            });
+            console.log(`[Scheduler] Voided empty round ${round.id} (0 players)`);
+            void RoundScheduler.ensureRoundsExist();
+          } catch (err) {
+            console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
+          }
+        } else {
+          // Has players — start it
+          try {
+            await GameRoundService.start(round.id);
+            console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
+            void RoundScheduler.ensureRoundsExist();
+          } catch (err) {
+            console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
+          }
         }
       }
     } catch (err) {
