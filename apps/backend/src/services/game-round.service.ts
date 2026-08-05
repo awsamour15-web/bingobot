@@ -41,6 +41,7 @@ export class RoundNotFoundError extends Error {
 
 export type OnRoundCancelled = (roundId: string) => void | Promise<void>;
 export type OnRoundVoidEmpty = (roundId: string) => void | Promise<void>;
+export type OnCartelaTaken = (roundId: string, cartelaNumbers: number[], playerCount: number) => void | Promise<void>;
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,13 @@ export const GameRoundService = {
 
   setOnRoundVoidEmpty(cb: OnRoundVoidEmpty): void {
     GameRoundService._onRoundVoidEmpty = cb;
+  },
+
+  /** Optional callback invoked when a cartela is successfully taken. */
+  _onCartelaTaken: undefined as OnCartelaTaken | undefined,
+
+  setOnCartelaTaken(cb: OnCartelaTaken): void {
+    GameRoundService._onCartelaTaken = cb;
   },
 
   /**
@@ -218,6 +226,14 @@ export const GameRoundService = {
         data: { derash: newDerash },
       });
     });
+
+    // Notify websocket layer so all users on the cartela screen see this cartela as taken
+    if (GameRoundService._onCartelaTaken) {
+      const playerCount = await prisma.roundEntry.count({
+        where: { round_id: roundId, is_watching: false },
+      });
+      await GameRoundService._onCartelaTaken(roundId, [cartelaNumber], playerCount);
+    }
   },
 
   /**

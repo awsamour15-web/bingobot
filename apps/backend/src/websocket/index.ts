@@ -157,6 +157,10 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     void RoundScheduler.ensureRoundsExist();
   });
 
+  GameRoundService.setOnCartelaTaken((roundId, cartelaNumbers, playerCount) => {
+    io.to(`round:${roundId}`).emit('CARTELA_TAKEN', { roundId, cartelaNumbers, playerCount });
+  });
+
   // ── Wire WinDetectionService ROUND_WON callback ────────────────────────────
   WinDetectionService.setOnRoundWon((roundId, payload) => {
     io.to(`round:${roundId}`).emit('ROUND_WON', payload);

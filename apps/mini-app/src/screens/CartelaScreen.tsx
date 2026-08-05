@@ -134,6 +134,19 @@ export default function CartelaScreen() {
       getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
     };
 
+    // Real-time cartela taken update — no API call needed
+    const onCartelaTaken = (p: { cartelaNumbers: number[]; playerCount: number }) => {
+      setRound(r => r ? { ...r, player_count: p.playerCount } : r);
+      setAvailability(prev => {
+        if (!prev) return prev;
+        const newTaken = [...prev.taken, ...p.cartelaNumbers.filter(n => !prev.taken.includes(n))];
+        const newAvailable = prev.available.filter(n => !p.cartelaNumbers.includes(n));
+        return { taken: newTaken, available: newAvailable };
+      });
+      // Also deselect any of our picks that just got taken by someone else
+      setPicks(prev => prev.filter(n => !p.cartelaNumbers.includes(n)));
+    };
+
     // Round started — just navigate, cartelas were already registered
     const onStarted = (_p: RoundStartedPayload) => {
       if (joinedRef.current) return;
@@ -149,12 +162,14 @@ export default function CartelaScreen() {
     };
 
     socket.on('PLAYER_JOINED', onJoined);
+    socket.on('CARTELA_TAKEN', onCartelaTaken);
     socket.on('ROUND_STARTED', onStarted);
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
+      socket.off('CARTELA_TAKEN', onCartelaTaken);
       socket.off('ROUND_STARTED', onStarted);
       socket.off('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
       socket.off('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
