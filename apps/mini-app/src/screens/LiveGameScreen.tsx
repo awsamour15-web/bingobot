@@ -60,17 +60,22 @@ export default function LiveGameScreen() {
     const unlock = () => {
       if (audioUnlocked.current) return;
       audioUnlocked.current = true;
-      // Play a silent buffer to unlock audio
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-      ctx.close();
-      // Also play+pause the first cached audio element to prime it
-      const first = audioCache.current.get(1);
-      if (first) { first.play().catch(() => {}); first.pause(); first.currentTime = 0; }
+      // Play a silent buffer to unlock audio — close the context AFTER it finishes
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.onended = () => { ctx.close().catch(() => {}); };
+        src.start(0);
+      } catch {}
+      // Play+pause the first cached audio element to prime the HTML5 audio pipeline
+      // Use a short timeout to ensure the preload loop has run first
+      setTimeout(() => {
+        const first = audioCache.current.get(1);
+        if (first) { first.play().catch(() => {}); first.pause(); first.currentTime = 0; }
+      }, 50);
     };
     window.addEventListener('touchstart', unlock, { once: true });
     window.addEventListener('pointerdown', unlock, { once: true });
