@@ -256,18 +256,6 @@ export const GameRoundService = {
       },
     });
 
-    // Schedule a Telegram notification 60 seconds before the game effectively
-    // starts for the players (sent immediately since the round is starting now).
-    // We use setTimeout(0) so it's non-blocking, and dynamically import to
-    // avoid circular dependency issues.
-    setTimeout(() => {
-      import('../bot/notifications.js').then(({ notifyGameStart }) => {
-        for (const entry of round.round_entries) {
-          void notifyGameStart(entry.player_id, roundId);
-        }
-      }).catch(() => {});
-    }, 0);
-
     // Kick off number calling (non-blocking)
     void nce.start(roundId);
   },
