@@ -99,29 +99,30 @@ export const REGISTER_PROMPT_TEXT =
 // ─── Static reply text constants ─────────────────────────────────────────────
 
 /**
- * Builds the deposit instructions message dynamically, reading the Telebirr
- * number from the Config table (key: `deposit_telebirr_number`).
- * Instructs the player to send `/txn <transaction_number>` after paying.
+ * Builds the deposit step-2 message: shows the Telebirr number and amount,
+ * then asks the player to paste the receipt.
  * Requirements: 2.1, 2.2, 2.3
  */
-export async function buildDepositText(): Promise<string> {
+export async function buildDepositInstructionText(amount: number): Promise<{ text: string; telebirrNumber: string }> {
   const config = await prisma.config.findUnique({
     where: { key: 'deposit_telebirr_number' },
   });
   const telebirrNumber = config?.value ?? 'N/A (contact support)';
 
-  return (
-    `💰 How to Deposit\n\n` +
-    `Payment method: Telebirr only\n\n` +
-    `Steps to deposit:\n` +
-    `1. Send funds to this Telebirr number:\n` +
-    `   📱 ${telebirrNumber}\n\n` +
-    `2. After payment, send the transaction number to this bot by typing:\n` +
-    `   /txn <your_transaction_number>\n` +
-    `   Example: /txn TXN123456\n\n` +
-    `3. Your main wallet balance will be credited automatically once verified.\n\n` +
-    `⚠️ Always use the exact transaction number shown on your Telebirr receipt.`
-  );
+  const text =
+    `የሚያጋጥማቹ የካፍያ ችግር:\n` +
+    `@betesebbingosupport ላይ ፃፉን።\n\n` +
+    `1. ከታቹ ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n` +
+    `   Phone: ${telebirrNumber}\n\n` +
+    `2. የካፈሉትን አጭር የደሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
+
+  return { text, telebirrNumber };
+}
+
+// Keep legacy export for any existing callers
+export async function buildDepositText(): Promise<string> {
+  const { text } = await buildDepositInstructionText(0);
+  return text;
 }
 
 export const INSTRUCTION_TEXT =
@@ -196,6 +197,25 @@ export function formatSupportReply(contactValue: string): string {
  */
 export function buildInviteLink(botUsername: string, telegramId: bigint): string {
   return `https://t.me/${botUsername}?start=ref_${telegramId}`;
+}
+
+// ─── Deposit conversation state ───────────────────────────────────────────────
+// Tracks players mid-deposit: waiting for amount or waiting for receipt paste.
+
+type DepositState =
+  | { step: 'awaiting_amount' }
+  | { step: 'awaiting_receipt'; amount: number; telebirrNumber: string };
+
+const depositSessions = new Map<bigint, DepositState>();
+
+/**
+ * Parses a Telebirr SMS receipt text and extracts the transaction number.
+ * Telebirr receipts contain "Your transaction number is <TX>."
+ * Returns null if the pattern is not found.
+ */
+export function parseTelebirrReceipt(text: string): string | null {
+  const match = text.match(/Your transaction number is ([A-Z0-9]+)/i);
+  return match?.[1] ?? null;
 }
 
 // ─── Bot instance (null if BOT_TOKEN is not set) ──────────────────────────────
@@ -447,17 +467,113 @@ if (BOT_TOKEN) {
     }
   });
 
-  // ─── 5.1: Deposit 💰 handler ──────────────────────────────────────────────
-  bot.hears('Deposit 💰', async (ctx) => {
+  // ─── 5.1: /deposit command + Deposit 💰 button handler ──────────────────────
+
+  async function handleDepositStart(ctx: { from?: { id: number }; reply: (text: string) => Promise<unknown> }) {
     if (!ctx.from) return;
-    if (!(await isRegistered(BigInt(ctx.from.id)))) {
-      await ctx.reply(
-        '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
-      );
+    const telegramId = BigInt(ctx.from.id);
+    if (!(await isRegistered(telegramId))) {
+      await ctx.reply('⚠️ Please register first to use this feature. Tap Register 📝 to get started.');
       return;
     }
-    const depositText = await buildDepositText();
-    await ctx.reply(depositText);
+    depositSessions.set(telegramId, { step: 'awaiting_amount' });
+    await ctx.reply('💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስጊቡ።');
+  }
+
+  bot.command('deposit', handleDepositStart);
+
+  bot.hears('Deposit 💰', handleDepositStart);
+
+  // ─── Deposit conversation — handle amount input and receipt paste ────────────
+  bot.on('message:text', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+    const text = ctx.message.text.trim();
+
+    // Ignore bot commands — they have their own handlers
+    if (text.startsWith('/')) return;
+
+    const session = depositSessions.get(telegramId);
+    if (!session) return;
+
+    // ── Step 1: awaiting amount ───────────────────────────────────────────────
+    if (session.step === 'awaiting_amount') {
+      const amount = Number(text);
+      if (!Number.isFinite(amount) || amount < 10) {
+        await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን (ከ10 ብር ጀምሮ) ያስጊቡ።');
+        return;
+      }
+
+      const { text: instructionText, telebirrNumber } = await buildDepositInstructionText(amount);
+      depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber });
+      await ctx.reply(instructionText);
+      return;
+    }
+
+    // ── Step 2: awaiting receipt paste ────────────────────────────────────────
+    if (session.step === 'awaiting_receipt') {
+      const txNumber = parseTelebirrReceipt(text);
+      if (!txNumber) {
+        await ctx.reply('⚠️ ደረሰኙን ማግኘት አልተቻለም። እባክዎ የቴሌብር ደረሰኝ SMS ን ሙሉ በሙሉ ይለጥፉ።');
+        return;
+      }
+
+      const player = await getRegisteredPlayerWithWallets(telegramId);
+      if (!player) {
+        depositSessions.delete(telegramId);
+        await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+        return;
+      }
+
+      try {
+        const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
+
+        if (!deposit) {
+          await ctx.reply('❌ Transaction number not found. Please contact support.');
+          depositSessions.delete(telegramId);
+          return;
+        }
+        if (deposit.status === 'claimed') {
+          await ctx.reply('❌ This transaction has already been used. Please contact support.');
+          depositSessions.delete(telegramId);
+          return;
+        }
+        if (deposit.status === 'cancelled') {
+          await ctx.reply('❌ This transaction has been cancelled. Please contact support.');
+          depositSessions.delete(telegramId);
+          return;
+        }
+
+        const amount = Number(deposit.amount);
+
+        await prisma.$transaction(async (tx) => {
+          await tx.pendingDeposit.update({
+            where: { id: deposit.id },
+            data: { status: 'claimed', player_id: player.id, claimed_at: new Date() },
+          });
+
+          const wallet = await tx.wallet.findUniqueOrThrow({
+            where: { player_id_type: { player_id: player.id, type: 'main' } },
+          });
+
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: { increment: amount } },
+          });
+
+          await tx.transaction.create({
+            data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
+          });
+        });
+
+        depositSessions.delete(telegramId);
+
+        await ctx.reply(`✅ Your deposit of ${amount} ETB is Approved.\n\nRef: ${txNumber}`);
+      } catch (err) {
+        console.error('[Bot] deposit receipt handler error:', err);
+        await ctx.reply('❌ Something went wrong. Please try again later or contact support.');
+      }
+    }
   });
 
   // ─── /txn command handler — deposit auto-verification ─────────────────────

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
 import { getRound, getHistoryDetail, getRounds, getCalledNumbers } from '../lib/api';
+import { idbGet, idbPut } from '../lib/idb';
 import type {
   RoundDetail,
   HistoryDetail,
@@ -101,14 +102,32 @@ export default function LiveGameScreen() {
   const audioCache = useRef<Map<number, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
-    // Preload all 75 sounds immediately on mount regardless of soundOn state
-    // so they are ready when needed with no network delay
-    for (let n = 1; n <= 75; n++) {
-      if (audioCache.current.has(n)) continue;
-      const audio = new Audio(`/sounds/${n}.wav`);
-      audio.preload = 'auto';
-      audioCache.current.set(n, audio);
+    // Load all 75 sounds — serve from IndexedDB cache when available,
+    // otherwise fetch from network and persist for next visit.
+    async function preloadSounds() {
+      for (let n = 1; n <= 75; n++) {
+        if (audioCache.current.has(n)) continue;
+        try {
+          let buf = await idbGet<ArrayBuffer>('sounds', n);
+          if (!buf) {
+            const res = await fetch(`/sounds/${n}.wav`);
+            buf = await res.arrayBuffer();
+            idbPut('sounds', n, buf).catch(() => {}); // persist async, don't block
+          }
+          const blob = new Blob([buf], { type: 'audio/wav' });
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audio.preload = 'auto';
+          audioCache.current.set(n, audio);
+        } catch {
+          // Fallback: load directly from network if IDB fails
+          const audio = new Audio(`/sounds/${n}.wav`);
+          audio.preload = 'auto';
+          audioCache.current.set(n, audio);
+        }
+      }
     }
+    preloadSounds();
   }, []);
 
   function playSound(num: number) {

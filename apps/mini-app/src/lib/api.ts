@@ -12,6 +12,7 @@ import type {
   ReferralStats,
   PaginatedResponse,
 } from '@fidel/shared';
+import { idbGet, idbPut } from './idb';
 
 // Re-export types for screens that can't resolve the workspace package directly
 export type {
@@ -180,7 +181,14 @@ export function getHistory(page = 1): Promise<PaginatedResponse<HistoryEntry>> {
 }
 
 export function getHistoryDetail(roundId: string): Promise<HistoryDetail> {
-  return apiRequest<HistoryDetail>('GET', `/api/history/${roundId}`);
+  const key = `history:${roundId}`;
+  return idbGet<HistoryDetail>('cartelas', key).then(async (cached) => {
+    if (cached) return cached;
+    const detail = await apiRequest<HistoryDetail>('GET', `/api/history/${roundId}`);
+    // History detail is immutable once the round is over — cache indefinitely
+    idbPut('cartelas', key, detail).catch(() => {});
+    return detail;
+  });
 }
 
 // ---------------------------------------------------------------------------
