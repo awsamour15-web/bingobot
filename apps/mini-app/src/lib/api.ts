@@ -164,6 +164,10 @@ export function getCartelaGrid(roundId: string, cartelaNumber: number): Promise<
   return apiRequest<{ cartela_number: number; grid: number[] }>('GET', `/api/rounds/${roundId}/cartelas/${cartelaNumber}/grid`);
 }
 
+export function getMyCartelas(roundId: string): Promise<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }> {
+  return apiRequest('GET', `/api/rounds/${roundId}/my-cartelas`);
+}
+
 export function joinRound(roundId: string, cartelaNumber: number): Promise<JoinRoundResponse> {
   return apiRequest<JoinRoundResponse>('POST', `/api/rounds/${roundId}/join`, { cartelaNumber });
 }

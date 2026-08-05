@@ -97,6 +97,37 @@ router.get('/:id/called-numbers', async (req: Request, res: Response): Promise<v
   res.status(200).json(calledNumbers.map((cn) => cn.number));
 });
 
+// ─── GET /api/rounds/:id/my-cartelas ─────────────────────────────────────────
+// Returns the authenticated player's cartela numbers and grids for this round.
+
+router.get('/:id/my-cartelas', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+
+  const entries = await prisma.roundEntry.findMany({
+    where: { round_id: id, player_id: playerId, is_watching: false },
+    select: { cartela_number: true },
+  });
+
+  if (!entries.length) {
+    res.status(200).json({ cartelas: [] });
+    return;
+  }
+
+  const cartelaNumbers = entries.map((e) => e.cartela_number);
+  const defs = await prisma.cartelaDefinition.findMany({
+    where: { cartela_number: { in: cartelaNumbers } },
+  });
+  const gridMap = new Map(defs.map((d) => [d.cartela_number, d.grid]));
+
+  res.status(200).json({
+    cartelas: cartelaNumbers.map((num) => ({
+      cartelaNumber: num,
+      cartelaGrid: gridMap.get(num) ?? [],
+    })),
+  });
+});
+
 // ─── GET /api/rounds/:id/cartelas ────────────────────────────────────────────
 
 router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> => {

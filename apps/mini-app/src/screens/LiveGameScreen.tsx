@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
-import { getRound, getHistoryDetail, getRounds, getCalledNumbers } from '../lib/api';
+import { getRound, getMyCartelas, getRounds, getCalledNumbers } from '../lib/api';
 import { idbGet, idbPut } from '../lib/idb';
 import type {
   RoundDetail,
-  HistoryDetail,
   NumberCalledPayload,
   RoundStartedPayload,
   RoundWonPayload,
@@ -45,7 +44,7 @@ export default function LiveGameScreen() {
   }, [navigate]);
 
   const [round, setRound] = useState<RoundDetail | null>(null);
-  const [detail, setDetail] = useState<HistoryDetail | null>(null);
+  const [myCartelas, setMyCartelas] = useState<Array<{ cartelaNumber: number; cartelaGrid: number[] }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -157,14 +156,14 @@ export default function LiveGameScreen() {
     if (!roundId) return;
     async function load() {
       try {
-        // Fetch round, history, and called numbers all in parallel
-        const [r, d, calledNums] = await Promise.all([
+        // Fetch round, my cartelas, and called numbers all in parallel
+        const [r, myC, calledNums] = await Promise.all([
           getRound(roundId!),
-          getHistoryDetail(roundId!).catch(() => null),
+          getMyCartelas(roundId!).catch(() => ({ cartelas: [] as Array<{ cartelaNumber: number; cartelaGrid: number[] }> })),
           getCalledNumbers(roundId!).catch(() => [] as number[]),
         ]);
         setRound(r);
-        if (d) setDetail(d);
+        if (myC.cartelas.length) setMyCartelas(myC.cartelas);
 
         const nums = calledNums;
         const existingCalled = new Set(nums);
@@ -320,15 +319,14 @@ export default function LiveGameScreen() {
   }, []);
 
   const handleClaimWin = useCallback(() => {
-    if (!roundId || !detail || claimPending) return;
+    if (!roundId || !myCartelas.length || claimPending) return;
     setClaimPending(true);
     setClaimError(null);
-    socket.emit('CLAIM_WIN', { roundId, cartelaId: detail.cartelaNumber });
-  }, [roundId, detail, claimPending]);
+    socket.emit('CLAIM_WIN', { roundId, cartelaId: myCartelas[0]!.cartelaNumber });
+  }, [roundId, myCartelas, claimPending]);
 
   // ─── Cartela win detection (multi-cartela) ───────────────────────────────
-  const allCartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> =
-    (detail as any)?.allCartelas ?? (detail ? [{ cartelaNumber: detail.cartelaNumber, cartelaGrid: detail.cartelaGrid }] : []);
+  const allCartelas = myCartelas;
   const marked = game.calledNumbers;
   const [activeCartelaIdx, setActiveCartelaIdx] = useState(0);
   const activeCartela = allCartelas[activeCartelaIdx] ?? allCartelas[0];
@@ -361,18 +359,18 @@ export default function LiveGameScreen() {
   const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid as number[]));
   const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
   const wCells = winCellsForGrid(grid);
-  const isWatching = !detail;
+  const isWatching = myCartelas.length === 0;
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
   // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
   const autoClaimed = useRef(false);
   useEffect(() => {
-    if (!playerHasBingo || game.phase !== 'active' || !roundId || !detail || claimPending || autoClaimed.current) return;
+    if (!playerHasBingo || game.phase !== 'active' || !roundId || !myCartelas.length || claimPending || autoClaimed.current) return;
     autoClaimed.current = true;
     setClaimPending(true);
     setClaimError(null);
-    socket.emit('CLAIM_WIN', { roundId, cartelaId: detail.cartelaNumber });
-  }, [playerHasBingo, game.phase, roundId, detail, claimPending]);
+    socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber });
+  }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending]);
 
   if (loading) return (
     <div style={{ height: '100dvh', background: '#1a1035', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>
@@ -665,7 +663,7 @@ export default function LiveGameScreen() {
               <>
                 {/* Cartela number label */}
                 <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 13, fontWeight: 800, color: '#a5b4fc', letterSpacing: 0.5 }}>
-                  ካርቴላ #{detail.cartelaNumber}
+                  ካርቴላ #{activeCartela?.cartelaNumber}
                 </div>
 
                 {/* Player's cartela grid */}
