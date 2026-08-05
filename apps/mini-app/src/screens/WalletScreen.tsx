@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getProfile, getWalletTransactions, depositFunds, withdrawFunds } from '../lib/api';
+import { initAuth } from '../lib/auth';
 import type { PlayerProfile, TransactionListItem, PaginatedResponse } from '../lib/api';
 
 const C = {
@@ -48,7 +49,8 @@ export default function WalletScreen() {
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
 
   useEffect(() => {
-    getProfile()
+    initAuth()
+      .then(() => getProfile())
       .then(setProfile)
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));

@@ -48,6 +48,16 @@ async function getReAuth(): Promise<() => Promise<void>> {
   return reAuth;
 }
 
+// Deduplicate concurrent reAuth calls so multiple simultaneous 404s
+// don't race to clear/reset the session at the same time.
+let reAuthPromise: Promise<void> | null = null;
+async function deduplicatedReAuth(): Promise<void> {
+  if (reAuthPromise) return reAuthPromise;
+  const reAuth = await getReAuth();
+  reAuthPromise = reAuth().finally(() => { reAuthPromise = null; });
+  return reAuthPromise;
+}
+
 function getJwt(): string | null {
   return localStorage.getItem('jwt');
 }
@@ -91,8 +101,7 @@ export async function apiRequest<T>(
 
     // Stale JWT pointing at a deleted/reset player — re-auth and retry once
     if (response.status === 404 && errorData.error === 'NOT_FOUND') {
-      const reAuth = await getReAuth();
-      await reAuth();
+      await deduplicatedReAuth();
       response = await fetchOnce(method, path, body);
 
       if (response.ok) return response.json() as Promise<T>;

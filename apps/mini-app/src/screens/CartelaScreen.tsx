@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getRound, getCartelaAvailability, joinRound, joinRoundBatch, getProfile } from '../lib/api';
+import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload } from '../lib/api';
 
@@ -59,14 +60,15 @@ export default function CartelaScreen() {
     if (!roundId) return;
     async function load() {
       try {
+        await initAuth();
         const [r, avail, profile] = await Promise.all([
           getRound(roundId!),
           getCartelaAvailability(roundId!),
-          getProfile(),
+          getProfile().catch(() => null), // non-critical — don't block on profile failure
         ]);
         setRound(r);
         setAvailability(avail);
-        setBalances(profile);
+        if (profile) setBalances(profile);
         if (r.status === 'active' || r.status === 'completed') {
           countdownStartedRef.current = true;
         }

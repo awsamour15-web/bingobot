@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getProfile, getReferralLink } from '../lib/api';
+import { initAuth } from '../lib/auth';
 import type { PlayerProfile, ReferralStats } from '@fidel/shared';
 
 const C = {
@@ -24,7 +25,8 @@ export default function ProfileScreen() {
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
 
   useEffect(() => {
-    Promise.all([getProfile(), getReferralLink()])
+    initAuth()
+      .then(() => Promise.all([getProfile(), getReferralLink()]))
       .then(([p, r]) => { setProfile(p); setReferral(r); })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
