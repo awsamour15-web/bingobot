@@ -516,52 +516,148 @@ export default function LiveGameScreen() {
             </div>
           </div>
 
-          {/* Win/end banners */}
+          {/* Win overlay — full-screen modal */}
           {game.phase === 'won' && game.winnerInfo && (() => {
             const wi = game.winnerInfo;
-            const myWinner = !isWatching
-              ? wi.winners.find((w) => w.cartelaNumber === detail?.cartelaNumber)
-              : null;
+            const isMulti = wi.winnerCount > 1;
 
-            if (wi.winnerCount === 1) {
-              // Single winner
-              const solo = wi.winners[0];
-              return (
-                <div style={{ background: myWinner ? '#065f46' : '#1e3a5f', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                  {myWinner
-                    ? `🏆 You won ${myWinner.amount} Birr!`
-                    : solo ? `@${solo.username} won ${solo.amount} Birr` : '🏆 Round over'}
-                </div>
-              );
-            }
+            // Pick the cartela to display: winner's cartela if single, or current player's if multi
+            const displayWinner = isMulti
+              ? (wi.winners[0])
+              : wi.winners[0];
+            const winCartelaNumber = displayWinner?.cartelaNumber ?? null;
 
-            // Multiple winners — shared win
+            // Find the winning cartela grid — prefer player's own, fallback to first winner's
+            const winnerCartela = allCartelas.find((c) => c.cartelaNumber === winCartelaNumber)
+              ?? allCartelas[0];
+            const winGrid: number[] = (winnerCartela?.cartelaGrid ?? grid) as number[];
+            const winCells = winCellsForGrid(winGrid);
+
+            const winnerName = isMulti
+              ? wi.winners.map((w) => `@${w.username}`).join(', ')
+              : `${displayWinner?.username ?? 'Winner'}`;
+
             return (
-              <div style={{ background: myWinner ? '#065f46' : '#1e3a5f', padding: '10px 12px', flexShrink: 0 }}>
-                <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 14, marginBottom: 4 }}>
-                  🏆 Shared Win! — Prize pool: {wi.totalDerash} Birr
+              <div style={{
+                position: 'fixed', inset: 0, zIndex: 100,
+                background: 'rgba(15,12,41,0.96)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '24px 20px',
+                overflowY: 'auto',
+              }}>
+                {/* Crown */}
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #f5a623, #f5d06b)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 30, marginBottom: 10,
+                  boxShadow: '0 0 24px #f5a62388',
+                }}>
+                  👑
                 </div>
-                {wi.winners.map((w) => (
-                  <div key={w.playerId} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '2px 4px', fontSize: 12, fontWeight: 700,
-                    color: !isWatching && w.cartelaNumber === detail?.cartelaNumber ? '#86efac' : '#fff',
+
+                {/* BINGO! */}
+                <div style={{ fontSize: 36, fontWeight: 900, color: '#f5d06b', letterSpacing: 2, marginBottom: 6 }}>
+                  BINGO!
+                </div>
+
+                {/* Winner name */}
+                <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 16, color: '#fff' }}>
+                  🎉 {winnerName} WON! 🎉
+                </div>
+
+                {/* Winning cartela card */}
+                {winGrid.length > 0 && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.07)',
+                    borderRadius: 12, overflow: 'hidden',
+                    width: '100%', maxWidth: 320,
+                    marginBottom: 16,
+                    boxShadow: '0 4px 32px rgba(0,0,0,0.5)',
                   }}>
-                    <span>@{w.username}</span>
-                    <span>{w.amount} Birr</span>
+                    {/* Trophy + cartela number */}
+                    <div style={{ textAlign: 'center', padding: '8px 0 4px', fontWeight: 800, fontSize: 14, color: '#f5d06b' }}>
+                      🏆 Winning Cartela : {winCartelaNumber}
+                    </div>
+
+                    {/* Column headers */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+                      {COLS.map((c, i) => (
+                        <div key={c} style={{
+                          background: COL_COLORS[i], textAlign: 'center',
+                          padding: '7px 0', fontWeight: 900, fontSize: 15, color: '#fff',
+                        }}>{c}</div>
+                      ))}
+                    </div>
+
+                    {/* Grid cells */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, padding: 6 }}>
+                      {winGrid.map((val, idx) => {
+                        const isFree = idx === 12;
+                        const isMarked = isFree || marked.has(val);
+                        const isWinCell = winCells.has(idx);
+                        const colIdx = idx % 5;
+
+                        let bg = 'rgba(255,255,255,0.08)';
+                        let color = '#ccc';
+                        if (isWinCell) { bg = '#22c55e'; color = '#fff'; }
+                        else if (isMarked) { bg = COL_COLORS[colIdx]!; color = '#fff'; }
+
+                        return (
+                          <div key={idx} style={{
+                            aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: bg, color, borderRadius: 6,
+                            fontSize: 15, fontWeight: isMarked ? 800 : 400,
+                            transition: 'background 0.2s',
+                          }}>
+                            {isFree ? '✦' : val}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {/* Prize info for multi-winner */}
+                {isMulti && (
+                  <div style={{ width: '100%', maxWidth: 320, marginBottom: 12 }}>
+                    {wi.winners.map((w) => (
+                      <div key={w.playerId} style={{
+                        display: 'flex', justifyContent: 'space-between',
+                        padding: '4px 8px', fontSize: 13, fontWeight: 700, color: '#a5b4fc',
+                      }}>
+                        <span>@{w.username}</span>
+                        <span>{w.amount} Birr</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Auto-start countdown */}
+                {nextCountdown !== null && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.1)', borderRadius: 20,
+                    padding: '8px 20px', fontSize: 13, fontWeight: 700, color: '#e2e8f0',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5d06b', display: 'inline-block' }} />
+                    {nextCountdown > 0
+                      ? `Auto-starting next game in ${nextCountdown}s`
+                      : 'Finding next round...'}
+                  </div>
+                )}
               </div>
             );
           })()}
+
           {(game.phase === 'void' || game.phase === 'cancelled') && (
             <div style={{ background: '#7f1d1d', padding: '10px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
               {game.endMessage}
             </div>
           )}
 
-          {/* Next round countdown */}
-          {nextCountdown !== null && (
+          {/* Next round countdown (non-won phases) */}
+          {nextCountdown !== null && game.phase !== 'won' && (
             <div style={{ background: '#1e3a5f', padding: '8px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
               {nextCountdown > 0 ? `Next round in ${nextCountdown}s` : 'Finding next round...'}
             </div>
