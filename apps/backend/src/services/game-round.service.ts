@@ -99,7 +99,7 @@ export const GameRoundService = {
    *  5. Insert the RoundEntry.
    *  6. Update GameRound.derash.
    *
-   * After the transaction, calls autoStartCheck.
+   * Round auto-start is handled by the scheduler, not here.
    * Requirements: 3.3, 3.5, 3.6
    */
   async join(
@@ -107,7 +107,6 @@ export const GameRoundService = {
     playerId: string,
     cartelaNumber: number,
     walletType: WalletType = WalletType.main,
-    skipAutoStart = false,
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
       // 1. Fetch and lock the round
@@ -219,11 +218,6 @@ export const GameRoundService = {
         data: { derash: newDerash },
       });
     });
-
-    // After the transaction commits, check if the round should auto-start
-    if (!skipAutoStart) {
-      await GameRoundService.autoStartCheck(roundId);
-    }
   },
 
   /**

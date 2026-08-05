@@ -85,12 +85,23 @@ export default function CartelaScreen() {
     if (!roundId) return;
     if (!socket.connected) socket.connect();
     socket.emit('JOIN_ROUND', { roundId, token: localStorage.getItem('jwt') ?? '' });
-    const onJoined = (p: PlayerJoinedPayload) =>
+
+    const onJoined = (p: PlayerJoinedPayload) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
+      // Refresh availability so newly taken cartelas show immediately
+      getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
+    };
     socket.on('PLAYER_JOINED', onJoined);
+
+    // Poll every 5s as fallback in case a socket event is missed
+    const poll = setInterval(() => {
+      getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
+    }, 5000);
+
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
       socket.emit('LEAVE_ROUND' as any, { roundId });
+      clearInterval(poll);
     };
   }, [roundId]);
 

@@ -102,30 +102,29 @@ export default function LiveGameScreen() {
   const audioCache = useRef<Map<number, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
-    // Load all 75 sounds — serve from IndexedDB cache when available,
-    // otherwise fetch from network and persist for next visit.
+    // Load all 75 sounds in parallel — IDB cache when available, otherwise network.
     async function preloadSounds() {
-      for (let n = 1; n <= 75; n++) {
-        if (audioCache.current.has(n)) continue;
+      const load = async (n: number) => {
+        if (audioCache.current.has(n)) return;
         try {
           let buf = await idbGet<ArrayBuffer>('sounds', n);
           if (!buf) {
             const res = await fetch(`/sounds/${n}.wav`);
             buf = await res.arrayBuffer();
-            idbPut('sounds', n, buf).catch(() => {}); // persist async, don't block
+            idbPut('sounds', n, buf).catch(() => {});
           }
           const blob = new Blob([buf], { type: 'audio/wav' });
-          const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
+          const audio = new Audio(URL.createObjectURL(blob));
           audio.preload = 'auto';
           audioCache.current.set(n, audio);
         } catch {
-          // Fallback: load directly from network if IDB fails
           const audio = new Audio(`/sounds/${n}.wav`);
           audio.preload = 'auto';
           audioCache.current.set(n, audio);
         }
-      }
+      };
+      // Fire all 75 in parallel
+      await Promise.all(Array.from({ length: 75 }, (_, i) => load(i + 1)));
     }
     preloadSounds();
   }, []);
@@ -158,21 +157,18 @@ export default function LiveGameScreen() {
     if (!roundId) return;
     async function load() {
       try {
-        const [r, d] = await Promise.all([
+        // Fetch round, history, and called numbers all in parallel
+        const [r, d, calledNums] = await Promise.all([
           getRound(roundId!),
           getHistoryDetail(roundId!).catch(() => null),
+          getCalledNumbers(roundId!).catch(() => [] as number[]),
         ]);
         setRound(r);
         if (d) setDetail(d);
 
-        // If round is already active, load all called numbers from DB
-        let existingCalled = new Set<number>();
-        let lastCalled: number | null = null;
-        if (r.status === 'active' || r.status === 'completed') {
-          const nums = await getCalledNumbers(roundId!);
-          existingCalled = new Set(nums);
-          lastCalled = nums[nums.length - 1] ?? null;
-        }
+        const nums = calledNums;
+        const existingCalled = new Set(nums);
+        const lastCalled = nums[nums.length - 1] ?? null;
 
         setGame((g) => ({
           ...g,

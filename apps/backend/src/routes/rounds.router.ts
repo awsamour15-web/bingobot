@@ -169,11 +169,9 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
   const cartelaNumbers = body.cartelaNumbers as number[];
 
   try {
-    // Join all cartelas sequentially inside the service; autoStartCheck only
-    // fires after the last one so the round stays pending for all joins.
+    // Join all cartelas sequentially — scheduler handles round start.
     for (let i = 0; i < cartelaNumbers.length; i++) {
-      const isLast = i === cartelaNumbers.length - 1;
-      await GameRoundService.join(id, playerId, cartelaNumbers[i]!, WalletType.main, !isLast);
+      await GameRoundService.join(id, playerId, cartelaNumbers[i]!, WalletType.main);
     }
   } catch (err) {
     if (err instanceof CartelaTakenError) {

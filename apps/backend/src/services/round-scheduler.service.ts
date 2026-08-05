@@ -30,12 +30,6 @@ export const RoundScheduler = {
 
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
-    // Ensure min_players_to_start is 1 so rounds always start
-    void prisma.config.upsert({
-      where: { key: 'min_players_to_start' },
-      update: { value: '1' },
-      create: { key: 'min_players_to_start', value: '1' },
-    });
     // Ensure call_interval_ms is exactly 5000ms
     void prisma.config.upsert({
       where: { key: 'call_interval_ms' },
