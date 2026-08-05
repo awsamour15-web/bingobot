@@ -50,6 +50,7 @@ export default function CartelaScreen() {
   const [picks, setPicks] = useState<number[]>([]);
   const picksRef = useRef<number[]>([]);
   useEffect(() => { picksRef.current = picks; }, [picks]);
+  const [registered, setRegistered] = useState(false); // true once cartelas are confirmed with server
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const joinedRef = useRef(false);
@@ -83,6 +84,46 @@ export default function CartelaScreen() {
     load();
   }, [roundId]);
 
+  // Register cartelas with server immediately while round is still pending
+  async function registerCartelas(cartelaNumbers: number[]) {
+    if (cartelaNumbers.length === 0 || registered) return;
+    setJoining(true);
+    setError(null);
+    try {
+      if (cartelaNumbers.length === 1) {
+        await joinRound(roundId!, cartelaNumbers[0]!);
+      } else {
+        await joinRoundBatch(roundId!, cartelaNumbers);
+      }
+      setRegistered(true);
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
+        setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+        // Deselect picks so user can try again
+        setPicks([]);
+        picksRef.current = [];
+      } else if (e.code === 'CARTELA_TAKEN' || e.message?.includes('already taken')) {
+        setError(e.message ?? 'Cartela already taken, please pick another');
+        // Remove the taken cartela from picks
+        const takenMatch = e.message?.match(/Cartela (\d+)/);
+        if (takenMatch) {
+          const takenNum = parseInt(takenMatch[1]!);
+          setPicks(prev => prev.filter(n => n !== takenNum));
+        }
+      } else if (e.message?.includes('not pending') || e.message?.includes('void') || e.message?.includes('cancelled')) {
+        // Round already started — navigate to game, server already has our entry or we watch
+        sessionStorage.setItem('selectedRoundId', roundId!);
+        navigate(`/rounds/${roundId}/game`, { replace: true });
+        return;
+      } else {
+        setError(e.message ?? 'Failed to register cartela');
+      }
+    } finally {
+      setJoining(false);
+    }
+  }
+
   useEffect(() => {
     if (!roundId) return;
     if (!socket.connected) socket.connect();
@@ -90,38 +131,15 @@ export default function CartelaScreen() {
 
     const onJoined = (p: PlayerJoinedPayload) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
-      // Refresh taken cartelas when someone joins
       getCartelaAvailability(roundId!).then(setAvailability).catch(() => {});
     };
 
-    // Round started by scheduler — join with selected cartelas then navigate
+    // Round started — just navigate, cartelas were already registered
     const onStarted = (_p: RoundStartedPayload) => {
       if (joinedRef.current) return;
       joinedRef.current = true;
-
-      async function doJoinAndNavigate() {
-        setJoining(true);
-        const currentPicks = picksRef.current;
-        try {
-          if (currentPicks.length === 1) {
-            await joinRound(roundId!, currentPicks[0]!);
-          } else if (currentPicks.length > 1) {
-            await joinRoundBatch(roundId!, currentPicks);
-          }
-        } catch (err: unknown) {
-          const e = err as { code?: string; message?: string };
-          if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
-            setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
-            setJoining(false);
-            joinedRef.current = false;
-            return;
-          }
-          // Any other error (cartela taken, round not pending etc.) — go to game as watcher
-        }
-        sessionStorage.setItem('selectedRoundId', roundId!);
-        navigate(`/rounds/${roundId}/game`, { replace: true });
-      }
-      void doJoinAndNavigate();
+      sessionStorage.setItem('selectedRoundId', roundId!);
+      navigate(`/rounds/${roundId}/game`, { replace: true });
     };
 
     // Round voided/cancelled — go back home
@@ -146,8 +164,7 @@ export default function CartelaScreen() {
 
   useEffect(() => { if (msLeft > 0) countdownStartedRef.current = true; }, [msLeft]);
 
-  // Manual "Join Now" / "Watch Game" trigger — timer-based auto-join removed
-  // because ROUND_STARTED socket event now navigates everyone at the same time
+  // Manual "Watch Game" or "Confirm 1 cartela" trigger
   useEffect(() => {
     if (!manualTrigger || joinedRef.current || joining) return;
     joinedRef.current = true;
@@ -162,42 +179,22 @@ export default function CartelaScreen() {
           navigate('/', { replace: true });
           return;
         }
-        if (currentRound.status === 'active' || currentRound.status === 'completed') {
-          sessionStorage.setItem('selectedRoundId', roundId!);
-          navigate(`/rounds/${roundId}/game`, { replace: true });
-          return;
-        }
-        const currentPicks = picksRef.current;
-        if (currentPicks.length > 0) {
-          if (currentPicks.length === 1) {
-            await joinRound(roundId!, currentPicks[0]!);
-          } else {
-            await joinRoundBatch(roundId!, currentPicks);
-          }
+        // If not yet registered and picks exist, try to join now
+        if (!registered && picksRef.current.length > 0 && currentRound.status === 'pending') {
+          await registerCartelas(picksRef.current);
         }
         sessionStorage.setItem('selectedRoundId', roundId!);
         navigate(`/rounds/${roundId}/game`, { replace: true });
-      } catch (err: unknown) {
-        const e = err as { code?: string; message?: string };
-        if (e.message?.includes('not pending') || e.message?.includes('void') || e.message?.includes('cancelled')) {
-          sessionStorage.setItem('selectedRoundId', roundId!);
-          navigate(`/rounds/${roundId}/game`, { replace: true });
-          return;
-        }
-        if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
-          setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
-        } else {
-          setError(e.message ?? 'Failed to join round');
-        }
+      } catch {
         setJoining(false);
         joinedRef.current = false;
       }
     }
     void startGame();
-  }, [manualTrigger, joining, picks, roundId, navigate]);
+  }, [manualTrigger, joining, roundId, navigate]);
 
   function togglePick(num: number) {
-    if (joining) return;
+    if (joining || registered) return;
     if (picks.includes(num)) {
       setPicks(prev => prev.filter(n => n !== num));
       return;
@@ -214,7 +211,13 @@ export default function CartelaScreen() {
     }
     setPicks(prev => {
       if (prev.length >= MAX_SELECT) return prev;
-      return [...prev, num];
+      const next = [...prev, num];
+      // Auto-register immediately when max cartelas selected
+      if (next.length === MAX_SELECT) {
+        picksRef.current = next;
+        void registerCartelas(next);
+      }
+      return next;
     });
   }
 
@@ -273,14 +276,28 @@ export default function CartelaScreen() {
         <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct * 100}%`, background: urgent ? '#ef4444' : '#f59e0b', transition: 'width 0.25s linear' }} />
         </div>
-        {picks.length > 0
-          ? <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>✅ Cartela {picks.join(' & ')} selected — joining automatically</div>
+        {picks.length > 0 && registered
+          ? <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>✅ Cartela {picks.join(' & ')} confirmed — waiting for game to start</div>
+          : picks.length > 0
+          ? <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Cartela {picks.join(' & ')} selected</div>
           : <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>Select up to {MAX_SELECT} cartelas, or watch for free</div>
         }
+        {/* Confirm button for 1-cartela selection */}
+        {picks.length === 1 && !registered && !joining && (
+          <button
+            onClick={() => { picksRef.current = picks; void registerCartelas(picks); }}
+            style={{ marginTop: 8, padding: '8px 24px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}
+          >
+            Confirm Cartela {picks[0]}
+          </button>
+        )}
+        {joining && picks.length > 0 && !registered && (
+          <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Registering…</div>
+        )}
         {!countdownStartedRef.current && msLeft === 0 && !joining && (
           <button onClick={() => { joinedRef.current = false; setManualTrigger(true); }}
             style={{ marginTop: 8, padding: '8px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            {picks.length > 0 ? 'Join Now' : 'Watch Game'}
+            {registered ? 'Go to Game' : picks.length > 0 ? 'Join Now' : 'Watch Game'}
           </button>
         )}
       </div>
@@ -309,7 +326,7 @@ export default function CartelaScreen() {
         {allNumbers.map(num => {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
-          const disabled = joining || taken || (!isPicked && !canPick);
+          const disabled = joining || registered || taken || (!isPicked && !canPick);
           const bg = isPicked ? '#f59e0b' : taken ? '#7f1d1d' : '#1e3a5f';
           const color = isPicked ? '#0a0e1a' : taken ? '#fca5a5' : '#e2e8f0';
 
