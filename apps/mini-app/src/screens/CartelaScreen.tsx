@@ -51,6 +51,8 @@ export default function CartelaScreen() {
   const picksRef = useRef<number[]>([]);
   useEffect(() => { picksRef.current = picks; }, [picks]);
   const [registeredNums, setRegisteredNums] = useState<number[]>([]); // cartelas confirmed with server
+  const registeredNumsRef = useRef<number[]>([]);
+  useEffect(() => { registeredNumsRef.current = registeredNums; }, [registeredNums]);
   const registered = registeredNums.length > 0;
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
@@ -88,14 +90,18 @@ export default function CartelaScreen() {
   // Register a single new cartela with server immediately while round is still pending
   async function registerCartelas(allPicks: number[]) {
     if (allPicks.length === 0) return;
-    // Only register the latest pick (the one not yet registered)
     const newCartela = allPicks[allPicks.length - 1]!;
-    if (registeredNums.includes(newCartela)) return;
+    // Use ref so this always has the latest registered list regardless of closure
+    if (registeredNumsRef.current.includes(newCartela)) return;
     setJoining(true);
     setError(null);
     try {
       await joinRound(roundId!, newCartela);
-      setRegisteredNums(prev => [...prev, newCartela]);
+      setRegisteredNums(prev => {
+        const next = [...prev, newCartela];
+        registeredNumsRef.current = next;
+        return next;
+      });
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
@@ -216,9 +222,13 @@ export default function CartelaScreen() {
   }, [manualTrigger, joining, roundId, navigate]);
 
   function togglePick(num: number) {
-    if (joining || registered) return;
+    if (joining) return; // briefly block during an in-flight registration
+    if (registeredNumsRef.current.length >= MAX_SELECT) return; // already have max registered
     if (picks.includes(num)) {
-      setPicks(prev => prev.filter(n => n !== num));
+      // Only allow deselect if not yet registered
+      if (!registeredNumsRef.current.includes(num)) {
+        setPicks(prev => prev.filter(n => n !== num));
+      }
       return;
     }
     if (round && balances) {
@@ -231,14 +241,12 @@ export default function CartelaScreen() {
         return;
       }
     }
-    setPicks(prev => {
-      if (prev.length >= MAX_SELECT) return prev;
-      const next = [...prev, num];
-      picksRef.current = next;
-      // Register with server immediately on every pick so other users see it taken right away
-      void registerCartelas(next);
-      return next;
-    });
+    if (picks.length >= MAX_SELECT) return;
+    const next = [...picksRef.current, num];
+    picksRef.current = next;
+    setPicks(next);
+    // Register with server immediately
+    void registerCartelas(next);
   }
 
   if (loading) return (
@@ -345,7 +353,8 @@ export default function CartelaScreen() {
         {allNumbers.map(num => {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
-          const disabled = joining || registered || taken || (!isPicked && !canPick);
+          const isRegistered = registeredNums.includes(num);
+          const disabled = joining || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
           const bg = isPicked ? '#f59e0b' : taken ? '#7f1d1d' : '#1e3a5f';
           const color = isPicked ? '#0a0e1a' : taken ? '#fca5a5' : '#e2e8f0';
 
