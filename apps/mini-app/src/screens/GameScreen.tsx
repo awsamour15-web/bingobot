@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initAuth } from '../lib/auth';
 import { getRounds } from '../lib/api';
-import type { RoundListItem } from '@beteseb/shared';
+import type { RoundListItem } from '@fidel/shared';
 
 const ALLOWED_STAKES = [10, 20, 50];
 

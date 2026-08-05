@@ -11,7 +11,7 @@ import type {
   DepositResponse,
   ReferralStats,
   PaginatedResponse,
-} from '@beteseb/shared';
+} from '@fidel/shared';
 
 // Re-export types for screens that can't resolve the workspace package directly
 export type {
@@ -38,7 +38,7 @@ export type {
   RoundCancelledPayload,
   PlayerJoinedPayload,
   WinRejectedPayload,
-} from '@beteseb/shared';
+} from '@fidel/shared';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
 
@@ -78,6 +78,12 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    // Stale JWT pointing at a deleted/reset player — treat as session expired
+    if (response.status === 404 && errorData.error === 'NOT_FOUND' && path === '/api/players/me') {
+      localStorage.clear();
+      window.location.href = '/';
+      throw new Error('Session expired');
+    }
     throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
       status: response.status,
       code: errorData.error,

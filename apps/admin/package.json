@@ -1,5 +1,5 @@
 {
-  "name": "@beteseb/admin",
+  "name": "@fidel/admin",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@beteseb/shared": "workspace:*",
+    "@fidel/shared": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^6.26.0"

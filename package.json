@@ -1,9 +1,9 @@
 {
-  "name": "beteseb-bingo",
+  "name": "fidel-bingo",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter @beteseb/shared build && pnpm --filter !@beteseb/shared -r build",
+    "build": "pnpm --filter @fidel/shared build && pnpm --filter !@fidel/shared -r build",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "type-check": "pnpm -r type-check",

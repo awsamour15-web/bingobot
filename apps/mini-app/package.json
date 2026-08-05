@@ -1,5 +1,5 @@
 {
-  "name": "@beteseb/mini-app",
+  "name": "@fidel/mini-app",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@beteseb/shared": "workspace:*",
+    "@fidel/shared": "workspace:*",
     "@twa-dev/sdk": "^8.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

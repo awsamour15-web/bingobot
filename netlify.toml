@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm --filter @beteseb/shared build && pnpm --filter @beteseb/mini-app build"
+  command = "pnpm --filter @fidel/shared build && pnpm --filter @fidel/mini-app build"
   publish = "apps/mini-app/dist"
 
 [[redirects]]

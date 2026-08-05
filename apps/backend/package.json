@@ -1,10 +1,10 @@
 {
-  "name": "@beteseb/backend",
+  "name": "@fidel/backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @beteseb/shared build && prisma generate && tsc",
+    "build": "pnpm --filter @fidel/shared build && prisma generate && tsc",
     "type-check": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
@@ -17,7 +17,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@beteseb/shared": "workspace:*",
+    "@fidel/shared": "workspace:*",
     "@prisma/client": "5.22.0",
     "@types/bcryptjs": "^3.0.0",
     "bcryptjs": "^3.0.3",

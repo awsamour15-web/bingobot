@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getProfile, getReferralLink } from '../lib/api';
-import type { PlayerProfile, ReferralStats } from '@beteseb/shared';
+import type { PlayerProfile, ReferralStats } from '@fidel/shared';
 
 const C = {
   bg: '#0a0e1a',

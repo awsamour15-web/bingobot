@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import type { ServerToClientEvents, ClientToServerEvents } from '@beteseb/shared';
+import type { ServerToClientEvents, ClientToServerEvents } from '@fidel/shared';
 
 // Connect to the same origin as the page (or a configured WebSocket URL).
 // In dev, set VITE_API_URL=http://localhost:3000 so the socket connects to the backend.

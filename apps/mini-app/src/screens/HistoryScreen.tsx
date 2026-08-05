@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHistory } from '../lib/api';
-import type { HistoryEntry, PaginatedResponse } from '@beteseb/shared';
+import type { HistoryEntry, PaginatedResponse } from '@fidel/shared';
 
 const C = {
   bg: '#0a0e1a', surface: '#0d1b2e', surface2: '#112240',
