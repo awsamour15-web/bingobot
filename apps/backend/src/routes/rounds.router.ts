@@ -142,6 +142,74 @@ router.get('/:id/cartelas/:num/grid', async (req: Request, res: Response): Promi
   res.json({ cartela_number: num, grid: def.grid });
 });
 
+// ─── POST /api/rounds/:id/join-batch ─────────────────────────────────────────
+// Joins up to MAX_SELECT cartelas in a single request to avoid race conditions
+// where sequential joins trigger autoStartCheck between calls.
+
+router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+  const body = req.body as { cartelaNumbers?: unknown };
+
+  if (
+    !Array.isArray(body?.cartelaNumbers) ||
+    body.cartelaNumbers.length === 0 ||
+    body.cartelaNumbers.length > 2 ||
+    !body.cartelaNumbers.every(
+      (n) => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 800,
+    )
+  ) {
+    res.status(400).json({
+      error: 'BAD_REQUEST',
+      message: 'cartelaNumbers must be an array of 1–2 integers between 1 and 800',
+    });
+    return;
+  }
+
+  const cartelaNumbers = body.cartelaNumbers as number[];
+
+  try {
+    // Join all cartelas sequentially inside the service; autoStartCheck only
+    // fires after the last one so the round stays pending for all joins.
+    for (let i = 0; i < cartelaNumbers.length; i++) {
+      const isLast = i === cartelaNumbers.length - 1;
+      await GameRoundService.join(id, playerId, cartelaNumbers[i]!, WalletType.main, !isLast);
+    }
+  } catch (err) {
+    if (err instanceof CartelaTakenError) {
+      res.status(409).json({ error: 'CARTELA_TAKEN', message: err.message });
+      return;
+    }
+    if (err instanceof RoundNotPendingError) {
+      res.status(409).json({ error: 'ROUND_NOT_JOINABLE', message: err.message });
+      return;
+    }
+    if (err instanceof InsufficientFundsError) {
+      res.status(422).json({ error: 'INSUFFICIENT_BALANCE', message: err.message });
+      return;
+    }
+    if (err instanceof PlayerSuspendedError) {
+      res.status(403).json({ error: 'PLAYER_SUSPENDED', message: err.message });
+      return;
+    }
+    if (err instanceof RoundNotFoundError) {
+      res.status(404).json({ error: 'NOT_FOUND', message: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  const wallets = await prisma.wallet.findMany({ where: { player_id: playerId } });
+  const mainWallet = wallets.find((w) => w.type === 'main');
+  const playWallet = wallets.find((w) => w.type === 'play');
+
+  res.status(200).json({
+    cartelaNumbers,
+    mainWalletBalance: Number(mainWallet?.balance ?? 0),
+    playWalletBalance: Number(playWallet?.balance ?? 0),
+  });
+});
+
 // ─── POST /api/rounds/:id/join ────────────────────────────────────────────────
 
 router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {

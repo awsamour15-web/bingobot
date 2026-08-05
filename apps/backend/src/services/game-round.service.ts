@@ -107,6 +107,7 @@ export const GameRoundService = {
     playerId: string,
     cartelaNumber: number,
     walletType: WalletType = WalletType.main,
+    skipAutoStart = false,
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
       // 1. Fetch and lock the round
@@ -220,7 +221,9 @@ export const GameRoundService = {
     });
 
     // After the transaction commits, check if the round should auto-start
-    await GameRoundService.autoStartCheck(roundId);
+    if (!skipAutoStart) {
+      await GameRoundService.autoStartCheck(roundId);
+    }
   },
 
   /**

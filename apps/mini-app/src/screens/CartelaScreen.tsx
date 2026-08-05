@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, joinRound, getProfile } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRound, joinRoundBatch, getProfile } from '../lib/api';
 import { socket } from '../lib/socket';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload } from '../lib/api';
 
@@ -115,7 +115,11 @@ export default function CartelaScreen() {
           return;
         }
         if (picks.length > 0) {
-          for (const num of picks) await joinRound(roundId!, num);
+          if (picks.length === 1) {
+            await joinRound(roundId!, picks[0]!);
+          } else {
+            await joinRoundBatch(roundId!, picks);
+          }
         }
         sessionStorage.setItem('selectedRoundId', roundId!);
         navigate(`/rounds/${roundId}/game`, { replace: true });

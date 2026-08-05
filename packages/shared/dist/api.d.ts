@@ -66,6 +66,10 @@ export interface HistoryDetail extends HistoryEntry {
         sequence_index: number;
     }>;
     cartelaGrid: number[];
+    allCartelas?: Array<{
+        cartelaNumber: number;
+        cartelaGrid: number[];
+    }>;
 }
 export interface TransactionListItem {
     id: string;

@@ -96,6 +96,7 @@ export interface HistoryEntry {
 export interface HistoryDetail extends HistoryEntry {
   calledNumbers: Array<{ number: number; sequence_index: number }>;
   cartelaGrid: number[];
+  allCartelas?: Array<{ cartelaNumber: number; cartelaGrid: number[] }>;
 }
 
 // ---------------------------------------------------------------------------

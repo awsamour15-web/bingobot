@@ -9,9 +9,14 @@ export interface RoundStartedPayload {
     derash: number;
 }
 export interface RoundWonPayload {
-    winnerUsername: string;
-    cartelaNumber: number;
-    derash: number;
+    winners: Array<{
+        playerId: string;
+        username: string;
+        cartelaNumber: number;
+        amount: number;
+    }>;
+    totalDerash: number;
+    winnerCount: number;
 }
 export interface RoundVoidPayload {
     roundId: string;
@@ -48,6 +53,9 @@ export interface ServerToClientEvents {
 /** Events emitted by the client and received by the server */
 export interface ClientToServerEvents {
     JOIN_ROUND: (event: JoinRoundEvent) => void;
+    LEAVE_ROUND: (event: {
+        roundId: string;
+    }) => void;
     CLAIM_WIN: (event: ClaimWinEvent) => void;
 }
 //# sourceMappingURL=websocket.d.ts.map

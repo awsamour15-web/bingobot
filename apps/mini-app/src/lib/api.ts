@@ -42,6 +42,12 @@ export type {
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
 
+// Imported lazily to avoid circular dependency (auth.ts imports login() from here)
+async function getReAuth(): Promise<() => Promise<void>> {
+  const { reAuth } = await import('./auth');
+  return reAuth;
+}
+
 function getJwt(): string | null {
   return localStorage.getItem('jwt');
 }
@@ -58,17 +64,21 @@ function buildHeaders(hasBody = false): Record<string, string> {
   return headers;
 }
 
+async function fetchOnce(method: string, path: string, body?: unknown): Promise<Response> {
+  const hasBody = body !== undefined;
+  return fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: buildHeaders(hasBody),
+    body: hasBody ? JSON.stringify(body) : null,
+  });
+}
+
 export async function apiRequest<T>(
   method: string,
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const hasBody = body !== undefined;
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: buildHeaders(hasBody),
-    body: hasBody ? JSON.stringify(body) : null,
-  });
+  let response = await fetchOnce(method, path, body);
 
   if (response.status === 401) {
     localStorage.clear();
@@ -78,12 +88,23 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
-    // Stale JWT pointing at a deleted/reset player — treat as session expired
-    if (response.status === 404 && errorData.error === 'NOT_FOUND' && path === '/api/players/me') {
-      localStorage.clear();
-      window.location.href = '/';
-      throw new Error('Session expired');
+
+    // Stale JWT pointing at a deleted/reset player — re-auth and retry once
+    if (response.status === 404 && errorData.error === 'NOT_FOUND') {
+      const reAuth = await getReAuth();
+      await reAuth();
+      response = await fetchOnce(method, path, body);
+
+      if (response.ok) return response.json() as Promise<T>;
+
+      // If still failing after re-auth, fall through to throw
+      const retryError = await response.json().catch(() => ({ message: response.statusText }));
+      throw Object.assign(new Error(retryError.message ?? 'Request failed'), {
+        status: response.status,
+        code: retryError.error,
+      });
     }
+
     throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
       status: response.status,
       code: errorData.error,
@@ -135,6 +156,10 @@ export function getCartelaGrid(roundId: string, cartelaNumber: number): Promise<
 
 export function joinRound(roundId: string, cartelaNumber: number): Promise<JoinRoundResponse> {
   return apiRequest<JoinRoundResponse>('POST', `/api/rounds/${roundId}/join`, { cartelaNumber });
+}
+
+export function joinRoundBatch(roundId: string, cartelaNumbers: number[]): Promise<{ cartelaNumbers: number[]; mainWalletBalance: number; playWalletBalance: number }> {
+  return apiRequest('POST', `/api/rounds/${roundId}/join-batch`, { cartelaNumbers });
 }
 
 // ---------------------------------------------------------------------------
