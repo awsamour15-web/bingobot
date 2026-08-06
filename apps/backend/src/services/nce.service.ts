@@ -42,7 +42,7 @@ export type OnRoundStarted = (
  */
 export class NumberCallingEngine {
   /** Map of roundId → active NodeJS timeout handle */
-  private readonly activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  readonly activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
@@ -114,53 +114,80 @@ export class NumberCallingEngine {
       }
     }
 
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5;
+
     const callNext = async (): Promise<void> => {
       // Stop if the round was cancelled externally
       if (!this.activeTimers.has(roundId)) return;
 
-      const number = sequence[sequenceIndex];
-      if (number === undefined) {
-        await this.triggerVoid(roundId);
-        this.activeTimers.delete(roundId);
-        return;
-      }
-
-      // Persist to DB — upsert is idempotent against duplicate (round_id, sequence_index)
-      await prisma.calledNumber.upsert({
-        where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
-        update: {},
-        create: { round_id: roundId, number, sequence_index: sequenceIndex },
-      });
-
-      const payload: NumberCalledPayload = { number, sequenceIndex };
-
-      // Fan-out to WebSocket layer
-      if (this.onNumberCalled) {
-        await this.onNumberCalled(roundId, payload);
-      }
-
-      sequenceIndex += 1;
-
-      if (sequenceIndex >= 75) {
-        // Exhausted all numbers — check for winner one last time
-        const finalRound = await prisma.gameRound.findUnique({ where: { id: roundId } });
-        if (!finalRound || finalRound.status !== GameStatus.active) {
-          // Winner was claimed during the last call
+      try {
+        const number = sequence[sequenceIndex];
+        if (number === undefined) {
+          await this.triggerVoid(roundId);
           this.activeTimers.delete(roundId);
           return;
         }
-        // No winner — void flow
-        await this.triggerVoid(roundId);
-        this.activeTimers.delete(roundId);
-        return;
+
+        // Persist to DB — upsert is idempotent against duplicate (round_id, sequence_index)
+        await prisma.calledNumber.upsert({
+          where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
+          update: {},
+          create: { round_id: roundId, number, sequence_index: sequenceIndex },
+        });
+
+        const payload: NumberCalledPayload = { number, sequenceIndex };
+
+        // Fan-out to WebSocket layer
+        if (this.onNumberCalled) {
+          await this.onNumberCalled(roundId, payload);
+        }
+
+        consecutiveErrors = 0;
+        sequenceIndex += 1;
+
+        if (sequenceIndex >= 75) {
+          // Exhausted all numbers — check for winner one last time
+          const finalRound = await prisma.gameRound.findUnique({ where: { id: roundId } });
+          if (!finalRound || finalRound.status !== GameStatus.active) {
+            // Winner was claimed during the last call
+            this.activeTimers.delete(roundId);
+            return;
+          }
+          // No winner — void flow
+          await this.triggerVoid(roundId);
+          this.activeTimers.delete(roundId);
+          return;
+        }
+
+        // Schedule next call
+        const handle = setTimeout(() => {
+          void callNext();
+        }, callIntervalMs);
+
+        this.activeTimers.set(roundId, handle);
+      } catch (err) {
+        consecutiveErrors += 1;
+        console.error(`[NCE] Error calling number for round ${roundId} (attempt ${consecutiveErrors}):`, err);
+
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          console.error(`[NCE] Round ${roundId} exceeded ${MAX_CONSECUTIVE_ERRORS} consecutive errors — triggering void`);
+          this.activeTimers.delete(roundId);
+          try {
+            await this.triggerVoid(roundId);
+          } catch (voidErr) {
+            console.error(`[NCE] Failed to void round ${roundId} after error threshold:`, voidErr);
+          }
+          return;
+        }
+
+        // Retry after a short back-off
+        const retryDelay = Math.min(callIntervalMs * consecutiveErrors, 30_000);
+        const handle = setTimeout(() => {
+          void callNext();
+        }, retryDelay);
+        this.activeTimers.set(roundId, handle);
       }
-
-      // Schedule next call
-      const handle = setTimeout(() => {
-        void callNext();
-      }, callIntervalMs);
-
-      this.activeTimers.set(roundId, handle);
     };
 
     // Call the first number immediately (0ms delay), then every callIntervalMs after

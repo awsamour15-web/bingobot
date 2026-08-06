@@ -1,42 +1,26 @@
 // Round Scheduler Service
 // Automatically maintains one pending round per stake level at all times.
-// A new round is created 1 minute into the future whenever no pending round
-// exists for a given stake level.
-// When a round's start_time passes with zero entries, it is voided immediately.
 
 import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { GameStatus } from '@beteseb/shared';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
-/** Stake levels (in Birr) for which rounds are auto-created. */
 const STAKE_LEVELS = [10, 20, 50];
-
-/** How far ahead (ms) to schedule the round start_time. */
-const LEAD_TIME_MS = 60_000; // 60 second lobby
-
-/** How many players can join each auto-created round. */
+const LEAD_TIME_MS = 60_000;
 const DEFAULT_MAX_PLAYERS = 800;
-
-/** How often to check for missing pending rounds (ms). */
-const CHECK_INTERVAL_MS = 15_000; // 15 seconds
-
-// ─── Scheduler ───────────────────────────────────────────────────────────────
+const CHECK_INTERVAL_MS = 15_000;
 
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
 
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
-    // Ensure call_interval_ms is exactly 5000ms
     void prisma.config.upsert({
       where: { key: 'call_interval_ms' },
       update: { value: '5000' },
       create: { key: 'call_interval_ms', value: '5000' },
     });
-    // Resume any active rounds that were left mid-game by a server restart
     void RoundScheduler.recoverActiveRounds();
     void RoundScheduler.tick();
     RoundScheduler._timer = setInterval(() => {
@@ -51,33 +35,16 @@ export const RoundScheduler = {
     }
   },
 
-  /**
-   * On server startup, resume number calling for any rounds that were left
-   * in `active` status by a previous process crash or restart.
-   * Without this, active rounds get permanently stuck — no more numbers called,
-   * no void triggered, users see a frozen game board.
-   */
   async recoverActiveRounds(): Promise<void> {
     try {
       const activeRounds = await prisma.gameRound.findMany({
         where: { status: GameStatus.active },
         select: { id: true, stake: true },
       });
-
       if (activeRounds.length === 0) return;
-
       console.log(`[Scheduler] Recovering ${activeRounds.length} interrupted active round(s)`);
-
       for (const round of activeRounds) {
         console.log(`[Scheduler] Resuming NCE for round ${round.id} (stake=${round.stake})`);
-        // nce.start() generates a fresh shuffle and begins calling from index 0,
-        // but it persists each number and the DB unique constraint on
-        // (round_id, sequence_index) will reject duplicates — however we want
-        // to resume from where we left off, not restart from the beginning.
-        // So we resume by re-triggering via GameRoundService which calls nce.start().
-        // nce.start() checks round status on each tick and will call triggerVoid
-        // once all 75 sequence slots are exhausted.
-        // Already-called numbers will cause DB errors silently; we catch and continue.
         void nce.start(round.id);
       }
     } catch (err) {
@@ -87,29 +54,44 @@ export const RoundScheduler = {
 
   async tick(): Promise<void> {
     await RoundScheduler.expireEmptyRounds();
+    await RoundScheduler.recoverStaleActiveRounds();
     await RoundScheduler.ensureRoundsExist();
   },
 
-  /**
-   * Find pending rounds whose start_time has passed.
-   * - Rounds with 0 entries are voided immediately.
-   * - Rounds with players are started.
-   */
+  /** Detect active rounds whose NCE timer died — resume them. */
+  async recoverStaleActiveRounds(): Promise<void> {
+    try {
+      const callIntervalRow = await prisma.config.findUnique({
+        where: { key: 'call_interval_ms' },
+      });
+      const callIntervalMs = callIntervalRow ? parseInt(callIntervalRow.value, 10) : 5_000;
+      const maxActiveMs = 75 * callIntervalMs + 5 * 60_000;
+      const staleThreshold = new Date(Date.now() - maxActiveMs);
+
+      const staleRounds = await prisma.gameRound.findMany({
+        where: { status: GameStatus.active, start_time: { lte: staleThreshold } },
+        select: { id: true, stake: true },
+      });
+
+      for (const round of staleRounds) {
+        if (nce.activeTimers.has(round.id)) continue;
+        console.log(`[Scheduler] Stale active round ${round.id} (stake=${round.stake}) — resuming NCE`);
+        void nce.start(round.id);
+      }
+    } catch (err) {
+      console.error('[Scheduler] recoverStaleActiveRounds error:', err);
+    }
+  },
+
   async expireEmptyRounds(): Promise<void> {
     try {
       const overdue = await prisma.gameRound.findMany({
-        where: {
-          status: GameStatus.pending,
-          start_time: { lte: new Date() },
-        },
-        include: {
-          _count: { select: { round_entries: true } },
-        },
+        where: { status: GameStatus.pending, start_time: { lte: new Date() } },
+        include: { _count: { select: { round_entries: true } } },
       });
 
       for (const round of overdue) {
         if (round._count.round_entries === 0) {
-          // No players — void silently and create a fresh round
           try {
             await prisma.gameRound.update({
               where: { id: round.id },
@@ -121,7 +103,6 @@ export const RoundScheduler = {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }
         } else {
-          // Has players — start it
           try {
             await GameRoundService.start(round.id);
             console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
@@ -136,11 +117,6 @@ export const RoundScheduler = {
     }
   },
 
-  /**
-   * For each stake level, create a pending round if none currently exists
-   * AND no round is currently active for that stake level.
-   * Also cancels duplicate pending rounds (keeps only the earliest one).
-   */
   async ensureRoundsExist(): Promise<void> {
     try {
       const [pendingRounds, activeRounds] = await Promise.all([
@@ -155,16 +131,15 @@ export const RoundScheduler = {
         }),
       ]);
 
-      // Group pending rounds by stake — cancel all but the earliest
+      // Group pending rounds by stake — void all but the earliest
       const byStake = new Map<number, typeof pendingRounds>();
       for (const r of pendingRounds) {
-        const stake = Number(r.stake);
-        if (!byStake.has(stake)) byStake.set(stake, []);
-        byStake.get(stake)!.push(r);
+        const stakeNum = Number(r.stake);
+        if (!byStake.has(stakeNum)) byStake.set(stakeNum, []);
+        byStake.get(stakeNum)!.push(r);
       }
 
       for (const [, rounds] of byStake) {
-        // Keep rounds[0] (earliest), void the rest
         for (let i = 1; i < rounds.length; i++) {
           await prisma.gameRound.update({
             where: { id: rounds[i]!.id },
@@ -181,21 +156,16 @@ export const RoundScheduler = {
         ? parseInt(maxPlayersRow.value, 10)
         : DEFAULT_MAX_PLAYERS;
 
-      // Track which stakes already have a pending round
-      const pendingStakes = new Set([...byStake.keys()].filter((s) => STAKE_LEVELS.includes(s)));
-      // Track which stakes already have an active round
-      const activeStakes = new Set(activeRounds.map((r) => Number(r.stake)));
+      const pendingStakes = new Set<number>([...byStake.keys()]);
+      const activeStakes = new Set<number>(activeRounds.map((r) => Number(r.stake)));
 
       await Promise.all(
         STAKE_LEVELS.map(async (stake) => {
-          // Skip if a pending round already exists for this stake
           if (pendingStakes.has(stake)) return;
-          // Skip if a round is currently active for this stake — wait for it to finish
           if (activeStakes.has(stake)) {
             console.log(`[Scheduler] Skipping round creation for stake=${stake} — a round is still active`);
             return;
           }
-
           const startTime = new Date(Date.now() + LEAD_TIME_MS);
           const roundId = await GameRoundService.create(stake, startTime, maxPlayers);
           console.log(

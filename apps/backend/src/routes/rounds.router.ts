@@ -200,10 +200,9 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
   const cartelaNumbers = body.cartelaNumbers as number[];
 
   try {
-    // Join all cartelas sequentially — scheduler handles round start.
-    for (let i = 0; i < cartelaNumbers.length; i++) {
-      await GameRoundService.join(id, playerId, cartelaNumbers[i]!, WalletType.main);
-    }
+    // Join all cartelas in a single transaction — prevents the round from starting
+    // between sequential joins (which would cause RoundNotPendingError on the 2nd cartela).
+    await GameRoundService.joinBatch(id, playerId, cartelaNumbers);
   } catch (err) {
     if (err instanceof CartelaTakenError) {
       res.status(409).json({ error: 'CARTELA_TAKEN', message: err.message });
