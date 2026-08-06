@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
-import { getRound, getMyCartelas, getRounds, getCalledNumbers, getCartelaGrid } from '../lib/api';
+import { getRound, getMyCartelas, getRounds, getCalledNumbers, getCartelaGridCached } from '../lib/api';
 import { idbGet, idbPut } from '../lib/idb';
 import type {
   RoundDetail,
@@ -216,7 +216,7 @@ export default function LiveGameScreen() {
       // Fetch the winning cartela grid so ALL users (including watchers) can see it
       const winnerCartelaNum = p.winners[0]?.cartelaNumber;
       if (winnerCartelaNum && roundId) {
-        getCartelaGrid(roundId, winnerCartelaNum)
+        getCartelaGridCached(roundId, winnerCartelaNum)
           .then(r => setWinnerCartelaGrid(r.grid))
           .catch(() => {});
       }
@@ -481,7 +481,6 @@ export default function LiveGameScreen() {
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
-            {/* 4 balls: newest is largest on the right */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 80 }}>
               {game.calledOrder.length === 0 ? (
                 <div style={{ color: '#555', fontSize: 13 }}>{game.phase === 'waiting' ? 'Game starting...' : '—'}</div>
@@ -519,10 +518,38 @@ export default function LiveGameScreen() {
             </div>
           </div>
 
+          {/* "Get ready" banner + Automatic toggle */}
+          {game.phase === 'active' && (
+            <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, background: 'rgba(255,255,255,0.03)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, flex: 1, textAlign: 'center' }}>
+                  Get ready for the<br />next number!
+                </div>
+                <button
+                  onClick={toggleSound}
+                  style={{ background: 'none', border: 'none', color: soundOn ? '#60a5fa' : '#475569', fontSize: 16, cursor: 'pointer', padding: 4, flexShrink: 0 }}
+                >
+                  {soundOn ? '🔊' : '🔇'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6 }}>
+                <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Automatic</span>
+                <div style={{
+                  width: 40, height: 22, borderRadius: 11,
+                  background: '#22c55e',
+                  display: 'flex', alignItems: 'center',
+                  padding: '0 3px',
+                  cursor: 'default',
+                }}>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', marginLeft: 'auto' }} />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Win overlay — full-screen modal */}
           {game.phase === 'won' && game.winnerInfo && (() => {
             const wi = game.winnerInfo;
-            const isMulti = wi.winnerCount > 1;
             const displayWinner = wi.winners[0];
             const winCartelaNumber = displayWinner?.cartelaNumber ?? null;
 
@@ -532,50 +559,96 @@ export default function LiveGameScreen() {
               : (allCartelas.find(c => c.cartelaNumber === winCartelaNumber)?.cartelaGrid ?? []) as number[];
             const winCells = winCellsForGrid(winGrid);
 
-            const winnerName = isMulti
-              ? wi.winners.map((w) => `@${w.username}`).join(', ')
-              : `${displayWinner?.username ?? 'Winner'}`;
+            // Winner pills — show first 3, collapse the rest into "+N more"
+            const MAX_VISIBLE_WINNERS = 3;
+            const visibleWinners = wi.winners.slice(0, MAX_VISIBLE_WINNERS);
+            const hiddenCount = wi.winners.length - visibleWinners.length;
 
             return (
               <div style={{
                 position: 'fixed', inset: 0, zIndex: 100,
-                background: 'rgba(15,12,41,0.96)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '24px 20px',
+                background: 'rgba(15,12,41,0.97)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
+                padding: '28px 20px 20px',
                 overflowY: 'auto',
               }}>
-                {/* Crown */}
+                {/* Crown badge */}
                 <div style={{
                   width: 64, height: 64, borderRadius: '50%',
                   background: 'linear-gradient(135deg, #f5a623, #f5d06b)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 30, marginBottom: 10,
-                  boxShadow: '0 0 24px #f5a62388',
+                  boxShadow: '0 0 28px #f5a62366',
                 }}>
                   👑
                 </div>
 
                 {/* BINGO! */}
-                <div style={{ fontSize: 36, fontWeight: 900, color: '#f5d06b', letterSpacing: 2, marginBottom: 6 }}>
+                <div style={{ fontSize: 38, fontWeight: 900, color: '#f5d06b', letterSpacing: 2, marginBottom: 4 }}>
                   BINGO!
                 </div>
 
-                {/* Winner name */}
-                <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 16, color: '#fff' }}>
-                  🎉 {winnerName} WON! 🎉
+                {/* Winner count */}
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 14 }}>
+                  🎉 {wi.winnerCount} player{wi.winnerCount !== 1 ? 's' : ''} won!
+                </div>
+
+                {/* Winner pills */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 320, marginBottom: 18 }}>
+                  {visibleWinners.map((w) => (
+                    <div key={w.playerId} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 24, padding: '8px 14px',
+                    }}>
+                      {/* Avatar circle */}
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 900, fontSize: 14, color: '#fff', flexShrink: 0,
+                        textTransform: 'uppercase',
+                      }}>
+                        {(w.username ?? '?')[0]}
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9', flex: 1 }}>
+                        {w.username}
+                      </span>
+                      <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                        #{w.cartelaNumber}
+                      </span>
+                    </div>
+                  ))}
+                  {hiddenCount > 0 && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 24, padding: '8px 14px',
+                      color: '#94a3b8', fontSize: 13, fontWeight: 600,
+                    }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 13, color: '#94a3b8',
+                      }}>👥</div>
+                      +{hiddenCount} more
+                    </div>
+                  )}
                 </div>
 
                 {/* Winning cartela card */}
                 {winGrid.length > 0 && (
                   <div style={{
-                    background: 'rgba(255,255,255,0.07)',
-                    borderRadius: 12, overflow: 'hidden',
+                    background: 'rgba(255,255,255,0.06)',
+                    borderRadius: 14, overflow: 'hidden',
                     width: '100%', maxWidth: 320,
-                    marginBottom: 16,
-                    boxShadow: '0 4px 32px rgba(0,0,0,0.5)',
+                    marginBottom: 20,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
                   }}>
                     {/* Trophy + cartela number */}
-                    <div style={{ textAlign: 'center', padding: '8px 0 4px', fontWeight: 800, fontSize: 14, color: '#f5d06b' }}>
+                    <div style={{ textAlign: 'center', padding: '10px 0 6px', fontWeight: 800, fontSize: 13, color: '#f5d06b' }}>
                       🏆 Winning Cartela : {winCartelaNumber}
                     </div>
 
@@ -593,20 +666,20 @@ export default function LiveGameScreen() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, padding: 6 }}>
                       {winGrid.map((val, idx) => {
                         const isFree = idx === 12;
-                        const isMarked = isFree || marked.has(val);
+                        const isMarkedCell = isFree || marked.has(val);
                         const isWinCell = winCells.has(idx);
                         const colIdx = idx % 5;
 
                         let bg = 'rgba(255,255,255,0.08)';
                         let color = '#ccc';
                         if (isWinCell) { bg = '#22c55e'; color = '#fff'; }
-                        else if (isMarked) { bg = COL_COLORS[colIdx]!; color = '#fff'; }
+                        else if (isMarkedCell) { bg = COL_COLORS[colIdx]!; color = '#fff'; }
 
                         return (
                           <div key={idx} style={{
                             aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: bg, color, borderRadius: 6,
-                            fontSize: 15, fontWeight: isMarked ? 800 : 400,
+                            fontSize: 15, fontWeight: isMarkedCell ? 800 : 400,
                             transition: 'background 0.2s',
                           }}>
                             {isFree ? '✦' : val}
@@ -617,27 +690,13 @@ export default function LiveGameScreen() {
                   </div>
                 )}
 
-                {/* Prize info for multi-winner */}
-                {isMulti && (
-                  <div style={{ width: '100%', maxWidth: 320, marginBottom: 12 }}>
-                    {wi.winners.map((w) => (
-                      <div key={w.playerId} style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        padding: '4px 8px', fontSize: 13, fontWeight: 700, color: '#a5b4fc',
-                      }}>
-                        <span>@{w.username}</span>
-                        <span>{w.amount} Birr</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Auto-start countdown */}
+                {/* Auto-start countdown pill */}
                 {nextCountdown !== null && (
                   <div style={{
-                    background: 'rgba(255,255,255,0.1)', borderRadius: 20,
-                    padding: '8px 20px', fontSize: 13, fontWeight: 700, color: '#e2e8f0',
+                    background: 'rgba(255,255,255,0.08)', borderRadius: 24,
+                    padding: '10px 22px', fontSize: 13, fontWeight: 700, color: '#e2e8f0',
                     display: 'flex', alignItems: 'center', gap: 8,
+                    border: '1px solid rgba(255,255,255,0.12)',
                   }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5d06b', display: 'inline-block' }} />
                     {nextCountdown > 0
@@ -674,14 +733,6 @@ export default function LiveGameScreen() {
                   
                   return (
                     <div key={cartela.cartelaNumber} style={{ marginBottom: 12 }}>
-                      {/* Cartela number label */}
-                      <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 13, fontWeight: 800, color: '#a5b4fc', letterSpacing: 0.5 }}>
-                        ካርቴላ #{cartela.cartelaNumber}
-                        {cartelaHasWin && (
-                          <span style={{ marginLeft: 6, color: '#22c55e' }}>✓</span>
-                        )}
-                      </div>
-
                       {/* Cartela grid */}
                       <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(255,255,255,0.1)' }}>
@@ -707,6 +758,11 @@ export default function LiveGameScreen() {
                             );
                           })}
                         </div>
+                      </div>
+                      {/* Cartela number label */}
+                      <div style={{ textAlign: 'center', marginTop: 5, fontSize: 11, fontWeight: 700, color: '#f5d06b' }}>
+                        Cartela No : {cartela.cartelaNumber}
+                        {cartelaHasWin && <span style={{ marginLeft: 6, color: '#22c55e' }}>✓ BINGO</span>}
                       </div>
                     </div>
                   );

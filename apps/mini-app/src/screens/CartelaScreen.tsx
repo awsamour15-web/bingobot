@@ -291,21 +291,36 @@ export default function CartelaScreen() {
     <div style={{ height: '100dvh', background: '#0a0e1a', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: '#0d1b2e', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '12px 16px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 22, color: '#64748b' }}>←</span>
-            <span style={{ fontWeight: 900, fontSize: 16, color: '#f1f5f9' }}>Pick Your Cartela</span>
+      <div style={{ background: '#0d1b2e', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '10px 14px', flexShrink: 0 }}>
+        {/* Wallet row */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          {[
+            { label: 'Main Wallet', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
+            { label: 'Play Wallet', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
+            { label: 'Stake', value: round ? Number(round.stake) : 0 },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', marginTop: 1 }}>{value}</div>
+            </div>
+          ))}
+          {/* Countdown badge */}
+          <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 48 }}>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
+              {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : '—'}
+            </span>
           </div>
-          <span style={{ fontSize: 12, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>
-            {picks.length}/{MAX_SELECT}
-          </span>
         </div>
-        <div style={{ display: 'flex', gap: 14, fontSize: 12, color: '#64748b' }}>
-          <span>Stake <strong style={{ color: '#f1f5f9' }}>{round.stake} Birr</strong></span>
-          <span>Prize <strong style={{ color: '#f59e0b' }}>{round.derash} Birr</strong></span>
-          <span>Players <strong style={{ color: '#f1f5f9' }}>{round.player_count}</strong></span>
-          {balances && <span>Balance <strong style={{ color: '#34d399' }}>{(playBal + mainBal).toFixed(0)} Birr</strong></span>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 20, color: '#64748b' }}>← Back</span>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px', color: '#e2e8f0', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            ↺ Refresh
+          </button>
         </div>
       </div>
 
@@ -356,9 +371,9 @@ export default function CartelaScreen() {
 
       {/* ── Legend ── */}
       <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e3a5f', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#7f1d1d', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e293b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#22c55e', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#e53e00', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
         {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
       </div>
 
@@ -373,17 +388,17 @@ export default function CartelaScreen() {
           const isPicked = picks.includes(num);
           const isRegistered = registeredNums.includes(num);
           const disabled = starting || joiningNums.has(num) || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
-          const bg = isPicked ? '#f59e0b' : taken ? '#7f1d1d' : '#1e3a5f';
-          const color = isPicked ? '#0a0e1a' : taken ? '#fca5a5' : '#e2e8f0';
+          const bg = isPicked ? '#22c55e' : taken ? '#e53e00' : '#1e293b';
+          const color = isPicked ? '#fff' : taken ? '#fff' : '#94a3b8';
 
           return (
             <button key={num} disabled={disabled} onClick={() => togglePick(num)}
               style={{
                 padding: '8px 0', borderRadius: 7,
-                border: isPicked ? '2px solid #fbbf24' : taken ? '1px solid #ef444466' : '1px solid rgba(255,255,255,0.06)',
-                background: bg, color, fontWeight: isPicked ? 900 : taken ? 700 : 600,
+                border: isPicked ? '2px solid #4ade80' : taken ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                background: bg, color, fontWeight: isPicked ? 900 : taken ? 700 : 500,
                 fontSize: 11, cursor: disabled ? 'default' : 'pointer',
-                opacity: taken ? 0.75 : 1,
+                opacity: 1,
                 transform: isPicked ? 'scale(1.06)' : 'scale(1)',
                 transition: 'transform 0.1s, background 0.15s',
                 WebkitAppearance: 'none', appearance: 'none', outline: 'none',

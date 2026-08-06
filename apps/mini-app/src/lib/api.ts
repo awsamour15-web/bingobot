@@ -164,8 +164,29 @@ export function getCartelaGrid(roundId: string, cartelaNumber: number): Promise<
   return apiRequest<{ cartela_number: number; grid: number[] }>('GET', `/api/rounds/${roundId}/cartelas/${cartelaNumber}/grid`);
 }
 
-export function getMyCartelas(roundId: string): Promise<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }> {
-  return apiRequest('GET', `/api/rounds/${roundId}/my-cartelas`);
+export async function getCartelaGridCached(
+  roundId: string,
+  cartelaNumber: number,
+): Promise<{ cartela_number: number; grid: number[] }> {
+  const key = `${roundId}:${cartelaNumber}`;
+  const cached = await idbGet<{ cartela_number: number; grid: number[] }>('cartelas', key);
+  if (cached) return cached;
+  const result = await apiRequest<{ cartela_number: number; grid: number[] }>(
+    'GET',
+    `/api/rounds/${roundId}/cartelas/${cartelaNumber}/grid`,
+  );
+  idbPut('cartelas', key, result).catch(() => {}); // fire-and-forget, quota errors silenced
+  return result;
+}
+
+export async function getMyCartelas(roundId: string): Promise<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }> {
+  const result = await apiRequest<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }>('GET', `/api/rounds/${roundId}/my-cartelas`);
+  // Write each cartela grid to IDB so a mid-game reload can skip the API call
+  for (const c of result.cartelas) {
+    const key = `${roundId}:${c.cartelaNumber}`;
+    idbPut('cartelas', key, { cartela_number: c.cartelaNumber, grid: c.cartelaGrid }).catch(() => {});
+  }
+  return result;
 }
 
 export function joinRound(roundId: string, cartelaNumber: number): Promise<JoinRoundResponse> {
