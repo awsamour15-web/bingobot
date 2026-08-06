@@ -55,7 +55,9 @@ export default function CartelaScreen() {
   useEffect(() => { registeredNumsRef.current = registeredNums; }, [registeredNums]);
   const registered = registeredNums.length > 0;
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
+  const [joiningNums, setJoiningNums] = useState<Set<number>>(new Set());
+  const joiningNumsRef = useRef<Set<number>>(new Set());
+  const joining = joiningNums.size > 0;
   const joinedRef = useRef(false);
   const countdownStartedRef = useRef(false);
   const [manualTrigger, setManualTrigger] = useState(false);
@@ -93,7 +95,9 @@ export default function CartelaScreen() {
     const newCartela = allPicks[allPicks.length - 1]!;
     // Use ref so this always has the latest registered list regardless of closure
     if (registeredNumsRef.current.includes(newCartela)) return;
-    setJoining(true);
+    if (joiningNumsRef.current.has(newCartela)) return; // already in-flight
+    setJoiningNums(prev => new Set([...prev, newCartela]));
+    joiningNumsRef.current.add(newCartela);
     setError(null);
     try {
       await joinRound(roundId!, newCartela);
@@ -122,7 +126,12 @@ export default function CartelaScreen() {
         picksRef.current = picksRef.current.filter(n => n !== newCartela);
       }
     } finally {
-      setJoining(false);
+      setJoiningNums(prev => {
+        const next = new Set(prev);
+        next.delete(newCartela);
+        return next;
+      });
+      joiningNumsRef.current.delete(newCartela);
     }
   }
 
@@ -206,8 +215,8 @@ export default function CartelaScreen() {
         // If not yet registered and picks exist, try to join now
         if (picksRef.current.length > 0 && currentRound.status === 'pending') {
           for (const num of picksRef.current) {
-            if (!registeredNums.includes(num)) {
-              await registerCartelas([...registeredNums, num]);
+            if (!registeredNumsRef.current.includes(num)) {
+              await registerCartelas([...registeredNumsRef.current, num]);
             }
           }
         }
@@ -222,8 +231,8 @@ export default function CartelaScreen() {
   }, [manualTrigger, joining, roundId, navigate]);
 
   function togglePick(num: number) {
-    if (joining) return; // briefly block during an in-flight registration
     if (registeredNumsRef.current.length >= MAX_SELECT) return; // already have max registered
+    if (joiningNumsRef.current.has(num)) return; // this specific cartela is in-flight
     if (picksRef.current.includes(num)) {
       // Only allow deselect if not yet registered
       if (!registeredNumsRef.current.includes(num)) {
@@ -358,7 +367,7 @@ export default function CartelaScreen() {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
           const isRegistered = registeredNums.includes(num);
-          const disabled = joining || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
+          const disabled = joiningNumsRef.current.has(num) || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
           const bg = isPicked ? '#f59e0b' : taken ? '#7f1d1d' : '#1e3a5f';
           const color = isPicked ? '#0a0e1a' : taken ? '#fca5a5' : '#e2e8f0';
 
