@@ -160,10 +160,14 @@ export default function CartelaScreen() {
       setPicks(prev => prev.filter(n => !p.cartelaNumbers.includes(n)));
     };
 
-    // Round started — just navigate, cartelas were already registered
-    const onStarted = (_p: RoundStartedPayload) => {
+    // Round started — wait for all pending joins to finish before navigating
+    const onStarted = async (_p: RoundStartedPayload) => {
       if (joinedRef.current) return;
       joinedRef.current = true;
+      // Wait for all pending join requests to complete
+      while (joiningNumsRef.current.size > 0) {
+        await new Promise(r => setTimeout(r, 100));
+      }
       sessionStorage.setItem('selectedRoundId', roundId!);
       navigate(`/rounds/${roundId}/game`, { replace: true });
     };

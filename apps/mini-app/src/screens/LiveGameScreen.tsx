@@ -664,39 +664,54 @@ export default function LiveGameScreen() {
 
           {/* Cartela card or watching panel */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-            {!isWatching && grid.length > 0 ? (
+            {!isWatching && allCartelas.length > 0 ? (
               <>
-                {/* Cartela number label */}
-                <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 13, fontWeight: 800, color: '#a5b4fc', letterSpacing: 0.5 }}>
-                  ካርቴላ #{activeCartela?.cartelaNumber}
-                </div>
+                {/* Render all cartelas stacked vertically */}
+                {allCartelas.map((cartela, cartelaIdx) => {
+                  const cartelaGrid: number[] = (cartela.cartelaGrid ?? []) as number[];
+                  const cartelaWinCells = winCellsForGrid(cartelaGrid);
+                  const cartelaHasWin = hasWinForGrid(cartelaGrid);
+                  
+                  return (
+                    <div key={cartela.cartelaNumber} style={{ marginBottom: 12 }}>
+                      {/* Cartela number label */}
+                      <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 13, fontWeight: 800, color: '#a5b4fc', letterSpacing: 0.5 }}>
+                        ካርቴላ #{cartela.cartelaNumber}
+                        {cartelaHasWin && (
+                          <span style={{ marginLeft: 6, color: '#22c55e' }}>✓</span>
+                        )}
+                      </div>
 
-                {/* Player's cartela grid */}
-                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(255,255,255,0.1)' }}>
-                    {COLS.map((c, i) => (
-                      <div key={c} style={{ textAlign: 'center', padding: '4px 0', fontWeight: 800, fontSize: 11, color: COL_COLORS[i] }}>{c}</div>
-                    ))}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
-                    {grid.map((val, idx) => {
-                      const isFree = idx === 12;
-                      const m = isFree || marked.has(val);
-                      const wl = wCells.has(idx);
-                      return (
-                        <div key={idx} style={{
-                          aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: wl ? '#f5d06b' : m ? '#4f46e5' : 'rgba(255,255,255,0.08)',
-                          color: wl ? '#1a1035' : m ? '#fff' : '#aaa',
-                          borderRadius: 4, fontSize: 11, fontWeight: m ? 800 : 400,
-                          transition: 'background 0.2s',
-                        }}>
-                          {isFree ? '★' : val}
+                      {/* Cartela grid */}
+                      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(255,255,255,0.1)' }}>
+                          {COLS.map((c, i) => (
+                            <div key={c} style={{ textAlign: 'center', padding: '4px 0', fontWeight: 800, fontSize: 11, color: COL_COLORS[i] }}>{c}</div>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
+                          {cartelaGrid.map((val, idx) => {
+                            const isFree = idx === 12;
+                            const m = isFree || marked.has(val);
+                            const wl = cartelaWinCells.has(idx);
+                            return (
+                              <div key={idx} style={{
+                                aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: wl ? '#f5d06b' : m ? '#4f46e5' : 'rgba(255,255,255,0.08)',
+                                color: wl ? '#1a1035' : m ? '#fff' : '#aaa',
+                                borderRadius: 4, fontSize: 11, fontWeight: m ? 800 : 400,
+                                transition: 'background 0.2s',
+                              }}>
+                                {isFree ? '★' : val}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
                 {/* Auto-claim status */}
                 {game.phase === 'active' && playerHasBingo && (
                   <div style={{
