@@ -224,10 +224,12 @@ export default function CartelaScreen() {
   function togglePick(num: number) {
     if (joining) return; // briefly block during an in-flight registration
     if (registeredNumsRef.current.length >= MAX_SELECT) return; // already have max registered
-    if (picks.includes(num)) {
+    if (picksRef.current.includes(num)) {
       // Only allow deselect if not yet registered
       if (!registeredNumsRef.current.includes(num)) {
-        setPicks(prev => prev.filter(n => n !== num));
+        const filtered = picksRef.current.filter(n => n !== num);
+        picksRef.current = filtered;
+        setPicks(filtered);
       }
       return;
     }
@@ -235,13 +237,15 @@ export default function CartelaScreen() {
       const stake = Number(round.stake);
       const playBal = Number(balances.playWallet.balance);
       const mainBal = Number(balances.mainWallet.balance);
-      const totalCost = stake * (picks.length + 1);
+      // Use ref length so cost calculation is never stale
+      const totalCost = stake * (picksRef.current.length + 1);
       if (playBal + mainBal < totalCost) {
         setBalanceAlert(`ቀሪ ቀሪ ሂሳብ አይበቃም!\nNeed ${totalCost} Birr — you have ${(playBal + mainBal).toFixed(0)} Birr.\nPlease deposit to continue.`);
         return;
       }
     }
-    if (picks.length >= MAX_SELECT) return;
+    // FIX: use picksRef (always current) instead of stale `picks` state closure
+    if (picksRef.current.length >= MAX_SELECT) return;
     const next = [...picksRef.current, num];
     picksRef.current = next;
     setPicks(next);
