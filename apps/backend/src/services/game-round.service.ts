@@ -116,6 +116,7 @@ export const GameRoundService = {
     cartelaNumber: number,
     walletType: WalletType = WalletType.main,
   ): Promise<void> {
+    try {
     await prisma.$transaction(async (tx) => {
       // 1. Fetch and lock the round
       const rounds = await tx.$queryRaw<
@@ -226,6 +227,13 @@ export const GameRoundService = {
         data: { derash: newDerash },
       });
     });
+    } catch (err: unknown) {
+      // Catch Prisma unique-constraint violation (race condition: two requests
+      // pass the availability check simultaneously and one loses the DB race).
+      const e = err as { code?: string };
+      if (e.code === 'P2002') throw new CartelaTakenError(roundId, cartelaNumber);
+      throw err;
+    }
 
     // Notify websocket layer so all users on the cartela screen see this cartela as taken
     if (GameRoundService._onCartelaTaken) {

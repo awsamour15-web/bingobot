@@ -55,6 +55,7 @@ export default function CartelaScreen() {
   useEffect(() => { registeredNumsRef.current = registeredNums; }, [registeredNums]);
   const registered = registeredNums.length > 0;
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<{ title: string; message: string } | null>(null);
   const [joiningNums, setJoiningNums] = useState<Set<number>>(new Set());
   const joiningNumsRef = useRef<Set<number>>(new Set());
   const joining = joiningNums.size > 0;
@@ -109,22 +110,27 @@ export default function CartelaScreen() {
       });
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
+      // Always deselect the failed cartela
+      const deselect = () => {
+        setPicks(prev => prev.filter(n => n !== newCartela));
+        picksRef.current = picksRef.current.filter(n => n !== newCartela);
+      };
       if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
         setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
-        setPicks(prev => prev.filter(n => n !== newCartela));
-        picksRef.current = picksRef.current.filter(n => n !== newCartela);
+        deselect();
       } else if (e.code === 'CARTELA_TAKEN' || e.message?.includes('already taken')) {
-        setError(`Cartela ${newCartela} was just taken — please pick another`);
-        setPicks(prev => prev.filter(n => n !== newCartela));
-        picksRef.current = picksRef.current.filter(n => n !== newCartela);
-      } else if (e.message?.includes('not pending') || e.message?.includes('void') || e.message?.includes('cancelled')) {
+        setJoinError({ title: 'Cartela Taken', message: `Cartela ${newCartela} was just taken by another player. Please pick a different one.` });
+        deselect();
+      } else if (e.code === 'ROUND_NOT_JOINABLE' || e.message?.includes('not pending') || e.message?.includes('void') || e.message?.includes('cancelled')) {
         sessionStorage.setItem('selectedRoundId', roundId!);
         navigate(`/rounds/${roundId}/game`, { replace: true });
         return;
+      } else if (e.code === 'PLAYER_SUSPENDED') {
+        setJoinError({ title: 'Account Suspended', message: 'Your account has been suspended. Please contact support.' });
+        deselect();
       } else {
-        setError(e.message ?? 'Failed to register cartela');
-        setPicks(prev => prev.filter(n => n !== newCartela));
-        picksRef.current = picksRef.current.filter(n => n !== newCartela);
+        setJoinError({ title: 'Join Failed', message: e.message ?? 'Could not register cartela. Please try again.' });
+        deselect();
       }
     } finally {
       setJoiningNums(prev => {
@@ -455,6 +461,29 @@ export default function CartelaScreen() {
                 background: '#ef4444', color: '#fff', border: 'none',
                 borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer',
               }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Join error modal ── */}
+      {joinError && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 24 }}
+          onClick={() => setJoinError(null)}
+        >
+          <div
+            style={{ background: '#1a1035', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 16, padding: '28px 24px', maxWidth: 320, width: '100%', textAlign: 'center', boxShadow: '0 0 40px rgba(239,68,68,0.2)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: '#f87171', marginBottom: 8 }}>{joinError.title}</div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>{joinError.message}</div>
+            <button
+              onClick={() => setJoinError(null)}
+              style={{ marginTop: 20, width: '100%', padding: '12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
             >
               OK
             </button>

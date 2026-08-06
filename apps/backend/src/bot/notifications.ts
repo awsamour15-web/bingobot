@@ -42,7 +42,7 @@ function openAppKeyboard(): InlineKeyboard {
  * Requirements: 10.1, 10.4
  */
 export async function notifyGameStart(playerId: string, roundId: string): Promise<void> {
-  if (!bot) return;
+  return; // notifications disabled
 
   try {
     const telegramId = await getTelegramId(playerId);
@@ -67,7 +67,7 @@ export async function notifyGameStart(playerId: string, roundId: string): Promis
  * Requirements: 10.2, 10.4
  */
 export async function notifyWin(playerId: string, derash: number, totalWinners?: number): Promise<void> {
-  if (!bot) return;
+  return; // notifications disabled
 
   try {
     const telegramId = await getTelegramId(playerId);
@@ -105,7 +105,7 @@ export async function notifyTransaction(
   amount: number,
   newBalance: number,
 ): Promise<void> {
-  if (!bot) return;
+  return; // notifications disabled
 
   try {
     const telegramId = await getTelegramId(playerId);
@@ -145,7 +145,7 @@ export async function notifyTransaction(
  * Requirements: 10.4, 14.4
  */
 export async function notifyWithdrawalRejected(playerId: string): Promise<void> {
-  if (!bot) return;
+  return; // notifications disabled
 
   try {
     const telegramId = await getTelegramId(playerId);
