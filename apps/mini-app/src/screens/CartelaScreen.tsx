@@ -58,6 +58,7 @@ export default function CartelaScreen() {
   const [joiningNums, setJoiningNums] = useState<Set<number>>(new Set());
   const joiningNumsRef = useRef<Set<number>>(new Set());
   const joining = joiningNums.size > 0;
+  const [starting, setStarting] = useState(false); // overlay only for manual game start
   const joinedRef = useRef(false);
   const countdownStartedRef = useRef(false);
   const [manualTrigger, setManualTrigger] = useState(false);
@@ -199,11 +200,11 @@ export default function CartelaScreen() {
 
   // Manual "Watch Game" or "Confirm 1 cartela" trigger
   useEffect(() => {
-    if (!manualTrigger || joinedRef.current || joining) return;
+    if (!manualTrigger || joinedRef.current || starting) return;
     joinedRef.current = true;
 
     async function startGame() {
-      setJoining(true);
+      setStarting(true);
       setError(null);
       try {
         const currentRound = await getRound(roundId!);
@@ -223,7 +224,7 @@ export default function CartelaScreen() {
         sessionStorage.setItem('selectedRoundId', roundId!);
         navigate(`/rounds/${roundId}/game`, { replace: true });
       } catch {
-        setJoining(false);
+        setStarting(false);
         joinedRef.current = false;
       }
     }
@@ -367,7 +368,7 @@ export default function CartelaScreen() {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
           const isRegistered = registeredNums.includes(num);
-          const disabled = joiningNumsRef.current.has(num) || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
+          const disabled = starting || joiningNums.has(num) || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
           const bg = isPicked ? '#f59e0b' : taken ? '#7f1d1d' : '#1e3a5f';
           const color = isPicked ? '#0a0e1a' : taken ? '#fca5a5' : '#e2e8f0';
 
@@ -391,7 +392,7 @@ export default function CartelaScreen() {
       </div>
 
       {/* ── Joining overlay ── */}
-      {joining && (
+      {starting && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.95)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
