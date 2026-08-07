@@ -246,9 +246,9 @@ export default function CartelaScreen() {
   }, [manualTrigger, joining, roundId, navigate]);
 
   function togglePick(num: number) {
-    if (registeredNumsRef.current.length >= MAX_SELECT) return; // already have max registered
+    // ── Deselect path — check first before any other guard ──
     if (picksRef.current.includes(num)) {
-      // Allow deselect only if not yet registered (confirmed with server)
+      // Can only deselect if not yet confirmed with server (not registered, not in-flight)
       if (!registeredNumsRef.current.includes(num) && !joiningNumsRef.current.has(num)) {
         const filtered = picksRef.current.filter(n => n !== num);
         picksRef.current = filtered;
@@ -256,7 +256,9 @@ export default function CartelaScreen() {
       }
       return;
     }
-    if (joiningNumsRef.current.has(num)) return; // different cartela in-flight, not this one
+    // ── Select path ──
+    if (registeredNumsRef.current.length >= MAX_SELECT) return; // already have max registered
+    if (joiningNumsRef.current.has(num)) return; // this cartela join is in-flight
     if (round && balances) {
       const stake = Number(round.stake);
       const playBal = Number(balances.playWallet.balance);
@@ -401,7 +403,7 @@ export default function CartelaScreen() {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
           const isRegistered = registeredNums.includes(num);
-          const disabled = starting || taken || (joiningNums.has(num) && !isPicked) || (isRegistered && !isPicked) || (!isPicked && picks.length >= MAX_SELECT);
+          const disabled = starting || taken || (!isPicked && joiningNums.has(num)) || (isRegistered && !isPicked) || (!isPicked && picks.length >= MAX_SELECT);
           const bg = isPicked ? '#22c55e' : taken ? '#e53e00' : '#1e293b';
           const color = isPicked ? '#fff' : taken ? '#fff' : '#94a3b8';
 
