@@ -41,6 +41,11 @@ export interface PlayerJoinedPayload {
   playerCount: number;
 }
 
+export interface CartelaTakenPayload {
+  cartelaNumbers: number[];
+  playerCount: number;
+}
+
 export interface WinRejectedPayload {
   reason: string;
 }
@@ -71,6 +76,7 @@ export interface ServerToClientEvents {
   ROUND_VOID: (payload: RoundVoidPayload) => void;
   ROUND_CANCELLED: (payload: RoundCancelledPayload) => void;
   PLAYER_JOINED: (payload: PlayerJoinedPayload) => void;
+  CARTELA_TAKEN: (payload: CartelaTakenPayload) => void;
   WIN_REJECTED: (payload: WinRejectedPayload) => void;
 }
 

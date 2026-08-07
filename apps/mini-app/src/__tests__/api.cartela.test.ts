@@ -26,7 +26,7 @@ function setupLocalStorage() {
 // ─── Property 7: Cartela cache hit avoids API call ──────────────────────────
 
 describe('Property 7: Cartela cache hit avoids API call', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
+  let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     setupLocalStorage();
@@ -36,7 +36,7 @@ describe('Property 7: Cartela cache hit avoids API call', () => {
       ok: true,
       status: 200,
       json: async () => ({}),
-    } as Response);
+    } as Response) as unknown as ReturnType<typeof vi.fn>;
   });
 
   afterEach(() => {

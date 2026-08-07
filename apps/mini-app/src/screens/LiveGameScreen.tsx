@@ -378,7 +378,7 @@ export default function LiveGameScreen() {
     autoClaimed.current = true;
     setClaimPending(true);
     setClaimError(null);
-    socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber });
+    socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
   }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending]);
 
   if (loading) return (

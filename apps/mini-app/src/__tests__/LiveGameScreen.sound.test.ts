@@ -9,7 +9,7 @@
  * the real behavior described in the spec.
  */
 
-import { describe, it, vi, beforeEach } from 'vitest';
+import { describe, it, vi, beforeEach, expect } from 'vitest';
 import * as fc from 'fast-check';
 import * as idb from '../lib/idb';
 
@@ -306,9 +306,12 @@ describe('Property 5: Sound preload never throws', () => {
           const { ctor } = makeAudioCtor();
           const buf = fakeArrayBuffer();
 
-          let idbGetSpy: ReturnType<typeof vi.spyOn>;
-          let fetchSpy: ReturnType<typeof vi.spyOn>;
-          let idbPutSpy: ReturnType<typeof vi.spyOn>;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let idbGetSpy: any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let fetchSpy: any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let idbPutSpy: any;
 
           if (failMode === 0) {
             // idbGet rejects
@@ -550,7 +553,8 @@ describe('6.5 Audio autoplay retry', () => {
 
     // setTimeout must have been called once with a delay of 300ms
     expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
-    const [_fn, delay] = setTimeoutSpy.mock.calls[0];
+    const call0 = setTimeoutSpy.mock.calls[0] as [() => void, number] | undefined;
+    const [_fn, delay] = call0 ?? [undefined, undefined];
     expect(delay).toBe(300);
   });
 
