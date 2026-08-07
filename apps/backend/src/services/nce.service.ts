@@ -146,6 +146,16 @@ export class NumberCallingEngine {
         consecutiveErrors = 0;
         sequenceIndex += 1;
 
+        // Stop immediately if round was won during this call
+        const currentRound = await prisma.gameRound.findUnique({
+          where: { id: roundId },
+          select: { status: true },
+        });
+        if (!currentRound || currentRound.status !== GameStatus.active) {
+          this.activeTimers.delete(roundId);
+          return;
+        }
+
         if (sequenceIndex >= 75) {
           // Exhausted all numbers — check for winner one last time
           const finalRound = await prisma.gameRound.findUnique({ where: { id: roundId } });

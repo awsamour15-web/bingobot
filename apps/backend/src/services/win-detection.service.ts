@@ -146,7 +146,12 @@ async function distributeWinnings(
       });
     });
 
-    // ── After commit: emit ROUND_WON, notify, schedule next round ─────────────
+    // ── After commit: stop number calling, emit ROUND_WON, notify, schedule next round ──
+
+    // Stop the NCE immediately so no more numbers are called after a win
+    import('./nce.service.js').then(({ nce }) => {
+      nce.stop(roundId);
+    }).catch(() => {});
 
     // Build payload — need usernames
     const playerIds = [...winners.keys()];
