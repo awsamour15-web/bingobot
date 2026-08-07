@@ -377,7 +377,15 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
 
     // Only send response if transaction succeeded (no early return inside tx)
     if (!res.headersSent) {
-      res.status(200).json({ ok: true });
+      // Return updated wallet balances
+      const wallets = await prisma.wallet.findMany({ where: { player_id } });
+      const main = wallets.find(w => w.type === 'main');
+      const play = wallets.find(w => w.type === 'play');
+      res.status(200).json({
+        ok: true,
+        mainWalletBalance: Number(main?.balance ?? 0),
+        playWalletBalance: Number(play?.balance ?? 0),
+      });
     }
   } catch (err) {
     if (!res.headersSent) {

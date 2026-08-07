@@ -102,12 +102,14 @@ export default function CartelaScreen() {
     joiningNumsRef.current.add(newCartela);
     setError(null);
     try {
-      await joinRound(roundId!, newCartela);
+      const result = await joinRound(roundId!, newCartela);
       setRegisteredNums(prev => {
         const next = [...prev, newCartela];
         registeredNumsRef.current = next;
         return next;
       });
+      // Update balance display from join response
+      setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       // Always deselect the failed cartela
@@ -268,7 +270,9 @@ export default function CartelaScreen() {
           registeredNumsRef.current = next;
           return next;
         });
-        leaveRound(roundId!, num).catch(() => {});
+        leaveRound(roundId!, num).then((res) => {
+          setBalances({ mainWallet: { balance: res.mainWalletBalance }, playWallet: { balance: res.playWalletBalance } });
+        }).catch(() => {});
       }
       return;
     }
