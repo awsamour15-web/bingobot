@@ -5,6 +5,7 @@ import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { ReferralService } from './referral.service.js';
+import { nce } from './nce.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,10 +149,8 @@ async function distributeWinnings(
 
     // ── After commit: stop number calling, emit ROUND_WON, notify, schedule next round ──
 
-    // Stop the NCE immediately so no more numbers are called after a win
-    import('./nce.service.js').then(({ nce }) => {
-      nce.stop(roundId);
-    }).catch(() => {});
+    // Stop the NCE FIRST — synchronously — so no more numbers are called after the win
+    nce.stop(roundId);
 
     // Build payload — need usernames
     const playerIds = [...winners.keys()];

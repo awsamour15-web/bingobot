@@ -225,6 +225,13 @@ export default function LiveGameScreen() {
             : r.status === 'cancelled' ? 'cancelled'
             : 'waiting',
         }));
+
+        // If round is already completed on load, fetch the winner's cartela grid
+        if (r.status === 'completed' && r.winner_cartela_number) {
+          getCartelaGridCached(roundId!, r.winner_cartela_number)
+            .then(res => setWinnerCartelaGrid(res.grid))
+            .catch(() => {});
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load game');
       } finally {
@@ -242,6 +249,8 @@ export default function LiveGameScreen() {
 
     const onNumber = (p: NumberCalledPayload) => {
       setGame((g) => {
+        // Ignore any stray NUMBER_CALLED events after the round is over
+        if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
         const next = new Set(g.calledNumbers);
         next.add(p.number);
         return { ...g, calledNumbers: next, calledOrder: [...g.calledOrder, p.number], lastCalled: p.number, phase: g.phase === 'waiting' ? 'active' : g.phase };
@@ -255,11 +264,19 @@ export default function LiveGameScreen() {
     const onWon = (p: RoundWonPayload) => {
       setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.totalDerash }));
       // Fetch the winning cartela grid so ALL users (including watchers) can see it
+      // Retry up to 3 times in case the DB write hasn't propagated yet
       const winnerCartelaNum = p.winners[0]?.cartelaNumber;
       if (winnerCartelaNum && roundId) {
-        getCartelaGridCached(roundId, winnerCartelaNum)
-          .then(r => setWinnerCartelaGrid(r.grid))
-          .catch(() => {});
+        const fetchGrid = async (retries = 3): Promise<void> => {
+          for (let i = 0; i < retries; i++) {
+            try {
+              const res = await getCartelaGridCached(roundId!, winnerCartelaNum);
+              if (res.grid.length > 0) { setWinnerCartelaGrid(res.grid); return; }
+            } catch {}
+            if (i < retries - 1) await new Promise(r => setTimeout(r, 600));
+          }
+        };
+        void fetchGrid();
       }
     };
     const onVoid = (_p: RoundVoidPayload) =>
