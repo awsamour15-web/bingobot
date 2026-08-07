@@ -354,7 +354,10 @@ export default function LiveGameScreen() {
   }, [game.phase, roundId]);
   useEffect(() => {
     if (game.phase !== 'won' && game.phase !== 'void' && game.phase !== 'cancelled') return;
-    setNextCountdown(10);
+    // Won: show winner cartela for 5 seconds then navigate
+    // Void/cancelled: navigate after 3 seconds
+    const delay = game.phase === 'won' ? 5 : 3;
+    setNextCountdown(delay);
     const iv = setInterval(() => {
       setNextCountdown((p) => { if (p === null || p <= 1) { clearInterval(iv); return 0; } return p - 1; });
     }, 1000);
@@ -710,19 +713,9 @@ export default function LiveGameScreen() {
                   </div>
                 )}
 
-                {/* Auto-start countdown pill */}
-                {nextCountdown !== null && (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.08)', borderRadius: 24,
-                    padding: '10px 22px', fontSize: 13, fontWeight: 700, color: '#e2e8f0',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                  }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5d06b', display: 'inline-block' }} />
-                    {nextCountdown > 0
-                      ? `Auto-starting next game in ${nextCountdown}s`
-                      : 'Finding next round...'}
-                  </div>
+                {/* Simple "finding next round" label while navigating */}
+                {nextCountdown === 0 && (
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Finding next round...</div>
                 )}
               </div>
             );
