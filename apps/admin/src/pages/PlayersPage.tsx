@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { AdminPlayer, AdminCreditRequest } from '@beteseb/shared';
+import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
 import {
   getPlayers,
   getPlayer,

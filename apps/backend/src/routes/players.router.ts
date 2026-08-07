@@ -5,7 +5,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
-import type { PlayerProfile } from '@beteseb/shared';
+import type { PlayerProfile } from '@fidel/shared';
 
 const router: RouterType = Router();
 

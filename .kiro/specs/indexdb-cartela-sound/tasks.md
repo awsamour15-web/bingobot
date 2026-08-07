@@ -53,18 +53,18 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert exactly k calls to `idbPut` with correct keys and shape
     - Use fast-check with 100+ iterations
 
-- [ ] 2. Update LiveGameScreen.tsx to use cached cartela grid
-  - [-] 2.1 Replace `getCartelaGrid` with `getCartelaGridCached` in `onWon` handler
+- [x] 2. Update LiveGameScreen.tsx to use cached cartela grid
+  - [x] 2.1 Replace `getCartelaGrid` with `getCartelaGridCached` in `onWon` handler
     - Update import statement to include `getCartelaGridCached`
     - Replace the call inside the `onWon` socket handler
     - Keep the existing `.catch(() => {})` error swallowing
     - _Requirements: 3.1, 3.2_
 
-- [~] 3. Checkpoint - Verify cartela caching integration
+- [x] 3. Checkpoint - Verify cartela caching integration
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Write property tests for sound preloading
-  - [~] 4.1 Write property test for sound preload completeness
+- [x] 4. Write property tests for sound preloading
+  - [x] 4.1 Write property test for sound preload completeness
     - **Property 2: Sound preload completeness**
     - **Validates: Requirements 2.1**
     - Stub IDB and fetch
@@ -72,7 +72,7 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert `audioCache` contains exactly 75 entries (keys 1-75)
     - Use fast-check with 100+ iterations
   
-  - [~] 4.2 Write property test for sound IDB cache hit
+  - [x] 4.2 Write property test for sound IDB cache hit
     - **Property 3: Sound IDB cache hit avoids network**
     - **Validates: Requirements 2.2**
     - Test with arbitrary sound number n in 1-75
@@ -80,7 +80,7 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert `fetch` is not called for `/sounds/${n}.wav`
     - Use fast-check with 100+ iterations
   
-  - [~] 4.3 Write property test for sound IDB cache miss
+  - [x] 4.3 Write property test for sound IDB cache miss
     - **Property 4: Sound IDB cache miss triggers fetch and write**
     - **Validates: Requirements 2.3**
     - Test with arbitrary sound number n in 1-75
@@ -89,7 +89,7 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert `idbPut('sounds', n, ArrayBuffer)` is called after fetch
     - Use fast-check with 100+ iterations
   
-  - [~] 4.4 Write property test for sound preload error fallback
+  - [x] 4.4 Write property test for sound preload error fallback
     - **Property 5: Sound preload never throws**
     - **Validates: Requirements 2.4**
     - Test with arbitrary sound number n
@@ -98,7 +98,7 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert no error is propagated
     - Use fast-check with 100+ iterations
   
-  - [~] 4.5 Write property test for in-memory sound cache skip
+  - [x] 4.5 Write property test for in-memory sound cache skip
     - **Property 6: In-memory sound cache skips IDB and network**
     - **Validates: Requirements 2.5**
     - Pre-fill `audioCache` with arbitrary sounds
@@ -106,7 +106,7 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert `idbGet` and `fetch` call count = 0 for pre-filled keys
     - Use fast-check with 100+ iterations
   
-  - [~] 4.6 Write property test for sound mute behavior
+  - [x] 4.6 Write property test for sound mute behavior
     - **Property 11: Sound mute skips playback**
     - **Validates: Requirements 5.3**
     - Test with arbitrary number n in 1-75
@@ -115,7 +115,7 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert `.play()` is never called on any HTMLAudioElement
     - Use fast-check with 100+ iterations
   
-  - [~] 4.7 Write property test for sound identity
+  - [x] 4.7 Write property test for sound identity
     - **Property 12: Sound identity**
     - **Validates: Requirements 5.1, 5.4**
     - Test with arbitrary number n in audioCache
@@ -123,15 +123,15 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert `.play()` called on exactly `audioCache.get(n)`
     - Use fast-check with 100+ iterations
 
-- [ ] 5. Write property tests for IDB infrastructure
-  - [~] 5.1 Write property test for IDB singleton
+- [x] 5. Write property tests for IDB infrastructure
+  - [x] 5.1 Write property test for IDB singleton
     - **Property 1: IDB singleton**
     - **Validates: Requirements 1.5**
     - Call `openDB()` N times within same session
     - Assert all calls return same Promise reference
     - Use fast-check with 100+ iterations
   
-  - [~] 5.2 Write property test for IDB cartela round-trip
+  - [x] 5.2 Write property test for IDB cartela round-trip
     - **Property 13: IDB cartela round-trip**
     - **Validates: Requirements 6.1, 6.2, 6.3**
     - Test with arbitrary valid cartela grid object `{ cartela_number: number, grid: number[] }`
@@ -139,39 +139,39 @@ This feature adds comprehensive IndexedDB caching for sounds and cartela grids i
     - Assert result is deeply equal to original, array order preserved, numeric types intact
     - Use fast-check with 100+ iterations
 
-- [ ] 6. Write unit tests for error branches and edge cases
-  - [~] 6.1 Write unit test for IDB initialization
+- [x] 6. Write unit tests for error branches and edge cases
+  - [x] 6.1 Write unit test for IDB initialization
     - Assert DB name is `'bingo-cache'`
     - Assert DB version is `1`
     - Assert both `sounds` and `cartelas` stores are created
     - Assert only `idbGet` and `idbPut` are exported
     - _Requirements: 1.1, 1.2, 1.4_
   
-  - [~] 6.2 Write unit test for IDB error reset
+  - [x] 6.2 Write unit test for IDB error reset
     - Simulate `onerror` during `openDB()`
     - Call `openDB()` again
     - Assert a new request is issued (dbPromise was reset to null)
     - _Requirements: 1.3_
   
-  - [~] 6.3 Write unit test for QuotaExceededError handling
+  - [x] 6.3 Write unit test for QuotaExceededError handling
     - Simulate `idbPut` throwing `QuotaExceededError`
     - Assert caller does not throw
     - Assert in-memory state is unaffected
     - _Requirements: 4.1_
   
-  - [~] 6.4 Write unit test for IDB unavailable (private browsing)
+  - [x] 6.4 Write unit test for IDB unavailable (private browsing)
     - Simulate `indexedDB.open` throwing error
     - Assert `idbGet` resolves to `undefined`
     - Assert `idbPut` is no-op (no crash)
     - _Requirements: 4.2_
   
-  - [~] 6.5 Write unit test for audio autoplay retry
+  - [x] 6.5 Write unit test for audio autoplay retry
     - Simulate `Audio.play()` rejecting with `NotAllowedError`
     - Assert `setTimeout` is called with ~300ms delay
     - Assert retry attempt is made
     - _Requirements: 5.2_
 
-- [~] 7. Final checkpoint - Ensure all tests pass
+- [x] 7. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

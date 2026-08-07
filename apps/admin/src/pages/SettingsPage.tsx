@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest, AdminRole } from '@beteseb/shared';
+import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest, AdminRole } from '@fidel/shared';
 import { getConfig, updateConfig, getAdmins, createAdmin, updateAdmin } from '../lib/api';
 
 // ---------------------------------------------------------------------------

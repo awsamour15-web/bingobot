@@ -10,7 +10,7 @@ import type {
   CreateAdminRequest,
   UpdateAdminRequest,
   PaginatedResponse,
-} from '@beteseb/shared';
+} from '@fidel/shared';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
 
@@ -66,7 +66,7 @@ export async function adminApiRequest<T>(
 export function adminLogin(
   username: string,
   password: string,
-): Promise<{ token: string; adminId: string; role: import('@beteseb/shared').AdminRole }> {
+): Promise<{ token: string; adminId: string; role: import('@fidel/shared').AdminRole }> {
   return adminApiRequest('POST', '/api/admin/auth/login', { username, password });
 }
 

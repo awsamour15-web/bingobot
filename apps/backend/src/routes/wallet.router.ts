@@ -3,12 +3,12 @@
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import rateLimit from 'express-rate-limit';
-import { TxType, WalletType } from '@beteseb/shared';
+import { TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { getPaymentGateway } from '../services/payment.service.js';
 import { WalletService } from '../services/wallet.service.js';
-import type { TransactionListItem, PaginatedResponse } from '@beteseb/shared';
+import type { TransactionListItem, PaginatedResponse } from '@fidel/shared';
 
 const router: RouterType = Router();
 

@@ -4,7 +4,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
-import type { ReferralStats } from '@beteseb/shared';
+import type { ReferralStats } from '@fidel/shared';
 
 const router: RouterType = Router();
 

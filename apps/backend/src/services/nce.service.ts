@@ -1,7 +1,7 @@
 // Number Calling Engine (NCE)
 // Requirements: 16.1, 16.2, 16.3, 16.4
 
-import { GameStatus, TxType, WalletType } from '@beteseb/shared';
+import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { shuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';

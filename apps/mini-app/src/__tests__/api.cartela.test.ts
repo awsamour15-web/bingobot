@@ -266,15 +266,17 @@ describe('Property 10: getMyCartelas write-through', () => {
       fc.asyncProperty(
         // Arbitrary roundId (UUID-like string)
         fc.uuid(),
-        // Arbitrary number of cartelas k (1-10)
-        fc.integer({ min: 1, max: 10 }),
-        async (roundId, k) => {
-          // Build a list of k cartelas with arbitrary cartelaNumbers and grids
-          const cartelas = Array.from({ length: k }, (_, i) => ({
-            cartelaNumber: i + 1,
-            cartelaGrid: Array.from({ length: 25 }, (__, j) => (i * 25 + j + 1) % 75 + 1),
-          }));
-
+        // Arbitrary cartela list of size k (0-20) with unique cartelaNumbers (as in real rounds)
+        // and arbitrary 25-element grids
+        fc.uniqueArray(
+          fc.record({
+            cartelaNumber: fc.integer({ min: 1, max: 800 }),
+            cartelaGrid: fc.array(fc.integer(), { minLength: 25, maxLength: 25 }),
+          }),
+          { minLength: 0, maxLength: 20, selector: c => c.cartelaNumber },
+        ),
+        async (roundId, cartelas) => {
+          const k = cartelas.length;
           const apiResponse = { cartelas };
 
           // Stub idbPut to track calls

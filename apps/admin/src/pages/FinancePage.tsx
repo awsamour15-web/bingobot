@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { WithdrawalRequest, RevenueStats } from '@beteseb/shared';
+import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
 import { getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue } from '../lib/api';
 
 const C = {

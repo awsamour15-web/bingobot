@@ -15,8 +15,8 @@ import {
   RoundNotFoundError,
 } from '../services/game-round.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
-import { WalletType } from '@beteseb/shared';
-import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@beteseb/shared';
+import { WalletType } from '@fidel/shared';
+import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
 
 const router: RouterType = Router();
 

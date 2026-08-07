@@ -1,0 +1,6 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @fidel/shared build && pnpm --filter @fidel/mini-app build",
+  "outputDirectory": "apps/mini-app/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

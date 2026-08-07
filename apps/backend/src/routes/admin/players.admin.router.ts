@@ -2,7 +2,7 @@
 // Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 14.1
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
-import { WalletType, TxType } from '@beteseb/shared';
+import { WalletType, TxType } from '@fidel/shared';
 import prisma from '../../lib/prisma.js';
 import { WalletService } from '../../services/wallet.service.js';
 

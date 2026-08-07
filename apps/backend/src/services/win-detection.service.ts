@@ -1,7 +1,7 @@
 // Win Detection Service — multi-winner claim-window support
 // Requirements: 1.1–1.5, 2.1–2.4, 3.1–3.5, 4.1–4.4, 5.1–5.3, 9.1–9.4
 
-import { GameStatus, TxType, WalletType } from '@beteseb/shared';
+import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { ReferralService } from './referral.service.js';
