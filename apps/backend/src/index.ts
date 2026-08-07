@@ -32,7 +32,7 @@ app.set('trust proxy', 1);
 
 const allowedOrigins = process.env['CORS_ORIGIN']
   ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
-  : ['https://fidelbingo-admin.pages.dev', 'https://bingobot.pages.dev','https://bingobot-mini-app.vercel.app'];
+  : ['https://bingobot-mini-app.vercel.app','https://bingobot-admin.vercel.app'];
 
 // Manually set CORS headers on every response to ensure they are always present,
 // including on error responses (401, 502, etc.) that would otherwise strip them.
