@@ -164,67 +164,22 @@ export default function LiveGameScreen() {
     if (!roundId) return;
     async function load() {
       try {
-        // Fetch round, my cartelas, and called numbers all in parallel
-        // Retry getMyCartelas up to 3 times with 800ms delay — handles the race
-        // where the round starts before the join DB write is fully committed.
-        async function fetchMyCartelas(retries = 3): Promise<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }> {
-          for (let attempt = 0; attempt < retries; attempt++) {
-            try {
-              const result = await getMyCartelas(roundId!);
-              if (result.cartelas.length > 0) return result;
-              // Got empty on first attempt — wait and retry (timing race after round start)
-              if (attempt < retries - 1) await new Promise(res => setTimeout(res, 800));
-            } catch {
-              if (attempt < retries - 1) await new Promise(res => setTimeout(res, 800));
-            }
-          }
-          return { cartelas: [] };
-        }
-
-        const [r, myC, calledNums] = await Promise.all([
+        // Fetch round and called numbers immediately — don't block on cartelas
+        const [r, calledNums] = await Promise.all([
           getRound(roundId!),
-          fetchMyCartelas(),
           getCalledNumbers(roundId!).catch(() => [] as number[]),
         ]);
         setRound(r);
 
-        // If API returned empty, try to recover from sessionStorage + IDB cache
-        let resolvedCartelas = myC.cartelas;
-        if (resolvedCartelas.length === 0) {
-          const stored = sessionStorage.getItem('myCartelaNumbers');
-          if (stored) {
-            const nums: number[] = JSON.parse(stored);
-            if (nums.length > 0) {
-              const recovered = await Promise.all(
-                nums.map(async (num) => {
-                  const cached = await idbGet<{ cartela_number: number; grid: number[] }>('cartelas', `${roundId}:${num}`);
-                  if (cached) return { cartelaNumber: num, cartelaGrid: cached.grid };
-                  try {
-                    const fetched = await getCartelaGridCached(roundId!, num);
-                    return { cartelaNumber: num, cartelaGrid: fetched.grid };
-                  } catch {
-                    return null;
-                  }
-                }),
-              );
-              resolvedCartelas = recovered.filter((c): c is { cartelaNumber: number; cartelaGrid: number[] } => c !== null);
-            }
-          }
-        }
-        if (resolvedCartelas.length) setMyCartelas(resolvedCartelas);
-        setCartelasLoaded(true);
-
-        const nums = calledNums;
-        const existingCalled = new Set(nums);
-        const lastCalled = nums[nums.length - 1] ?? null;
-
+        const existingCalled = new Set(calledNums);
+        const lastCalled = calledNums[calledNums.length - 1] ?? null;
         setGame((g) => ({
           ...g,
           calledNumbers: existingCalled,
           lastCalled,
           playerCount: r.player_count,
           derash: r.derash,
-          calledOrder: nums,
+          calledOrder: calledNums,
           phase:
             r.status === 'active' ? 'active'
             : r.status === 'completed' ? 'won'
@@ -233,7 +188,6 @@ export default function LiveGameScreen() {
             : 'waiting',
         }));
 
-        // If round is already completed on load, fetch the winner's cartela grid
         if (r.status === 'completed' && r.winner_cartela_number) {
           getCartelaGridCached(roundId!, r.winner_cartela_number)
             .then(res => setWinnerCartelaGrid(res.grid))
@@ -245,7 +199,51 @@ export default function LiveGameScreen() {
         setLoading(false);
       }
     }
+
+    async function loadCartelas() {
+      // 1. Try sessionStorage + IDB cache first — instant for players who just joined
+      const stored = sessionStorage.getItem('myCartelaNumbers');
+      if (stored) {
+        try {
+          const nums: number[] = JSON.parse(stored);
+          if (nums.length > 0) {
+            const cached = await Promise.all(
+              nums.map(async (num) => {
+                const idb = await idbGet<{ cartela_number: number; grid: number[] }>('cartelas', `${roundId}:${num}`);
+                if (idb) return { cartelaNumber: num, cartelaGrid: idb.grid };
+                try {
+                  const fetched = await getCartelaGridCached(roundId!, num);
+                  return { cartelaNumber: num, cartelaGrid: fetched.grid };
+                } catch { return null; }
+              }),
+            );
+            const resolved = cached.filter((c): c is { cartelaNumber: number; cartelaGrid: number[] } => c !== null && c.cartelaGrid.length > 0);
+            if (resolved.length > 0) {
+              setMyCartelas(resolved);
+              setCartelasLoaded(true);
+              return; // done — no API call needed
+            }
+          }
+        } catch {}
+      }
+
+      // 2. API call with up to 2 retries (300ms gap) for post-round-start race
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const result = await getMyCartelas(roundId!);
+          if (result.cartelas.length > 0) {
+            setMyCartelas(result.cartelas);
+            setCartelasLoaded(true);
+            return;
+          }
+        } catch {}
+        if (attempt < 2) await new Promise(res => setTimeout(res, 300));
+      }
+      setCartelasLoaded(true); // no cartelas — player is watching
+    }
+
     load();
+    loadCartelas();
   }, [roundId]);
 
   // ─── Socket ──────────────────────────────────────────────────────────────
