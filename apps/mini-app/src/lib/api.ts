@@ -197,6 +197,10 @@ export function joinRoundBatch(roundId: string, cartelaNumbers: number[]): Promi
   return apiRequest('POST', `/api/rounds/${roundId}/join-batch`, { cartelaNumbers });
 }
 
+export function leaveRound(roundId: string, cartelaNumber: number): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>('DELETE', `/api/rounds/${roundId}/leave/${cartelaNumber}`);
+}
+
 // ---------------------------------------------------------------------------
 // History
 // ---------------------------------------------------------------------------

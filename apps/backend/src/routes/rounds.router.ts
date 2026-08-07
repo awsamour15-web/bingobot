@@ -304,4 +304,87 @@ router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {
   res.status(200).json(response);
 });
 
+// ─── DELETE /api/rounds/:id/leave/:cartelaNumber ─────────────────────────────
+// Unjoin a cartela from a pending round and refund the stake.
+
+router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+  const cartelaNumber = parseInt(req.params['cartelaNumber'] as string, 10);
+
+  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > 800) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
+    return;
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Lock round — must be pending
+      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; stake: string; commission_pct: number }>>`
+        SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = ${id} FOR UPDATE
+      `;
+      const round = rounds[0];
+      if (!round) {
+        res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' });
+        return;
+      }
+      if (round.status !== 'pending') {
+        res.status(409).json({ error: 'ROUND_NOT_PENDING', message: 'Round has already started — cannot leave' });
+        return;
+      }
+
+      // Find the entry
+      const entry = await tx.roundEntry.findUnique({
+        where: { round_id_cartela_number: { round_id: id, cartela_number: cartelaNumber } },
+      });
+      if (!entry || entry.player_id !== playerId) {
+        res.status(404).json({ error: 'ENTRY_NOT_FOUND', message: 'Cartela entry not found' });
+        return;
+      }
+
+      // Delete the entry
+      await tx.roundEntry.delete({
+        where: { round_id_cartela_number: { round_id: id, cartela_number: cartelaNumber } },
+      });
+
+      // Refund stake to play wallet (where it was originally debited)
+      const stake = parseFloat(round.stake);
+      const playWallet = await tx.wallet.findFirst({
+        where: { player_id: playerId, type: 'play' },
+      });
+      const mainWallet = await tx.wallet.findFirst({
+        where: { player_id: playerId, type: 'main' },
+      });
+
+      // Refund to play wallet first, then main if no play wallet
+      const refundWallet = playWallet ?? mainWallet;
+      if (refundWallet) {
+        await tx.wallet.update({
+          where: { id: refundWallet.id },
+          data: { balance: { increment: stake } },
+        });
+        await tx.transaction.create({
+          data: { wallet_id: refundWallet.id, type: 'refund', amount: stake, reference_id: id, note: 'Cartela deselected before game start' },
+        });
+      }
+
+      // Recalculate derash
+      const entryCount = await tx.roundEntry.count({ where: { round_id: id, is_watching: false } });
+      const commissionPct = round.commission_pct;
+      const newDerash = entryCount * stake * (1 - commissionPct / 100);
+      await tx.gameRound.update({ where: { id }, data: { derash: newDerash } });
+    });
+
+    // Only send response if transaction succeeded (no early return inside tx)
+    if (!res.headersSent) {
+      res.status(200).json({ ok: true });
+    }
+  } catch (err) {
+    if (!res.headersSent) {
+      console.error('[rounds] leave error:', err);
+      res.status(500).json({ error: 'INTERNAL', message: 'Failed to leave round' });
+    }
+  }
+});
+
 export default router;

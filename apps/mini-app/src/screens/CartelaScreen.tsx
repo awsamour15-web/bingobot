@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, joinRound, joinRoundBatch, getProfile } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRound, joinRoundBatch, getProfile, leaveRound } from '../lib/api';
 import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
@@ -248,11 +248,20 @@ export default function CartelaScreen() {
   function togglePick(num: number) {
     // ── Deselect path — check first before any other guard ──
     if (picksRef.current.includes(num)) {
-      // Can only deselect if not yet confirmed with server (not registered, not in-flight)
-      if (!registeredNumsRef.current.includes(num) && !joiningNumsRef.current.has(num)) {
-        const filtered = picksRef.current.filter(n => n !== num);
-        picksRef.current = filtered;
-        setPicks(filtered);
+      if (joiningNumsRef.current.has(num)) return; // in-flight, wait
+      // Remove from local picks
+      const filtered = picksRef.current.filter(n => n !== num);
+      picksRef.current = filtered;
+      setPicks(filtered);
+      // If already registered with server, unjoin and refund
+      if (registeredNumsRef.current.includes(num)) {
+        setRegisteredNums(prev => {
+          const next = prev.filter(n => n !== num);
+          registeredNumsRef.current = next;
+          return next;
+        });
+        // Call server to delete the entry and refund stake (fire-and-forget, silent on error)
+        leaveRound(roundId!, num).catch(() => {});
       }
       return;
     }
