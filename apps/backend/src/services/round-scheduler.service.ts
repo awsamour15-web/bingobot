@@ -4,7 +4,7 @@
 import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
-import { GameStatus } from '@beteseb/shared';
+import { GameStatus } from '@fidel/shared';
 
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 60_000;
@@ -58,31 +58,43 @@ export const RoundScheduler = {
     await RoundScheduler.ensureRoundsExist();
   },
 
-  /** Detect active rounds whose NCE timer died — resume them. */
+  // FIX Bug 2.1: check ALL active rounds for missing NCE timer, not just stale ones.
   async recoverStaleActiveRounds(): Promise<void> {
     try {
-      const callIntervalRow = await prisma.config.findUnique({
-        where: { key: 'call_interval_ms' },
-      });
+      const callIntervalRow = await prisma.config.findUnique({ where: { key: 'call_interval_ms' } });
       const callIntervalMs = callIntervalRow ? parseInt(callIntervalRow.value, 10) : 5_000;
-      const maxActiveMs = 75 * callIntervalMs + 5 * 60_000;
-      const staleThreshold = new Date(Date.now() - maxActiveMs);
+      const staleThreshold = new Date(Date.now() - (75 * callIntervalMs + 5 * 60_000));
 
-      const staleRounds = await prisma.gameRound.findMany({
-        where: { status: GameStatus.active, start_time: { lte: staleThreshold } },
-        select: { id: true, stake: true },
+      const activeRounds = await prisma.gameRound.findMany({
+        where: { status: GameStatus.active },
+        select: { id: true, stake: true, start_time: true },
       });
 
-      for (const round of staleRounds) {
+      for (const round of activeRounds) {
         if (nce.activeTimers.has(round.id)) continue;
-        console.log(`[Scheduler] Stale active round ${round.id} (stake=${round.stake}) — resuming NCE`);
-        void nce.start(round.id);
+        const isStale = round.start_time <= staleThreshold;
+        console.log(`[Scheduler] Timer-less active round ${round.id} (stake=${round.stake}, stale=${isStale}) - resuming NCE`);
+        try {
+          await nce.start(round.id);
+        } catch (err) {
+          console.error(`[Scheduler] NCE resume failed for ${round.id} - force-voiding:`, err);
+          try {
+            await prisma.gameRound.update({
+              where: { id: round.id },
+              data: { status: GameStatus.void, ended_at: new Date() },
+            });
+            console.log(`[Scheduler] Force-voided stuck active round ${round.id}`);
+          } catch (voidErr) {
+            console.error(`[Scheduler] Failed to force-void round ${round.id}:`, voidErr);
+          }
+        }
       }
     } catch (err) {
       console.error('[Scheduler] recoverStaleActiveRounds error:', err);
     }
   },
 
+  // FIX Bug 2.2: void pending rounds with 0 players instead of starting them.
   async expireEmptyRounds(): Promise<void> {
     try {
       const overdue = await prisma.gameRound.findMany({
@@ -131,7 +143,6 @@ export const RoundScheduler = {
         }),
       ]);
 
-      // Group pending rounds by stake — void all but the earliest
       const byStake = new Map<number, typeof pendingRounds>();
       for (const r of pendingRounds) {
         const stakeNum = Number(r.stake);
@@ -149,28 +160,46 @@ export const RoundScheduler = {
         }
       }
 
-      const maxPlayersRow = await prisma.config.findUnique({
-        where: { key: 'auto_round_max_players' },
-      });
-      const maxPlayers = maxPlayersRow
-        ? parseInt(maxPlayersRow.value, 10)
-        : DEFAULT_MAX_PLAYERS;
+      const maxPlayersRow = await prisma.config.findUnique({ where: { key: 'auto_round_max_players' } });
+      const maxPlayers = maxPlayersRow ? parseInt(maxPlayersRow.value, 10) : DEFAULT_MAX_PLAYERS;
 
       const pendingStakes = new Set<number>([...byStake.keys()]);
-      const activeStakes = new Set<number>(activeRounds.map((r) => Number(r.stake)));
+      // FIX Bug 2.1: only skip if the active round also has a live NCE timer.
+      const activeStakes = new Set<number>(
+        activeRounds.filter((r) => nce.activeTimers.has(r.id)).map((r) => Number(r.stake)),
+      );
 
       await Promise.all(
         STAKE_LEVELS.map(async (stake) => {
           if (pendingStakes.has(stake)) return;
           if (activeStakes.has(stake)) {
-            console.log(`[Scheduler] Skipping round creation for stake=${stake} — a round is still active`);
+            console.log(`[Scheduler] Skipping round creation for stake=${stake} - a round is still active`);
             return;
           }
           const startTime = new Date(Date.now() + LEAD_TIME_MS);
-          const roundId = await GameRoundService.create(stake, startTime, maxPlayers);
-          console.log(
-            `[Scheduler] Created round ${roundId} | stake=${stake} Birr | starts=${startTime.toISOString()}`,
-          );
+          // FIX Bug 2.3: catch P2002 unique constraint violation from the partial index
+          // on game_rounds(stake) WHERE status='pending' — prevents duplicate pending rounds.
+          try {
+            const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
+            const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
+            const round = await prisma.gameRound.create({
+              data: {
+                stake,
+                status: GameStatus.pending,
+                max_players: maxPlayers,
+                start_time: startTime,
+                commission_pct: commissionPct,
+                derash: 0,
+              },
+            });
+            console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
+          } catch (err: unknown) {
+            if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
+              console.log(`[Scheduler] Skipping stake=${stake} - concurrent insert created pending round first`);
+            } else {
+              console.error(`[Scheduler] Failed to create round for stake=${stake}:`, err);
+            }
+          }
         }),
       );
     } catch (err) {
