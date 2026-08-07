@@ -15,9 +15,14 @@ import type {
 } from '../lib/api';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
-// Single color for all columns — clean, no rainbow
-const COL_COLOR = '#4f46e5';
-const COL_COLORS = [COL_COLOR, COL_COLOR, COL_COLOR, COL_COLOR, COL_COLOR];
+// Distinct color per BINGO column — bold but not rainbow
+const COL_COLORS = [
+  '#1d4ed8', // B — deep blue
+  '#0f766e', // I — teal
+  '#7c3aed', // N — purple
+  '#b45309', // G — amber-brown
+  '#be123c', // O — crimson
+];
 
 type GamePhase = 'waiting' | 'active' | 'won' | 'void' | 'cancelled';
 
@@ -46,6 +51,7 @@ export default function LiveGameScreen() {
 
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [myCartelas, setMyCartelas] = useState<Array<{ cartelaNumber: number; cartelaGrid: number[] }>>([]);
+  const [cartelasLoaded, setCartelasLoaded] = useState(false);
   const [winnerCartelaGrid, setWinnerCartelaGrid] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +212,7 @@ export default function LiveGameScreen() {
           }
         }
         if (resolvedCartelas.length) setMyCartelas(resolvedCartelas);
+        setCartelasLoaded(true);
 
         const nums = calledNums;
         const existingCalled = new Set(nums);
@@ -423,7 +430,7 @@ export default function LiveGameScreen() {
   const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid as number[]));
   const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
   const wCells = winCellsForGrid(grid);
-  const isWatching = myCartelas.length === 0;
+  const isWatching = cartelasLoaded && myCartelas.length === 0;
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
   // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
@@ -520,20 +527,20 @@ export default function LiveGameScreen() {
         {/* RIGHT: Called number + cartela or watching panel */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          {/* Last 4 called numbers display */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Last Called</span>
-              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 14, cursor: 'pointer' }}>
+          {/* Last 4 called numbers — compact */}
+          <div style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Last Called</span>
+              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 13, cursor: 'pointer' }}>
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, height: 60 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 44 }}>
               {game.calledOrder.length === 0 ? (
-                <div style={{ color: '#555', fontSize: 13 }}>{game.phase === 'waiting' ? 'Game starting...' : '—'}</div>
+                <div style={{ color: '#555', fontSize: 11 }}>{game.phase === 'waiting' ? 'Starting...' : '—'}</div>
               ) : (() => {
                 const last4 = game.calledOrder.slice(-4);
-                const sizes = [28, 34, 40, 52]; // oldest → newest, smaller overall
+                const sizes = [20, 26, 32, 42];
                 const offsets = last4.length;
                 return last4.map((num, idx) => {
                   const displayIdx = 4 - offsets + idx;
@@ -542,18 +549,16 @@ export default function LiveGameScreen() {
                   return (
                     <div key={`${num}-${idx}`} style={{
                       width: sz, height: sz, borderRadius: '50%',
-                      background: isNewest ? '#4f46e5' : 'rgba(79,70,229,0.35)',
+                      background: isNewest ? '#4f46e5' : 'rgba(79,70,229,0.3)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexDirection: 'column',
                       fontWeight: 900,
-                      fontSize: sz >= 48 ? 14 : sz >= 38 ? 11 : 9,
+                      fontSize: sz >= 38 ? 12 : sz >= 28 ? 9 : 7,
                       color: '#fff',
-                      boxShadow: isNewest ? '0 0 12px rgba(79,70,229,0.7)' : 'none',
-                      border: `2px solid ${isNewest ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                      transition: 'all 0.2s',
-                      lineHeight: 1.1,
+                      border: `1px solid ${isNewest ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                      lineHeight: 1,
                     }}>
-                      <span style={{ fontSize: sz >= 48 ? 7 : 6, opacity: 0.75 }}>{getColLabel(num)}</span>
+                      <span style={{ fontSize: 5, opacity: 0.7 }}>{getColLabel(num)}</span>
                       {num}
                     </div>
                   );
@@ -561,35 +566,6 @@ export default function LiveGameScreen() {
               })()}
             </div>
           </div>
-
-          {/* "Get ready" banner + Automatic toggle */}
-          {game.phase === 'active' && (
-            <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, background: 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3, flex: 1, textAlign: 'center' }}>
-                  Get ready for the<br />next number!
-                </div>
-                <button
-                  onClick={toggleSound}
-                  style={{ background: 'none', border: 'none', color: soundOn ? '#60a5fa' : '#475569', fontSize: 16, cursor: 'pointer', padding: 4, flexShrink: 0 }}
-                >
-                  {soundOn ? '🔊' : '🔇'}
-                </button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6 }}>
-                <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Automatic</span>
-                <div style={{
-                  width: 40, height: 22, borderRadius: 11,
-                  background: '#22c55e',
-                  display: 'flex', alignItems: 'center',
-                  padding: '0 3px',
-                  cursor: 'default',
-                }}>
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', marginLeft: 'auto' }} />
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Win overlay — full-screen modal */}
           {game.phase === 'won' && game.winnerInfo && (() => {
@@ -765,69 +741,57 @@ export default function LiveGameScreen() {
             </div>
           )}
 
-          {/* Cartela card or watching panel */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+          {/* Cartela cards — no scroll, fit both in remaining space */}
+          <div style={{ flex: 1, overflow: 'hidden', padding: '4px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}>
             {!isWatching && allCartelas.length > 0 ? (
               <>
-                {/* Render all cartelas stacked vertically */}
-                {allCartelas.map((cartela, cartelaIdx) => {
+                {allCartelas.map((cartela) => {
                   const cartelaGrid: number[] = (cartela.cartelaGrid ?? []) as number[];
                   const cartelaWinCells = winCellsForGrid(cartelaGrid);
                   const cartelaHasWin = hasWinForGrid(cartelaGrid);
-                  
                   return (
-                    <div key={cartela.cartelaNumber} style={{ marginBottom: 12 }}>
-                      {/* Cartela grid */}
-                      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, overflow: 'hidden' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'rgba(255,255,255,0.1)' }}>
-                          {COLS.map((c, i) => (
-                            <div key={c} style={{ textAlign: 'center', padding: '4px 0', fontWeight: 800, fontSize: 11, color: COL_COLORS[i] }}>{c}</div>
-                          ))}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
-                          {cartelaGrid.map((val, idx) => {
-                            const isFree = idx === 12;
-                            const m = isFree || marked.has(val);
-                            const wl = cartelaWinCells.has(idx);
-                            return (
-                              <div key={idx} style={{
-                                aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: wl ? '#f5d06b' : m ? '#4f46e5' : 'rgba(255,255,255,0.08)',
-                                color: wl ? '#1a1035' : m ? '#fff' : '#aaa',
-                                borderRadius: 4, fontSize: 11, fontWeight: m ? 800 : 400,
-                                transition: 'background 0.2s',
-                              }}>
-                                {isFree ? '★' : val}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                    <div key={cartela.cartelaNumber} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                       {/* Cartela number label */}
-                      <div style={{ textAlign: 'center', marginTop: 5, fontSize: 11, fontWeight: 700, color: '#f5d06b' }}>
-                        Cartela No : {cartela.cartelaNumber}
-                        {cartelaHasWin && <span style={{ marginLeft: 6, color: '#22c55e' }}>✓ BINGO</span>}
+                      <div style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#f5d06b', marginBottom: 2, flexShrink: 0 }}>
+                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 5, color: '#22c55e' }}>✓ BINGO</span>}
+                      </div>
+                      {/* 5×5 grid */}
+                      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 2, minHeight: 0 }}>
+                        {cartelaGrid.length > 0 ? cartelaGrid.map((val, idx) => {
+                          const isFree = idx === 12;
+                          const m = isFree || marked.has(val);
+                          const wl = cartelaWinCells.has(idx);
+                          return (
+                            <div key={idx} style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: wl ? '#f5d06b' : m ? '#4f46e5' : 'rgba(255,255,255,0.08)',
+                              color: wl ? '#1a1035' : m ? '#fff' : '#aaa',
+                              borderRadius: 3, fontSize: 9, fontWeight: m ? 800 : 400,
+                            }}>
+                              {isFree ? '★' : val}
+                            </div>
+                          );
+                        }) : (
+                          // Grid not loaded yet — show placeholder
+                          Array.from({ length: 25 }).map((_, idx) => (
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 3 }} />
+                          ))
+                        )}
                       </div>
                     </div>
                   );
                 })}
-                
-                {/* Auto-claim status */}
                 {game.phase === 'active' && playerHasBingo && (
-                  <div style={{
-                    width: '100%', padding: '12px', background: claimPending ? '#d97706' : '#22c55e',
-                    color: '#fff', borderRadius: 10, fontSize: 15, fontWeight: 900, textAlign: 'center',
-                    animation: 'pulse 0.5s infinite alternate',
-                  }}>
-                    {claimPending ? '⏳ Claiming BINGO…' : '🎉 BINGO!'}
+                  <div style={{ padding: '6px', background: claimPending ? '#d97706' : '#22c55e', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 900, textAlign: 'center', flexShrink: 0 }}>
+                    {claimPending ? '⏳ Claiming…' : '🎉 BINGO!'}
                   </div>
                 )}
-                {claimError && <div style={{ color: '#fca5a5', fontSize: 12, marginTop: 6, textAlign: 'center' }}>{claimError}</div>}
+                {claimError && <div style={{ color: '#fca5a5', fontSize: 10, textAlign: 'center', flexShrink: 0 }}>{claimError}</div>}
               </>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center', padding: 16 }}>
-                <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 12 }}>Watching Only</div>
-                <div style={{ fontSize: 13, color: '#a5b4fc', lineHeight: 1.8 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 10 }}>Watching Only</div>
+                <div style={{ fontSize: 12, color: '#a5b4fc', lineHeight: 1.8 }}>
                   የዚህ ዙር ጨዋታ<br />
                   ተጀምሯል። አዲስ ዙር<br />
                   እስኪጀምር አዚሁ<br />
