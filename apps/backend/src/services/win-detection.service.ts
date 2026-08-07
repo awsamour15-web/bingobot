@@ -209,6 +209,10 @@ async function distributeWinnings(
   }
 }
 
+// ─── Direct export for NCE server-side win detection ─────────────────────────
+// Bypasses the claim window — used when NCE detects a winner authoritatively.
+export { distributeWinnings as distributeWinningsDirectly };
+
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 export const WinDetectionService = {

@@ -146,11 +146,9 @@ export class NumberCallingEngine {
         consecutiveErrors = 0;
         sequenceIndex += 1;
 
-        // ── Server-side win detection after every number ──────────────────
-        // Check all active cartelas against the current called set.
-        // This is the authoritative win check — client CLAIM_WIN is just a signal.
-        const wonByServer = await this.checkForWinner(roundId);
-        if (wonByServer) {
+        // ── Server-side win detection — inline, no claim window delay ─────
+        const stopped = await this.detectAndHandleWin(roundId);
+        if (stopped) {
           this.activeTimers.delete(roundId);
           return;
         }
@@ -230,21 +228,18 @@ export class NumberCallingEngine {
   }
 
   /**
-   * Server-side win detection after each number is called.
-   * Checks every active entry's cartela against the current called set.
-   * If a winner is found, triggers distribution immediately.
-   * Returns true if a winner was found and distribution started.
+   * Server-side win detection after each number.
+   * Checks every active entry's cartela, distributes winnings directly if found.
+   * Returns true if a winner was found (NCE should stop).
    */
-  private async checkForWinner(roundId: string): Promise<boolean> {
+  private async detectAndHandleWin(roundId: string): Promise<boolean> {
     try {
-      // Fetch all called numbers for this round
       const calledRows = await prisma.calledNumber.findMany({
         where: { round_id: roundId },
         select: { number: true },
       });
       const calledSet = new Set(calledRows.map((r) => r.number));
 
-      // Fetch all non-watching entries
       const entries = await prisma.roundEntry.findMany({
         where: { round_id: roundId, is_watching: false },
         select: { player_id: true, cartela_number: true },
@@ -256,10 +251,8 @@ export class NumberCallingEngine {
         where: { cartela_number: { in: cartelaNumbers } },
         select: { cartela_number: true, grid: true },
       });
-
       const gridMap = new Map(cartelas.map((c) => [c.cartela_number, c.grid as number[]]));
 
-      // Check each entry for a win
       const winnerMap = new Map<string, { cartelaNumber: number }>();
       for (const entry of entries) {
         const grid = gridMap.get(entry.cartela_number);
@@ -271,18 +264,17 @@ export class NumberCallingEngine {
 
       if (winnerMap.size === 0) return false;
 
-      console.log(`[NCE] Server-side win detected for round ${roundId} — ${winnerMap.size} winner(s)`);
+      console.log(`[NCE] Win detected round=${roundId} winners=${winnerMap.size} — distributing immediately`);
 
-      // Trigger distribution directly — import lazily to avoid circular deps
-      const { WinDetectionService } = await import('./win-detection.service.js');
-      // Use internal distributeWinnings via validateClaim for each winner
-      // to reuse the existing claim window + distribution logic
-      for (const [playerId] of winnerMap) {
-        await WinDetectionService.validateClaim(playerId, roundId);
-      }
+      // Stop NCE first before any async distribution work
+      this.stop(roundId);
+
+      // Call distributeWinnings directly — bypass validateClaim/claim-window entirely
+      const { distributeWinningsDirectly } = await import('./win-detection.service.js');
+      await distributeWinningsDirectly(roundId, winnerMap);
       return true;
     } catch (err) {
-      console.error(`[NCE] checkForWinner error for round ${roundId}:`, err);
+      console.error(`[NCE] detectAndHandleWin error round=${roundId}:`, err);
       return false;
     }
   }
