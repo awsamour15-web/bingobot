@@ -327,18 +327,10 @@ export default function LiveGameScreen() {
     setSoundOn((v) => { const n = !v; localStorage.setItem('soundOn', String(n)); return n; });
   }, []);
 
-  const handleClaimWin = useCallback(() => {
-    if (!roundId || !myCartelas.length || claimPending) return;
-    setClaimPending(true);
-    setClaimError(null);
-    socket.emit('CLAIM_WIN', { roundId, cartelaId: myCartelas[0]!.cartelaNumber });
-  }, [roundId, myCartelas, claimPending]);
 
-  // ─── Cartela win detection (multi-cartela) ───────────────────────────────
   const allCartelas = myCartelas;
   const marked = game.calledNumbers;
-  const [activeCartelaIdx, setActiveCartelaIdx] = useState(0);
-  const activeCartela = allCartelas[activeCartelaIdx] ?? allCartelas[0];
+  const activeCartela = allCartelas[0];
   const grid: number[] = (activeCartela?.cartelaGrid ?? []) as number[];
 
   function isMarkedForGrid(g: number[], i: number) {
@@ -809,14 +801,7 @@ export default function LiveGameScreen() {
         >
           ↺ Refresh
         </button>
-        {!isWatching && !gameEnded && (
-          <button
-            style={{ flex: 1, padding: '10px', background: '#d97706', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'default', opacity: 0.8 }}
-            disabled
-          >
-            Automatic
-          </button>
-        )}
+
       </div>
     </div>
   );
