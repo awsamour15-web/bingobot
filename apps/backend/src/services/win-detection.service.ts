@@ -59,7 +59,12 @@ const WINNING_LINE_INDICES: number[][] = [
 export function checkWin(grid: number[], calledNums: Set<number>): CheckWinResult {
   for (const lineIndices of WINNING_LINE_INDICES) {
     const lineValues = lineIndices.map((i) => grid[i] ?? 0);
-    const isComplete = lineValues.every((v) => v === 0 || calledNums.has(v));
+    // Index 12 is the free space (stored as 0 in DB) — always counts as called
+    const isComplete = lineValues.every((v, pos) => {
+      const idx = lineIndices[pos]!;
+      if (idx === 12 || v === 0) return true; // free space
+      return calledNums.has(v);
+    });
     if (isComplete) return { won: true, winningLine: lineValues };
   }
   return { won: false };
@@ -229,18 +234,27 @@ export const WinDetectionService = {
     const entries = await prisma.roundEntry.findMany({
       where: { round_id: roundId, player_id: playerId, is_watching: false },
     });
-    if (!entries.length) return { valid: false, reason: 'ENTRY_NOT_FOUND' };
+    if (!entries.length) {
+      console.log(`[WinDetection] ENTRY_NOT_FOUND player=${playerId} round=${roundId}`);
+      return { valid: false, reason: 'ENTRY_NOT_FOUND' };
+    }
 
     // 2. Round must be active
     const round = await prisma.gameRound.findUnique({ where: { id: roundId } });
-    if (!round || round.status !== GameStatus.active) return { valid: false, reason: 'ROUND_NOT_ACTIVE' };
+    if (!round || round.status !== GameStatus.active) {
+      console.log(`[WinDetection] ROUND_NOT_ACTIVE player=${playerId} round=${roundId} status=${round?.status}`);
+      return { valid: false, reason: 'ROUND_NOT_ACTIVE' };
+    }
 
     // 3. Fetch cartela definitions
     const cartelaNumbers = entries.map((e) => e.cartela_number);
     const cartelas = await prisma.cartelaDefinition.findMany({
       where: { cartela_number: { in: cartelaNumbers } },
     });
-    if (!cartelas.length) return { valid: false, reason: 'CARTELA_NOT_FOUND' };
+    if (!cartelas.length) {
+      console.log(`[WinDetection] CARTELA_NOT_FOUND player=${playerId} cartelaNumbers=${cartelaNumbers}`);
+      return { valid: false, reason: 'CARTELA_NOT_FOUND' };
+    }
 
     // 4. Fetch called numbers
     const calledRows = await prisma.calledNumber.findMany({
@@ -248,16 +262,25 @@ export const WinDetectionService = {
       orderBy: { sequence_index: 'asc' },
     });
     const calledSet = new Set(calledRows.map((c) => c.number));
+    console.log(`[WinDetection] Checking player=${playerId} round=${roundId} cartelas=${cartelaNumbers} calledCount=${calledSet.size}`);
 
     // 5. Check win on any cartela
+    // Grid may contain "FREE"/"Free" string at index 12 — cast safely
     let winningCartelaNumber: number | null = null;
     for (const cartela of cartelas) {
-      if (checkWin(cartela.grid as number[], calledSet).won) {
+      const grid = (cartela.grid as unknown[]).map((v, i) =>
+        i === 12 ? 0 : typeof v === 'number' ? v : 0,
+      );
+      const result = checkWin(grid, calledSet);
+      console.log(`[WinDetection] cartela=${cartela.cartela_number} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
+      if (result.won) {
         winningCartelaNumber = cartela.cartela_number;
         break;
       }
     }
-    if (!winningCartelaNumber) return { valid: false, reason: 'NO_WINNING_LINE' };
+    if (!winningCartelaNumber) {
+      return { valid: false, reason: 'NO_WINNING_LINE' };
+    }
 
     // ── Accept the claim ─────────────────────────────────────────────────────
 
