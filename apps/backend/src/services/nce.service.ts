@@ -146,7 +146,16 @@ export class NumberCallingEngine {
         consecutiveErrors = 0;
         sequenceIndex += 1;
 
-        // Stop immediately if round was won during this call
+        // ── Server-side win detection after every number ──────────────────
+        // Check all active cartelas against the current called set.
+        // This is the authoritative win check — client CLAIM_WIN is just a signal.
+        const wonByServer = await this.checkForWinner(roundId);
+        if (wonByServer) {
+          this.activeTimers.delete(roundId);
+          return;
+        }
+
+        // Also stop if round status changed externally (admin cancel etc.)
         const currentRound = await prisma.gameRound.findUnique({
           where: { id: roundId },
           select: { status: true },
@@ -218,6 +227,78 @@ export class NumberCallingEngine {
       clearTimeout(handle);
       this.activeTimers.delete(roundId);
     }
+  }
+
+  /**
+   * Server-side win detection after each number is called.
+   * Checks every active entry's cartela against the current called set.
+   * If a winner is found, triggers distribution immediately.
+   * Returns true if a winner was found and distribution started.
+   */
+  private async checkForWinner(roundId: string): Promise<boolean> {
+    try {
+      // Fetch all called numbers for this round
+      const calledRows = await prisma.calledNumber.findMany({
+        where: { round_id: roundId },
+        select: { number: true },
+      });
+      const calledSet = new Set(calledRows.map((r) => r.number));
+
+      // Fetch all non-watching entries
+      const entries = await prisma.roundEntry.findMany({
+        where: { round_id: roundId, is_watching: false },
+        select: { player_id: true, cartela_number: true },
+      });
+      if (!entries.length) return false;
+
+      const cartelaNumbers = [...new Set(entries.map((e) => e.cartela_number))];
+      const cartelas = await prisma.cartelaDefinition.findMany({
+        where: { cartela_number: { in: cartelaNumbers } },
+        select: { cartela_number: true, grid: true },
+      });
+
+      const gridMap = new Map(cartelas.map((c) => [c.cartela_number, c.grid as number[]]));
+
+      // Check each entry for a win
+      const winnerMap = new Map<string, { cartelaNumber: number }>();
+      for (const entry of entries) {
+        const grid = gridMap.get(entry.cartela_number);
+        if (!grid) continue;
+        if (this.gridHasWin(grid, calledSet)) {
+          winnerMap.set(entry.player_id, { cartelaNumber: entry.cartela_number });
+        }
+      }
+
+      if (winnerMap.size === 0) return false;
+
+      console.log(`[NCE] Server-side win detected for round ${roundId} — ${winnerMap.size} winner(s)`);
+
+      // Trigger distribution directly — import lazily to avoid circular deps
+      const { WinDetectionService } = await import('./win-detection.service.js');
+      // Use internal distributeWinnings via validateClaim for each winner
+      // to reuse the existing claim window + distribution logic
+      for (const [playerId] of winnerMap) {
+        await WinDetectionService.validateClaim(playerId, roundId);
+      }
+      return true;
+    } catch (err) {
+      console.error(`[NCE] checkForWinner error for round ${roundId}:`, err);
+      return false;
+    }
+  }
+
+  private gridHasWin(grid: number[], calledSet: Set<number>): boolean {
+    const LINES = [
+      [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+      [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+      [0,6,12,18,24],[4,8,12,16,20],
+    ];
+    for (const line of LINES) {
+      if (line.every((i) => { const v = grid[i] ?? 0; return i === 12 || v === 0 || calledSet.has(v); })) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
