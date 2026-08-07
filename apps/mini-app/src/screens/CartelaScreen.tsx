@@ -247,16 +247,16 @@ export default function CartelaScreen() {
 
   function togglePick(num: number) {
     if (registeredNumsRef.current.length >= MAX_SELECT) return; // already have max registered
-    if (joiningNumsRef.current.has(num)) return; // this specific cartela is in-flight
     if (picksRef.current.includes(num)) {
-      // Only allow deselect if not yet registered
-      if (!registeredNumsRef.current.includes(num)) {
+      // Allow deselect only if not yet registered (confirmed with server)
+      if (!registeredNumsRef.current.includes(num) && !joiningNumsRef.current.has(num)) {
         const filtered = picksRef.current.filter(n => n !== num);
         picksRef.current = filtered;
         setPicks(filtered);
       }
       return;
     }
+    if (joiningNumsRef.current.has(num)) return; // different cartela in-flight, not this one
     if (round && balances) {
       const stake = Number(round.stake);
       const playBal = Number(balances.playWallet.balance);
@@ -401,7 +401,7 @@ export default function CartelaScreen() {
           const taken = takenSet.has(num);
           const isPicked = picks.includes(num);
           const isRegistered = registeredNums.includes(num);
-          const disabled = starting || joiningNums.has(num) || taken || isRegistered || (!isPicked && picks.length >= MAX_SELECT);
+          const disabled = starting || taken || (joiningNums.has(num) && !isPicked) || (isRegistered && !isPicked) || (!isPicked && picks.length >= MAX_SELECT);
           const bg = isPicked ? '#22c55e' : taken ? '#e53e00' : '#1e293b';
           const color = isPicked ? '#fff' : taken ? '#fff' : '#94a3b8';
 
