@@ -152,12 +152,15 @@ export default function CartelaScreen() {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
     };
 
-    // Real-time cartela taken update
+    // Real-time cartela taken update — ignore numbers we just unregistered
     const onCartelaTaken = (p: { cartelaNumbers: number[]; playerCount: number }) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
       setAvailability(prev => {
         if (!prev) return prev;
-        const takenSet = new Set([...prev.taken, ...p.cartelaNumbers]);
+        // Only mark as taken if it's not in our current picks (could be our own join)
+        const incoming = p.cartelaNumbers.filter(n => !picksRef.current.includes(n));
+        if (incoming.length === 0) return prev;
+        const takenSet = new Set([...prev.taken, ...incoming]);
         return {
           taken: [...takenSet],
           available: prev.available.filter(n => !takenSet.has(n)),
@@ -249,10 +252,15 @@ export default function CartelaScreen() {
     // ── Deselect path — check first before any other guard ──
     if (picksRef.current.includes(num)) {
       if (joiningNumsRef.current.has(num)) return; // in-flight, wait
-      // Remove from local picks
+      // Remove from local picks immediately
       const filtered = picksRef.current.filter(n => n !== num);
       picksRef.current = filtered;
       setPicks(filtered);
+      // Also remove from availability.taken so the poll doesn't flip it back
+      setAvailability(prev => {
+        if (!prev) return prev;
+        return { taken: prev.taken.filter(t => t !== num), available: [...prev.available, num].sort((a, b) => a - b) };
+      });
       // If already registered with server, unjoin and refund
       if (registeredNumsRef.current.includes(num)) {
         setRegisteredNums(prev => {
@@ -260,7 +268,6 @@ export default function CartelaScreen() {
           registeredNumsRef.current = next;
           return next;
         });
-        // Call server to delete the entry and refund stake (fire-and-forget, silent on error)
         leaveRound(roundId!, num).catch(() => {});
       }
       return;
