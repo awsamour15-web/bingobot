@@ -1,8 +1,34 @@
 // Feature: bot-start-menu
 // Validates: Requirements 1, 2, 4.11
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
+
+// Mock prisma so buildDepositText never tries to reach a real DB in tests
+vi.mock('../../lib/prisma.js', () => ({
+  default: {
+    config: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+    gameRound: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: 'test-round-id' }),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    $transaction: vi.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        config: { findUnique: vi.fn().mockResolvedValue(null) },
+        gameRound: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({ id: 'test-round-id' }),
+        },
+      }),
+    ),
+  },
+}));
+
 import {
   buildMainMenu,
   isGuardedButton,
@@ -238,24 +264,29 @@ describe('Property 6: formatSupportReply()', () => {
 // Validates: Requirements 2.1, 2.2, 2.3
 
 describe('buildDepositText()', () => {
+  // buildDepositText queries the DB for the Telebirr number config.
+  // prisma is mocked to return null, so telebirrNumber falls back to 'N/A (contact support)'.
+
   it('returns a non-empty string', async () => {
     const text = await buildDepositText();
     expect(text.length).toBeGreaterThan(0);
   });
 
-  it('contains "deposit" keyword', async () => {
+  it('contains the support handle', async () => {
     const text = await buildDepositText();
-    expect(text.toLowerCase()).toContain('deposit');
+    expect(text).toContain('@betesebbingosupport');
   });
 
-  it('contains "payment" keyword', async () => {
+  it('contains the Telebirr step instruction', async () => {
     const text = await buildDepositText();
-    expect(text.toLowerCase()).toContain('payment');
+    // Amharic word for "Phone" appears in the deposit instructions
+    expect(text).toContain('Phone');
   });
 
-  it('contains the /txn command instruction', async () => {
+  it('contains the receipt paste instruction', async () => {
     const text = await buildDepositText();
-    expect(text).toContain('/txn');
+    // Step 2 asks the player to paste the receipt — "copy" appears in the Amharic text
+    expect(text).toContain('copy');
   });
 });
 
