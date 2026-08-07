@@ -258,6 +258,8 @@ function ConfigSection() {
     boxSizing: 'border-box',
     minWidth: 200,
   };
+
+  if (loading) {
     return (
       <div style={cardStyle}>
         <h2 style={sectionTitleStyle}>Configuration</h2>
