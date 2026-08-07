@@ -6,12 +6,6 @@ import type { RoundListItem } from '@fidel/shared';
 
 const ALLOWED_STAKES = [10, 20, 50];
 
-const STAKE_CONFIG: Record<number, { gradient: string; glow: string; accent: string }> = {
-  10:  { gradient: 'linear-gradient(135deg, #0f9b8e, #00f2fe)', glow: '#0f9b8e44', accent: '#00f2fe' },
-  20:  { gradient: 'linear-gradient(135deg, #f7971e, #ffd200)', glow: '#f7971e44', accent: '#ffd200' },
-  50:  { gradient: 'linear-gradient(135deg, #e040fb, #7c4dff)', glow: '#e040fb44', accent: '#e040fb' },
-};
-
 export default function GameScreen() {
   const navigate = useNavigate();
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
@@ -109,12 +103,7 @@ export default function GameScreen() {
         )}
 
         {!loading && !error && rounds.map((round) => {
-          const cfg = STAKE_CONFIG[Number(round.stake)] ?? STAKE_CONFIG[10]!;
           const isPending = round.status === 'pending';
-          const isLobby = isPending && new Date(round.start_time) > new Date();
-          const fillPct = round.max_players > 0 ? Math.min(100, Math.round((round.player_count / round.max_players) * 100)) : 0;
-          const statusLabel = isLobby ? 'Lobby Open' : isPending ? 'Starting…' : 'Live';
-          const statusColor = isLobby ? '#34d399' : isPending ? '#fbbf24' : '#f87171';
 
           return (
             <button key={round.id}
@@ -131,50 +120,18 @@ export default function GameScreen() {
               }}
               style={{
                 display: 'block', width: '100%', marginBottom: 16,
-                background: '#0d1b2e', border: `1px solid rgba(255,255,255,0.08)`,
-                borderRadius: 20, padding: 0, cursor: 'pointer', textAlign: 'left',
-                overflow: 'hidden', boxShadow: `0 8px 32px ${cfg.glow}`,
+                background: '#0d1b2e', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left',
               }}
             >
-              {/* Gradient top stripe */}
-              <div style={{ height: 5, background: cfg.gradient }} />
-
-              <div style={{ padding: '16px 18px' }}>
-                {/* Row 1: stake + status */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <div>
-                    <span style={{ fontSize: 28, fontWeight: 900, color: '#f1f5f9' }}>{round.stake}</span>
-                    <span style={{ fontSize: 14, color: '#64748b', marginLeft: 5 }}>Birr / cartela</span>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 700, color: statusColor, border: `1px solid ${statusColor}44` }}>
-                    ● {statusLabel}
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <span style={{ fontSize: 26, fontWeight: 900, color: '#f1f5f9' }}>{round.stake}</span>
+                  <span style={{ fontSize: 13, color: '#64748b', marginLeft: 5 }}>Birr / cartela</span>
                 </div>
-
-                {/* Row 2: stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-                  {[
-                    { label: 'Prize Pool', value: `${round.derash} Birr`, highlight: true },
-                    { label: 'Players', value: `${round.player_count}/${round.max_players}`, highlight: false },
-                    { label: 'Status', value: isPending ? 'Joining' : 'Playing', highlight: false },
-                  ].map(({ label, value, highlight }) => (
-                    <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 8px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: highlight ? '#f59e0b' : '#e2e8f0' }}>{value}</div>
-                      <div style={{ fontSize: 10, color: '#475569', marginTop: 3 }}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Fill bar */}
-                <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
-                  <div style={{ height: '100%', width: `${fillPct}%`, background: cfg.gradient, transition: 'width 0.5s' }} />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#475569' }}>
-                  <span>{fillPct}% full</span>
-                  <span style={{ color: cfg.accent, fontWeight: 700 }}>
-                    {isPending ? '▶ Join Game' : '👁 Watch Live'} →
-                  </span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#f59e0b' }}>{Math.round(round.derash)} Birr</div>
+                  <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Prize Pool</div>
                 </div>
               </div>
             </button>
