@@ -162,8 +162,9 @@ export default function CartelaScreen() {
           available: prev.available.filter(n => !takenSet.has(n)),
         };
       });
-      // Deselect our picks if just taken by someone else
-      setPicks(prev => prev.filter(n => !p.cartelaNumbers.includes(n)));
+      // Deselect our picks only if taken by someone else (not our own registrations)
+      setPicks(prev => prev.filter(n => !p.cartelaNumbers.includes(n) || registeredNumsRef.current.includes(n)));
+      picksRef.current = picksRef.current.filter(n => !p.cartelaNumbers.includes(n) || registeredNumsRef.current.includes(n));
     };
 
     // Round started — wait for all pending joins to finish before navigating
@@ -288,7 +289,9 @@ export default function CartelaScreen() {
   const takenSet = new Set(availability.taken);
   const allNumbers = Array.from({ length: TOTAL }, (_, i) => i + 1);
   const urgent = msLeft > 0 && msLeft < 10_000;
-  const canPick = picks.length < MAX_SELECT;
+  // Use ref-backed pick count so the grid never reads stale state
+  const currentPickCount = picks.length;
+  const canPick = currentPickCount < MAX_SELECT;
   const stake = Number(round.stake);
   const playBal = balances ? Number(balances.playWallet.balance) : 0;
   const mainBal = balances ? Number(balances.mainWallet.balance) : 0;
@@ -343,8 +346,10 @@ export default function CartelaScreen() {
         <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct * 100}%`, background: urgent ? '#ef4444' : '#f59e0b', transition: 'width 0.25s linear' }} />
         </div>
-        {picks.length > 0 && registered
-          ? <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>✅ Cartela {picks.join(' & ')} confirmed — waiting for game to start</div>
+        {registeredNums.length > 0
+          ? registeredNums.length >= MAX_SELECT
+            ? <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>✅ Cartelas {registeredNums.join(' & ')} confirmed — waiting for game to start</div>
+            : <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>✅ Cartela {registeredNums.join(' & ')} confirmed — pick one more or wait</div>
           : picks.length > 0
           ? <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Cartela {picks.join(' & ')} selected</div>
           : <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>Select up to {MAX_SELECT} cartelas, or watch for free</div>
@@ -364,7 +369,7 @@ export default function CartelaScreen() {
         {!countdownStartedRef.current && msLeft === 0 && !joining && (
           <button onClick={() => { joinedRef.current = false; setManualTrigger(true); }}
             style={{ marginTop: 8, padding: '8px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            {registered ? 'Go to Game' : picks.length > 0 ? 'Join Now' : 'Watch Game'}
+            {registeredNums.length > 0 ? 'Go to Game' : picks.length > 0 ? 'Join Now' : 'Watch Game'}
           </button>
         )}      </div>
 
