@@ -469,7 +469,7 @@ if (BOT_TOKEN) {
 
   // ─── 5.1: /deposit command + Deposit 💰 button handler ──────────────────────
 
-  async function handleDepositStart(ctx: { from?: { id: number }; reply: (text: string) => Promise<unknown> }) {
+  async function handleDepositStart(ctx: import('grammy').Context) {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
     if (!(await isRegistered(telegramId))) {
