@@ -265,6 +265,9 @@ export const WinDetectionService = {
       // Window already open — add to winners set
       existing.winners.set(playerId, { cartelaNumber: winningCartelaNumber });
     } else {
+      // Stop NCE immediately on first valid claim — no more numbers after a winner is found
+      nce.stop(roundId);
+
       // Open a new claim window
       const windowMs = await getClaimWindowMs();
       const newState: ClaimWindowState = {

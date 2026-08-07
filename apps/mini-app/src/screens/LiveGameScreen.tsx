@@ -284,7 +284,12 @@ export default function LiveGameScreen() {
     const onCancelled = (_p: RoundCancelledPayload) =>
       setGame((g) => ({ ...g, phase: 'cancelled', endMessage: 'Round cancelled — stake refunded.' }));
     const onRejected = (p: WinRejectedPayload) => {
-      setClaimError('Win rejected: ' + p.reason);
+      // ROUND_NOT_ACTIVE means distributeWinnings already ran — wait for ROUND_WON
+      // DUPLICATE_CLAIM means claim already registered — also just wait
+      const silentReasons = ['ROUND_NOT_ACTIVE', 'DUPLICATE_CLAIM', 'CLAIM_WINDOW_CLOSED'];
+      if (!silentReasons.includes(p.reason)) {
+        setClaimError('Win rejected: ' + p.reason);
+      }
       setClaimPending(false);
     };
 

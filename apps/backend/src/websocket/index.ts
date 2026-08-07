@@ -223,8 +223,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         // Rate limit: 5 claims/min per player
         if (isClaimRateLimited(playerId)) {
           socket.emit('WIN_REJECTED', {
-            code: 'RATE_LIMITED',
-            message: 'Too many win claims. Please wait before trying again.',
+            reason: 'RATE_LIMITED',
           });
           if (ack) ack({ ok: false, code: 'RATE_LIMITED' });
           return;
@@ -237,8 +236,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
           if (ack) ack({ ok: true });
         } else {
           socket.emit('WIN_REJECTED', {
-            code: result.reason ?? 'INVALID_CLAIM',
-            message: 'Win claim is not valid',
+            reason: result.reason ?? 'INVALID_CLAIM',
           });
           if (ack) ack({ ok: false, code: result.reason });
         }
