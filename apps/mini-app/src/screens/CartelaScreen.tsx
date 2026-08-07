@@ -123,6 +123,7 @@ export default function CartelaScreen() {
         deselect();
       } else if (e.code === 'ROUND_NOT_JOINABLE' || e.message?.includes('not pending') || e.message?.includes('void') || e.message?.includes('cancelled')) {
         sessionStorage.setItem('selectedRoundId', roundId!);
+        sessionStorage.setItem('myCartelaNumbers', JSON.stringify(registeredNumsRef.current));
         navigate(`/rounds/${roundId}/game`, { replace: true });
         return;
       } else if (e.code === 'PLAYER_SUSPENDED') {
@@ -176,6 +177,7 @@ export default function CartelaScreen() {
         await new Promise(r => setTimeout(r, 100));
       }
       sessionStorage.setItem('selectedRoundId', roundId!);
+      sessionStorage.setItem('myCartelaNumbers', JSON.stringify(registeredNumsRef.current));
       navigate(`/rounds/${roundId}/game`, { replace: true });
     };
 
@@ -233,6 +235,7 @@ export default function CartelaScreen() {
           }
         }
         sessionStorage.setItem('selectedRoundId', roundId!);
+        sessionStorage.setItem('myCartelaNumbers', JSON.stringify(registeredNumsRef.current));
         navigate(`/rounds/${roundId}/game`, { replace: true });
       } catch {
         setStarting(false);
