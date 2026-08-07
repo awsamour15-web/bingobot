@@ -15,8 +15,9 @@ import type {
 } from '../lib/api';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
-// Column ranges: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75
-const COL_COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#dc2626'];
+// Single color for all columns — clean, no rainbow
+const COL_COLOR = '#4f46e5';
+const COL_COLORS = [COL_COLOR, COL_COLOR, COL_COLOR, COL_COLOR, COL_COLOR];
 
 type GamePhase = 'waiting' | 'active' | 'won' | 'void' | 'cancelled';
 
@@ -433,16 +434,8 @@ export default function LiveGameScreen() {
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div style={{ background: '#0f0c29', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
         <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
-        {/* BINGO header with column colors */}
-        <div style={{ display: 'flex', gap: 2 }}>
-          {['B','I','N','G','O'].map((letter, i) => (
-            <span key={letter} style={{
-              fontWeight: 900, fontSize: 20, letterSpacing: 1,
-              color: COL_COLORS[i],
-              textShadow: `0 0 8px ${COL_COLORS[i]}99`,
-            }}>{letter}</span>
-          ))}
-        </div>
+        {/* Fidel Bingo header */}
+        <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1, color: '#f5d06b' }}>Fidel Bingo</span>
         <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 18, cursor: 'pointer' }}>
           {soundOn ? '🔊' : '🔇'}
         </button>
@@ -513,35 +506,32 @@ export default function LiveGameScreen() {
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 80 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, height: 60 }}>
               {game.calledOrder.length === 0 ? (
                 <div style={{ color: '#555', fontSize: 13 }}>{game.phase === 'waiting' ? 'Game starting...' : '—'}</div>
               ) : (() => {
                 const last4 = game.calledOrder.slice(-4);
-                const sizes = [36, 44, 52, 64]; // oldest → newest
+                const sizes = [28, 34, 40, 52]; // oldest → newest, smaller overall
                 const offsets = last4.length;
                 return last4.map((num, idx) => {
-                  const displayIdx = 4 - offsets + idx; // align to right slots
+                  const displayIdx = 4 - offsets + idx;
                   const sz = sizes[displayIdx] ?? sizes[sizes.length - 1]!;
-                  const colIdx = getColIndex(num);
                   const isNewest = idx === last4.length - 1;
                   return (
                     <div key={`${num}-${idx}`} style={{
                       width: sz, height: sz, borderRadius: '50%',
-                      background: isNewest
-                        ? `radial-gradient(circle at 35% 35%, #fff8, ${COL_COLORS[colIdx]})`
-                        : `radial-gradient(circle at 35% 35%, #fff4, ${COL_COLORS[colIdx]}88)`,
+                      background: isNewest ? '#4f46e5' : 'rgba(79,70,229,0.35)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexDirection: 'column',
                       fontWeight: 900,
-                      fontSize: sz >= 60 ? 16 : sz >= 50 ? 13 : sz >= 42 ? 11 : 9,
-                      color: isNewest ? '#fff' : 'rgba(255,255,255,0.7)',
-                      boxShadow: isNewest ? `0 0 16px ${COL_COLORS[colIdx]}99` : 'none',
-                      border: `2px solid ${isNewest ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'}`,
+                      fontSize: sz >= 48 ? 14 : sz >= 38 ? 11 : 9,
+                      color: '#fff',
+                      boxShadow: isNewest ? '0 0 12px rgba(79,70,229,0.7)' : 'none',
+                      border: `2px solid ${isNewest ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
                       transition: 'all 0.2s',
                       lineHeight: 1.1,
                     }}>
-                      <span style={{ fontSize: sz >= 50 ? 9 : 7, opacity: 0.8 }}>{getColLabel(num)}</span>
+                      <span style={{ fontSize: sz >= 48 ? 7 : 6, opacity: 0.75 }}>{getColLabel(num)}</span>
                       {num}
                     </div>
                   );
