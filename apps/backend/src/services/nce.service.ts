@@ -47,6 +47,9 @@ export class NumberCallingEngine {
   /** Rounds currently being stopped — prevents callNext re-entry during async stop */
   readonly stoppingRounds = new Set<string>();
 
+  /** Rounds currently being started — synchronous guard against concurrent start() calls */
+  private readonly startingRounds = new Set<string>();
+
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
   private onRoundVoid?: OnRoundVoid;
@@ -67,12 +70,14 @@ export class NumberCallingEngine {
    * - After all 75 numbers, triggers the void flow if the round has no winner.
    */
   async start(roundId: string): Promise<void> {
-    // Guard against double-start (e.g. concurrent resume calls on server restart)
-    if (this.activeTimers.has(roundId)) {
-      console.log(`[NCE] Round ${roundId} already running — skipping duplicate start`);
+    // Guard against double-start — checked synchronously before any await
+    if (this.activeTimers.has(roundId) || this.startingRounds.has(roundId)) {
+      console.log(`[NCE] Round ${roundId} already running/starting — skipping duplicate start`);
       return;
     }
+    this.startingRounds.add(roundId);
 
+    try {
     const callIntervalMs = await this.readCallInterval();
 
     // Load already-called numbers from DB (ordered by sequence_index)
@@ -216,6 +221,11 @@ export class NumberCallingEngine {
     }, 0);
 
     this.activeTimers.set(roundId, handle);
+    this.startingRounds.delete(roundId);
+    } catch (err) {
+      this.startingRounds.delete(roundId);
+      throw err;
+    }
   }
 
   /**
