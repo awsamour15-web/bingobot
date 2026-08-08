@@ -16,7 +16,7 @@ class ErrorBoundary extends React.Component<
     super(props);
     this.state = { error: null };
   }
-  static override getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error) {
     return { error };
   }
   override render() {
