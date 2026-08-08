@@ -14,6 +14,7 @@ import roundsRouter from './routes/rounds.router.js';
 import historyRouter from './routes/history.router.js';
 import walletRouter from './routes/wallet.router.js';
 import referralRouter from './routes/referral.router.js';
+import systemRouter from './routes/system.router.js';
 import adminAuthRouter from './routes/admin/auth.admin.router.js';
 import adminPlayersRouter from './routes/admin/players.admin.router.js';
 import adminRoundsRouter from './routes/admin/rounds.admin.router.js';
@@ -32,7 +33,11 @@ app.set('trust proxy', 1);
 
 const allowedOrigins = process.env['CORS_ORIGIN']
   ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
-  : ['https://bingobot-mini-app.vercel.app','https://bingobot-admin.vercel.app'];
+  : [
+      'https://bingobot-mini-app.vercel.app',
+      'https://bingobot-admin.vercel.app',
+      'https://fidelbingo-admin.pages.dev',
+    ];
 
 // Manually set CORS headers on every response to ensure they are always present,
 // including on error responses (401, 502, etc.) that would otherwise strip them.
@@ -62,6 +67,7 @@ app.use('/api/rounds', roundsRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/referral', referralRouter);
+app.use('/api/system', systemRouter);
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use('/api/admin/auth', adminAuthRouter);

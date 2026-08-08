@@ -10,6 +10,7 @@ import { WinDetectionService } from '../services/win-detection.service.js';
 import { nce } from '../services/nce.service.js';
 import { GameRoundService } from '../services/game-round.service.js';
 import { RoundScheduler } from '../services/round-scheduler.service.js';
+import { GameStatus } from '@fidel/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,37 @@ function createRedisSubscriber(): Redis | null {
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
+
+/**
+ * Queries the DB for the current system-wide game state and broadcasts
+ * SYSTEM_STATE to all connected clients so they can sync to the right screen.
+ */
+async function broadcastSystemState(io: InstanceType<typeof SocketIOServer>): Promise<void> {
+  try {
+    const [activeRound, pendingRound] = await Promise.all([
+      prisma.gameRound.findFirst({
+        where: { status: GameStatus.active },
+        orderBy: { start_time: 'asc' },
+        select: { id: true, stake: true },
+      }),
+      prisma.gameRound.findFirst({
+        where: { status: GameStatus.pending },
+        orderBy: { start_time: 'asc' },
+        select: { id: true, stake: true },
+      }),
+    ]);
+
+    if (activeRound) {
+      io.emit('SYSTEM_STATE', { phase: 'live', roundId: activeRound.id, stake: Number(activeRound.stake) });
+    } else if (pendingRound) {
+      io.emit('SYSTEM_STATE', { phase: 'cartela', roundId: pendingRound.id, stake: Number(pendingRound.stake) });
+    } else {
+      io.emit('SYSTEM_STATE', { phase: 'idle', roundId: null, stake: null });
+    }
+  } catch (err) {
+    console.error('[WebSocket] broadcastSystemState error:', err);
+  }
+}
 
 /**
  * Attaches a Socket.IO server to the given HTTP server.
@@ -135,6 +167,8 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   nce.setOnRoundStarted((roundId, payload) => {
     io.to(`round:${roundId}`).emit('ROUND_STARTED', { ...payload, roundId });
+    // Sync all clients to the live game page
+    void broadcastSystemState(io);
   });
 
   nce.setOnNumberCalled((roundId, payload) => {
@@ -144,21 +178,26 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   nce.setOnRoundVoid((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId });
     // Replenish — create a new pending round for this stake level
-    void RoundScheduler.ensureRoundsExist();
+    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
   });
 
   GameRoundService.setOnRoundVoidEmpty((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId, reason: 'No players joined' });
-    void RoundScheduler.ensureRoundsExist();
+    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
   });
 
   GameRoundService.setOnRoundCancelled((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_CANCELLED', { roundId });
-    void RoundScheduler.ensureRoundsExist();
+    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
   });
 
   GameRoundService.setOnCartelaTaken((roundId, cartelaNumbers, playerCount) => {
     io.to(`round:${roundId}`).emit('CARTELA_TAKEN', { roundId, cartelaNumbers, playerCount });
+  });
+
+  // Broadcast system state whenever the scheduler creates a new pending round
+  RoundScheduler.setOnRoundsReplenished(() => {
+    void broadcastSystemState(io);
   });
 
   // ── Wire WinDetectionService ROUND_WON callback ────────────────────────────
@@ -171,6 +210,9 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   io.on('connection', (socket: any) => {
     const playerId = socket.data.playerId as string;
+
+    // Send current system state immediately so new clients sync to correct screen
+    void broadcastSystemState(io);
 
     // ── LEAVE_ROUND ───────────────────────────────────────────────────────────
     socket.on('LEAVE_ROUND', async (data: { roundId: string }) => {

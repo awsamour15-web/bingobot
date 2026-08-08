@@ -17,6 +17,13 @@ let ensureLock = false;
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
 
+  /** Optional callback invoked after ensureRoundsExist creates new pending rounds */
+  _onRoundsReplenished: undefined as (() => void) | undefined,
+
+  setOnRoundsReplenished(cb: () => void): void {
+    RoundScheduler._onRoundsReplenished = cb;
+  },
+
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
     void prisma.config.upsert({
@@ -75,6 +82,8 @@ export const RoundScheduler = {
 
       for (const round of activeRounds) {
         if (nce.activeTimers.has(round.id)) continue;
+        // Skip rounds where NCE win-distribution is in progress (round still active in DB but being finalized)
+        if (nce.stoppingRounds.has(round.id)) continue;
         const isStale = round.start_time <= staleThreshold;
         console.log(`[Scheduler] Timer-less active round ${round.id} (stake=${round.stake}, stale=${isStale}) - resuming NCE`);
         try {
@@ -226,6 +235,7 @@ export const RoundScheduler = {
             },
           });
           console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
+          if (RoundScheduler._onRoundsReplenished) RoundScheduler._onRoundsReplenished();
         } catch (err: unknown) {
           if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
             console.log(`[Scheduler] Skipping stake=${stake} - concurrent insert created pending round first`);

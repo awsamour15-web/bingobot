@@ -202,6 +202,20 @@ export function leaveRound(roundId: string, cartelaNumber: number): Promise<{ ok
 }
 
 // ---------------------------------------------------------------------------
+// System state
+// ---------------------------------------------------------------------------
+
+export interface SystemState {
+  phase: 'cartela' | 'live' | 'idle';
+  roundId: string | null;
+  stake: number | null;
+}
+
+export function getSystemState(): Promise<SystemState> {
+  return apiRequest<SystemState>('GET', '/api/system/state');
+}
+
+// ---------------------------------------------------------------------------
 // History
 // ---------------------------------------------------------------------------
 
