@@ -250,6 +250,20 @@ export default function CartelaScreen() {
 
   useEffect(() => { if (msLeft > 0) countdownStartedRef.current = true; }, [msLeft]);
 
+  // Auto-navigate when countdown reaches 0 — don't leave the player stuck
+  useEffect(() => {
+    if (msLeft !== 0 || !countdownStartedRef.current || joinedRef.current) return;
+    // Give the ROUND_STARTED socket event 3s to arrive, then navigate anyway
+    const t = setTimeout(() => {
+      if (joinedRef.current) return;
+      joinedRef.current = true;
+      sessionStorage.setItem('selectedRoundId', roundId ?? '');
+      sessionStorage.setItem('myCartelaNumbers', JSON.stringify([...registeredNumsRef.current]));
+      navigate(`/rounds/${roundId}/game`, { replace: true });
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [msLeft, roundId, navigate]);
+
   // Manual "Watch Game" or "Confirm 1 cartela" trigger
   useEffect(() => {
     if (!manualTrigger || joinedRef.current || starting) return;
