@@ -272,9 +272,9 @@ describe('buildDepositText()', () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
-  it('contains the support handle', async () => {
+  it('does not contain a hardcoded support handle', async () => {
     const text = await buildDepositText();
-    expect(text).toContain('@betesebbingosupport');
+    expect(text).not.toContain('@betesebbingosupport');
   });
 
   it('contains the Telebirr step instruction', async () => {

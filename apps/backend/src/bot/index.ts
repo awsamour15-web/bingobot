@@ -110,8 +110,6 @@ export async function buildDepositInstructionText(amount: number): Promise<{ tex
   const telebirrNumber = config?.value ?? 'N/A (contact support)';
 
   const text =
-    `የሚያጋጥማቹ የካፍያ ችግር:\n` +
-    `@betesebbingosupport ላይ ፃፉን።\n\n` +
     `1. ከታቹ ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n` +
     `   Phone: ${telebirrNumber}\n\n` +
     `2. የካፈሉትን አጭር የደሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
