@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import GameScreen from './screens/GameScreen';
 import CartelaScreen from './screens/CartelaScreen';
 import LiveGameScreen from './screens/LiveGameScreen';
@@ -8,16 +8,6 @@ import HistoryDetailScreen from './screens/HistoryDetailScreen';
 import WalletScreen from './screens/WalletScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import { socket } from './lib/socket';
-import { getSystemState } from './lib/api';
-import { initAuth } from './lib/auth';
-
-// ─── Shared types for SYSTEM_STATE ───────────────────────────────────────────
-
-interface SystemState {
-  phase: 'cartela' | 'live' | 'idle';
-  roundId: string | null;
-  stake: number | null;
-}
 
 // ─── Error boundary ───────────────────────────────────────────────────────────
 
@@ -98,100 +88,16 @@ function BottomNav() {
   );
 }
 
-// ─── Global system-state sync hook ───────────────────────────────────────────
-// Ensures every user is always on the correct screen based on the current game
-// phase broadcast by the server. All users see the same screen at the same time.
-
-function useSystemStateSync() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  // Track the last roundId we synced to so we don't re-navigate unnecessarily
-  const lastSyncedRoundId = useRef<string | null>(null);
-  const syncInProgress = useRef(false);
-
-  function applyState(state: SystemState, force = false) {
-    const { phase, roundId, stake } = state;
-
-    // Don't redirect if already on the correct screen (avoids loop)
-    if (!force && roundId && roundId === lastSyncedRoundId.current) return;
-
-    // Only redirect players who have already selected a stake (expressed intent to join).
-    // Players on the home screen without a stake selection should not be auto-redirected.
-    const hasIntent = sessionStorage.getItem('stakeSelectedForRound') || sessionStorage.getItem('selectedRoundId');
-    const alreadyInGame = location.pathname.includes('/cartela') || location.pathname.includes('/game');
-    if (!hasIntent && !alreadyInGame) return;
-
-    // Only follow this broadcast if the round's stake matches the player's chosen stake.
-    // Each stake level (10, 20, 50) runs its own independent round — players must stay
-    // on the round they paid for and not get pulled into a different stake's round.
-    const selectedStake = Number(sessionStorage.getItem('selectedStake') ?? 0);
-    if (stake !== null && selectedStake > 0 && stake !== selectedStake) return;
-
-    if (phase === 'live' && roundId) {
-      const target = `/rounds/${roundId}/game`;
-      if (!location.pathname.startsWith(target)) {
-        lastSyncedRoundId.current = roundId;
-        navigate(target, { replace: true });
-      }
-    } else if (phase === 'cartela' && roundId) {
-      const target = `/rounds/${roundId}/cartela`;
-      if (!location.pathname.startsWith(target)) {
-        lastSyncedRoundId.current = roundId;
-        navigate(target, { replace: true });
-      }
-    }
-    // phase === 'idle' → stay where you are (or let GameScreen handle it)
-  }
-
-  // On mount: fetch state via HTTP (works even before socket connects)
-  useEffect(() => {
-    if (syncInProgress.current) return;
-    syncInProgress.current = true;
-
-    async function syncOnOpen() {
-      try {
-        await initAuth();
-        const state = await getSystemState();
-        applyState(state, true);
-      } catch {
-        // Non-critical — socket event will handle it once connected
-      } finally {
-        syncInProgress.current = false;
-      }
-    }
-
-    void syncOnOpen();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Live: listen for server-pushed state changes
-  useEffect(() => {
-    const onSystemState = (state: SystemState) => {
-      applyState(state);
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    socket.on('SYSTEM_STATE' as any, onSystemState);
-    return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      socket.off('SYSTEM_STATE' as any, onSystemState);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
-
-  // Ensure socket is connected so we receive SYSTEM_STATE events
-  useEffect(() => {
-    if (!socket.connected) socket.connect();
-  }, []);
-}
-
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 function AppInner() {
   const location = useLocation();
   const isSubPage = location.pathname.includes('/cartela') || location.pathname.includes('/game');
 
-  useSystemStateSync();
+  // Keep socket connected globally
+  useEffect(() => {
+    if (!socket.connected) socket.connect();
+  }, []);
 
   return (
     <div style={{ paddingBottom: isSubPage ? 0 : 70, minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
