@@ -98,14 +98,21 @@ export const RoundScheduler = {
   },
 
   // FIX Bug 2.2: void pending rounds with 0 players instead of starting them.
+  // Only start ONE round per stake level per tick to prevent double-starts.
   async expireEmptyRounds(): Promise<void> {
     try {
       const overdue = await prisma.gameRound.findMany({
         where: { status: GameStatus.pending, start_time: { lte: new Date() } },
         include: { _count: { select: { round_entries: true } } },
+        orderBy: { start_time: 'asc' },
       });
 
+      // Track which stakes we've already started this tick — prevent double-start
+      const startedStakes = new Set<number>();
+
       for (const round of overdue) {
+        const stake = Number(round.stake);
+
         if (round._count.round_entries === 0) {
           try {
             await prisma.gameRound.update({
@@ -113,17 +120,41 @@ export const RoundScheduler = {
               data: { status: GameStatus.void, ended_at: new Date() },
             });
             console.log(`[Scheduler] Voided empty round ${round.id} (0 players)`);
-            void RoundScheduler.ensureRoundsExist();
           } catch (err) {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }
-        } else {
+        } else if (!startedStakes.has(stake)) {
+          // Also skip if there's already an active round for this stake
+          const existingActive = await prisma.gameRound.findFirst({
+            where: { status: GameStatus.active, stake },
+          });
+          if (existingActive) {
+            console.log(`[Scheduler] Skipping start of ${round.id} — active round ${existingActive.id} already exists for stake=${stake}`);
+            // Void the duplicate pending round
+            await prisma.gameRound.update({
+              where: { id: round.id },
+              data: { status: GameStatus.void, ended_at: new Date() },
+            }).catch(() => {});
+            continue;
+          }
+
           try {
             await GameRoundService.start(round.id);
+            startedStakes.add(stake);
             console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
-            void RoundScheduler.ensureRoundsExist();
           } catch (err) {
             console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
+          }
+        } else {
+          // Already started one for this stake this tick — void the duplicate
+          try {
+            await prisma.gameRound.update({
+              where: { id: round.id },
+              data: { status: GameStatus.void, ended_at: new Date() },
+            });
+            console.log(`[Scheduler] Voided duplicate overdue round ${round.id} for stake=${stake}`);
+          } catch (err) {
+            console.error(`[Scheduler] Failed to void duplicate round ${round.id}:`, err);
           }
         }
       }
@@ -169,10 +200,8 @@ export const RoundScheduler = {
       const maxPlayers = maxPlayersRow ? parseInt(maxPlayersRow.value, 10) : DEFAULT_MAX_PLAYERS;
 
       const pendingStakes = new Set<number>([...byStake.keys()]);
-      // FIX Bug 2.1: only skip if the active round also has a live NCE timer.
-      const activeStakes = new Set<number>(
-        activeRounds.filter((r) => nce.activeTimers.has(r.id)).map((r) => Number(r.stake)),
-      );
+      // Check DB for active rounds — don't rely solely on NCE timer which may not be set yet
+      const activeStakes = new Set<number>(activeRounds.map((r) => Number(r.stake)));
 
       // Create missing rounds sequentially to avoid parallel inserts racing into the same stake slot
       const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
