@@ -46,6 +46,10 @@ export interface CartelaTakenPayload {
   playerCount: number;
 }
 
+export interface CartelaReservedPayload {
+  cartelaNumbers: number[];
+}
+
 export interface WinRejectedPayload {
   reason: string;
 }
@@ -77,6 +81,8 @@ export interface ServerToClientEvents {
   ROUND_CANCELLED: (payload: RoundCancelledPayload) => void;
   PLAYER_JOINED: (payload: PlayerJoinedPayload) => void;
   CARTELA_TAKEN: (payload: CartelaTakenPayload) => void;
+  CARTELA_RESERVED: (payload: CartelaReservedPayload) => void;
+  CARTELA_UNRESERVED: (payload: CartelaReservedPayload) => void;
   WIN_REJECTED: (payload: WinRejectedPayload) => void;
 }
 
@@ -85,4 +91,6 @@ export interface ClientToServerEvents {
   JOIN_ROUND: (event: JoinRoundEvent) => void;
   LEAVE_ROUND: (event: { roundId: string }) => void;
   CLAIM_WIN: (event: ClaimWinEvent) => void;
+  CARTELA_RESERVE: (event: { roundId: string; cartelaNumbers: number[] }) => void;
+  CARTELA_UNRESERVE: (event: { roundId: string; cartelaNumbers: number[] }) => void;
 }

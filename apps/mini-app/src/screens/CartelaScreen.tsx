@@ -17,35 +17,28 @@ const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 interface CartelaCellProps {
   num: number;
   taken: boolean;
+  reserved: boolean;
   isPicked: boolean;
   disabled: boolean;
   onClick: (num: number) => void;
 }
-const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, onClick }: CartelaCellProps) {
-  const bg = isPicked
-    ? 'linear-gradient(135deg, #22c55e, #16a34a)'
-    : taken
-    ? 'rgba(239,68,68,0.25)'
-    : 'rgba(255,255,255,0.04)';
-  const color = isPicked ? '#fff' : taken ? '#f87171' : '#64748b';
-  const border = isPicked ? '1.5px solid #4ade80' : taken ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(255,255,255,0.07)';
+const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, disabled, onClick }: CartelaCellProps) {
+  const bg = isPicked ? '#22c55e' : taken ? '#e53e00' : reserved ? 'rgba(234,179,8,0.25)' : '#1e293b';
+  const color = isPicked ? '#fff' : taken ? '#fff' : reserved ? '#fbbf24' : '#94a3b8';
   return (
     <button
       disabled={disabled}
       onClick={() => onClick(num)}
       style={{
-        padding: '5px 0', borderRadius: 6,
-        border,
-        background: bg,
-        color,
-        fontWeight: isPicked ? 900 : taken ? 600 : 500,
-        fontSize: 10,
-        cursor: disabled ? 'default' : 'pointer',
-        transform: isPicked ? 'scale(1.08)' : 'scale(1)',
-        transition: 'transform 0.1s, background 0.12s',
+        padding: '8px 0', borderRadius: 7,
+        border: isPicked ? '2px solid #4ade80' : taken ? 'none' : reserved ? '1px solid rgba(234,179,8,0.5)' : '1px solid rgba(255,255,255,0.06)',
+        background: bg, color, fontWeight: isPicked ? 900 : taken ? 700 : reserved ? 600 : 500,
+        fontSize: 11, cursor: disabled ? 'default' : 'pointer',
+        opacity: 1,
+        transform: isPicked ? 'scale(1.06)' : 'scale(1)',
+        transition: 'transform 0.1s, background 0.15s',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
         lineHeight: 1, boxSizing: 'border-box', userSelect: 'none',
-        boxShadow: isPicked ? '0 0 8px rgba(34,197,94,0.5)' : 'none',
       }}
     >
       {num}
@@ -87,6 +80,9 @@ export default function CartelaScreen() {
   const picksRef = useRef<Set<number>>(new Set());
   useEffect(() => { picksRef.current = picks; }, [picks]);
 
+  // Track cartelas reserved by OTHER users (optimistic, not yet committed to DB)
+  const [reservedByOthers, setReservedByOthers] = useState<Set<number>>(new Set());
+
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<{ title: string; message: string } | null>(null);
   const [committing, setCommitting] = useState(false);
@@ -122,33 +118,36 @@ export default function CartelaScreen() {
     load();
   }, [roundId]);
 
-  // Commit picks to server — only called when game is about to start
-  async function commitPicks(currentPicks: Set<number>): Promise<void> {
-    if (currentPicks.size === 0) return;
+  // Commit picks to server — only called when game is about to start.
+  // Returns true if joined as player, false if navigating as watcher (error/no picks).
+  async function commitPicks(currentPicks: Set<number>): Promise<boolean> {
+    if (currentPicks.size === 0) return false;
     setCommitting(true);
     setError(null);
     try {
       const result = await joinRoundBatch(roundId!, [...currentPicks]);
       setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
-      // Store confirmed cartela numbers for the game screen
-      sessionStorage.setItem('myCartelaNumbers', JSON.stringify(result.cartelaNumbers));
+      // Store confirmed cartela numbers for the game screen (scoped to round)
+      sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(result.cartelaNumbers));
+      return true;
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
         setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
       } else if (e.code === 'CARTELA_TAKEN' || e.message?.includes('already taken')) {
-        setJoinError({ title: 'Cartela Taken', message: 'One of your selected cartelas was just taken. Please pick a different one.' });
-        // Clear picks so user re-selects
+        // Cartela was taken by someone else — join as watcher instead
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
         setPicks(new Set());
         picksRef.current = new Set();
       } else if (e.code === 'ROUND_NOT_JOINABLE') {
         // Round already started — navigate with empty cartelas (watching)
-        sessionStorage.setItem('myCartelaNumbers', JSON.stringify([]));
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       } else if (e.code === 'PLAYER_SUSPENDED') {
         setJoinError({ title: 'Account Suspended', message: 'Your account has been suspended. Please contact support.' });
       } else {
         setJoinError({ title: 'Join Failed', message: e.message ?? 'Could not register cartela. Please try again.' });
       }
+      return false;
     } finally {
       setCommitting(false);
     }
@@ -167,8 +166,17 @@ export default function CartelaScreen() {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
       setAvailability(prev => {
         if (!prev) return prev;
-        const takenSet = new Set([...prev.taken, ...p.cartelaNumbers]);
+        // Only mark as taken if not in our local picks
+        const incoming = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
+        if (incoming.length === 0) return prev;
+        const takenSet = new Set([...prev.taken, ...incoming]);
         return { taken: [...takenSet], available: prev.available.filter(n => !takenSet.has(n)) };
+      });
+      // Remove from reservedByOthers since it's now officially taken
+      setReservedByOthers(prev => {
+        const next = new Set(prev);
+        p.cartelaNumbers.forEach(n => next.delete(n));
+        return next;
       });
       // Force-deselect any locally picked cartelas that got taken by someone else
       setPicks(prev => {
@@ -182,14 +190,41 @@ export default function CartelaScreen() {
       });
     };
 
+    const onCartelaReserved = (p: { cartelaNumbers: number[] }) => {
+      setReservedByOthers(prev => {
+        const next = new Set(prev);
+        p.cartelaNumbers.forEach(n => next.add(n));
+        return next;
+      });
+      // Force-deselect if we had locally picked a cartela someone else just reserved
+      setPicks(prev => {
+        const next = new Set(prev);
+        let changed = false;
+        for (const n of p.cartelaNumbers) {
+          if (next.has(n)) { next.delete(n); changed = true; }
+        }
+        if (changed) picksRef.current = next;
+        return changed ? next : prev;
+      });
+    };
+
+    const onCartelaUnreserved = (p: { cartelaNumbers: number[] }) => {
+      setReservedByOthers(prev => {
+        const next = new Set(prev);
+        p.cartelaNumbers.forEach(n => next.delete(n));
+        return next;
+      });
+    };
+
     const onStarted = async (_p: RoundStartedPayload) => {
       if (joinedRef.current) return;
       joinedRef.current = true;
       sessionStorage.setItem('selectedRoundId', roundId!);
       if (picksRef.current.size > 0) {
         await commitPicks(picksRef.current);
+        // commitPicks always sets myCartelaNumbers (player or watcher) — just navigate
       } else {
-        sessionStorage.setItem('myCartelaNumbers', JSON.stringify([]));
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
       navigate(`/rounds/${roundId}/game`, { replace: true });
     };
@@ -201,25 +236,30 @@ export default function CartelaScreen() {
 
     socket.on('PLAYER_JOINED', onJoined);
     socket.on('CARTELA_TAKEN', onCartelaTaken);
+    socket.on('CARTELA_RESERVED', onCartelaReserved);
+    socket.on('CARTELA_UNRESERVED', onCartelaUnreserved);
     socket.on('ROUND_STARTED', onStarted);
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
-    // Poll every 2s — catches missed socket events; preserves local picks display
+    // Poll every 3s — catches missed socket events; never overwrites local picks
     const poll = setInterval(() => {
       getCartelaAvailability(roundId!).then(fresh => {
         setAvailability(prev => {
           if (!prev) return fresh;
-          // Use server's taken list directly — local picks render green via isPicked,
-          // so including them in taken has no visual effect (isPicked check wins in render).
-          return { taken: fresh.taken, available: fresh.available };
+          const localPicks = picksRef.current;
+          const takenFromServer = fresh.taken.filter(n => !localPicks.has(n));
+          const available = fresh.available.filter(n => !localPicks.has(n));
+          return { taken: takenFromServer, available };
         });
       }).catch(() => {});
-    }, 2000);
+    }, 3000);
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
       socket.off('CARTELA_TAKEN', onCartelaTaken);
+      socket.off('CARTELA_RESERVED', onCartelaReserved);
+      socket.off('CARTELA_UNRESERVED', onCartelaUnreserved);
       socket.off('ROUND_STARTED', onStarted);
       socket.off('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
       socket.off('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
@@ -239,8 +279,9 @@ export default function CartelaScreen() {
       sessionStorage.setItem('selectedRoundId', roundId ?? '');
       if (picksRef.current.size > 0) {
         await commitPicks(picksRef.current);
+        // commitPicks always sets myCartelaNumbers (player or watcher) — just navigate
       } else {
-        sessionStorage.setItem('myCartelaNumbers', JSON.stringify([]));
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
       navigate(`/rounds/${roundId}/game`, { replace: true });
     }, 3000);
@@ -264,8 +305,9 @@ export default function CartelaScreen() {
         sessionStorage.setItem('selectedRoundId', roundId!);
         if (picksRef.current.size > 0 && currentRound.status === 'pending') {
           await commitPicks(picksRef.current);
+          // commitPicks always sets myCartelaNumbers (player or watcher) — just navigate
         } else {
-          sessionStorage.setItem('myCartelaNumbers', JSON.stringify([]));
+          sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
         }
         navigate(`/rounds/${roundId}/game`, { replace: true });
       } catch {
@@ -282,6 +324,8 @@ export default function CartelaScreen() {
       next.delete(num);
       picksRef.current = next;
       setPicks(next);
+      // Tell others this cartela is no longer reserved by us
+      if (roundId) socket.emit('CARTELA_UNRESERVE' as any, { roundId, cartelaNumbers: [num] });
       return;
     }
     if (picksRef.current.size >= MAX_SELECT) return;
@@ -297,6 +341,8 @@ export default function CartelaScreen() {
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
+    // Tell others this cartela is now reserved by us
+    if (roundId) socket.emit('CARTELA_RESERVE' as any, { roundId, cartelaNumbers: [num] });
   }
 
   const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances]);
@@ -318,32 +364,32 @@ export default function CartelaScreen() {
   const picksArr = [...picks];
 
   return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0a0e1a 0%, #0d1320 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: '#0a0e1a', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: 'rgba(13,27,46,0.95)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '8px 12px', flexShrink: 0, backdropFilter: 'blur(8px)' }}>
-        <div style={{ display: 'flex', gap: 5, marginBottom: 6 }}>
+      <div style={{ background: '#0d1b2e', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '10px 14px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
           {[
-            { label: 'Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
-            { label: 'Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
+            { label: 'Main Wallet', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
+            { label: 'Play Wallet', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
             { label: 'Stake', value: round ? Number(round.stake) : 0 },
           ].map(({ label, value }) => (
-            <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '5px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: 8, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#e2e8f0', marginTop: 1 }}>{value}</div>
+            <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', marginTop: 1 }}>{value}</div>
             </div>
           ))}
-          <div style={{ background: urgent ? 'rgba(239,68,68,0.15)' : 'rgba(245,208,107,0.12)', border: `1px solid ${urgent ? 'rgba(239,68,68,0.5)' : 'rgba(245,208,107,0.35)'}`, borderRadius: 8, padding: '5px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 44 }}>
-            <span style={{ fontSize: 16, fontWeight: 900, color: urgent ? '#f87171' : '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 48 }}>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
               {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : '—'}
             </span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 18, color: '#475569' }}>←</span>
+          <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 20, color: '#64748b' }}>← Back</span>
           <button
             onClick={() => window.location.reload()}
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '5px 12px', color: '#94a3b8', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px', color: '#e2e8f0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
           >
             ↺ Refresh
           </button>
@@ -352,35 +398,33 @@ export default function CartelaScreen() {
 
       {/* ── Game countdown ── */}
       <div style={{
-        background: urgent ? 'rgba(239,68,68,0.12)' : 'rgba(245,208,107,0.06)',
-        borderBottom: `2px solid ${urgent ? '#ef4444' : '#f5d06b'}44`,
-        padding: '8px 16px', textAlign: 'center', flexShrink: 0,
+        background: urgent ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.08)',
+        borderBottom: `2px solid ${urgent ? '#ef4444' : '#f59e0b'}`,
+        padding: '10px 20px', textAlign: 'center', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 8, color: '#475569', letterSpacing: 1.5, textTransform: 'uppercase' }}>Starts in</div>
-            <div style={{ fontSize: 30, fontWeight: 900, color: urgent ? '#ef4444' : '#f5d06b', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {countdownLabel}
-            </div>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-              <div style={{ height: '100%', width: `${pct * 100}%`, background: urgent ? '#ef4444' : '#f5d06b', transition: 'width 0.25s linear', borderRadius: 2 }} />
-            </div>
-            {committing ? (
-              <div style={{ fontSize: 11, color: '#f59e0b' }}>Joining game…</div>
-            ) : picks.size > 0 ? (
-              <div style={{ fontSize: 11, color: '#34d399' }}>✅ #{picksArr.join(' & ')} selected</div>
-            ) : (
-              <div style={{ fontSize: 11, color: '#475569' }}>Pick up to {MAX_SELECT} cartelas</div>
-            )}
-          </div>
+        <div style={{ fontSize: 10, color: '#475569', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Game starts in</div>
+        <div style={{ fontSize: 38, fontWeight: 900, color: urgent ? '#ef4444' : '#f59e0b', fontVariantNumeric: 'tabular-nums', letterSpacing: 2 }}>
+          {countdownLabel}
         </div>
+        <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct * 100}%`, background: urgent ? '#ef4444' : '#f59e0b', transition: 'width 0.25s linear' }} />
+        </div>
+
+        {/* Selection status */}
+        {committing ? (
+          <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Joining game…</div>
+        ) : picks.size > 0 ? (
+          <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>
+            ✅ Cartela {picksArr.join(' & ')} selected — will join when game starts
+          </div>
+        ) : (
+          <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>Select up to {MAX_SELECT} cartelas to join</div>
+        )}
 
         {!countdownStartedRef.current && msLeft === 0 && !committing && (
           <button onClick={() => { joinedRef.current = false; setManualTrigger(true); }}
-            style={{ marginTop: 6, padding: '6px 20px', background: '#f5d06b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-            Go to Game →
+            style={{ marginTop: 8, padding: '8px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+            Go to Game
           </button>
         )}
       </div>
@@ -393,18 +437,18 @@ export default function CartelaScreen() {
       )}
 
       {/* ── Legend ── */}
-      <div style={{ padding: '4px 10px', display: 'flex', gap: 10, fontSize: 9, color: '#475569', flexShrink: 0, alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <span><span style={{ display: 'inline-block', width: 7, height: 7, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 2, marginRight: 3, verticalAlign: 'middle' }} />Free</span>
-        <span><span style={{ display: 'inline-block', width: 7, height: 7, background: '#22c55e', borderRadius: 2, marginRight: 3, verticalAlign: 'middle' }} />Selected</span>
-        <span><span style={{ display: 'inline-block', width: 7, height: 7, background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 2, marginRight: 3, verticalAlign: 'middle' }} />Taken</span>
-        {!canPick && <span style={{ color: '#f5d06b', fontWeight: 700, marginLeft: 'auto' }}>Max {MAX_SELECT} selected</span>}
+      <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e293b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#22c55e', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#e53e00', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
+        {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
       </div>
 
       {/* ── Number grid ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
-        gap: 3, padding: '0 8px 16px', alignContent: 'start',
+        display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
+        gap: 4, padding: '0 10px 20px', alignContent: 'start',
       }}>
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);

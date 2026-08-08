@@ -219,6 +219,16 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
       await socket.leave(`round:${data.roundId}`);
     });
 
+    // ── CARTELA_RESERVE / CARTELA_UNRESERVE ───────────────────────────────────
+    // Optimistic reservation: broadcast to all others in the room so they see
+    // the cartela as "pending" immediately, without a DB write.
+    socket.on('CARTELA_RESERVE', (data: { roundId: string; cartelaNumbers: number[] }) => {
+      socket.to(`round:${data.roundId}`).emit('CARTELA_RESERVED', { cartelaNumbers: data.cartelaNumbers });
+    });
+    socket.on('CARTELA_UNRESERVE', (data: { roundId: string; cartelaNumbers: number[] }) => {
+      socket.to(`round:${data.roundId}`).emit('CARTELA_UNRESERVED', { cartelaNumbers: data.cartelaNumbers });
+    });
+
     // ── JOIN_ROUND ────────────────────────────────────────────────────────────
     socket.on(
       'JOIN_ROUND',

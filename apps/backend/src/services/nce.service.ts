@@ -215,10 +215,10 @@ export class NumberCallingEngine {
       }
     };
 
-    // Call the first number immediately (0ms delay), then every callIntervalMs after
+    // Delay first number call by 5 seconds after round starts, then every callIntervalMs after
     const handle = setTimeout(() => {
       void callNext();
-    }, 0);
+    }, 5_000);
 
     this.activeTimers.set(roundId, handle);
     this.startingRounds.delete(roundId);
