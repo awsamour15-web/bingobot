@@ -8,6 +8,45 @@ import HistoryDetailScreen from './screens/HistoryDetailScreen';
 import WalletScreen from './screens/WalletScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          minHeight: '100dvh', background: '#0a0e1a', color: '#f87171',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: 24, fontFamily: 'monospace',
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>App Error</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', wordBreak: 'break-all', textAlign: 'center' }}>
+            {this.state.error.message}
+          </div>
+          <div style={{ fontSize: 10, color: '#475569', marginTop: 8, wordBreak: 'break-all', textAlign: 'center' }}>
+            {this.state.error.stack?.split('\n').slice(0, 3).join(' | ')}
+          </div>
+          <button
+            onClick={() => window.location.href = '/'}
+            style={{ marginTop: 20, padding: '10px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Go Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function BottomNav() {
   const location = useLocation();
   if (location.pathname.includes('/cartela') || location.pathname.includes('/game')) return null;
@@ -51,17 +90,19 @@ export default function App() {
   const location = useLocation();
   const isSubPage = location.pathname.includes('/cartela') || location.pathname.includes('/game');
   return (
-    <div style={{ paddingBottom: isSubPage ? 0 : 70, minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
-      <Routes>
-        <Route path="/" element={<GameScreen />} />
-        <Route path="/history" element={<HistoryScreen />} />
-        <Route path="/history/:roundId" element={<HistoryDetailScreen />} />
-        <Route path="/wallet" element={<WalletScreen />} />
-        <Route path="/profile" element={<ProfileScreen />} />
-        <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />
-        <Route path="/rounds/:id/game" element={<LiveGameScreen />} />
-      </Routes>
-      <BottomNav />
-    </div>
+    <ErrorBoundary>
+      <div style={{ paddingBottom: isSubPage ? 0 : 70, minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
+        <Routes>
+          <Route path="/" element={<GameScreen />} />
+          <Route path="/history" element={<HistoryScreen />} />
+          <Route path="/history/:roundId" element={<HistoryDetailScreen />} />
+          <Route path="/wallet" element={<WalletScreen />} />
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />
+          <Route path="/rounds/:id/game" element={<LiveGameScreen />} />
+        </Routes>
+        <BottomNav />
+      </div>
+    </ErrorBoundary>
   );
 }
