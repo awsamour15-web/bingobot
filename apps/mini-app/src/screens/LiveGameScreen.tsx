@@ -528,43 +528,74 @@ export default function LiveGameScreen() {
         {/* RIGHT: Called number + cartela or watching panel */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          {/* Last 4 called numbers — compact */}
-          <div style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Last Called</span>
+          {/* ── Last Called — big prominent display ── */}
+          <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+              <span style={{ fontSize: 9, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 1 }}>Last Called</span>
               <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 13, cursor: 'pointer' }}>
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 44 }}>
+            {game.lastCalled ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {/* Column letter badge */}
+                <div style={{
+                  width: 28, height: 28, borderRadius: 6,
+                  background: COL_COLORS[getColIndex(game.lastCalled)],
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 900, fontSize: 14, color: '#fff', flexShrink: 0,
+                }}>
+                  {getColLabel(game.lastCalled)}
+                </div>
+                {/* Big number */}
+                <div style={{
+                  fontSize: 48, fontWeight: 900, lineHeight: 1,
+                  color: '#f5d06b',
+                  textShadow: '0 0 20px rgba(245,208,107,0.5)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {game.lastCalled}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: '#475569', padding: '8px 0' }}>
+                {game.phase === 'waiting' ? 'Starting...' : '—'}
+              </div>
+            )}
+          </div>
+
+          {/* ── Called Numbers — scrollable history strip ── */}
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '4px 6px 4px' }}>
+            <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>
+              Called ({game.calledOrder.length}/75)
+            </div>
+            <div style={{
+              display: 'flex', gap: 3, overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: 2,
+              scrollbarWidth: 'none',
+            }}>
               {game.calledOrder.length === 0 ? (
-                <div style={{ color: '#555', fontSize: 11 }}>{game.phase === 'waiting' ? 'Starting...' : '—'}</div>
-              ) : (() => {
-                const last4 = game.calledOrder.slice(-4);
-                const sizes = [20, 26, 32, 42];
-                const offsets = last4.length;
-                return last4.map((num, idx) => {
-                  const displayIdx = 4 - offsets + idx;
-                  const sz = sizes[displayIdx] ?? sizes[sizes.length - 1]!;
-                  const isNewest = idx === last4.length - 1;
+                <div style={{ color: '#334155', fontSize: 10, padding: '4px 0' }}>—</div>
+              ) : (
+                [...game.calledOrder].reverse().map((num, idx) => {
+                  const isNewest = idx === 0;
+                  const col = getColIndex(num);
                   return (
-                    <div key={`${num}-${idx}`} style={{
-                      width: sz, height: sz, borderRadius: '50%',
-                      background: isNewest ? '#4f46e5' : 'rgba(79,70,229,0.3)',
+                    <div key={`h-${num}-${idx}`} style={{
+                      flexShrink: 0,
+                      width: 26, height: 26, borderRadius: '50%',
+                      background: isNewest ? COL_COLORS[col] : `${COL_COLORS[col]}55`,
+                      border: `1px solid ${isNewest ? COL_COLORS[col]! : 'rgba(255,255,255,0.08)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexDirection: 'column',
-                      fontWeight: 900,
-                      fontSize: sz >= 38 ? 12 : sz >= 28 ? 9 : 7,
-                      color: '#fff',
-                      border: `1px solid ${isNewest ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                      lineHeight: 1,
+                      fontSize: 8, fontWeight: isNewest ? 900 : 600,
+                      color: isNewest ? '#fff' : '#94a3b8',
                     }}>
-                      <span style={{ fontSize: 5, opacity: 0.7 }}>{getColLabel(num)}</span>
                       {num}
                     </div>
                   );
-                });
-              })()}
+                })
+              )}
             </div>
           </div>
 
