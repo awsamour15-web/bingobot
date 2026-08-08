@@ -10,7 +10,7 @@ type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 // ─── Env vars ─────────────────────────────────────────────────────────────────
 
 const BOT_TOKEN = process.env['BOT_TOKEN'];
-const MINI_APP_URL = process.env['MINI_APP_URL'] ?? 'https://bingobot.pages.dev/';
+const MINI_APP_URL = process.env['MINI_APP_URL'] ?? 'https://bingobot-mini-app.vercel.app/';
 
 // ─── Main menu button labels ───────────────────────────────────────────────────
 
