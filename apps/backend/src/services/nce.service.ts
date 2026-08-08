@@ -44,6 +44,9 @@ export class NumberCallingEngine {
   /** Map of roundId → active NodeJS timeout handle */
   readonly activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+  /** Rounds currently being stopped — prevents callNext re-entry during async stop */
+  private readonly stoppingRounds = new Set<string>();
+
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
   private onRoundVoid?: OnRoundVoid;
@@ -118,8 +121,8 @@ export class NumberCallingEngine {
     const MAX_CONSECUTIVE_ERRORS = 5;
 
     const callNext = async (): Promise<void> => {
-      // Stop if the round was cancelled externally
-      if (!this.activeTimers.has(roundId)) return;
+      // Stop if the round was cancelled externally or is being stopped
+      if (!this.activeTimers.has(roundId) || this.stoppingRounds.has(roundId)) return;
 
       try {
         const number = sequence[sequenceIndex];
@@ -266,15 +269,20 @@ export class NumberCallingEngine {
 
       console.log(`[NCE] Win detected round=${roundId} winners=${winnerMap.size} — distributing immediately`);
 
-      // Stop NCE first before any async distribution work
+      // Mark as stopping FIRST — prevents any concurrent callNext from proceeding
+      this.stoppingRounds.add(roundId);
+
+      // Stop NCE timer
       this.stop(roundId);
 
       // Call distributeWinnings directly — bypass validateClaim/claim-window entirely
       const { distributeWinningsDirectly } = await import('./win-detection.service.js');
       await distributeWinningsDirectly(roundId, winnerMap);
+      this.stoppingRounds.delete(roundId);
       return true;
     } catch (err) {
       console.error(`[NCE] detectAndHandleWin error round=${roundId}:`, err);
+      this.stoppingRounds.delete(roundId);
       return false;
     }
   }

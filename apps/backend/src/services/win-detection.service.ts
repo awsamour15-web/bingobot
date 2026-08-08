@@ -198,10 +198,12 @@ async function distributeWinnings(
       void ReferralService.creditCommission(playerId, roundId);
     }
 
-    // Replenish pending rounds
-    import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
-      void RoundScheduler.ensureRoundsExist();
-    }).catch(() => {});
+    // Replenish pending rounds — wait 5s so clients can see the winner screen first
+    setTimeout(() => {
+      import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
+        void RoundScheduler.ensureRoundsExist();
+      }).catch(() => {});
+    }, 5_000);
 
   } catch (err) {
     console.error('[WinDetectionService] distribution error:', err);
