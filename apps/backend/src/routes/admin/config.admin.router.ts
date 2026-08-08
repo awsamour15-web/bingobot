@@ -29,7 +29,16 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
   if (key === 'claim_window_ms') {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed) || parsed < 1000 || parsed > 30000) {
-      res.status(400).json({ error: 'VALIDATION_ERROR' });
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: 'claim_window_ms must be between 1000 and 30000 ms' });
+      return;
+    }
+  }
+
+  // Validate call_interval_ms — minimum 1000ms to prevent rapid-fire calling
+  if (key === 'call_interval_ms') {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || parsed < 1000 || parsed > 30000) {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: 'call_interval_ms must be between 1000 and 30000 ms' });
       return;
     }
   }

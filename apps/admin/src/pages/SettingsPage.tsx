@@ -167,6 +167,21 @@ function ConfigSection() {
       }
     }
 
+    if (key === 'call_interval_ms') {
+      const parsed = parseInt(rowState.value, 10);
+      if (isNaN(parsed) || parsed < 1000 || parsed > 30000) {
+        setRowStates((prev) => {
+          const existing = prev[key];
+          if (!existing) return prev;
+          return {
+            ...prev,
+            [key]: { value: existing.value, saving: false, feedback: { type: 'error', message: 'Value must be between 1000 and 30000 ms' } },
+          };
+        });
+        return;
+      }
+    }
+
     setRowStates((prev) => {
       const existing = prev[key];
       if (!existing) return prev;
@@ -309,15 +324,20 @@ function ConfigSection() {
                     </td>
                     <td style={{ ...tdStyle, minWidth: 240 }}>
                       <input
-                        type={entry.key === 'claim_window_ms' ? 'number' : 'text'}
-                        min={entry.key === 'claim_window_ms' ? 1000 : undefined}
-                        max={entry.key === 'claim_window_ms' ? 30000 : undefined}
+                        type={entry.key === 'claim_window_ms' || entry.key === 'call_interval_ms' ? 'number' : 'text'}
+                        min={entry.key === 'claim_window_ms' || entry.key === 'call_interval_ms' ? 1000 : undefined}
+                        max={entry.key === 'claim_window_ms' || entry.key === 'call_interval_ms' ? 30000 : undefined}
                         style={inputStyle}
                         value={rowState.value}
                         onChange={(e) => handleValueChange(entry.key, e.target.value)}
                         disabled={rowState.saving}
                       />
                       {entry.key === 'claim_window_ms' && (
+                        <span style={{ fontSize: 11, color: C.muted, marginTop: 4, display: 'block' }}>
+                          1000 – 30000 ms
+                        </span>
+                      )}
+                      {entry.key === 'call_interval_ms' && (
                         <span style={{ fontSize: 11, color: C.muted, marginTop: 4, display: 'block' }}>
                           1000 – 30000 ms
                         </span>

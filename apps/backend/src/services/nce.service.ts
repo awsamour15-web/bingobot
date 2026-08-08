@@ -45,7 +45,7 @@ export class NumberCallingEngine {
   readonly activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   /** Rounds currently being stopped — prevents callNext re-entry during async stop */
-  private readonly stoppingRounds = new Set<string>();
+  readonly stoppingRounds = new Set<string>();
 
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
@@ -180,11 +180,11 @@ export class NumberCallingEngine {
           return;
         }
 
-        // Schedule next call
+        // Schedule next call — re-read interval so live config changes take effect
+        const nextInterval = await this.readCallInterval();
         const handle = setTimeout(() => {
           void callNext();
-        }, callIntervalMs);
-
+        }, nextInterval);
         this.activeTimers.set(roundId, handle);
       } catch (err) {
         consecutiveErrors += 1;
@@ -278,6 +278,8 @@ export class NumberCallingEngine {
       // Call distributeWinnings directly — bypass validateClaim/claim-window entirely
       const { distributeWinningsDirectly } = await import('./win-detection.service.js');
       await distributeWinningsDirectly(roundId, winnerMap);
+      // Keep roundId in stoppingRounds until after distribution so recoverStaleActiveRounds
+      // does not restart NCE for a round that is mid-distribution (still active in DB)
       this.stoppingRounds.delete(roundId);
       return true;
     } catch (err) {
@@ -289,15 +291,20 @@ export class NumberCallingEngine {
 
   private gridHasWin(grid: number[], calledSet: Set<number>): boolean {
     const LINES = [
+      // rows
       [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+      // columns
       [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+      // diagonals
       [0,6,12,18,24],[4,8,12,16,20],
+      // 4 corners
+      [0,4,20,24],
     ];
     for (const line of LINES) {
       if (line.every((i) => {
         if (i === 12) return true; // free space
         const v = grid[i] ?? 0;
-        return v !== 0 && calledSet.has(v); // non-free: must be a valid called number
+        return v !== 0 && calledSet.has(v);
       })) {
         return true;
       }
@@ -356,13 +363,14 @@ export class NumberCallingEngine {
     }).catch(() => {});
   }
 
-  /** Read call_interval_ms from Config, falling back to 5 000 ms. */
+  /** Read call_interval_ms from Config, falling back to 5 000 ms. Enforces a 1 000 ms floor. */
   private async readCallInterval(): Promise<number> {
     const row = await prisma.config.findUnique({
       where: { key: 'call_interval_ms' },
     });
     const parsed = row ? parseInt(row.value, 10) : NaN;
-    return isNaN(parsed) ? 5_000 : parsed;
+    const value = isNaN(parsed) ? 5_000 : parsed;
+    return Math.max(value, 1_000); // never faster than 1 number/second
   }
 }
 
