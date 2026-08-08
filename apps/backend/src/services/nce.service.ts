@@ -286,7 +286,11 @@ export class NumberCallingEngine {
       [0,6,12,18,24],[4,8,12,16,20],
     ];
     for (const line of LINES) {
-      if (line.every((i) => { const v = grid[i] ?? 0; return i === 12 || v === 0 || calledSet.has(v); })) {
+      if (line.every((i) => {
+        if (i === 12) return true; // free space
+        const v = grid[i] ?? 0;
+        return v !== 0 && calledSet.has(v); // non-free: must be a valid called number
+      })) {
         return true;
       }
     }

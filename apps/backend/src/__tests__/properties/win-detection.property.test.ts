@@ -35,7 +35,11 @@ const WINNING_LINE_INDICES: number[][] = [
  */
 function hasAnyWinningLine(grid: number[], calledNums: Set<number>): boolean {
   return WINNING_LINE_INDICES.some((lineIndices) =>
-    lineIndices.every((i) => grid[i] === 0 || calledNums.has(grid[i] ?? 0)),
+    lineIndices.every((i) => {
+      if (i === 12) return true; // free space
+      const v = grid[i] ?? 0;
+      return v !== 0 && calledNums.has(v);
+    }),
   );
 }
 

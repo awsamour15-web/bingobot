@@ -59,11 +59,12 @@ const WINNING_LINE_INDICES: number[][] = [
 export function checkWin(grid: number[], calledNums: Set<number>): CheckWinResult {
   for (const lineIndices of WINNING_LINE_INDICES) {
     const lineValues = lineIndices.map((i) => grid[i] ?? 0);
-    // Index 12 is the free space (stored as 0 in DB) — always counts as called
+    // Index 12 is the free space (stored as 0 in DB) — always counts as called.
+    // Only index 12 is treated as a free space; other 0-values are NOT free.
     const isComplete = lineValues.every((v, pos) => {
       const idx = lineIndices[pos]!;
-      if (idx === 12 || v === 0) return true; // free space
-      return calledNums.has(v);
+      if (idx === 12) return true; // free space — always marked
+      return v !== 0 && calledNums.has(v); // non-free cell: must have a valid number that was called
     });
     if (isComplete) return { won: true, winningLine: lineValues };
   }

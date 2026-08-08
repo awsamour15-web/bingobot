@@ -405,9 +405,9 @@ export default function LiveGameScreen() {
   const grid: number[] = (activeCartela?.cartelaGrid ?? []) as number[];
 
   function isMarkedForGrid(g: number[], i: number) {
-    if (i === 12) return true;
+    if (i === 12) return true; // free space
     const v = g[i];
-    return v !== undefined && marked.has(v);
+    return v !== undefined && v !== 0 && marked.has(v);
   }
   function hasWinForGrid(g: number[]) {
     if (!g.length) return false;
@@ -430,7 +430,6 @@ export default function LiveGameScreen() {
   // Win on ANY cartela
   const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid as number[]));
   const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
-  const wCells = winCellsForGrid(grid);
   const isWatching = cartelasLoaded && myCartelas.length === 0;
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
@@ -687,7 +686,7 @@ export default function LiveGameScreen() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, padding: 6 }}>
                       {winGrid.map((val, idx) => {
                         const isFree = idx === 12;
-                        const isMarkedCell = isFree || marked.has(val);
+                        const isMarkedCell = isFree || (val !== 0 && marked.has(val));
                         const isWinCell = winCells.has(idx);
                         const colIdx = idx % 5;
 
@@ -750,7 +749,7 @@ export default function LiveGameScreen() {
                       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 2, minHeight: 0 }}>
                         {cartelaGrid.length > 0 ? cartelaGrid.map((val, idx) => {
                           const isFree = idx === 12;
-                          const m = isFree || marked.has(val);
+                          const m = isFree || (val !== 0 && marked.has(val));
                           const wl = cartelaWinCells.has(idx);
                           return (
                             <div key={idx} style={{
