@@ -210,12 +210,144 @@ const depositSessions = new Map<bigint, DepositState>();
 
 /**
  * Parses a Telebirr SMS receipt text and extracts the transaction number.
- * Telebirr receipts contain "Your transaction number is <TX>."
+ * Handles formats:
+ *   "Your transaction number is DH87MNVFCT"
+ *   "transaction number is DH87MNVFCT"
+ *   Standalone uppercase alphanumeric codes (8-12 chars) as fallback.
  * Returns null if the pattern is not found.
  */
-export function parseTelebirrReceipt(text: string): string | null {
-  const match = text.match(/Your transaction number is ([A-Z0-9]+)/i);
-  return match?.[1] ?? null;
+export function parseTelebirrReceipt(text: string): { txNumber: string; receiverPhone: string | null } | null {
+  // Normalize OCR artifacts: collapse extra whitespace
+  const normalized = text.replace(/\s+/g, ' ');
+
+  // Extract transaction number
+  let txNumber: string | null = null;
+
+  // Primary: explicit label — "Your transaction number is DH87MNVFCT"
+  const labeled = normalized.match(/(?:your\s+)?transaction\s+number\s+is\s+([A-Z0-9]{6,20})/i);
+  if (labeled?.[1]) txNumber = labeled[1].toUpperCase();
+
+  // Secondary: receipt URL — /receipt/DH87MNVFCT
+  if (!txNumber) {
+    const urlMatch = normalized.match(/\/receipt\/([A-Z0-9]{6,20})/i);
+    if (urlMatch?.[1]) txNumber = urlMatch[1].toUpperCase();
+  }
+
+  // Tertiary: "number is" with possible OCR space inside the code
+  if (!txNumber) {
+    const looseLabeled = normalized.match(/number\s+is\s+([A-Z0-9 ]{6,25})/i);
+    if (looseLabeled?.[1]) {
+      const code = looseLabeled[1].replace(/\s/g, '');
+      if (code.length >= 6) txNumber = code.toUpperCase();
+    }
+  }
+
+  if (!txNumber) return null;
+
+  // Extract receiver phone — Telebirr format: "to Name (2519****1234)"
+  // Also handles masked formats like 2519****5324 or +2519****5324
+  let receiverPhone: string | null = null;
+  const phoneMatch = normalized.match(/\((\+?251[\d*]{8,})\)/);
+  if (phoneMatch?.[1]) receiverPhone = phoneMatch[1].replace(/^\+/, '');
+
+  return { txNumber, receiverPhone };
+}
+
+/**
+ * Normalizes a phone number to digits only for comparison.
+ * Strips leading +, spaces, dashes. Handles masked digits (*).
+ * Compares only the non-masked suffix digits.
+ * e.g. "2519****5324" vs "0915855324" → compares last 4 digits: "5324" == "5324"
+ */
+function phoneMatches(receiptPhone: string, configPhone: string): boolean {
+  const clean = (p: string) => p.replace(/\D/g, '');
+  const rDigits = clean(receiptPhone);
+  const cDigits = clean(configPhone);
+
+  // Count masked positions (*)
+  const maskedCount = (receiptPhone.match(/\*/g) ?? []).length;
+  if (maskedCount > 0) {
+    // Compare only the visible suffix
+    const suffix = rDigits.slice(-1 * (rDigits.length - maskedCount));
+    return cDigits.endsWith(suffix);
+  }
+
+  // Full comparison: normalize both to 9-digit local format
+  const normalize = (d: string) => d.replace(/^(251|0)/, '');
+  return normalize(rDigits) === normalize(cDigits);
+}
+
+/**
+ * Downloads a Telegram file and returns its raw Buffer.
+ */
+async function downloadTelegramFile(bot: Bot, fileId: string): Promise<Buffer> {
+  const file = await bot.api.getFile(fileId);
+  const filePath = file.file_path;
+  if (!filePath) throw new Error('File path not available');
+  const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to download file: ${res.status}`);
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Runs OCR on an image buffer using tesseract.js (fully offline).
+ * Returns extracted text or null on failure.
+ */
+async function ocrImage(imageBuffer: Buffer): Promise<string | null> {
+  try {
+    const { createWorker } = await import('tesseract.js');
+    const worker = await createWorker('eng', 1, {
+      // Suppress tesseract progress logs
+      logger: () => {},
+      errorHandler: () => {},
+    });
+    const { data } = await worker.recognize(imageBuffer);
+    await worker.terminate();
+    return data.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Shared deposit claim logic — used by both text receipt and photo OCR handlers.
+ * Returns the credited amount on success, or throws/returns null for specific error cases.
+ */
+async function processDepositClaim(
+  playerId: string,
+  txNumber: string,
+): Promise<{ success: true; amount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
+  const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
+
+  if (!deposit) return { success: false, reason: 'NOT_FOUND' };
+  if (deposit.status === 'claimed') return { success: false, reason: 'CLAIMED' };
+  if (deposit.status === 'cancelled') return { success: false, reason: 'CANCELLED' };
+
+  const amount = Number(deposit.amount);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pendingDeposit.update({
+      where: { id: deposit.id },
+      data: { status: 'claimed', player_id: playerId, claimed_at: new Date() },
+    });
+
+    const wallet = await tx.wallet.findUniqueOrThrow({
+      where: { player_id_type: { player_id: playerId, type: 'main' } },
+    });
+
+    await tx.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: { increment: amount } },
+    });
+
+    await tx.transaction.create({
+      data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
+    });
+  });
+
+  return { success: true, amount };
 }
 
 // ─── Bot instance (null if BOT_TOKEN is not set) ──────────────────────────────
@@ -512,10 +644,20 @@ if (BOT_TOKEN) {
 
     // ── Step 2: awaiting receipt paste ────────────────────────────────────────
     if (session.step === 'awaiting_receipt') {
-      const txNumber = parseTelebirrReceipt(text);
-      if (!txNumber) {
+      const parsed = parseTelebirrReceipt(text);
+      if (!parsed) {
         await ctx.reply('⚠️ ደረሰኙን ማግኘት አልተቻለም። እባክዎ የቴሌብር ደረሰኝ SMS ን ሙሉ በሙሉ ይለጥፉ።');
         return;
+      }
+
+      // Validate receiver phone matches configured deposit number
+      if (parsed.receiverPhone) {
+        if (!phoneMatches(parsed.receiverPhone, session.telebirrNumber)) {
+          await ctx.reply(
+            `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${session.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+          );
+          return;
+        }
       }
 
       const player = await getRegisteredPlayerWithWallets(telegramId);
@@ -526,53 +668,96 @@ if (BOT_TOKEN) {
       }
 
       try {
-        const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
-
-        if (!deposit) {
-          await ctx.reply('❌ Transaction number not found. Please contact support.');
-          depositSessions.delete(telegramId);
-          return;
-        }
-        if (deposit.status === 'claimed') {
-          await ctx.reply('❌ This transaction has already been used. Please contact support.');
-          depositSessions.delete(telegramId);
-          return;
-        }
-        if (deposit.status === 'cancelled') {
-          await ctx.reply('❌ This transaction has been cancelled. Please contact support.');
-          depositSessions.delete(telegramId);
-          return;
-        }
-
-        const amount = Number(deposit.amount);
-
-        await prisma.$transaction(async (tx) => {
-          await tx.pendingDeposit.update({
-            where: { id: deposit.id },
-            data: { status: 'claimed', player_id: player.id, claimed_at: new Date() },
-          });
-
-          const wallet = await tx.wallet.findUniqueOrThrow({
-            where: { player_id_type: { player_id: player.id, type: 'main' } },
-          });
-
-          await tx.wallet.update({
-            where: { id: wallet.id },
-            data: { balance: { increment: amount } },
-          });
-
-          await tx.transaction.create({
-            data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
-          });
-        });
-
+        const result = await processDepositClaim(player.id, parsed.txNumber);
         depositSessions.delete(telegramId);
 
-        await ctx.reply(`✅ Your deposit of ${amount} ETB is Approved.\n\nRef: ${txNumber}`);
+        if (!result.success) {
+          const msgs = {
+            NOT_FOUND: '❌ Transaction number not found. Please contact support.',
+            CLAIMED: '❌ This transaction has already been used. Please contact support.',
+            CANCELLED: '❌ This transaction has been cancelled. Please contact support.',
+          };
+          await ctx.reply(msgs[result.reason]);
+          return;
+        }
+
+        await ctx.reply(`✅ Your deposit of ${result.amount} ETB is Approved.\n\nRef: ${parsed.txNumber}`);
       } catch (err) {
         console.error('[Bot] deposit receipt handler error:', err);
         await ctx.reply('❌ Something went wrong. Please try again later or contact support.');
       }
+    }
+  });
+
+  // ─── Photo handler — OCR receipt image for tx number ────────────────────────
+  bot.on('message:photo', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+
+    const session = depositSessions.get(telegramId);
+    if (!session || session.step !== 'awaiting_receipt') return;
+
+    const player = await getRegisteredPlayerWithWallets(telegramId);
+    if (!player) {
+      depositSessions.delete(telegramId);
+      await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+      return;
+    }
+
+    await ctx.reply('🔍 ምስሉን እየመረመርኩ ነው፣ እባክዎ ትንሽ ይጠብቁ...');
+
+    try {
+      // Pick the highest-resolution photo size
+      const photos = ctx.message.photo;
+      const photo = photos[photos.length - 1];
+      if (!photo) {
+        await ctx.reply('⚠️ ምስሉን ማንበብ አልተቻለም። እባክዎ ጽሑፉን ቀጥታ ይለጥፉ።');
+        return;
+      }
+
+      const imageBuffer = await downloadTelegramFile(bot!, photo.file_id);
+      const ocrText = await ocrImage(imageBuffer);
+
+      if (!ocrText) {
+        await ctx.reply('⚠️ ከምስሉ ጽሑፍ ማውጣት አልተቻለም። እባክዎ ደረሰኙን ቀጥታ ይለጥፉ።');
+        return;
+      }
+
+      const txNumber = parseTelebirrReceipt(ocrText);
+      if (!txNumber) {
+        await ctx.reply(
+          '⚠️ የ Transaction ቁጥር ከምስሉ ማግኘት አልተቻለም።\n\nእባክዎ ደረሰኙን SMS ቀጥታ ይለጥፉ።',
+        );
+        return;
+      }
+
+      // Validate receiver phone matches configured deposit number
+      if (txNumber.receiverPhone) {
+        if (!phoneMatches(txNumber.receiverPhone, session.telebirrNumber)) {
+          await ctx.reply(
+            `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${session.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+          );
+          return;
+        }
+      }
+
+      const result = await processDepositClaim(player.id, txNumber.txNumber);
+      depositSessions.delete(telegramId);
+
+      if (!result.success) {
+        const msgs = {
+          NOT_FOUND: '❌ Transaction number not found. Please contact support.',
+          CLAIMED: '❌ This transaction has already been used. Please contact support.',
+          CANCELLED: '❌ This transaction has been cancelled. Please contact support.',
+        };
+        await ctx.reply(msgs[result.reason]);
+        return;
+      }
+
+      await ctx.reply(`✅ Your deposit of ${result.amount} ETB is Approved.\n\nRef: ${txNumber.txNumber}`);
+    } catch (err) {
+      console.error('[Bot] photo OCR deposit handler error:', err);
+      await ctx.reply('❌ Something went wrong. Please try again later or contact support.');
     }
   });
 
