@@ -115,6 +115,12 @@ function useSystemStateSync() {
     // Don't redirect if already on the correct screen (avoids loop)
     if (!force && roundId && roundId === lastSyncedRoundId.current) return;
 
+    // Only redirect players who have already selected a stake (expressed intent to join).
+    // Players on the home screen without a stake selection should not be auto-redirected.
+    const selectedStake = sessionStorage.getItem('stakeSelectedForRound') || sessionStorage.getItem('selectedRoundId');
+    const alreadyInGame = location.pathname.includes('/cartela') || location.pathname.includes('/game');
+    if (!selectedStake && !alreadyInGame) return;
+
     if (phase === 'live' && roundId) {
       const target = `/rounds/${roundId}/game`;
       if (!location.pathname.startsWith(target)) {
