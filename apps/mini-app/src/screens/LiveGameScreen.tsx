@@ -44,14 +44,6 @@ export default function LiveGameScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const allowedRef = useRef<boolean>(
-    !!sessionStorage.getItem('stakeSelectedForRound')
-  );
-
-  useEffect(() => {
-    if (!allowedRef.current) navigate('/', { replace: true });
-  }, [navigate]);
-
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [myCartelas, setMyCartelas] = useState<Array<{ cartelaNumber: number; cartelaGrid: number[] }>>([]);
   const [cartelasLoaded, setCartelasLoaded] = useState(false);
