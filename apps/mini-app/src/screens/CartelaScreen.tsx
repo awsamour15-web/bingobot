@@ -487,13 +487,14 @@ export default function CartelaScreen() {
           flexShrink: 0, background: '#0d1220',
           borderTop: '2px solid rgba(255,255,255,0.08)',
           padding: '8px 8px 10px',
-          display: 'flex', gap: 8, justifyContent: 'center',
-          overflowX: 'auto',
+          display: 'grid',
+          gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
+          gap: 8,
         }}>
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
-              <div key={cartelaNum} style={{ flexShrink: 0 }}>
+              <div key={cartelaNum} style={{ minWidth: 0 }}>
                 <div style={{ textAlign: 'center', fontSize: 11, color: '#f59e0b', fontWeight: 800, marginBottom: 4 }}>
                   Cartela No : {cartelaNum}
                 </div>
@@ -502,7 +503,7 @@ export default function CartelaScreen() {
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
                       background: COL_COLORS[ci], color: '#fff', fontWeight: 900,
-                      fontSize: 13, textAlign: 'center', borderRadius: 4, padding: '4px 0',
+                      fontSize: 11, textAlign: 'center', borderRadius: 4, padding: '3px 0',
                     }}>{col}</div>
                   ))}
                 </div>
@@ -515,18 +516,18 @@ export default function CartelaScreen() {
                         background: isFree ? '#22c55e' : '#1e293b',
                         color: isFree ? '#fff' : '#e2e8f0',
                         fontWeight: isFree ? 900 : 600,
-                        fontSize: 12, textAlign: 'center', borderRadius: 4,
-                        padding: '5px 0', border: '1px solid rgba(255,255,255,0.07)',
-                        minWidth: 36,
+                        fontSize: 11, textAlign: 'center', borderRadius: 4,
+                        padding: '4px 0', border: '1px solid rgba(255,255,255,0.07)',
+                        minWidth: 0,
                       }}>
                         {isFree ? '★' : val}
                       </div>
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: '#1e293b', borderRadius: 4, padding: '5px 0',
-                      border: '1px solid rgba(255,255,255,0.07)', minWidth: 36,
-                      fontSize: 12, textAlign: 'center', color: '#334155',
+                      background: '#1e293b', borderRadius: 4, padding: '4px 0',
+                      border: '1px solid rgba(255,255,255,0.07)', minWidth: 0,
+                      fontSize: 11, textAlign: 'center', color: '#334155',
                     }}>·</div>
                   ))}
                 </div>
