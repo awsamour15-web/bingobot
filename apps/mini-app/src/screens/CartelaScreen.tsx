@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, memo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, joinRoundBatch, getProfile } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached } from '../lib/api';
 import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
@@ -13,6 +13,8 @@ interface ProfileBalances {
 const TOTAL = 800;
 const MAX_SELECT = 2;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
+const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
+const COL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'];
 
 interface CartelaCellProps {
   num: number;
@@ -23,20 +25,19 @@ interface CartelaCellProps {
   onClick: (num: number) => void;
 }
 const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, disabled, onClick }: CartelaCellProps) {
-  const bg = isPicked ? '#22c55e' : taken ? '#e53e00' : reserved ? 'rgba(234,179,8,0.25)' : '#1e293b';
+  const bg = isPicked ? '#22c55e' : taken ? '#e53e3e' : reserved ? 'rgba(234,179,8,0.18)' : '#1e293b';
   const color = isPicked ? '#fff' : taken ? '#fff' : reserved ? '#fbbf24' : '#94a3b8';
+  const border = isPicked ? '2px solid #4ade80' : taken ? 'none' : reserved ? '1px solid rgba(234,179,8,0.5)' : '1px solid rgba(255,255,255,0.08)';
   return (
     <button
       disabled={disabled}
       onClick={() => onClick(num)}
       style={{
-        padding: '8px 0', borderRadius: 7,
-        border: isPicked ? '2px solid #4ade80' : taken ? 'none' : reserved ? '1px solid rgba(234,179,8,0.5)' : '1px solid rgba(255,255,255,0.06)',
-        background: bg, color, fontWeight: isPicked ? 900 : taken ? 700 : reserved ? 600 : 500,
-        fontSize: 11, cursor: disabled ? 'default' : 'pointer',
+        padding: '7px 0', borderRadius: 6, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 500, fontSize: 12,
+        cursor: disabled && !taken ? 'default' : taken ? 'not-allowed' : 'pointer',
         opacity: 1,
-        transform: isPicked ? 'scale(1.06)' : 'scale(1)',
-        transition: 'transform 0.1s, background 0.15s',
+        transition: 'background 0.1s',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
         lineHeight: 1, boxSizing: 'border-box', userSelect: 'none',
       }}
@@ -90,6 +91,9 @@ export default function CartelaScreen() {
   const joinedRef = useRef(false);
   const countdownStartedRef = useRef(false);
   const [manualTrigger, setManualTrigger] = useState(false);
+
+  // Grids for picked cartelas — fetched on pick
+  const [pickedGrids, setPickedGrids] = useState<Map<number, number[]>>(new Map());
 
   const { msLeft, label: countdownLabel, pct } = useServerCountdown(round?.start_time ?? null);
 
@@ -236,8 +240,8 @@ export default function CartelaScreen() {
 
     socket.on('PLAYER_JOINED', onJoined);
     socket.on('CARTELA_TAKEN', onCartelaTaken);
-    socket.on('CARTELA_RESERVED', onCartelaReserved);
-    socket.on('CARTELA_UNRESERVED', onCartelaUnreserved);
+    (socket as any).on('CARTELA_RESERVED', onCartelaReserved);
+    (socket as any).on('CARTELA_UNRESERVED', onCartelaUnreserved);
     socket.on('ROUND_STARTED', onStarted);
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
@@ -258,8 +262,8 @@ export default function CartelaScreen() {
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
       socket.off('CARTELA_TAKEN', onCartelaTaken);
-      socket.off('CARTELA_RESERVED', onCartelaReserved);
-      socket.off('CARTELA_UNRESERVED', onCartelaUnreserved);
+      (socket as any).off('CARTELA_RESERVED', onCartelaReserved);
+      (socket as any).off('CARTELA_UNRESERVED', onCartelaUnreserved);
       socket.off('ROUND_STARTED', onStarted);
       socket.off('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
       socket.off('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
@@ -324,7 +328,7 @@ export default function CartelaScreen() {
       next.delete(num);
       picksRef.current = next;
       setPicks(next);
-      // Tell others this cartela is no longer reserved by us
+      setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
       if (roundId) socket.emit('CARTELA_UNRESERVE' as any, { roundId, cartelaNumbers: [num] });
       return;
     }
@@ -341,8 +345,13 @@ export default function CartelaScreen() {
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
-    // Tell others this cartela is now reserved by us
     if (roundId) socket.emit('CARTELA_RESERVE' as any, { roundId, cartelaNumbers: [num] });
+    // Fetch grid for this cartela
+    if (roundId) {
+      getCartelaGridCached(roundId, num)
+        .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
+        .catch(() => {});
+    }
   }
 
   const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances]);
@@ -361,7 +370,9 @@ export default function CartelaScreen() {
   const takenSet = new Set(availability.taken);
   const urgent = msLeft > 0 && msLeft < 10_000;
   const canPick = picks.size < MAX_SELECT;
-  const picksArr = [...picks];
+  const picksArr = [...picks].sort((a, b) => a - b);
+  // How much vertical space the bingo preview needs
+  const previewCount = picksArr.length;
 
   return (
     <div style={{ height: '100dvh', background: '#0a0e1a', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -437,28 +448,93 @@ export default function CartelaScreen() {
       )}
 
       {/* ── Legend ── */}
-      <div style={{ padding: '6px 12px', display: 'flex', gap: 12, fontSize: 10, color: '#475569', flexShrink: 0, flexWrap: 'wrap' }}>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#1e293b', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Available</span>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#22c55e', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Selected</span>
-        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#e53e00', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
-        {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
+      <div style={{ padding: '4px 12px', display: 'flex', gap: 14, fontSize: 10, color: '#64748b', flexShrink: 0, alignItems: 'center' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 10, height: 10, background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 2, display: 'inline-block' }} />
+          Available
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 10, height: 10, background: '#22c55e', borderRadius: 2, display: 'inline-block' }} />
+          Selected
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 10, height: 10, background: '#e53e3e', borderRadius: 2, display: 'inline-block' }} />
+          Taken
+        </span>
+        {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700, marginLeft: 'auto' }}>Max {MAX_SELECT} selected</span>}
       </div>
 
-      {/* ── Number grid ── */}
+      {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
-        gap: 4, padding: '0 10px 20px', alignContent: 'start',
+        gap: 3, padding: '4px 8px', alignContent: 'start',
       }}>
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);
           const taken = takenSet.has(num) && !isPicked;
+          const reserved = reservedByOthers.has(num) && !isPicked && !taken;
           const disabled = starting || committing || taken || (!isPicked && picks.size >= MAX_SELECT);
           return (
-            <CartelaCell key={num} num={num} taken={taken} isPicked={isPicked} disabled={disabled} onClick={handleCellClick} />
+            <CartelaCell key={num} num={num} taken={taken} reserved={reserved} isPicked={isPicked} disabled={disabled} onClick={handleCellClick} />
           );
         })}
       </div>
+
+      {/* ── Selected cartela BINGO preview ── */}
+      {previewCount > 0 && (
+        <div style={{
+          flexShrink: 0, background: '#0d1220',
+          borderTop: '2px solid rgba(255,255,255,0.08)',
+          padding: '8px 8px 10px',
+          display: 'flex', gap: 8, justifyContent: 'center',
+          overflowX: 'auto',
+        }}>
+          {picksArr.map(cartelaNum => {
+            const grid = pickedGrids.get(cartelaNum);
+            return (
+              <div key={cartelaNum} style={{ flexShrink: 0 }}>
+                <div style={{ textAlign: 'center', fontSize: 11, color: '#f59e0b', fontWeight: 800, marginBottom: 4 }}>
+                  Cartela No : {cartelaNum}
+                </div>
+                {/* BINGO header row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 2 }}>
+                  {BINGO_COLS.map((col, ci) => (
+                    <div key={col} style={{
+                      background: COL_COLORS[ci], color: '#fff', fontWeight: 900,
+                      fontSize: 13, textAlign: 'center', borderRadius: 4, padding: '4px 0',
+                    }}>{col}</div>
+                  ))}
+                </div>
+                {/* 5×5 grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
+                  {grid ? grid.map((val, idx) => {
+                    const isFree = idx === 12;
+                    return (
+                      <div key={idx} style={{
+                        background: isFree ? '#22c55e' : '#1e293b',
+                        color: isFree ? '#fff' : '#e2e8f0',
+                        fontWeight: isFree ? 900 : 600,
+                        fontSize: 12, textAlign: 'center', borderRadius: 4,
+                        padding: '5px 0', border: '1px solid rgba(255,255,255,0.07)',
+                        minWidth: 36,
+                      }}>
+                        {isFree ? '★' : val}
+                      </div>
+                    );
+                  }) : Array.from({ length: 25 }, (_, i) => (
+                    <div key={i} style={{
+                      background: '#1e293b', borderRadius: 4, padding: '5px 0',
+                      border: '1px solid rgba(255,255,255,0.07)', minWidth: 36,
+                      fontSize: 12, textAlign: 'center', color: '#334155',
+                    }}>·</div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Starting overlay ── */}
       {(starting || committing) && (
