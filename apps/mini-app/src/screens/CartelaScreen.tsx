@@ -416,7 +416,7 @@ export default function CartelaScreen() {
             : <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>✅ Cartela {registeredArr.join(' & ')} confirmed — pick one more or wait</div>
           : picks.size > 0
           ? <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Cartela {picksArr.join(' & ')} selected</div>
-          : <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>Select up to {MAX_SELECT} cartelas, or watch for free</div>
+          : <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>Select up to {MAX_SELECT} cartelas to join</div>
         }
         {/* Confirm button for 1-cartela selection */}
         {picks.size === 1 && !registered && !joining && (
@@ -430,10 +430,10 @@ export default function CartelaScreen() {
         {joining && picks.size > 0 && !registered && (
           <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Registering…</div>
         )}
-        {!countdownStartedRef.current && msLeft === 0 && !joining && (
+        {!countdownStartedRef.current && msLeft === 0 && !joining && registeredNums.size > 0 && (
           <button onClick={() => { joinedRef.current = false; setManualTrigger(true); }}
             style={{ marginTop: 8, padding: '8px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            {registeredNums.size > 0 ? 'Go to Game' : picks.size > 0 ? 'Join Now' : 'Watch Game'}
+            {picks.size > 0 ? 'Join Now' : 'Go to Game'}
           </button>
         )}      </div>
 
