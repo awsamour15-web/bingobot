@@ -44,9 +44,12 @@ export default function LiveGameScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const allowedRef = useRef<boolean>(
+    !!sessionStorage.getItem('stakeSelectedForRound')
+  );
+
   useEffect(() => {
-    const stakeSelected = sessionStorage.getItem('stakeSelectedForRound');
-    if (!stakeSelected) navigate('/', { replace: true });
+    if (!allowedRef.current) navigate('/', { replace: true });
   }, [navigate]);
 
   const [round, setRound] = useState<RoundDetail | null>(null);

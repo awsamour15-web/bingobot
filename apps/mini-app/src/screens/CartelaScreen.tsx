@@ -68,10 +68,19 @@ export default function CartelaScreen() {
   const { id: roundId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // Guard: only allow entry if the user navigated here by selecting a stake.
+  // We read sessionStorage synchronously on first render — by the time React
+  // mounts this component the navigation from GameScreen has already written it.
+  const allowed = useRef<boolean>(
+    (() => {
+      const stored = sessionStorage.getItem('stakeSelectedForRound');
+      return !!stored && stored === roundId;
+    })()
+  );
+
   useEffect(() => {
-    const fromGame = sessionStorage.getItem('stakeSelectedForRound');
-    if (!fromGame || fromGame !== roundId) navigate('/', { replace: true });
-  }, [roundId, navigate]);
+    if (!allowed.current) navigate('/', { replace: true });
+  }, [navigate]);
 
   const [round, setRound] = useState<RoundDetail | null>(null);
   const [availability, setAvailability] = useState<CartelaAvailability | null>(null);
