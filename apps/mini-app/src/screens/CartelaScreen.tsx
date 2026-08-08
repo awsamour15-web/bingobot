@@ -334,6 +334,8 @@ export default function CartelaScreen() {
     void registerCartelas(next);
   }
 
+  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId]);
+
   if (loading) return (
     <div style={{ height: '100dvh', background: '#0a0e1a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 16 }}>
       Loading cartelas…
@@ -354,7 +356,6 @@ export default function CartelaScreen() {
   const canPick = currentPickCount < MAX_SELECT;
   const picksArr = [...picks];
   const registeredArr = [...registeredNums];
-  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId]);
   const stake = Number(round.stake);
   const playBal = balances ? Number(balances.playWallet.balance) : 0;
   const mainBal = balances ? Number(balances.mainWallet.balance) : 0;
