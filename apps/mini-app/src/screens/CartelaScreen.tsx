@@ -359,6 +359,7 @@ export default function CartelaScreen() {
   const canPick = currentPickCount < MAX_SELECT;
   const picksArr = [...picks];
   const registeredArr = [...registeredNums];
+  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId]);
   const stake = Number(round.stake);
   const playBal = balances ? Number(balances.playWallet.balance) : 0;
   const mainBal = balances ? Number(balances.mainWallet.balance) : 0;
@@ -430,7 +431,7 @@ export default function CartelaScreen() {
             Confirm Cartela {picksArr[0]}
           </button>
         )}
-        {joining && picks.length > 0 && !registered && (
+        {joining && picks.size > 0 && !registered && (
           <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Registering…</div>
         )}
         {!countdownStartedRef.current && msLeft === 0 && !joining && (
@@ -454,8 +455,6 @@ export default function CartelaScreen() {
         <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#e53e00', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }} />Taken</span>
         {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700 }}>Max {MAX_SELECT} reached</span>}
       </div>
-
-  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId]);
 
       {/* ── Number grid ── */}
       <div style={{
