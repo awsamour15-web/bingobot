@@ -101,15 +101,39 @@ httpServer.listen(PORT, () => {
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────
 // Start the bot in the background — errors are caught inside the bot instance.
+// On Render, a new deploy starts before the old instance stops, causing a 409
+// conflict on getUpdates. We retry with exponential backoff (up to ~2 minutes)
+// to let the old instance release the lock.
 if (bot) {
-  bot.start({
-    onStart: (info) => {
-      console.log(`[Bot] Started as @${info.username}`);
-    },
-    drop_pending_updates: false,
-  }).catch((err) => {
-    console.error('[Bot] Failed to start long polling:', err);
-  });
+  const MAX_RETRIES = 8;
+  const BASE_DELAY_MS = 3_000;
+
+  async function startBotWithRetry(attempt = 0): Promise<void> {
+    try {
+      await bot!.start({
+        onStart: (info) => {
+          console.log(`[Bot] Started as @${info.username}`);
+        },
+        drop_pending_updates: false,
+      });
+    } catch (err: unknown) {
+      const isConflict =
+        typeof err === 'object' &&
+        err !== null &&
+        'error_code' in err &&
+        (err as { error_code: number }).error_code === 409;
+
+      if (isConflict && attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+        console.warn(`[Bot] 409 conflict — retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        setTimeout(() => void startBotWithRetry(attempt + 1), delay);
+      } else {
+        console.error('[Bot] Failed to start long polling:', err);
+      }
+    }
+  }
+
+  void startBotWithRetry();
 }
 
 export default app;

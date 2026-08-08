@@ -11,6 +11,9 @@ const LEAD_TIME_MS = 60_000;
 const DEFAULT_MAX_PLAYERS = 800;
 const CHECK_INTERVAL_MS = 15_000;
 
+// Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
+let ensureLock = false;
+
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
 
@@ -130,6 +133,8 @@ export const RoundScheduler = {
   },
 
   async ensureRoundsExist(): Promise<void> {
+    if (ensureLock) return;
+    ensureLock = true;
     try {
       const [pendingRounds, activeRounds] = await Promise.all([
         prisma.gameRound.findMany({
@@ -169,41 +174,41 @@ export const RoundScheduler = {
         activeRounds.filter((r) => nce.activeTimers.has(r.id)).map((r) => Number(r.stake)),
       );
 
-      await Promise.all(
-        STAKE_LEVELS.map(async (stake) => {
-          if (pendingStakes.has(stake)) return;
-          if (activeStakes.has(stake)) {
-            console.log(`[Scheduler] Skipping round creation for stake=${stake} - a round is still active`);
-            return;
+      // Create missing rounds sequentially to avoid parallel inserts racing into the same stake slot
+      const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
+      const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
+
+      for (const stake of STAKE_LEVELS) {
+        if (pendingStakes.has(stake)) continue;
+        if (activeStakes.has(stake)) {
+          console.log(`[Scheduler] Skipping round creation for stake=${stake} - a round is still active`);
+          continue;
+        }
+        const startTime = new Date(Date.now() + LEAD_TIME_MS);
+        try {
+          const round = await prisma.gameRound.create({
+            data: {
+              stake,
+              status: GameStatus.pending,
+              max_players: maxPlayers,
+              start_time: startTime,
+              commission_pct: commissionPct,
+              derash: 0,
+            },
+          });
+          console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
+        } catch (err: unknown) {
+          if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
+            console.log(`[Scheduler] Skipping stake=${stake} - concurrent insert created pending round first`);
+          } else {
+            console.error(`[Scheduler] Failed to create round for stake=${stake}:`, err);
           }
-          const startTime = new Date(Date.now() + LEAD_TIME_MS);
-          // FIX Bug 2.3: catch P2002 unique constraint violation from the partial index
-          // on game_rounds(stake) WHERE status='pending' — prevents duplicate pending rounds.
-          try {
-            const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
-            const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
-            const round = await prisma.gameRound.create({
-              data: {
-                stake,
-                status: GameStatus.pending,
-                max_players: maxPlayers,
-                start_time: startTime,
-                commission_pct: commissionPct,
-                derash: 0,
-              },
-            });
-            console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
-          } catch (err: unknown) {
-            if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
-              console.log(`[Scheduler] Skipping stake=${stake} - concurrent insert created pending round first`);
-            } else {
-              console.error(`[Scheduler] Failed to create round for stake=${stake}:`, err);
-            }
-          }
-        }),
-      );
+        }
+      }
     } catch (err) {
       console.error('[Scheduler] ensureRoundsExist error:', err);
+    } finally {
+      ensureLock = false;
     }
   },
 };
