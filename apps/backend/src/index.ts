@@ -100,16 +100,17 @@ httpServer.listen(PORT, () => {
 });
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────
-// Start the bot in the background — errors are caught inside the bot instance.
-// On Render, a new deploy starts before the old instance stops, causing a 409
-// conflict on getUpdates. We retry with exponential backoff (up to ~2 minutes)
-// to let the old instance release the lock.
+// On Render, a new deploy starts before the old instance shuts down. The old
+// instance holds a 30-second getUpdates long-poll. We wait 35s for it to expire,
+// call deleteWebhook (which also clears any webhook/polling lock), then start.
 if (bot) {
-  const MAX_RETRIES = 8;
-  const BASE_DELAY_MS = 3_000;
+  const MAX_RETRIES = 10;
+  const RETRY_DELAY_MS = 5_000;
 
   async function startBotWithRetry(attempt = 0): Promise<void> {
     try {
+      // Force-clear any existing webhook / polling lock before starting
+      await bot!.api.deleteWebhook({ drop_pending_updates: false });
       await bot!.start({
         onStart: (info) => {
           console.log(`[Bot] Started as @${info.username}`);
@@ -117,23 +118,23 @@ if (bot) {
         drop_pending_updates: false,
       });
     } catch (err: unknown) {
-      const isConflict =
-        typeof err === 'object' &&
-        err !== null &&
-        'error_code' in err &&
-        (err as { error_code: number }).error_code === 409;
+      const code =
+        typeof err === 'object' && err !== null && 'error_code' in err
+          ? (err as { error_code: number }).error_code
+          : 0;
 
-      if (isConflict && attempt < MAX_RETRIES) {
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-        console.warn(`[Bot] 409 conflict — retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-        setTimeout(() => void startBotWithRetry(attempt + 1), delay);
+      if (code === 409 && attempt < MAX_RETRIES) {
+        console.warn(`[Bot] 409 conflict — retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        setTimeout(() => void startBotWithRetry(attempt + 1), RETRY_DELAY_MS);
       } else {
         console.error('[Bot] Failed to start long polling:', err);
       }
     }
   }
 
-  void startBotWithRetry();
+  // Wait 35s before first attempt — gives the old instance's 30s long-poll time to expire
+  console.log('[Bot] Waiting 35s for previous instance to release polling lock...');
+  setTimeout(() => void startBotWithRetry(), 35_000);
 }
 
 export default app;
