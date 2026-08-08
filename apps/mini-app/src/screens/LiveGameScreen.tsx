@@ -406,10 +406,15 @@ export default function LiveGameScreen() {
   }
   function hasWinForGrid(g: number[]) {
     if (!g.length) return false;
+    // Any single row
     for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarkedForGrid(g, r*5+c))) return true;
+    // Any single column
     for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarkedForGrid(g, r*5+c))) return true;
+    // Diagonals
     if ([0,6,12,18,24].every((i) => isMarkedForGrid(g, i))) return true;
     if ([4,8,12,16,20].every((i) => isMarkedForGrid(g, i))) return true;
+    // 4 corners
+    if ([0,4,20,24].every((i) => isMarkedForGrid(g, i))) return true;
     return false;
   }
   function winCellsForGrid(g: number[]) {
@@ -419,6 +424,7 @@ export default function LiveGameScreen() {
     for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarkedForGrid(g, r*5+c))) [0,1,2,3,4].forEach((r) => w.add(r*5+c));
     if ([0,6,12,18,24].every((i) => isMarkedForGrid(g, i))) [0,6,12,18,24].forEach((i) => w.add(i));
     if ([4,8,12,16,20].every((i) => isMarkedForGrid(g, i))) [4,8,12,16,20].forEach((i) => w.add(i));
+    if ([0,4,20,24].every((i) => isMarkedForGrid(g, i))) [0,4,20,24].forEach((i) => w.add(i));
     return w;
   }
 

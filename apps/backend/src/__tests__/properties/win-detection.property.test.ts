@@ -10,20 +10,25 @@ import { checkWin } from '../../services/win-detection.service.js';
 
 const FREE_SPACE_INDEX = 12;
 
-// All 12 winning line index sets (mirrors the service definition)
+// All winning patterns: 1 line (row/col/diagonal) or 4 corners (mirrors the service definition)
 const WINNING_LINE_INDICES: number[][] = [
+  // 5 rows
   [0, 1, 2, 3, 4],
   [5, 6, 7, 8, 9],
   [10, 11, 12, 13, 14],
   [15, 16, 17, 18, 19],
   [20, 21, 22, 23, 24],
+  // 5 columns
   [0, 5, 10, 15, 20],
   [1, 6, 11, 16, 21],
   [2, 7, 12, 17, 22],
   [3, 8, 13, 18, 23],
   [4, 9, 14, 19, 24],
+  // 2 diagonals
   [0, 6, 12, 18, 24],
   [4, 8, 12, 16, 20],
+  // 4 corners
+  [0, 4, 20, 24],
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -79,7 +84,7 @@ const calledNumsArb: fc.Arbitrary<Set<number>> = fc
 // ─── Property 6: Win Detection Soundness ─────────────────────────────────────
 
 describe('Property 6: Win Detection Soundness', () => {
-  it('checkWin returns true iff at least one complete winning line exists in calledNums', () => {
+  it('checkWin returns true iff at least one complete winning line/pattern exists in calledNums', () => {
     fc.assert(
       fc.property(cartelaGridArb, calledNumsArb, (grid, calledNums) => {
         const result = checkWin(grid, calledNums);
