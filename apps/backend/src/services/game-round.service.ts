@@ -98,8 +98,7 @@ export const GameRoundService = {
 
   /**
    * Join a player to a pending round with multiple cartela numbers in a single transaction.
-   * Prevents the race where the round starts between sequential single joins.
-   * Requirements: 3.3, 3.5, 3.6
+   * No balance deduction here — payment is collected when the game starts.
    */
   async joinBatch(
     roundId: string,
@@ -140,67 +139,22 @@ export const GameRoundService = {
           throw new CartelaTakenError(roundId, existingEntries[0]!.cartela_number);
         }
 
+        // 4. Check player has sufficient balance (soft check — actual debit at game start)
         const stake = parseFloat(round.stake);
-        const commissionPct = round.commission_pct;
         const totalStake = stake * cartelaNumbers.length;
-
-        // 4. Debit total stake — play wallet first, then main
         const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>`
-          SELECT id, type, balance
-          FROM wallets
-          WHERE player_id = ${playerId}
-            AND type IN ('play', 'main')
-          FOR UPDATE
+          SELECT id, type, balance FROM wallets
+          WHERE player_id = ${playerId} AND type IN ('play', 'main')
         `;
-
-        const playWalletRow = allWallets.find((w) => w.type === 'play');
-        const mainWalletRow = allWallets.find((w) => w.type === 'main');
-
-        if (!mainWalletRow) throw new Error(`Main wallet not found for player ${playerId}`);
-
-        const playBalance = playWalletRow ? parseFloat(playWalletRow.balance) : 0;
-        const mainBalance = parseFloat(mainWalletRow.balance);
-        const totalAvailable = playBalance + mainBalance;
-
-        if (totalAvailable < totalStake) {
+        const playBalance = parseFloat(allWallets.find(w => w.type === 'play')?.balance ?? '0');
+        const mainBalance = parseFloat(allWallets.find(w => w.type === 'main')?.balance ?? '0');
+        if (playBalance + mainBalance < totalStake) {
           const { InsufficientFundsError } = await import('./wallet.service.js');
-          throw new InsufficientFundsError(mainWalletRow.id, totalAvailable, totalStake);
+          const mainWalletId = allWallets.find(w => w.type === 'main')?.id ?? '';
+          throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, totalStake);
         }
 
-        const playDebit = Math.min(playBalance, totalStake);
-        const mainDebit = totalStake - playDebit;
-
-        if (playDebit > 0 && playWalletRow) {
-          await tx.wallet.update({
-            where: { id: playWalletRow.id },
-            data: { balance: { decrement: playDebit } },
-          });
-          await tx.transaction.create({
-            data: {
-              wallet_id: playWalletRow.id,
-              type: TxType.game_entry,
-              amount: playDebit,
-              reference_id: roundId,
-            },
-          });
-        }
-
-        if (mainDebit > 0) {
-          await tx.wallet.update({
-            where: { id: mainWalletRow.id },
-            data: { balance: { decrement: mainDebit } },
-          });
-          await tx.transaction.create({
-            data: {
-              wallet_id: mainWalletRow.id,
-              type: TxType.game_entry,
-              amount: mainDebit,
-              reference_id: roundId,
-            },
-          });
-        }
-
-        // 5. Insert all RoundEntries
+        // 5. Insert all RoundEntries (no payment yet)
         await tx.roundEntry.createMany({
           data: cartelaNumbers.map((cartelaNumber) => ({
             round_id: roundId,
@@ -210,12 +164,12 @@ export const GameRoundService = {
           })),
         });
 
-        // 6. Recalculate derash
+        // 6. Recalculate derash (preview — will be recalculated at start with actual payers)
         const entryCount = await tx.roundEntry.count({
           where: { round_id: roundId, is_watching: false },
         });
+        const commissionPct = round.commission_pct;
         const newDerash = entryCount * stake * (1 - commissionPct / 100);
-
         await tx.gameRound.update({
           where: { id: roundId },
           data: { derash: newDerash },
@@ -238,17 +192,7 @@ export const GameRoundService = {
 
   /**
    * Join a player to a pending round with a specific cartela number.
-   *
-   * Inside a single Postgres transaction:
-   *  1. Verify round is pending.
-   *  2. Verify player is not suspended.
-   *  3. Verify the cartela is not already taken in this round.
-   *  4. Debit the stake from the player's wallet.
-   *  5. Insert the RoundEntry.
-   *  6. Update GameRound.derash.
-   *
-   * Round auto-start is handled by the scheduler, not here.
-   * Requirements: 3.3, 3.5, 3.6
+   * No balance deduction here — payment is collected when the game starts.
    */
   async join(
     roundId: string,
@@ -256,6 +200,7 @@ export const GameRoundService = {
     cartelaNumber: number,
     walletType: WalletType = WalletType.main,
   ): Promise<void> {
+    void walletType; // kept for API compatibility
     try {
     await prisma.$transaction(async (tx) => {
       // 1. Fetch and lock the round
@@ -283,68 +228,25 @@ export const GameRoundService = {
       const existing = await tx.roundEntry.findUnique({
         where: { round_id_cartela_number: { round_id: roundId, cartela_number: cartelaNumber } },
       });
-      if (existing) throw new CartelaTakenError(roundId, cartelaNumber);      const stake = parseFloat(round.stake);
+      if (existing) throw new CartelaTakenError(roundId, cartelaNumber);
+
+      const stake = parseFloat(round.stake);
       const commissionPct = round.commission_pct;
 
-      // 4. Debit stake — use play wallet first, then main wallet for the remainder.
-      //    This allows welcome bonus / play credits to be spent on game entry.
+      // 4. Soft balance check (actual debit happens at game start)
       const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>`
-        SELECT id, type, balance
-        FROM wallets
-        WHERE player_id = ${playerId}
-          AND type IN ('play', 'main')
-        FOR UPDATE
+        SELECT id, type, balance FROM wallets
+        WHERE player_id = ${playerId} AND type IN ('play', 'main')
       `;
-
-      const playWalletRow = allWallets.find((w) => w.type === 'play');
-      const mainWalletRow = allWallets.find((w) => w.type === 'main');
-
-      if (!mainWalletRow) throw new Error(`Main wallet not found for player ${playerId}`);
-
-      const playBalance = playWalletRow ? parseFloat(playWalletRow.balance) : 0;
-      const mainBalance = parseFloat(mainWalletRow.balance);
-      const totalAvailable = playBalance + mainBalance;
-
-      if (totalAvailable < stake) {
+      const playBalance = parseFloat(allWallets.find(w => w.type === 'play')?.balance ?? '0');
+      const mainBalance = parseFloat(allWallets.find(w => w.type === 'main')?.balance ?? '0');
+      if (playBalance + mainBalance < stake) {
         const { InsufficientFundsError } = await import('./wallet.service.js');
-        throw new InsufficientFundsError(mainWalletRow.id, totalAvailable, stake);
+        const mainWalletId = allWallets.find(w => w.type === 'main')?.id ?? '';
+        throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, stake);
       }
 
-      // Deduct from play wallet first, then main wallet for any remainder
-      const playDebit = Math.min(playBalance, stake);
-      const mainDebit = stake - playDebit;
-
-      if (playDebit > 0 && playWalletRow) {
-        await tx.wallet.update({
-          where: { id: playWalletRow.id },
-          data: { balance: { decrement: playDebit } },
-        });
-        await tx.transaction.create({
-          data: {
-            wallet_id: playWalletRow.id,
-            type: TxType.game_entry,
-            amount: playDebit,
-            reference_id: roundId,
-          },
-        });
-      }
-
-      if (mainDebit > 0) {
-        await tx.wallet.update({
-          where: { id: mainWalletRow.id },
-          data: { balance: { decrement: mainDebit } },
-        });
-        await tx.transaction.create({
-          data: {
-            wallet_id: mainWalletRow.id,
-            type: TxType.game_entry,
-            amount: mainDebit,
-            reference_id: roundId,
-          },
-        });
-      }
-
-      // 5. Insert RoundEntry
+      // 5. Insert RoundEntry (no payment yet)
       await tx.roundEntry.create({
         data: {
           round_id: roundId,
@@ -354,28 +256,23 @@ export const GameRoundService = {
         },
       });
 
-      // 6. Recalculate and update derash
-      //    derash = (current_entries + 1) * stake * (1 - commission_pct / 100)
+      // 6. Recalculate and update derash (preview)
       const entryCount = await tx.roundEntry.count({
         where: { round_id: roundId, is_watching: false },
       });
-      // entryCount already includes the newly inserted row because we're inside the same tx
       const newDerash = entryCount * stake * (1 - commissionPct / 100);
-
       await tx.gameRound.update({
         where: { id: roundId },
         data: { derash: newDerash },
       });
     });
     } catch (err: unknown) {
-      // Catch Prisma unique-constraint violation (race condition: two requests
-      // pass the availability check simultaneously and one loses the DB race).
       const e = err as { code?: string };
       if (e.code === 'P2002') throw new CartelaTakenError(roundId, cartelaNumber);
       throw err;
     }
 
-    // Notify websocket layer so all users on the cartela screen see this cartela as taken
+    // Notify websocket layer
     if (GameRoundService._onCartelaTaken) {
       const playerCount = await prisma.roundEntry.count({
         where: { round_id: roundId, is_watching: false },
@@ -385,23 +282,81 @@ export const GameRoundService = {
   },
 
   /**
-   * Start a round: set status to active and kick off the NCE.
-   * Also schedules a 60-second-before notification for every player in the round.
-   * Requirements: 10.1, 13.2
+   * Start a round: collect payment from all entries, set status to active, kick off NCE.
    */
   async start(roundId: string): Promise<void> {
     const round = await prisma.gameRound.findUnique({
       where: { id: roundId },
-      include: { round_entries: { where: { is_watching: false }, select: { player_id: true } } },
+      include: { round_entries: { where: { is_watching: false }, select: { player_id: true, cartela_number: true } } },
     });
     if (!round) throw new RoundNotFoundError(roundId);
 
+    const stake = Number(round.stake);
+    const commissionPct = round.commission_pct;
+
+    // Collect payment from each entry — remove entries that can't pay
+    const paidPlayerIds: string[] = [];
+    const removedCartelas: number[] = [];
+
+    for (const entry of round.round_entries) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>`
+            SELECT id, type, balance FROM wallets
+            WHERE player_id = ${entry.player_id} AND type IN ('play', 'main')
+            FOR UPDATE
+          `;
+          const playWallet = allWallets.find(w => w.type === 'play');
+          const mainWallet = allWallets.find(w => w.type === 'main');
+          const playBal = parseFloat(playWallet?.balance ?? '0');
+          const mainBal = parseFloat(mainWallet?.balance ?? '0');
+
+          if (playBal + mainBal < stake) {
+            // Can't pay — remove entry
+            await tx.roundEntry.delete({
+              where: { round_id_cartela_number: { round_id: roundId, cartela_number: entry.cartela_number } },
+            });
+            removedCartelas.push(entry.cartela_number);
+            return;
+          }
+
+          const playDebit = Math.min(playBal, stake);
+          const mainDebit = stake - playDebit;
+
+          if (playDebit > 0 && playWallet) {
+            await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { decrement: playDebit } } });
+            await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.game_entry, amount: playDebit, reference_id: roundId } });
+          }
+          if (mainDebit > 0 && mainWallet) {
+            await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { decrement: mainDebit } } });
+            await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
+          }
+          paidPlayerIds.push(entry.player_id);
+        });
+      } catch {
+        // On error, remove this entry to be safe
+        await prisma.roundEntry.deleteMany({
+          where: { round_id: roundId, player_id: entry.player_id, cartela_number: entry.cartela_number },
+        }).catch(() => {});
+        removedCartelas.push(entry.cartela_number);
+      }
+    }
+
+    // Recalculate derash with actual paying players
+    const finalEntryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
+
+    if (finalEntryCount === 0) {
+      // No paying players — void the round
+      await prisma.gameRound.update({ where: { id: roundId }, data: { status: GameStatus.void, ended_at: new Date() } });
+      if (GameRoundService._onRoundVoidEmpty) await GameRoundService._onRoundVoidEmpty(roundId);
+      return;
+    }
+
+    const finalDerash = finalEntryCount * stake * (1 - commissionPct / 100);
+
     await prisma.gameRound.update({
       where: { id: roundId },
-      data: {
-        status: GameStatus.active,
-        start_time: new Date(),
-      },
+      data: { status: GameStatus.active, start_time: new Date(), derash: finalDerash },
     });
 
     // Kick off number calling (non-blocking)

@@ -305,7 +305,7 @@ router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ─── DELETE /api/rounds/:id/leave/:cartelaNumber ─────────────────────────────
-// Unjoin a cartela from a pending round and refund the stake.
+// Unjoin a cartela from a pending round. No refund — payment is collected at game start.
 
 router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
@@ -319,73 +319,37 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Lock round — must be pending
       const rounds = await tx.$queryRaw<Array<{ id: string; status: string; stake: string; commission_pct: number }>>`
         SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = ${id} FOR UPDATE
       `;
       const round = rounds[0];
-      if (!round) {
-        res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' });
-        return;
-      }
-      if (round.status !== 'pending') {
-        res.status(409).json({ error: 'ROUND_NOT_PENDING', message: 'Round has already started — cannot leave' });
-        return;
-      }
+      if (!round) { res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' }); return; }
+      if (round.status !== 'pending') { res.status(409).json({ error: 'ROUND_NOT_PENDING', message: 'Round has already started — cannot leave' }); return; }
 
-      // Find the entry
       const entry = await tx.roundEntry.findUnique({
         where: { round_id_cartela_number: { round_id: id, cartela_number: cartelaNumber } },
       });
       if (!entry || entry.player_id !== playerId) {
-        res.status(404).json({ error: 'ENTRY_NOT_FOUND', message: 'Cartela entry not found' });
-        return;
+        res.status(404).json({ error: 'ENTRY_NOT_FOUND', message: 'Cartela entry not found' }); return;
       }
 
-      // Delete the entry
+      // Remove entry — no payment was taken yet so no refund needed
       await tx.roundEntry.delete({
         where: { round_id_cartela_number: { round_id: id, cartela_number: cartelaNumber } },
       });
 
-      // Refund stake to play wallet (where it was originally debited)
+      // Recalculate derash preview
       const stake = parseFloat(round.stake);
-      const playWallet = await tx.wallet.findFirst({
-        where: { player_id: playerId, type: 'play' },
-      });
-      const mainWallet = await tx.wallet.findFirst({
-        where: { player_id: playerId, type: 'main' },
-      });
-
-      // Refund to play wallet first, then main if no play wallet
-      const refundWallet = playWallet ?? mainWallet;
-      if (refundWallet) {
-        await tx.wallet.update({
-          where: { id: refundWallet.id },
-          data: { balance: { increment: stake } },
-        });
-        await tx.transaction.create({
-          data: { wallet_id: refundWallet.id, type: 'refund', amount: stake, reference_id: id, note: 'Cartela deselected before game start' },
-        });
-      }
-
-      // Recalculate derash
       const entryCount = await tx.roundEntry.count({ where: { round_id: id, is_watching: false } });
-      const commissionPct = round.commission_pct;
-      const newDerash = entryCount * stake * (1 - commissionPct / 100);
+      const newDerash = entryCount * stake * (1 - round.commission_pct / 100);
       await tx.gameRound.update({ where: { id }, data: { derash: newDerash } });
     });
 
-    // Only send response if transaction succeeded (no early return inside tx)
     if (!res.headersSent) {
-      // Return updated wallet balances
       const wallets = await prisma.wallet.findMany({ where: { player_id: playerId } });
       const main = wallets.find(w => w.type === 'main');
       const play = wallets.find(w => w.type === 'play');
-      res.status(200).json({
-        ok: true,
-        mainWalletBalance: Number(main?.balance ?? 0),
-        playWalletBalance: Number(play?.balance ?? 0),
-      });
+      res.status(200).json({ ok: true, mainWalletBalance: Number(main?.balance ?? 0), playWalletBalance: Number(play?.balance ?? 0) });
     }
   } catch (err) {
     if (!res.headersSent) {
