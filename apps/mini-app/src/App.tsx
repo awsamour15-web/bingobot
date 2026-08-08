@@ -110,16 +110,22 @@ function useSystemStateSync() {
   const syncInProgress = useRef(false);
 
   function applyState(state: SystemState, force = false) {
-    const { phase, roundId } = state;
+    const { phase, roundId, stake } = state;
 
     // Don't redirect if already on the correct screen (avoids loop)
     if (!force && roundId && roundId === lastSyncedRoundId.current) return;
 
     // Only redirect players who have already selected a stake (expressed intent to join).
     // Players on the home screen without a stake selection should not be auto-redirected.
-    const selectedStake = sessionStorage.getItem('stakeSelectedForRound') || sessionStorage.getItem('selectedRoundId');
+    const hasIntent = sessionStorage.getItem('stakeSelectedForRound') || sessionStorage.getItem('selectedRoundId');
     const alreadyInGame = location.pathname.includes('/cartela') || location.pathname.includes('/game');
-    if (!selectedStake && !alreadyInGame) return;
+    if (!hasIntent && !alreadyInGame) return;
+
+    // Only follow this broadcast if the round's stake matches the player's chosen stake.
+    // Each stake level (10, 20, 50) runs its own independent round — players must stay
+    // on the round they paid for and not get pulled into a different stake's round.
+    const selectedStake = Number(sessionStorage.getItem('selectedStake') ?? 0);
+    if (stake !== null && selectedStake > 0 && stake !== selectedStake) return;
 
     if (phase === 'live' && roundId) {
       const target = `/rounds/${roundId}/game`;
