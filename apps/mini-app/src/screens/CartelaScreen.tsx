@@ -1,6 +1,13 @@
 import { useEffect, useState, useRef, memo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached } from '../lib/api';
+import cartelaGrids from '../lib/cartela-grids.json';
+
+// Instant local grid lookup — no network needed
+function getLocalGrid(num: number): number[] | null {
+  const rows = (cartelaGrids as Record<string, number[]>)[String(num)];
+  return rows ?? null;
+}
 import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
@@ -33,8 +40,8 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       disabled={disabled}
       onClick={() => onClick(num)}
       style={{
-        padding: '7px 0', borderRadius: 6, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 500, fontSize: 12,
+        padding: '4px 0', borderRadius: 4, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 500, fontSize: 11,
         cursor: disabled && !taken ? 'default' : taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'background 0.1s',
@@ -288,6 +295,18 @@ export default function CartelaScreen() {
 
   useEffect(() => { if (msLeft > 0) countdownStartedRef.current = true; }, [msLeft]);
 
+  // If round is already active when we arrive (msLeft starts at 0 and never ticks down),
+  // navigate to the game immediately after load completes.
+  useEffect(() => {
+    if (loading || !round || joinedRef.current) return;
+    if (round.status !== 'active') return;
+    if (joinedRef.current) return;
+    joinedRef.current = true;
+    sessionStorage.setItem('selectedRoundId', roundId ?? '');
+    sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+    navigate(`/rounds/${roundId}/game`, { replace: true });
+  }, [loading, round, roundId, navigate]);
+
   // Countdown hit 0 — commit picks and navigate
   useEffect(() => {
     if (msLeft !== 0 || !countdownStartedRef.current || joinedRef.current) return;
@@ -297,7 +316,6 @@ export default function CartelaScreen() {
       sessionStorage.setItem('selectedRoundId', roundId ?? '');
       if (picksRef.current.size > 0) {
         await commitPicks(picksRef.current);
-        // commitPicks always sets myCartelaNumbers (player or watcher) — just navigate
       } else {
         sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
@@ -360,7 +378,9 @@ export default function CartelaScreen() {
     picksRef.current = next;
     setPicks(next);
     if (roundId) socket.emit('CARTELA_RESERVE' as any, { roundId, cartelaNumbers: [num] });
-    // Fetch grid for this cartela
+    // Show grid instantly from local lookup, then confirm/update from server cache
+    const localGrid = getLocalGrid(num);
+    if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
     if (roundId) {
       getCartelaGridCached(roundId, num)
         .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
@@ -450,8 +470,8 @@ export default function CartelaScreen() {
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
-        gap: 3, padding: '4px 8px', alignContent: 'start',
+        display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
+        gap: 2, padding: '3px 6px', alignContent: 'start',
       }}>
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);
@@ -469,16 +489,16 @@ export default function CartelaScreen() {
         <div style={{
           flexShrink: 0, background: '#0d1220',
           borderTop: '2px solid rgba(255,255,255,0.08)',
-          padding: '8px 8px 10px',
+          padding: '6px 6px 8px',
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
-          gap: 8,
+          gap: 6,
         }}>
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
               <div key={cartelaNum} style={{ minWidth: 0 }}>
-                <div style={{ textAlign: 'center', fontSize: 11, color: '#f59e0b', fontWeight: 800, marginBottom: 4 }}>
+                <div style={{ textAlign: 'center', fontSize: 10, color: '#f59e0b', fontWeight: 800, marginBottom: 3 }}>
                   Cartela No : {cartelaNum}
                 </div>
                 {/* BINGO header row */}
@@ -486,7 +506,7 @@ export default function CartelaScreen() {
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
                       background: COL_COLORS[ci], color: '#fff', fontWeight: 900,
-                      fontSize: 11, textAlign: 'center', borderRadius: 4, padding: '3px 0',
+                      fontSize: 10, textAlign: 'center', borderRadius: 3, padding: '2px 0',
                     }}>{col}</div>
                   ))}
                 </div>
@@ -499,8 +519,8 @@ export default function CartelaScreen() {
                         background: isFree ? '#22c55e' : '#1e293b',
                         color: isFree ? '#fff' : '#e2e8f0',
                         fontWeight: isFree ? 900 : 600,
-                        fontSize: 11, textAlign: 'center', borderRadius: 4,
-                        padding: '4px 0', border: '1px solid rgba(255,255,255,0.07)',
+                        fontSize: 10, textAlign: 'center', borderRadius: 3,
+                        padding: '3px 0', border: '1px solid rgba(255,255,255,0.07)',
                         minWidth: 0,
                       }}>
                         {isFree ? '★' : val}
@@ -508,9 +528,9 @@ export default function CartelaScreen() {
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: '#1e293b', borderRadius: 4, padding: '4px 0',
+                      background: '#1e293b', borderRadius: 3, padding: '3px 0',
                       border: '1px solid rgba(255,255,255,0.07)', minWidth: 0,
-                      fontSize: 11, textAlign: 'center', color: '#334155',
+                      fontSize: 10, textAlign: 'center', color: '#334155',
                     }}>·</div>
                   ))}
                 </div>

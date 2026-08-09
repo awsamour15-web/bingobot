@@ -995,7 +995,7 @@ export default function LiveGameScreen() {
           )}
 
           {/* Cartela cards — no scroll, fit both in remaining space */}
-          <div style={{ flex: 1, overflow: 'hidden', padding: '3px 4px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ flex: 1, overflow: 'hidden', padding: '2px 3px', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {!isWatching && allCartelas.length > 0 ? (
               <>
                 {allCartelas.map((cartela) => {
@@ -1005,21 +1005,21 @@ export default function LiveGameScreen() {
                   return (
                     <div key={cartela.cartelaNumber} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                       {/* Cartela number label */}
-                      <div style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#f5d06b', marginBottom: 1, flexShrink: 0 }}>
-                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 5, color: '#22c55e' }}>✓ BINGO</span>}
+                      <div style={{ textAlign: 'center', fontSize: 7, fontWeight: 700, color: '#f5d06b', marginBottom: 1, flexShrink: 0 }}>
+                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#22c55e' }}>✓ BINGO</span>}
                       </div>
                       {/* Column headers */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 2, flexShrink: 0 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, marginBottom: 1, flexShrink: 0 }}>
                         {COLS.map((c, i) => (
                           <div key={c} style={{
                             background: COL_COLORS[i], textAlign: 'center',
-                            borderRadius: 3, padding: '1px 0',
-                            fontWeight: 900, fontSize: 9, color: '#fff',
+                            borderRadius: 2, padding: '0',
+                            fontWeight: 900, fontSize: 7, color: '#fff',
                           }}>{c}</div>
                         ))}
                       </div>
                       {/* 5×5 grid */}
-                      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 2, minHeight: 0 }}>
+                      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 1, minHeight: 0 }}>
                         {cartelaGrid.length > 0 ? cartelaGrid.map((val, idx) => {
                           const isFree = idx === 12;
                           const colIdx = idx % 5;
@@ -1034,11 +1034,11 @@ export default function LiveGameScreen() {
                                 ? COL_COLORS[colIdx]
                                 : 'rgba(255,255,255,0.07)',
                               color: wl ? '#1a1035' : m ? '#fff' : '#64748b',
-                              borderRadius: 4,
-                              fontSize: 10,
+                              borderRadius: 3,
+                              fontSize: 8,
                               fontWeight: m ? 900 : 500,
-                              border: wl ? '1.5px solid #fff' : m ? 'none' : '1px solid rgba(255,255,255,0.06)',
-                              boxShadow: wl ? '0 0 6px rgba(245,208,107,0.5)' : 'none',
+                              border: wl ? '1px solid #fff' : m ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                              boxShadow: wl ? '0 0 5px rgba(245,208,107,0.5)' : 'none',
                               transition: 'background 0.2s',
                             }}>
                               {isFree ? '★' : val}
@@ -1046,7 +1046,7 @@ export default function LiveGameScreen() {
                           );
                         }) : (
                           Array.from({ length: 25 }).map((_, idx) => (
-                            <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 4 }} />
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 3 }} />
                           ))
                         )}
                       </div>
