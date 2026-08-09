@@ -137,7 +137,7 @@ router.post('/deposit/webhook', async (req: Request, res: Response): Promise<voi
   try {
     await WalletService.credit(
       playerId,
-      WalletType.main,
+      WalletType.play,
       amount,
       TxType.deposit,
       txRef ?? undefined,

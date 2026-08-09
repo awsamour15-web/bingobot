@@ -332,7 +332,7 @@ async function processDepositClaim(
     });
 
     const wallet = await tx.wallet.findUniqueOrThrow({
-      where: { player_id_type: { player_id: playerId, type: 'main' } },
+      where: { player_id_type: { player_id: playerId, type: 'play' } },
     });
 
     await tx.wallet.update({
@@ -825,11 +825,9 @@ if (BOT_TOKEN) {
           },
         });
 
-        // Credit player's Main_Wallet — WalletService.credit handles its own
-        // internal transaction; here we replicate the credit inside our outer
-        // transaction so it's fully atomic.
+        // Credit player's Play_Wallet — deposits go to play wallet
         const wallet = await tx.wallet.findUniqueOrThrow({
-          where: { player_id_type: { player_id: player.id, type: 'main' } },
+          where: { player_id_type: { player_id: player.id, type: 'play' } },
         });
 
         await tx.wallet.update({
@@ -847,15 +845,15 @@ if (BOT_TOKEN) {
         });
       });
 
-      // Fetch updated main wallet balance for the reply
+      // Fetch updated play wallet balance for the reply
       const updatedWallet = await prisma.wallet.findUnique({
-        where: { player_id_type: { player_id: player.id, type: 'main' } },
+        where: { player_id_type: { player_id: player.id, type: 'play' } },
         select: { balance: true },
       });
       const newBalance = updatedWallet?.balance.toString() ?? '0';
 
       await ctx.reply(
-        `✅ Deposit successful!\n\nCredited: ETB ${amount}\nMain Wallet Balance: ETB ${newBalance}`,
+        `✅ Deposit successful!\n\nCredited: ETB ${amount}\nPlay Wallet Balance: ETB ${newBalance}`,
       );
     } catch (err) {
       console.error('[Bot] /txn handler error:', err);
