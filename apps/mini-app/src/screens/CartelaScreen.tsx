@@ -48,21 +48,29 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
 });
 
 function useServerCountdown(targetIso: string | null) {
-  const [msLeft, setMsLeft] = useState(0);
+  const [msLeft, setMsLeft] = useState(() =>
+    targetIso ? Math.max(0, new Date(targetIso).getTime() - Date.now()) : 0
+  );
+  const totalMsRef = useRef<number>(0);
+
   useEffect(() => {
     if (!targetIso) return;
-    const tick = () => setMsLeft(Math.max(0, new Date(targetIso).getTime() - Date.now()));
+    const target = new Date(targetIso).getTime();
+    // Record total duration once so pct stays meaningful
+    totalMsRef.current = Math.max(1, target - (Date.now() - 100));
+    const tick = () => setMsLeft(Math.max(0, target - Date.now()));
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, [targetIso]);
+
   const totalSec = Math.ceil(msLeft / 1000);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return {
     msLeft,
     label: msLeft <= 0 ? '0:00' : `${m}:${String(s).padStart(2, '0')}`,
-    pct: targetIso ? Math.min(1, msLeft / 60_000) : 0,
+    pct: totalMsRef.current > 0 ? Math.min(1, msLeft / totalMsRef.current) : 0,
   };
 }
 
@@ -110,7 +118,13 @@ export default function CartelaScreen() {
         setRound(r);
         setAvailability(avail);
         if (profile) setBalances(profile);
+        // If round is already active/completed, mark countdown as started so
+        // the navigate effect can fire immediately
         if (r.status === 'active' || r.status === 'completed') {
+          countdownStartedRef.current = true;
+        }
+        // If start_time is already past, treat countdown as having started
+        if (r.start_time && new Date(r.start_time).getTime() <= Date.now()) {
           countdownStartedRef.current = true;
         }
       } catch (err: unknown) {
@@ -392,7 +406,7 @@ export default function CartelaScreen() {
           ))}
           <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 48 }}>
             <span style={{ fontSize: 18, fontWeight: 900, color: '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
-              {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : '—'}
+              {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '▶' : '⏳'}
             </span>
           </div>
         </div>
