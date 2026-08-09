@@ -141,6 +141,7 @@ model RoundEntry {
   @@unique([round_id, cartela_number])
   @@index([round_id])
   @@index([player_id])
+  @@index([round_id, is_watching])
   @@map("round_entries")
 }
 

@@ -44,6 +44,8 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     start_time: r.start_time.toISOString(),
   }));
 
+  // Short cache — stale-while-revalidate lets the client show instantly on revisit
+  res.setHeader('Cache-Control', 'public, max-age=3, stale-while-revalidate=10');
   res.status(200).json(items);
 });
 
@@ -133,18 +135,19 @@ router.get('/:id/my-cartelas', async (req: Request, res: Response): Promise<void
 router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
 
-  // Verify round exists
-  const round = await prisma.gameRound.findUnique({ where: { id } });
+  // Single query: get taken cartelas and verify round exists simultaneously
+  const [round, takenEntries] = await Promise.all([
+    prisma.gameRound.findUnique({ where: { id }, select: { id: true } }),
+    prisma.roundEntry.findMany({
+      where: { round_id: id, is_watching: false },
+      select: { cartela_number: true },
+    }),
+  ]);
+
   if (!round) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' });
     return;
   }
-
-  // Get taken cartela numbers in this round (paying players only)
-  const takenEntries = await prisma.roundEntry.findMany({
-    where: { round_id: id, is_watching: false },
-    select: { cartela_number: true },
-  });
 
   const takenSet = new Set(takenEntries.map((e) => e.cartela_number));
 
@@ -154,6 +157,8 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
   const taken = ALL_CARTELAS.filter((n) => takenSet.has(n));
 
   const response: CartelaAvailability = { available, taken };
+  // Short cache so clients get fresh availability quickly
+  res.setHeader('Cache-Control', 'public, max-age=2, stale-while-revalidate=5');
   res.status(200).json(response);
 });
 

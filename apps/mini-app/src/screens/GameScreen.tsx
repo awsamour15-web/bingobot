@@ -18,8 +18,10 @@ export default function GameScreen() {
     async function load() {
       setLoading(true); setError(null);
       try {
-        await initAuth();
-        const data = await getRounds();
+        const [data] = await Promise.all([
+          getRounds(),
+          initAuth(),
+        ]);
         if (!cancelled) setRounds(
           data
             .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))

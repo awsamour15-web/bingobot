@@ -108,7 +108,8 @@ export default function LiveGameScreen() {
   const audioCache = useRef<Map<number, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
-    // Load all 75 sounds in parallel — IDB cache when available, otherwise network.
+    // Lazy-load sounds: preload only the first 15 immediately (most likely to be called first),
+    // then load the rest in the background in small batches to avoid saturating the network.
     async function preloadSounds() {
       const load = async (n: number) => {
         if (audioCache.current.has(n)) return;
@@ -129,8 +130,24 @@ export default function LiveGameScreen() {
           audioCache.current.set(n, audio);
         }
       };
-      // Fire all 75 in parallel
-      await Promise.all(Array.from({ length: 75 }, (_, i) => load(i + 1)));
+
+      // Phase 1: load first 15 numbers immediately (B column — called first)
+      await Promise.all(Array.from({ length: 15 }, (_, i) => load(i + 1)));
+
+      // Phase 2: load remaining 60 in background batches of 10
+      // Use requestIdleCallback when available so it doesn't compete with UI
+      const loadBatch = async (start: number, end: number) => {
+        await Promise.all(Array.from({ length: end - start }, (_, i) => load(start + i)));
+      };
+      const scheduleBatch = (start: number, end: number, delay: number) => {
+        setTimeout(() => { loadBatch(start, end).catch(() => {}); }, delay);
+      };
+      scheduleBatch(16, 26, 500);
+      scheduleBatch(26, 36, 1000);
+      scheduleBatch(36, 46, 1500);
+      scheduleBatch(46, 56, 2000);
+      scheduleBatch(56, 66, 2500);
+      scheduleBatch(66, 76, 3000);
     }
     preloadSounds();
   }, []);
