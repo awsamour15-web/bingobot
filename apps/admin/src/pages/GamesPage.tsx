@@ -1,101 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminRound, CreateRoundRequest, GameStatus } from '@fidel/shared';
 import { getAdminRounds, createRound, startRound, cancelRound } from '../lib/api';
+import {
+  C, Btn, Badge, Card, CardHeader, Table, Th, Td,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
+} from '../components/ui';
 
-const C = {
-  primary: '#4f46e5',
-  danger: '#dc2626',
-  success: '#16a34a',
-  bg: '#f9fafb',
-  border: '#e5e7eb',
-  text: '#111827',
-  muted: '#6b7280',
-};
-
-const responsiveStyles = `
-  .games-create-form {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
-    gap: 14px;
-    align-items: flex-end;
-  }
-  .games-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  @media (max-width: 640px) {
-    .games-create-form { grid-template-columns: 1fr; }
-  }
-  @media (min-width: 641px) and (max-width: 900px) {
-    .games-create-form { grid-template-columns: 1fr 1fr; }
-  }
-`;
-
-interface BtnProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'danger' | 'success' | 'ghost';
-  disabled?: boolean;
-  small?: boolean;
-  type?: 'button' | 'submit' | 'reset';
+function statusVariant(s: GameStatus): 'warning' | 'success' | 'danger' | 'info' | 'neutral' {
+  if (s === 'pending') return 'warning';
+  if (s === 'active') return 'success';
+  if (s === 'completed') return 'info';
+  if (s === 'cancelled') return 'danger';
+  return 'neutral';
 }
-
-function Btn({ children, onClick, variant = 'primary', disabled = false, small = false, type = 'button' }: BtnProps) {
-  const bg: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: 'transparent' };
-  const color: Record<string, string> = { primary: '#fff', danger: '#fff', success: '#fff', ghost: C.primary };
-  const bdr: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: C.primary };
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        background: bg[variant], color: color[variant], border: `1px solid ${bdr[variant]}`,
-        borderRadius: 6, padding: small ? '4px 12px' : '8px 18px',
-        fontSize: small ? 12 : 14, fontWeight: 500,
-        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, whiteSpace: 'nowrap',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function StatusBadge({ status }: { status: GameStatus }) {
-  const map: Record<string, { bg: string; color: string; label: string }> = {
-    pending:   { bg: '#fef9c3', color: '#92400e', label: 'Pending' },
-    active:    { bg: '#dcfce7', color: C.success,  label: 'Active' },
-    completed: { bg: '#dbeafe', color: '#1e40af', label: 'Completed' },
-    cancelled: { bg: '#fee2e2', color: C.danger,   label: 'Cancelled' },
-    void:      { bg: '#f3f4f6', color: C.muted,    label: 'Void' },
-  };
-  const entry = map[status] ?? map['void']!;
-  return (
-    <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600, background: entry.bg, color: entry.color }}>
-      {entry.label}
-    </span>
-  );
-}
-
-const thStyle: React.CSSProperties = {
-  padding: '10px 14px', background: C.bg, color: C.muted, fontWeight: 600,
-  fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em',
-  textAlign: 'left', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
-};
-const tdStyle: React.CSSProperties = {
-  padding: '10px 14px', borderBottom: `1px solid ${C.border}`, color: C.text, verticalAlign: 'middle',
-};
-
-const msgStyle = (t: 'error' | 'success'): React.CSSProperties => ({
-  padding: '8px 14px', borderRadius: 6, fontSize: 13, marginBottom: 12,
-  background: t === 'error' ? '#fee2e2' : '#dcfce7',
-  color: t === 'error' ? C.danger : C.success,
-  border: `1px solid ${t === 'error' ? '#fca5a5' : '#86efac'}`,
-});
 
 function CreateRoundForm({ onCreated }: { onCreated: () => void }) {
   const [stake, setStake] = useState('');
@@ -116,141 +33,108 @@ function CreateRoundForm({ onCreated }: { onCreated: () => void }) {
     try {
       const body: CreateRoundRequest = { stake: stakeNum, startTime: new Date(startTime).toISOString(), maxPlayers: maxNum };
       const round = await createRound(body);
-      setSuccess(`Round #${round.id.slice(-6).toUpperCase()} created.`);
+      setSuccess(`Round #${round.id.slice(-6).toUpperCase()} created successfully.`);
       setStake(''); setStartTime(''); setMaxPlayers('100');
       onCreated();
     } catch (err: unknown) {
       setError((err as Error).message ?? 'Failed to create round');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 6,
-    fontSize: 14, width: '100%', boxSizing: 'border-box',
-  };
-  const labelStyle: React.CSSProperties = {
-    fontSize: 12, color: C.muted, fontWeight: 600, textTransform: 'uppercase',
-    letterSpacing: '0.05em', marginBottom: 4, display: 'block',
-  };
-
   return (
-    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24, marginBottom: 24 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 0, marginBottom: 20 }}>Create New Round</h2>
-      {error && <div style={msgStyle('error')}>{error}</div>}
-      {success && <div style={msgStyle('success')}>{success}</div>}
-      <form onSubmit={handleSubmit} className="games-create-form">
-        <div>
-          <label style={labelStyle}>Stake (ETB)</label>
-          <input type="number" min="1" step="any" style={inputStyle} value={stake} onChange={(e) => setStake(e.target.value)} placeholder="e.g. 50" required />
-        </div>
-        <div>
-          <label style={labelStyle}>Start Time</label>
-          <input type="datetime-local" style={inputStyle} value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
-        </div>
-        <div>
-          <label style={labelStyle}>Max Players</label>
-          <input type="number" min="2" step="1" style={inputStyle} value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} required />
-        </div>
-        <div>
-          <Btn type="submit" variant="primary" disabled={loading}>{loading ? 'Creating…' : 'Create'}</Btn>
+    <Card style={{ marginBottom: 24 }}>
+      <CardHeader title="Create New Round" subtitle="Schedule a bingo round for players" />
+      {error && <Alert type="error">{error}</Alert>}
+      {success && <Alert type="success">{success}</Alert>}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr)) auto', gap: 12, alignItems: 'flex-end' }}>
+          <Field label="Stake (ETB)">
+            <input style={inputCss} type="number" min="1" step="any" value={stake} onChange={(e) => setStake(e.target.value)} placeholder="e.g. 50" required />
+          </Field>
+          <Field label="Start Time">
+            <input style={inputCss} type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+          </Field>
+          <Field label="Max Players">
+            <input style={inputCss} type="number" min="2" step="1" value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} required />
+          </Field>
+          <div>
+            <Btn type="submit" disabled={loading}>{loading ? 'Creating…' : '+ Create Round'}</Btn>
+          </div>
         </div>
       </form>
-    </div>
+    </Card>
   );
 }
 
-interface RoundsTableProps {
-  rounds: AdminRound[];
-  showActions: boolean;
+function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: {
+  rounds: AdminRound[]; showActions: boolean;
   onAction: (id: string, action: 'start' | 'cancel') => void;
-  loading: boolean;
-  actioningId: string | null;
-}
-
-function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: RoundsTableProps) {
+  loading: boolean; actioningId: string | null;
+}) {
+  const colCount = showActions ? 8 : 9;
   return (
-    <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
-        <thead>
-          <tr>
-            <th style={thStyle}>ID</th>
-            <th style={thStyle}>Status</th>
-            <th style={thStyle}>Stake (ETB)</th>
-            <th style={thStyle}>Players</th>
-            <th style={thStyle}>Derash (ETB)</th>
-            <th style={thStyle}>Called</th>
-            <th style={thStyle}>Start Time</th>
+    <Table>
+      <thead>
+        <tr>
+          <Th>Round ID</Th>
+          <Th>Status</Th>
+          <Th>Stake (ETB)</Th>
+          <Th>Players</Th>
+          <Th>Prize Pool</Th>
+          <Th>Called</Th>
+          <Th>Start Time</Th>
+          {showActions ? <Th>Actions</Th> : <><Th>Ended</Th><Th>Winners</Th></>}
+        </tr>
+      </thead>
+      <tbody>
+        {loading ? <TrLoading cols={colCount} /> :
+         !rounds.length ? <TrEmpty cols={colCount} message="No rounds found." /> :
+         rounds.map((r) => (
+          <tr key={r.id}>
+            <Td mono>#{r.id.slice(-6).toUpperCase()}</Td>
+            <Td><Badge variant={statusVariant(r.status)}>{r.status}</Badge></Td>
+            <Td><span style={{ fontWeight: 600 }}>{r.stake.toFixed(2)}</span></Td>
+            <Td>{r.player_count}</Td>
+            <Td><span style={{ fontWeight: 600, color: C.success }}>{r.derash.toFixed(2)}</span></Td>
+            <Td>{r.called_numbers_count}</Td>
+            <Td muted>{new Date(r.start_time).toLocaleString()}</Td>
             {showActions ? (
-              <th style={thStyle}>Actions</th>
+              <Td>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {r.status === 'pending' && (
+                    <Btn size="sm" variant="success" disabled={actioningId === r.id} onClick={() => onAction(r.id, 'start')}>
+                      {actioningId === r.id ? '…' : '▶ Start'}
+                    </Btn>
+                  )}
+                  {(r.status === 'pending' || r.status === 'active') && (
+                    <Btn size="sm" variant="danger" disabled={actioningId === r.id} onClick={() => onAction(r.id, 'cancel')}>
+                      {actioningId === r.id ? '…' : '✕ Cancel'}
+                    </Btn>
+                  )}
+                </div>
+              </Td>
             ) : (
               <>
-                <th style={thStyle}>Ended At</th>
-                <th style={thStyle}>Winners</th>
+                <Td muted>{r.ended_at ? new Date(r.ended_at).toLocaleString() : '—'}</Td>
+                <Td>
+                  {!r.winners?.length ? <span style={{ color: C.muted }}>—</span> :
+                   r.winners.length === 1 ? (
+                    <span>{r.winners[0]?.username} · <span style={{ fontWeight: 600 }}>{r.winners[0]?.splitAmount.toFixed(2)} ETB</span></span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <Badge variant="primary">Split {r.winners.length}x</Badge>
+                      {r.winners.map((w) => (
+                        <span key={w.playerId} style={{ fontSize: 12 }}>{w.username} · {w.splitAmount.toFixed(2)} ETB</span>
+                      ))}
+                    </div>
+                  )}
+                </Td>
               </>
             )}
           </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr><td colSpan={showActions ? 8 : 9} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>Loading…</td></tr>
-          ) : rounds.length === 0 ? (
-            <tr><td colSpan={showActions ? 8 : 9} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>No rounds found.</td></tr>
-          ) : (
-            rounds.map((r) => (
-              <tr key={r.id}>
-                <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>#{r.id.slice(-6).toUpperCase()}</td>
-                <td style={tdStyle}><StatusBadge status={r.status} /></td>
-                <td style={{ ...tdStyle, fontWeight: 600 }}>{r.stake.toFixed(2)}</td>
-                <td style={tdStyle}>{r.player_count}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: C.success }}>{r.derash.toFixed(2)}</td>
-                <td style={tdStyle}>{r.called_numbers_count}</td>
-                <td style={{ ...tdStyle, color: C.muted, fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(r.start_time).toLocaleString()}</td>
-                {showActions ? (
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {r.status === 'pending' && (
-                        <Btn small variant="success" disabled={actioningId === r.id} onClick={() => onAction(r.id, 'start')}>
-                          {actioningId === r.id ? '…' : 'Force Start'}
-                        </Btn>
-                      )}
-                      {(r.status === 'pending' || r.status === 'active') && (
-                        <Btn small variant="danger" disabled={actioningId === r.id} onClick={() => onAction(r.id, 'cancel')}>
-                          {actioningId === r.id ? '…' : 'Cancel'}
-                        </Btn>
-                      )}
-                    </div>
-                  </td>
-                ) : (
-                  <>
-                    <td style={{ ...tdStyle, color: C.muted, fontSize: 12, whiteSpace: 'nowrap' }}>
-                      {r.ended_at ? new Date(r.ended_at).toLocaleString() : '—'}
-                    </td>
-                    <td style={tdStyle}>
-                      {!r.winners || r.winners.length === 0 ? (
-                        <span style={{ color: C.muted }}>—</span>
-                      ) : r.winners.length === 1 ? (
-                        <span style={{ fontSize: 13 }}>{r.winners[0]?.username} — {r.winners[0]?.splitAmount.toFixed(2)} ETB</span>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: '#e0e7ff', color: '#3730a3', alignSelf: 'flex-start', marginBottom: 4 }}>
-                            Split
-                          </span>
-                          {r.winners.map((w) => (
-                            <span key={w.playerId} style={{ fontSize: 13 }}>{w.username} — {w.splitAmount.toFixed(2)} ETB</span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
@@ -268,57 +152,52 @@ export function GamesPage() {
       setAllRounds((res as any).items ?? (Array.isArray(res) ? res : []));
     } catch (err: unknown) {
       setFetchError((err as Error).message ?? 'Failed to load rounds');
-    } finally {
-      setFetchLoading(false);
-    }
+    } finally { setFetchLoading(false); }
   }, []);
 
   useEffect(() => {
-    fetchRounds();
-    const interval = setInterval(fetchRounds, 3000);
-    return () => clearInterval(interval);
+    void fetchRounds();
+    const t = setInterval(fetchRounds, 5000);
+    return () => clearInterval(t);
   }, [fetchRounds]);
 
   async function handleAction(id: string, action: 'start' | 'cancel') {
     const label = action === 'start' ? 'force-start' : 'cancel';
-    if (!window.confirm(`Are you sure you want to ${label} round #${id.slice(-6).toUpperCase()}?`)) return;
+    if (!window.confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} round #${id.slice(-6).toUpperCase()}?`)) return;
     setActioningId(id); setActionError(null);
     try {
-      if (action === 'start') await startRound(id);
-      else await cancelRound(id);
+      if (action === 'start') await startRound(id); else await cancelRound(id);
       await fetchRounds();
     } catch (err: unknown) {
       setActionError((err as Error).message ?? `Failed to ${label} round`);
-    } finally {
-      setActioningId(null);
-    }
+    } finally { setActioningId(null); }
   }
 
   const activeRounds = allRounds.filter((r) => r.status === 'pending' || r.status === 'active');
-  const doneRounds = allRounds.filter((r) => r.status === 'completed' || r.status === 'cancelled' || r.status === 'void');
+  const doneRounds = allRounds.filter((r) => ['completed', 'cancelled', 'void'].includes(r.status));
 
   return (
-    <div>
-      <style>{responsiveStyles}</style>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, marginTop: 0, marginBottom: 24 }}>Games</h1>
+    <div className="fade-in">
+      <PageHeader title="Games" />
       <CreateRoundForm onCreated={fetchRounds} />
-      {actionError && <div style={msgStyle('error')}>{actionError}</div>}
-      {fetchError && <div style={msgStyle('error')}>{fetchError}</div>}
+      {actionError && <Alert type="error">{actionError}</Alert>}
+      {fetchError && <Alert type="error">{fetchError}</Alert>}
 
-      <div style={{ marginBottom: 28 }}>
-        <div className="games-section-header">
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0 }}>Active &amp; Pending Rounds</h2>
-          <span style={{ fontSize: 12, color: C.muted }}>Auto-refreshes every 3s</span>
-        </div>
-        <RoundsTable rounds={activeRounds} showActions onAction={handleAction} loading={fetchLoading && allRounds.length === 0} actioningId={actioningId} />
-      </div>
+      <Card style={{ marginBottom: 24 }}>
+        <CardHeader
+          title="Active & Pending"
+          subtitle="Auto-refreshes every 5s"
+          action={<span style={{ fontSize: 12, color: allRounds.some(r => r.status === 'active') ? C.success : C.muted, fontWeight: 600 }}>
+            {allRounds.filter(r => r.status === 'active').length} live
+          </span>}
+        />
+        <RoundsTable rounds={activeRounds} showActions onAction={handleAction} loading={fetchLoading && !allRounds.length} actioningId={actioningId} />
+      </Card>
 
-      <div>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 0, marginBottom: 12 }}>
-          Completed &amp; Cancelled Log
-        </h2>
-        <RoundsTable rounds={doneRounds} showActions={false} onAction={handleAction} loading={fetchLoading && allRounds.length === 0} actioningId={actioningId} />
-      </div>
+      <Card>
+        <CardHeader title="Completed & Cancelled" />
+        <RoundsTable rounds={doneRounds} showActions={false} onAction={handleAction} loading={fetchLoading && !allRounds.length} actioningId={actioningId} />
+      </Card>
     </div>
   );
 }

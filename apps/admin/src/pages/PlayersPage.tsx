@@ -1,440 +1,149 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
+import { getPlayers, getPlayer, suspendPlayer, restorePlayer, creditPlayer } from '../lib/api';
 import {
-  getPlayers,
-  getPlayer,
-  suspendPlayer,
-  restorePlayer,
-  creditPlayer,
-} from '../lib/api';
-
-// ---------------------------------------------------------------------------
-// Colour tokens
-// ---------------------------------------------------------------------------
-const C = {
-  primary: '#4f46e5',
-  danger: '#dc2626',
-  success: '#16a34a',
-  bg: '#f9fafb',
-  border: '#e5e7eb',
-  text: '#111827',
-  muted: '#6b7280',
-};
-
-// ---------------------------------------------------------------------------
-// Small shared components
-// ---------------------------------------------------------------------------
-
-function Badge({ active }: { active: boolean }) {
-  const style: React.CSSProperties = {
-    display: 'inline-block',
-    padding: '2px 10px',
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: 600,
-    background: active ? '#dcfce7' : '#fee2e2',
-    color: active ? C.success : C.danger,
-  };
-  return <span style={style}>{active ? 'Active' : 'Suspended'}</span>;
-}
-
-function Btn({
-  children,
-  onClick,
-  variant = 'primary',
-  disabled = false,
-  small = false,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'danger' | 'success' | 'ghost';
-  disabled?: boolean;
-  small?: boolean;
-}) {
-  const bg: Record<string, string> = {
-    primary: C.primary,
-    danger: C.danger,
-    success: C.success,
-    ghost: 'transparent',
-  };
-  const color: Record<string, string> = {
-    primary: '#fff',
-    danger: '#fff',
-    success: '#fff',
-    ghost: C.primary,
-  };
-  const border: Record<string, string> = {
-    primary: C.primary,
-    danger: C.danger,
-    success: C.success,
-    ghost: C.primary,
-  };
-  const style: React.CSSProperties = {
-    background: bg[variant],
-    color: color[variant],
-    border: `1px solid ${border[variant]}`,
-    borderRadius: 6,
-    padding: small ? '4px 12px' : '8px 18px',
-    fontSize: small ? 12 : 14,
-    fontWeight: 500,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.6 : 1,
-  };
-  return (
-    <button style={style} onClick={onClick} disabled={disabled}>
-      {children}
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Player detail panel
-// ---------------------------------------------------------------------------
+  C, Btn, Badge, Card, CardHeader, Table, Th, Td,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, selectCss, StatCard,
+} from '../components/ui';
 
 function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => void }) {
   const [player, setPlayer] = useState<AdminPlayer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [suspending, setSuspending] = useState(false);
-
-  // Credit form state
+  const [suspendMsg, setSuspendMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [walletType, setWalletType] = useState<'main' | 'play'>('main');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [creditLoading, setCreditLoading] = useState(false);
-  const [creditError, setCreditError] = useState<string | null>(null);
-  const [creditSuccess, setCreditSuccess] = useState<string | null>(null);
+  const [creditMsg, setCreditMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     getPlayer(playerId)
-      .then((p) => {
-        setPlayer(p);
-        setLoading(false);
-      })
-      .catch((e: Error) => {
-        setError(e.message ?? 'Failed to load player');
-        setLoading(false);
-      });
+      .then((p) => { setPlayer(p); setLoading(false); })
+      .catch((e: Error) => { setError(e.message ?? 'Failed to load player'); setLoading(false); });
   }, [playerId]);
 
   async function handleSuspendToggle() {
     if (!player) return;
     const action = player.is_suspended ? 'restore' : 'suspend';
-    const confirmed = window.confirm(
-      `Are you sure you want to ${action} player "${player.username}"?`,
-    );
-    if (!confirmed) return;
-
-    setSuspending(true);
-    setActionError(null);
-    setActionSuccess(null);
+    if (!window.confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} player "${player.username}"?`)) return;
+    setSuspending(true); setSuspendMsg(null);
     try {
-      if (player.is_suspended) {
-        await restorePlayer(player.id);
-      } else {
-        await suspendPlayer(player.id);
-      }
-      const updated = await getPlayer(player.id);
-      setPlayer(updated);
-      setActionSuccess(`Player ${action}d successfully.`);
+      player.is_suspended ? await restorePlayer(player.id) : await suspendPlayer(player.id);
+      setPlayer(await getPlayer(player.id));
+      setSuspendMsg({ type: 'success', text: `Player ${action}d.` });
     } catch (e: unknown) {
-      const err = e as Error;
-      setActionError(err.message ?? `Failed to ${action} player`);
-    } finally {
-      setSuspending(false);
-    }
+      setSuspendMsg({ type: 'error', text: (e as Error).message ?? `Failed to ${action}` });
+    } finally { setSuspending(false); }
   }
 
   async function handleCredit(e: React.FormEvent) {
     e.preventDefault();
     if (!player) return;
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount)) {
-      setCreditError('Amount must be a valid number.');
-      return;
-    }
-    if (!note.trim()) {
-      setCreditError('Note is required.');
-      return;
-    }
-    setCreditLoading(true);
-    setCreditError(null);
-    setCreditSuccess(null);
+    const parsed = parseFloat(amount);
+    if (isNaN(parsed)) { setCreditMsg({ type: 'error', text: 'Amount must be a valid number.' }); return; }
+    if (!note.trim()) { setCreditMsg({ type: 'error', text: 'Note is required.' }); return; }
+    setCreditLoading(true); setCreditMsg(null);
     try {
-      const body: AdminCreditRequest = {
-        walletType,
-        amount: parsedAmount,
-        note: note.trim(),
-      };
-      await creditPlayer(player.id, body);
-      const updated = await getPlayer(player.id);
-      setPlayer(updated);
-      setCreditSuccess(`Wallet updated successfully (${parsedAmount > 0 ? '+' : ''}${parsedAmount} ETB).`);
-      setAmount('');
-      setNote('');
+      await creditPlayer(player.id, { walletType, amount: parsed, note: note.trim() } as AdminCreditRequest);
+      setPlayer(await getPlayer(player.id));
+      setCreditMsg({ type: 'success', text: `Wallet updated: ${parsed > 0 ? '+' : ''}${parsed} ETB` });
+      setAmount(''); setNote('');
     } catch (e: unknown) {
-      const err = e as Error;
-      setCreditError(err.message ?? 'Failed to update wallet');
-    } finally {
-      setCreditLoading(false);
-    }
+      setCreditMsg({ type: 'error', text: (e as Error).message ?? 'Failed to update wallet' });
+    } finally { setCreditLoading(false); }
   }
 
-  const containerStyle: React.CSSProperties = {
-    maxWidth: 720,
-    width: '100%',
-  };
+  if (loading) return (
+    <div>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 20 }}>← Back</button>
+      <p style={{ color: C.muted }}>Loading…</p>
+    </div>
+  );
 
-  const cardStyle: React.CSSProperties = {
-    background: '#fff',
-    border: `1px solid ${C.border}`,
-    borderRadius: 10,
-    padding: 24,
-    marginBottom: 20,
-  };
-
-  const sectionTitleStyle: React.CSSProperties = {
-    fontSize: 16,
-    fontWeight: 700,
-    color: C.text,
-    marginBottom: 16,
-    marginTop: 0,
-  };
-
-  const responsiveStyles = `
-    .player-detail-fields {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    @media (max-width: 480px) {
-      .player-detail-fields {
-        grid-template-columns: 1fr;
-      }
-    }
-  `;
-
-  const fieldRowStyle: React.CSSProperties = {
-    marginBottom: 12,
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: C.muted,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    marginBottom: 2,
-  };
-
-  const valueStyle: React.CSSProperties = {
-    fontSize: 15,
-    color: C.text,
-    fontWeight: 500,
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    border: `1px solid ${C.border}`,
-    borderRadius: 6,
-    fontSize: 14,
-    boxSizing: 'border-box',
-  };
-
-  const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    background: '#fff',
-  };
-
-  const msgStyle = (type: 'error' | 'success'): React.CSSProperties => ({
-    padding: '8px 14px',
-    borderRadius: 6,
-    fontSize: 13,
-    marginBottom: 12,
-    background: type === 'error' ? '#fee2e2' : '#dcfce7',
-    color: type === 'error' ? C.danger : C.success,
-    border: `1px solid ${type === 'error' ? '#fca5a5' : '#86efac'}`,
-  });
-
-  if (loading) {
-    return (
-      <div style={containerStyle}>
-        <button
-          style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, marginBottom: 16 }}
-          onClick={onBack}
-        >
-          ← Back to list
-        </button>
-        <p style={{ color: C.muted }}>Loading...</p>
-      </div>
-    );
-  }
-
-  if (error || !player) {
-    return (
-      <div style={containerStyle}>
-        <button
-          style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, marginBottom: 16 }}
-          onClick={onBack}
-        >
-          ← Back to list
-        </button>
-        <p style={{ color: C.danger }}>{error ?? 'Player not found'}</p>
-      </div>
-    );
-  }
+  if (error || !player) return (
+    <div>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 20 }}>← Back</button>
+      <Alert type="error">{error ?? 'Player not found'}</Alert>
+    </div>
+  );
 
   return (
-    <div style={containerStyle}>
-      <style>{responsiveStyles}</style>
-      <button
-        style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, marginBottom: 16, padding: 0 }}
-        onClick={onBack}
-      >
-        ← Back to list
+    <div className="fade-in">
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4 }}>
+        ← Back to Players
       </button>
 
-      {/* Profile card */}
-      <div style={cardStyle}>
-        <h2 style={sectionTitleStyle}>Player Profile</h2>
-
-        <div className="player-detail-fields">
-          <div>
-            <div style={labelStyle}>Username</div>
-            <div style={valueStyle}>{player.username}</div>
-          </div>
-          <div>
-            <div style={labelStyle}>Telegram ID</div>
-            <div style={valueStyle}>{player.telegram_id}</div>
-          </div>
-          <div>
-            <div style={labelStyle}>Phone</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={valueStyle}>{player.phone ?? '—'}</span>
-              {player.phone && (
-                <span style={{
-                  fontSize: 11,
-                  padding: '1px 7px',
-                  borderRadius: 10,
-                  background: player.phone_verified ? '#dcfce7' : '#fef9c3',
-                  color: player.phone_verified ? C.success : '#92400e',
-                  fontWeight: 600,
-                }}>
-                  {player.phone_verified ? '✓ Verified' : 'Unverified'}
-                </span>
-              )}
-            </div>
-          </div>
-          <div>
-            <div style={labelStyle}>Status</div>
-            <div><Badge active={!player.is_suspended} /></div>
-          </div>
-          <div>
-            <div style={labelStyle}>Main Wallet (ETB)</div>
-            <div style={{ ...valueStyle, color: C.success, fontWeight: 700 }}>
-              {player.main_wallet_balance.toFixed(2)}
-            </div>
-          </div>
-          <div>
-            <div style={labelStyle}>Play Wallet (ETB)</div>
-            <div style={{ ...valueStyle, color: C.primary, fontWeight: 700 }}>
-              {player.play_wallet_balance.toFixed(2)}
-            </div>
-          </div>
-          <div>
-            <div style={labelStyle}>Joined</div>
-            <div style={valueStyle}>{new Date(player.created_at).toLocaleDateString()}</div>
-          </div>
-          <div>
-            <div style={labelStyle}>Total Games</div>
-            <div style={valueStyle}>{player.total_games}</div>
-          </div>
-          <div>
-            <div style={labelStyle}>Total Referrals</div>
-            <div style={valueStyle}>{player.total_referrals}</div>
-          </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: C.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+          👤
         </div>
-
-        {/* Suspend / Restore */}
-        <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Btn
-            variant={player.is_suspended ? 'success' : 'danger'}
-            onClick={handleSuspendToggle}
-            disabled={suspending}
-          >
-            {suspending ? 'Working…' : player.is_suspended ? 'Restore Player' : 'Suspend Player'}
-          </Btn>
-          {actionError && <span style={{ color: C.danger, fontSize: 13 }}>{actionError}</span>}
-          {actionSuccess && <span style={{ color: C.success, fontSize: 13 }}>{actionSuccess}</span>}
+        <div>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text }}>{player.username}</h1>
+          <p style={{ margin: 0, fontSize: 13, color: C.muted }}>Telegram ID: {player.telegram_id}</p>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          <Badge variant={player.is_suspended ? 'danger' : 'success'}>
+            {player.is_suspended ? 'Suspended' : 'Active'}
+          </Badge>
         </div>
       </div>
 
-      {/* Credit / Debit form */}
-      <div style={cardStyle}>
-        <h2 style={sectionTitleStyle}>Manual Credit / Debit</h2>
-        <p style={{ fontSize: 13, color: C.muted, marginTop: -8, marginBottom: 16 }}>
-          Use a positive amount to credit, negative to debit.
-        </p>
+      {/* Wallet stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <StatCard icon="🏆" label="Main Wallet" value={`${player.main_wallet_balance.toFixed(2)} ETB`} color={C.success} />
+        <StatCard icon="🎮" label="Play Wallet" value={`${player.play_wallet_balance.toFixed(2)} ETB`} color={C.primary} />
+        <StatCard icon="🎯" label="Total Games" value={player.total_games} color={C.info} />
+        <StatCard icon="👥" label="Referrals" value={player.total_referrals} color={C.warning} />
+      </div>
 
-        {creditError && <div style={msgStyle('error')}>{creditError}</div>}
-        {creditSuccess && <div style={msgStyle('success')}>{creditSuccess}</div>}
+      {/* Profile + suspend */}
+      <Card style={{ marginBottom: 20 }}>
+        <CardHeader title="Player Info" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+          {[
+            { label: 'Phone', value: player.phone ?? '—' },
+            { label: 'Verified', value: player.phone_verified ? '✓ Yes' : '✗ No' },
+            { label: 'Joined', value: new Date(player.created_at).toLocaleDateString() },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 15, color: C.text, fontWeight: 500 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+        {suspendMsg && <Alert type={suspendMsg.type}>{suspendMsg.text}</Alert>}
+        <Btn variant={player.is_suspended ? 'success' : 'danger'} onClick={handleSuspendToggle} disabled={suspending}>
+          {suspending ? 'Working…' : player.is_suspended ? '✓ Restore Player' : '⊘ Suspend Player'}
+        </Btn>
+      </Card>
 
-        <form onSubmit={handleCredit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Wallet Type</label>
-            <select
-              style={selectStyle}
-              value={walletType}
-              onChange={(e) => setWalletType(e.target.value as 'main' | 'play')}
-            >
-              <option value="main">Main Wallet</option>
-              <option value="play">Play Wallet</option>
+      {/* Credit / Debit */}
+      <Card>
+        <CardHeader title="Manual Credit / Debit" subtitle="Use positive to credit, negative to debit" />
+        {creditMsg && <Alert type={creditMsg.type}>{creditMsg.text}</Alert>}
+        <form onSubmit={handleCredit} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 400 }}>
+          <Field label="Wallet">
+            <select style={selectCss} value={walletType} onChange={(e) => setWalletType(e.target.value as 'main' | 'play')}>
+              <option value="main">Main Wallet (winnings)</option>
+              <option value="play">Play Wallet (deposits)</option>
             </select>
-          </div>
-          <div>
-            <label style={labelStyle}>Amount (ETB)</label>
-            <input
-              type="number"
-              step="any"
-              style={inputStyle}
-              placeholder="e.g. 50 or -25"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Note (required)</label>
-            <input
-              type="text"
-              style={inputStyle}
-              placeholder="Reason for adjustment"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Btn variant="primary" disabled={creditLoading}>
-              {creditLoading ? 'Submitting…' : 'Submit'}
-            </Btn>
-          </div>
+          </Field>
+          <Field label="Amount (ETB)" hint="Positive = credit, negative = debit">
+            <input style={inputCss} type="number" step="any" placeholder="e.g. 50 or -25" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          </Field>
+          <Field label="Reason">
+            <input style={inputCss} type="text" placeholder="Reason for adjustment" value={note} onChange={(e) => setNote(e.target.value)} required />
+          </Field>
+          <Btn type="submit" disabled={creditLoading}>{creditLoading ? 'Submitting…' : 'Apply Adjustment'}</Btn>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Player list
-// ---------------------------------------------------------------------------
 
 function PlayerList({ onView }: { onView: (id: string) => void }) {
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
@@ -447,221 +156,89 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPlayers = useCallback((p: number, q: string) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     getPlayers(p, q || undefined)
       .then((res: any) => {
         setPlayers(res.items ?? res.players ?? []);
         setTotal(res.total ?? 0);
-        setPageSize(res.pageSize ?? res.limit ?? 20);
+        setPageSize(res.pageSize ?? 20);
         setLoading(false);
       })
-      .catch((e: Error) => {
-        setError(e.message ?? 'Failed to load players');
-        setLoading(false);
-      });
+      .catch((e: Error) => { setError(e.message ?? 'Failed to load'); setLoading(false); });
   }, []);
 
-  // Initial load
-  useEffect(() => {
-    fetchPlayers(1, '');
-  }, [fetchPlayers]);
+  useEffect(() => { fetchPlayers(1, ''); }, [fetchPlayers]);
 
-  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
-    setSearch(val);
-    setPage(1);
+    setSearch(val); setPage(1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      fetchPlayers(1, val);
-    }, 400);
-  }
-
-  function handlePrev() {
-    const newPage = page - 1;
-    setPage(newPage);
-    fetchPlayers(newPage, search);
-  }
-
-  function handleNext() {
-    const newPage = page + 1;
-    setPage(newPage);
-    fetchPlayers(newPage, search);
+    debounceRef.current = setTimeout(() => fetchPlayers(1, val), 400);
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const containerStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-  };
-
-  const topBarStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    flexWrap: 'wrap',
-  };
-
-  const searchInputStyle: React.CSSProperties = {
-    padding: '8px 14px',
-    border: `1px solid ${C.border}`,
-    borderRadius: 6,
-    fontSize: 14,
-    width: '100%',
-    maxWidth: 280,
-    boxSizing: 'border-box',
-  };
-
-  const tableContainerStyle: React.CSSProperties = {
-    overflowX: 'auto',
-    border: `1px solid ${C.border}`,
-    borderRadius: 8,
-    background: '#fff',
-  };
-
-  const tableStyle: React.CSSProperties = {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: 13,
-    minWidth: 600,
-  };
-
-  const thStyle: React.CSSProperties = {
-    padding: '10px 14px',
-    background: C.bg,
-    color: C.muted,
-    fontWeight: 600,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    textAlign: 'left',
-    borderBottom: `1px solid ${C.border}`,
-    whiteSpace: 'nowrap',
-  };
-
-  const tdStyle: React.CSSProperties = {
-    padding: '10px 14px',
-    borderBottom: `1px solid ${C.border}`,
-    color: C.text,
-    verticalAlign: 'middle',
-  };
-
-  const paginationStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    justifyContent: 'flex-end',
-  };
-
   return (
-    <div style={containerStyle}>
-      <div style={topBarStyle}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text }}>Players</h1>
-        <input
-          type="search"
-          style={searchInputStyle}
-          placeholder="Search by username or Telegram ID…"
-          value={search}
-          onChange={handleSearchChange}
-        />
-      </div>
+    <div className="fade-in">
+      <PageHeader title="Players" />
+      {error && <Alert type="error">{error}</Alert>}
 
-      {error && (
-        <div style={{ color: C.danger, fontSize: 13, padding: '8px 14px', background: '#fee2e2', borderRadius: 6, border: `1px solid #fca5a5` }}>
-          {error}
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <span style={{ fontSize: 13, color: C.muted }}>{total} total players</span>
+          <input
+            type="search"
+            placeholder="Search username or Telegram ID…"
+            value={search}
+            onChange={handleSearch}
+            style={{ ...inputCss, width: 260 }}
+          />
         </div>
-      )}
-
-      <div style={tableContainerStyle}>
-        <table style={tableStyle}>
+        <Table>
           <thead>
             <tr>
-              <th style={thStyle}>Username</th>
-              <th style={thStyle}>Telegram ID</th>
-              <th style={thStyle}>Phone</th>
-              <th style={thStyle}>Main Wallet (ETB)</th>
-              <th style={thStyle}>Play Wallet (ETB)</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Registered</th>
-              <th style={thStyle}>Actions</th>
+              <Th>Player</Th>
+              <Th>Telegram ID</Th>
+              <Th>Phone</Th>
+              <Th>Main Wallet</Th>
+              <Th>Play Wallet</Th>
+              <Th>Status</Th>
+              <Th>Joined</Th>
+              <Th>Actions</Th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>
-                  Loading...
-                </td>
+            {loading ? <TrLoading cols={8} /> :
+             !players.length ? <TrEmpty cols={8} message="No players found." /> :
+             players.map((p) => (
+              <tr key={p.id}>
+                <Td><span style={{ fontWeight: 600 }}>@{p.username}</span></Td>
+                <Td mono>{p.telegram_id}</Td>
+                <Td muted={!p.phone}>{p.phone ?? '—'}</Td>
+                <Td><span style={{ fontWeight: 600, color: C.success }}>{p.main_wallet_balance.toFixed(2)}</span></Td>
+                <Td><span style={{ fontWeight: 600, color: C.primary }}>{p.play_wallet_balance.toFixed(2)}</span></Td>
+                <Td><Badge variant={p.is_suspended ? 'danger' : 'success'}>{p.is_suspended ? 'Suspended' : 'Active'}</Badge></Td>
+                <Td muted>{new Date(p.created_at).toLocaleDateString()}</Td>
+                <Td>
+                  <Btn size="sm" variant="outline" onClick={() => onView(p.id)}>View →</Btn>
+                </Td>
               </tr>
-            ) : players.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>
-                  No players found.
-                </td>
-              </tr>
-            ) : (
-              players.map((p) => (
-                <tr key={p.id} style={{ transition: 'background 0.1s' }}>
-                  <td style={tdStyle}>
-                    <span style={{ fontWeight: 600 }}>{p.username}</span>
-                  </td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12 }}>{p.telegram_id}</td>
-                  <td style={tdStyle}>{p.phone ?? '—'}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: C.success }}>{p.main_wallet_balance.toFixed(2)}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: C.primary }}>{p.play_wallet_balance.toFixed(2)}</td>
-                  <td style={tdStyle}><Badge active={!p.is_suspended} /></td>
-                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: C.muted, fontSize: 12 }}>
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </td>
-                  <td style={tdStyle}>
-                    <Btn small variant="ghost" onClick={() => onView(p.id)}>
-                      View
-                    </Btn>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
-        </table>
-      </div>
-
-      <div style={paginationStyle}>
-        <span style={{ fontSize: 13, color: C.muted }}>
-          Page {page} of {totalPages} &nbsp;({total} total)
-        </span>
-        <Btn small variant="ghost" onClick={handlePrev} disabled={page <= 1 || loading}>
-          ← Prev
-        </Btn>
-        <Btn small variant="ghost" onClick={handleNext} disabled={page >= totalPages || loading}>
-          Next →
-        </Btn>
-      </div>
+        </Table>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+          <span style={{ fontSize: 13, color: C.muted }}>Page {page} of {totalPages}</span>
+          <Btn size="sm" variant="ghost" onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search); }} disabled={page <= 1 || loading}>← Prev</Btn>
+          <Btn size="sm" variant="ghost" onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search); }} disabled={page >= totalPages || loading}>Next →</Btn>
+        </div>
+      </Card>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main page component
-// ---------------------------------------------------------------------------
-
 export function PlayersPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  function handleView(playerId: string) {
-    navigate(`/players/${playerId}`);
-  }
-
-  function handleBack() {
-    navigate('/players');
-  }
-
-  if (id) {
-    return <PlayerDetail playerId={id} onBack={handleBack} />;
-  }
-
-  return <PlayerList onView={handleView} />;
+  if (id) return <PlayerDetail playerId={id} onBack={() => navigate('/players')} />;
+  return <PlayerList onView={(pid) => navigate(`/players/${pid}`)} />;
 }

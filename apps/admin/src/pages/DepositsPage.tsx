@@ -1,161 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminDeposit, DepositsResponse } from '../lib/api';
 import { getDeposits, createDeposit, cancelDeposit } from '../lib/api';
+import {
+  C, Btn, Badge, Card, CardHeader, StatCard, Table, Th, Td,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
+} from '../components/ui';
 
-const C = {
-  primary: '#4f46e5',
-  danger: '#dc2626',
-  success: '#16a34a',
-  warning: '#d97706',
-  bg: '#f9fafb',
-  border: '#e5e7eb',
-  text: '#111827',
-  muted: '#6b7280',
-};
-
-const responsiveStyles = `
-  .deposits-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-  .deposits-form-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
-  .deposits-form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-    min-width: 160px;
-  }
-  .deposits-page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  @media (max-width: 480px) {
-    .deposits-summary-grid {
-      grid-template-columns: 1fr;
-    }
-    .deposits-form-row {
-      flex-direction: column;
-    }
-    .deposits-form-field {
-      min-width: 0;
-    }
-  }
-`;
-
-function Btn({
-  children,
-  onClick,
-  variant = 'primary',
-  disabled = false,
-  small = false,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'danger' | 'success' | 'ghost';
-  disabled?: boolean;
-  small?: boolean;
-}) {
-  const bg: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: 'transparent' };
-  const color: Record<string, string> = { primary: '#fff', danger: '#fff', success: '#fff', ghost: C.primary };
-  const border: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: C.primary };
-  return (
-    <button
-      style={{
-        background: bg[variant],
-        color: color[variant],
-        border: `1px solid ${border[variant]}`,
-        borderRadius: 6,
-        padding: small ? '4px 12px' : '8px 18px',
-        fontSize: small ? 12 : 14,
-        fontWeight: 500,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        whiteSpace: 'nowrap',
-      }}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-}
-
-function msgStyle(type: 'error' | 'success'): React.CSSProperties {
-  return {
-    padding: '8px 14px',
-    borderRadius: 6,
-    fontSize: 13,
-    marginBottom: 16,
-    background: type === 'error' ? '#fee2e2' : '#dcfce7',
-    color: type === 'error' ? C.danger : C.success,
-    border: `1px solid ${type === 'error' ? '#fca5a5' : '#86efac'}`,
-  };
-}
-
-function StatusBadge({ status }: { status: AdminDeposit['status'] }) {
-  const cfg: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: '#fef3c7', color: C.warning, label: 'Pending' },
-    claimed: { bg: '#dcfce7', color: C.success, label: 'Claimed' },
-    cancelled: { bg: '#f3f4f6', color: C.muted, label: 'Cancelled' },
-  };
-  const s = cfg[status] ?? cfg['pending']!;
-  return (
-    <span
-      style={{
-        background: s.bg,
-        color: s.color,
-        border: `1px solid ${s.color}33`,
-        borderRadius: 12,
-        padding: '2px 10px',
-        fontSize: 11,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-      }}
-    >
-      {s.label}
-    </span>
-  );
-}
-
-function SummaryRow({ summary }: { summary: DepositsResponse['summary'] }) {
-  const cards = [
-    { label: 'Pending', value: summary.pending, color: C.warning },
-    { label: 'Claimed', value: summary.claimed, color: C.success },
-    { label: 'Cancelled', value: summary.cancelled, color: C.muted },
-  ];
-  return (
-    <div className="deposits-summary-grid">
-      {cards.map(({ label, value, color }) => (
-        <div
-          key={label}
-          style={{
-            background: '#fff',
-            border: `1px solid ${C.border}`,
-            borderRadius: 10,
-            padding: '16px 20px',
-          }}
-        >
-          <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-            {label}
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color }}>{value}</div>
-        </div>
-      ))}
-    </div>
-  );
+function statusVariant(s: AdminDeposit['status']): 'warning' | 'success' | 'neutral' {
+  if (s === 'pending') return 'warning';
+  if (s === 'claimed') return 'success';
+  return 'neutral';
 }
 
 function AddDepositForm({ onCreated }: { onCreated: () => void }) {
@@ -167,133 +21,43 @@ function AddDepositForm({ onCreated }: { onCreated: () => void }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    const parsedAmount = parseFloat(amount);
+    setError(null); setSuccess(null);
+    const parsed = parseFloat(amount);
     if (!txNumber.trim()) { setError('Transaction number is required.'); return; }
-    if (isNaN(parsedAmount) || parsedAmount <= 0) { setError('Amount must be a positive number.'); return; }
+    if (isNaN(parsed) || parsed <= 0) { setError('Amount must be a positive number.'); return; }
     setSubmitting(true);
     try {
-      const deposit = await createDeposit(txNumber.trim(), parsedAmount);
-      setSuccess(`Deposit created: ${deposit.tx_number} — ${deposit.amount.toFixed(2)} ETB`);
-      setTxNumber('');
-      setAmount('');
+      const d = await createDeposit(txNumber.trim(), parsed);
+      setSuccess(`Created: ${d.tx_number} — ${d.amount.toFixed(2)} ETB`);
+      setTxNumber(''); setAmount('');
       onCreated();
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
-      if (e.code === 'DUPLICATE_TX_NUMBER') {
-        setError('That transaction number already exists. Please use a different one.');
-      } else {
-        setError(e.message ?? 'Failed to create deposit.');
-      }
+      setError(e.code === 'DUPLICATE_TX_NUMBER' ? 'That transaction number already exists.' : (e.message ?? 'Failed to create deposit.'));
     } finally {
       setSubmitting(false);
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: '8px 12px',
-    border: `1px solid ${C.border}`,
-    borderRadius: 6,
-    fontSize: 14,
-    color: C.text,
-    width: '100%',
-    boxSizing: 'border-box',
-  };
-
   return (
-    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24, marginBottom: 28 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, marginBottom: 16 }}>Add Deposit</h2>
-      {error && <div style={msgStyle('error')}>{error}</div>}
-      {success && <div style={msgStyle('success')}>{success}</div>}
-      <form onSubmit={handleSubmit} className="deposits-form-row">
-        <div className="deposits-form-field">
-          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Transaction Number</label>
-          <input style={inputStyle} type="text" placeholder="e.g. TXN123456" value={txNumber} onChange={(e) => setTxNumber(e.target.value)} disabled={submitting} />
+    <Card style={{ marginBottom: 24 }}>
+      <CardHeader title="Add Deposit" subtitle="Manually register a Telebirr transaction for player claim" />
+      {error && <Alert type="error">{error}</Alert>}
+      {success && <Alert type="success">{success}</Alert>}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr)) auto', gap: 12, alignItems: 'flex-end' }}>
+          <Field label="Transaction Number">
+            <input style={inputCss} type="text" placeholder="e.g. DH87MNVFCT" value={txNumber} onChange={(e) => setTxNumber(e.target.value)} disabled={submitting} />
+          </Field>
+          <Field label="Amount (ETB)">
+            <input style={inputCss} type="number" min="1" step="0.01" placeholder="e.g. 150" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={submitting} />
+          </Field>
+          <div style={{ paddingBottom: 0 }}>
+            <Btn type="submit" disabled={submitting}>{submitting ? 'Adding…' : 'Add Deposit'}</Btn>
+          </div>
         </div>
-        <div className="deposits-form-field">
-          <label style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Amount (ETB)</label>
-          <input style={inputStyle} type="number" min="0.01" step="0.01" placeholder="e.g. 100" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={submitting} />
-        </div>
-        <Btn disabled={submitting}>{submitting ? 'Creating…' : 'Add Deposit'}</Btn>
       </form>
-    </div>
-  );
-}
-
-function DepositsTable({
-  items,
-  loading,
-  onCancel,
-  cancellingId,
-}: {
-  items: AdminDeposit[];
-  loading: boolean;
-  onCancel: (id: string) => void;
-  cancellingId: string | null;
-}) {
-  const thStyle: React.CSSProperties = {
-    padding: '10px 14px',
-    background: C.bg,
-    color: C.muted,
-    fontWeight: 600,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    textAlign: 'left',
-    borderBottom: `1px solid ${C.border}`,
-    whiteSpace: 'nowrap',
-  };
-  const tdStyle: React.CSSProperties = {
-    padding: '10px 14px',
-    borderBottom: `1px solid ${C.border}`,
-    color: C.text,
-    verticalAlign: 'middle',
-    fontSize: 13,
-  };
-  return (
-    <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
-        <thead>
-          <tr>
-            <th style={thStyle}>Tx Number</th>
-            <th style={thStyle}>Amount (ETB)</th>
-            <th style={thStyle}>Status</th>
-            <th style={thStyle}>Player</th>
-            <th style={thStyle}>Created At</th>
-            <th style={thStyle}>Claimed At</th>
-            <th style={thStyle}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>Loading…</td></tr>
-          ) : items.length === 0 ? (
-            <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>No deposits found.</td></tr>
-          ) : (
-            items.map((d) => (
-              <tr key={d.id}>
-                <td style={{ ...tdStyle, fontFamily: 'monospace', fontWeight: 600 }}>{d.tx_number}</td>
-                <td style={{ ...tdStyle, fontWeight: 700 }}>{d.amount.toFixed(2)}</td>
-                <td style={tdStyle}><StatusBadge status={d.status} /></td>
-                <td style={{ ...tdStyle, color: d.player_username ? C.text : C.muted }}>
-                  {d.player_username ? `@${d.player_username}` : '—'}
-                </td>
-                <td style={{ ...tdStyle, color: C.muted, whiteSpace: 'nowrap' }}>{new Date(d.created_at).toLocaleString()}</td>
-                <td style={{ ...tdStyle, color: C.muted, whiteSpace: 'nowrap' }}>{d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}</td>
-                <td style={tdStyle}>
-                  {d.status === 'pending' && (
-                    <Btn small variant="danger" onClick={() => onCancel(d.id)} disabled={cancellingId === d.id}>
-                      {cancellingId === d.id ? '…' : 'Cancel'}
-                    </Btn>
-                  )}
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+    </Card>
   );
 }
 
@@ -302,71 +66,88 @@ export function DepositsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const fetchDeposits = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getDeposits();
-      setData(result);
-    } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message ?? 'Failed to load deposits');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { setData(await getDeposits()); }
+    catch (err: unknown) { setError((err as Error).message ?? 'Failed to load deposits'); }
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchDeposits(); }, [fetchDeposits]);
+  useEffect(() => { void fetchDeposits(); }, [fetchDeposits]);
 
   async function handleCancel(id: string) {
-    const deposit = data?.items.find((d) => d.id === id);
-    const confirmed = window.confirm(`Cancel deposit ${deposit?.tx_number ?? id}? This cannot be undone.`);
-    if (!confirmed) return;
-    setCancellingId(id);
-    setActionError(null);
-    setActionSuccess(null);
+    const d = data?.items.find((x) => x.id === id);
+    if (!window.confirm(`Cancel deposit ${d?.tx_number ?? id}? This cannot be undone.`)) return;
+    setCancellingId(id); setActionMsg(null);
     try {
       await cancelDeposit(id);
-      setActionSuccess('Deposit cancelled successfully.');
+      setActionMsg({ type: 'success', text: 'Deposit cancelled.' });
       await fetchDeposits();
     } catch (err: unknown) {
-      const e = err as Error;
-      setActionError(e.message ?? 'Failed to cancel deposit');
-    } finally {
-      setCancellingId(null);
-    }
+      setActionMsg({ type: 'error', text: (err as Error).message ?? 'Failed to cancel deposit' });
+    } finally { setCancellingId(null); }
   }
 
+  const summary = data?.summary;
+
   return (
-    <div>
-      <style>{responsiveStyles}</style>
-      <div className="deposits-page-header">
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>Deposits</h1>
-        <Btn small variant="ghost" onClick={fetchDeposits} disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </Btn>
+    <div className="fade-in">
+      <PageHeader
+        title="Deposits"
+        action={<Btn variant="ghost" size="sm" onClick={fetchDeposits} disabled={loading}>{loading ? 'Refreshing…' : '↻ Refresh'}</Btn>}
+      />
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <StatCard icon="⏳" label="Pending" value={summary?.pending ?? '—'} color={C.warning} />
+        <StatCard icon="✅" label="Claimed" value={summary?.claimed ?? '—'} color={C.success} />
+        <StatCard icon="✕" label="Cancelled" value={summary?.cancelled ?? '—'} color={C.muted} />
       </div>
 
-      {actionError && <div style={msgStyle('error')}>{actionError}</div>}
-      {actionSuccess && <div style={msgStyle('success')}>{actionSuccess}</div>}
-      {error && <div style={msgStyle('error')}>{error}</div>}
-
-      {data && <SummaryRow summary={data.summary} />}
+      {actionMsg && <Alert type={actionMsg.type}>{actionMsg.text}</Alert>}
+      {error && <Alert type="error">{error}</Alert>}
 
       <AddDepositForm onCreated={fetchDeposits} />
 
-      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: 0, marginBottom: 16 }}>All Deposits</h2>
-        <DepositsTable
-          items={data?.items ?? []}
-          loading={loading && !data}
-          onCancel={handleCancel}
-          cancellingId={cancellingId}
-        />
-      </div>
+      <Card>
+        <CardHeader title="All Deposits" />
+        <Table>
+          <thead>
+            <tr>
+              <Th>Tx Number</Th>
+              <Th>Amount (ETB)</Th>
+              <Th>Status</Th>
+              <Th>Player</Th>
+              <Th>Created</Th>
+              <Th>Claimed At</Th>
+              <Th>Actions</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && !data ? <TrLoading cols={7} /> :
+             !data?.items.length ? <TrEmpty cols={7} message="No deposits found." /> :
+             data.items.map((d) => (
+              <tr key={d.id}>
+                <Td mono>{d.tx_number}</Td>
+                <Td><span style={{ fontWeight: 700, color: C.text }}>{d.amount.toFixed(2)}</span></Td>
+                <Td><Badge variant={statusVariant(d.status)}>{d.status}</Badge></Td>
+                <Td muted={!d.player_username}>{d.player_username ? `@${d.player_username}` : '—'}</Td>
+                <Td muted>{new Date(d.created_at).toLocaleString()}</Td>
+                <Td muted>{d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}</Td>
+                <Td>
+                  {d.status === 'pending' && (
+                    <Btn size="sm" variant="danger" onClick={() => handleCancel(d.id)} disabled={cancellingId === d.id}>
+                      {cancellingId === d.id ? '…' : 'Cancel'}
+                    </Btn>
+                  )}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
     </div>
   );
 }

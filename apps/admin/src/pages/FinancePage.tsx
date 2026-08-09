@@ -1,96 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
 import { getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue } from '../lib/api';
-
-const C = {
-  primary: '#4f46e5',
-  danger: '#dc2626',
-  success: '#16a34a',
-  bg: '#f9fafb',
-  border: '#e5e7eb',
-  text: '#111827',
-  muted: '#6b7280',
-};
-
-const responsiveStyles = `
-  .finance-filter-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-  }
-  .finance-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
-  }
-  .finance-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  @media (max-width: 480px) {
-    .finance-filter-row {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .finance-stats-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-`;
-
-function Btn({
-  children,
-  onClick,
-  variant = 'primary',
-  disabled = false,
-  small = false,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'danger' | 'success' | 'ghost';
-  disabled?: boolean;
-  small?: boolean;
-}) {
-  const bg: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: 'transparent' };
-  const color: Record<string, string> = { primary: '#fff', danger: '#fff', success: '#fff', ghost: C.primary };
-  const border: Record<string, string> = { primary: C.primary, danger: C.danger, success: C.success, ghost: C.primary };
-  return (
-    <button
-      style={{
-        background: bg[variant],
-        color: color[variant],
-        border: `1px solid ${border[variant]}`,
-        borderRadius: 6,
-        padding: small ? '4px 12px' : '8px 18px',
-        fontSize: small ? 12 : 14,
-        fontWeight: 500,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        whiteSpace: 'nowrap',
-      }}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-}
-
-const msgStyle = (type: 'error' | 'success'): React.CSSProperties => ({
-  padding: '8px 14px',
-  borderRadius: 6,
-  fontSize: 13,
-  marginBottom: 16,
-  background: type === 'error' ? '#fee2e2' : '#dcfce7',
-  color: type === 'error' ? C.danger : C.success,
-  border: `1px solid ${type === 'error' ? '#fca5a5' : '#86efac'}`,
-});
+import {
+  C, Btn, Card, CardHeader, StatCard, Table, Th, Td,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
+} from '../components/ui';
 
 function RevenueSummary() {
   const [startDate, setStartDate] = useState('');
@@ -100,65 +14,36 @@ function RevenueSummary() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async (start?: string, end?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getRevenue(start || undefined, end || undefined);
-      setStats(data);
-    } catch (e: unknown) {
-      const err = e as Error;
-      setError(err.message ?? 'Failed to load revenue stats');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { setStats(await getRevenue(start, end)); }
+    catch (e: unknown) { setError((e as Error).message ?? 'Failed to load revenue'); }
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
-
-  const inputStyle: React.CSSProperties = {
-    padding: '7px 12px',
-    border: `1px solid ${C.border}`,
-    borderRadius: 6,
-    fontSize: 14,
-    color: C.text,
-    width: '100%',
-    boxSizing: 'border-box',
-  };
+  useEffect(() => { void fetchStats(); }, [fetchStats]);
 
   return (
-    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24, marginBottom: 28 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: 0, marginBottom: 20 }}>Revenue Summary</h2>
-
-      <div className="finance-filter-row">
-        <label style={{ fontSize: 13, color: C.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>From:</label>
-        <input type="date" style={inputStyle} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <label style={{ fontSize: 13, color: C.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>To:</label>
-        <input type="date" style={inputStyle} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+    <Card style={{ marginBottom: 24 }}>
+      <CardHeader title="Revenue Summary" subtitle="Platform earnings overview" />
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20 }}>
+        <Field label="From"><input style={{ ...inputCss, width: 160 }} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></Field>
+        <Field label="To"><input style={{ ...inputCss, width: 160 }} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></Field>
         <Btn onClick={() => fetchStats(startDate || undefined, endDate || undefined)} disabled={loading}>
-          {loading ? 'Loading…' : 'Fetch'}
+          {loading ? 'Loading…' : 'Apply Filter'}
         </Btn>
+        {(startDate || endDate) && (
+          <Btn variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); fetchStats(); }}>Clear</Btn>
+        )}
       </div>
-
-      {error && <div style={msgStyle('error')}>{error}</div>}
-
-      {stats && !loading && (
-        <div className="finance-stats-grid">
-          {[
-            { label: 'Total Stakes', value: stats.totalStakesCollected, color: C.primary, unit: 'ETB' },
-            { label: 'Prizes Paid', value: stats.totalPrizesPaid, color: C.danger, unit: 'ETB' },
-            { label: 'Commission Earned', value: stats.platformCommissionEarned, color: C.success, unit: 'ETB' },
-          ].map(({ label, value, color, unit }) => (
-            <div key={label} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{label}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color }}>{value.toFixed(2)}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{unit}</div>
-            </div>
-          ))}
+      {error && <Alert type="error">{error}</Alert>}
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
+          <StatCard icon="💵" label="Total Stakes" value={`${stats.totalStakesCollected.toFixed(2)} ETB`} color={C.primary} />
+          <StatCard icon="🏆" label="Prizes Paid" value={`${stats.totalPrizesPaid.toFixed(2)} ETB`} color={C.danger} />
+          <StatCard icon="📈" label="Commission" value={`${stats.platformCommissionEarned.toFixed(2)} ETB`} color={C.success} />
         </div>
       )}
-
-      {loading && <p style={{ color: C.muted, fontSize: 14 }}>Loading stats…</p>}
-    </div>
+    </Card>
   );
 }
 
@@ -166,125 +51,92 @@ function PendingWithdrawals() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   const fetchWithdrawals = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getWithdrawals();
-      setWithdrawals(data);
-    } catch (e: unknown) {
-      const err = e as Error;
-      setError(err.message ?? 'Failed to load withdrawals');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { setWithdrawals(await getWithdrawals()); }
+    catch (e: unknown) { setError((e as Error).message ?? 'Failed to load withdrawals'); }
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchWithdrawals(); }, [fetchWithdrawals]);
+  useEffect(() => { void fetchWithdrawals(); }, [fetchWithdrawals]);
 
   async function handleApprove(w: WithdrawalRequest) {
-    if (!window.confirm(`Approve withdrawal of ${w.amount.toFixed(2)} ETB for @${w.username}?`)) return;
-    setActioningId(w.id); setActionError(null); setActionSuccess(null);
+    if (!window.confirm(`Approve ${w.amount.toFixed(2)} ETB withdrawal for @${w.username}?`)) return;
+    setActioningId(w.id); setActionMsg(null);
     try {
       await approveWithdrawal(w.id);
-      setActionSuccess(`Withdrawal for @${w.username} approved.`);
+      setActionMsg({ type: 'success', text: `Withdrawal for @${w.username} approved.` });
       await fetchWithdrawals();
-    } catch (e: unknown) {
-      setActionError((e as Error).message ?? 'Failed to approve withdrawal');
-    } finally {
-      setActioningId(null);
-    }
+    } catch (e: unknown) { setActionMsg({ type: 'error', text: (e as Error).message ?? 'Failed' }); }
+    finally { setActioningId(null); }
   }
 
   async function handleReject(w: WithdrawalRequest) {
-    if (!window.confirm(`Reject withdrawal of ${w.amount.toFixed(2)} ETB for @${w.username}?`)) return;
-    setActioningId(w.id); setActionError(null); setActionSuccess(null);
+    if (!window.confirm(`Reject ${w.amount.toFixed(2)} ETB withdrawal for @${w.username}?`)) return;
+    setActioningId(w.id); setActionMsg(null);
     try {
       await rejectWithdrawal(w.id);
-      setActionSuccess(`Withdrawal for @${w.username} rejected.`);
+      setActionMsg({ type: 'success', text: `Withdrawal for @${w.username} rejected. Funds returned.` });
       await fetchWithdrawals();
-    } catch (e: unknown) {
-      setActionError((e as Error).message ?? 'Failed to reject withdrawal');
-    } finally {
-      setActioningId(null);
-    }
+    } catch (e: unknown) { setActionMsg({ type: 'error', text: (e as Error).message ?? 'Failed' }); }
+    finally { setActioningId(null); }
   }
 
-  const thStyle: React.CSSProperties = {
-    padding: '10px 14px', background: C.bg, color: C.muted, fontWeight: 600,
-    fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em',
-    textAlign: 'left', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
-  };
-  const tdStyle: React.CSSProperties = {
-    padding: '10px 14px', borderBottom: `1px solid ${C.border}`, color: C.text, verticalAlign: 'middle',
-  };
   const pending = withdrawals.filter((w) => w.status === 'pending');
 
   return (
-    <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, padding: 24 }}>
-      <div className="finance-section-header">
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>Pending Withdrawals</h2>
-        <Btn small variant="ghost" onClick={fetchWithdrawals} disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </Btn>
-      </div>
-
-      {actionError && <div style={msgStyle('error')}>{actionError}</div>}
-      {actionSuccess && <div style={msgStyle('success')}>{actionSuccess}</div>}
-      {error && <div style={msgStyle('error')}>{error}</div>}
-
-      <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 500 }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Username</th>
-              <th style={thStyle}>Phone</th>
-              <th style={thStyle}>Amount (ETB)</th>
-              <th style={thStyle}>Requested At</th>
-              <th style={thStyle}>Actions</th>
+    <Card>
+      <CardHeader
+        title="Pending Withdrawals"
+        subtitle={`${pending.length} awaiting review`}
+        action={<Btn variant="ghost" size="sm" onClick={fetchWithdrawals} disabled={loading}>{loading ? '…' : '↻ Refresh'}</Btn>}
+      />
+      {actionMsg && <Alert type={actionMsg.type}>{actionMsg.text}</Alert>}
+      {error && <Alert type="error">{error}</Alert>}
+      <Table>
+        <thead>
+          <tr>
+            <Th>Player</Th>
+            <Th>Phone</Th>
+            <Th>Amount (ETB)</Th>
+            <Th>Requested</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? <TrLoading cols={5} /> :
+           !pending.length ? <TrEmpty cols={5} message="No pending withdrawals." /> :
+           pending.map((w) => (
+            <tr key={w.id}>
+              <Td><span style={{ fontWeight: 600 }}>@{w.username}</span></Td>
+              <Td muted>{w.phone || '—'}</Td>
+              <Td><span style={{ fontWeight: 700, color: C.danger }}>{w.amount.toFixed(2)}</span></Td>
+              <Td muted>{new Date(w.created_at).toLocaleString()}</Td>
+              <Td>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn size="sm" variant="success" onClick={() => handleApprove(w)} disabled={actioningId === w.id}>
+                    {actioningId === w.id ? '…' : '✓ Approve'}
+                  </Btn>
+                  <Btn size="sm" variant="danger" onClick={() => handleReject(w)} disabled={actioningId === w.id}>
+                    {actioningId === w.id ? '…' : '✕ Reject'}
+                  </Btn>
+                </div>
+              </Td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>Loading…</td></tr>
-            ) : pending.length === 0 ? (
-              <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: C.muted, padding: 32 }}>No pending withdrawals.</td></tr>
-            ) : (
-              pending.map((w) => (
-                <tr key={w.id}>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>@{w.username}</td>
-                  <td style={tdStyle}>{w.phone}</td>
-                  <td style={{ ...tdStyle, fontWeight: 700, color: C.danger }}>{w.amount.toFixed(2)}</td>
-                  <td style={{ ...tdStyle, color: C.muted, fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(w.created_at).toLocaleString()}</td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Btn small variant="success" onClick={() => handleApprove(w)} disabled={actioningId === w.id}>
-                        {actioningId === w.id ? '…' : 'Approve'}
-                      </Btn>
-                      <Btn small variant="danger" onClick={() => handleReject(w)} disabled={actioningId === w.id}>
-                        {actioningId === w.id ? '…' : 'Reject'}
-                      </Btn>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          ))}
+        </tbody>
+      </Table>
+    </Card>
   );
 }
 
 export function FinancePage() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <style>{responsiveStyles}</style>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0, marginBottom: 24 }}>Finance</h1>
+    <div className="fade-in">
+      <PageHeader title="Finance" />
       <RevenueSummary />
       <PendingWithdrawals />
     </div>
