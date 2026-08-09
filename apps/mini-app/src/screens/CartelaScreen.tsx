@@ -392,29 +392,29 @@ export default function CartelaScreen() {
     <div style={{ height: '100dvh', background: '#0a0e1a', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: '#0d1b2e', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '10px 14px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+      <div style={{ background: '#0d1b2e', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '6px 10px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
           {[
-            { label: 'Main Wallet', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
-            { label: 'Play Wallet', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
+            { label: 'Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
+            { label: 'Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
             { label: 'Stake', value: round ? Number(round.stake) : 0 },
           ].map(({ label, value }) => (
-            <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', marginTop: 1 }}>{value}</div>
+            <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '4px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#f1f5f9', marginTop: 1 }}>{value}</div>
             </div>
           ))}
-          <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 48 }}>
-            <span style={{ fontSize: 18, fontWeight: 900, color: '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 6, padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 42 }}>
+            <span style={{ fontSize: 15, fontWeight: 900, color: '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
               {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '▶' : '⏳'}
             </span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 20, color: '#64748b' }}>← Back</span>
+          <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 16, color: '#64748b' }}>← Back</span>
           <button
             onClick={() => window.location.reload()}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px', color: '#e2e8f0', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '4px 10px', color: '#e2e8f0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
           >
             ↺ Refresh
           </button>
