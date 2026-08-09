@@ -407,38 +407,7 @@ export default function CartelaScreen() {
         </div>
       </div>
 
-      {/* ── Game countdown ── */}
-      <div style={{
-        background: urgent ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.08)',
-        borderBottom: `2px solid ${urgent ? '#ef4444' : '#f59e0b'}`,
-        padding: '10px 20px', textAlign: 'center', flexShrink: 0,
-      }}>
-        <div style={{ fontSize: 10, color: '#475569', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>Game starts in</div>
-        <div style={{ fontSize: 38, fontWeight: 900, color: urgent ? '#ef4444' : '#f59e0b', fontVariantNumeric: 'tabular-nums', letterSpacing: 2 }}>
-          {countdownLabel}
-        </div>
-        <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${pct * 100}%`, background: urgent ? '#ef4444' : '#f59e0b', transition: 'width 0.25s linear' }} />
-        </div>
 
-        {/* Selection status */}
-        {committing ? (
-          <div style={{ marginTop: 6, fontSize: 12, color: '#f59e0b' }}>Joining game…</div>
-        ) : picks.size > 0 ? (
-          <div style={{ marginTop: 6, fontSize: 12, color: '#34d399' }}>
-            ✅ Cartela {picksArr.join(' & ')} selected — will join when game starts
-          </div>
-        ) : (
-          <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>Select up to {MAX_SELECT} cartelas to join</div>
-        )}
-
-        {!countdownStartedRef.current && msLeft === 0 && !committing && (
-          <button onClick={() => { joinedRef.current = false; setManualTrigger(true); }}
-            style={{ marginTop: 8, padding: '8px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-            Go to Game
-          </button>
-        )}
-      </div>
 
       {/* ── Error ── */}
       {error && (
