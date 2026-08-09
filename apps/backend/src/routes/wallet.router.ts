@@ -7,7 +7,7 @@ import { TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { getPaymentGateway } from '../services/payment.service.js';
-import { WalletService } from '../services/wallet.service.js';
+import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import type { TransactionListItem, PaginatedResponse } from '@fidel/shared';
 
 const router: RouterType = Router();
@@ -164,50 +164,45 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Fetch the player's main wallet
-  const wallet = await prisma.wallet.findUnique({
-    where: { player_id_type: { player_id: playerId, type: WalletType.main } },
-  });
-
-  if (!wallet) {
-    res.status(404).json({ error: 'WALLET_NOT_FOUND', message: 'Main wallet not found' });
-    return;
-  }
-
-  // Block play wallet withdrawals (guard at request level — main wallet is always fetched above,
-  // but enforce WalletType invariant if somehow a play wallet is targeted)
-  if (wallet.type === WalletType.play) {
+  if (amount < 100) {
     res.status(422).json({
-      error: 'PLAY_WALLET_NOT_WITHDRAWABLE',
-      message: 'Play wallet credits cannot be withdrawn as real money',
+      error: 'BELOW_MINIMUM',
+      message: 'Minimum withdrawal amount is ETB 100',
     });
     return;
   }
 
-  const balance = Number(wallet.balance);
-
-  if (amount > balance) {
-    res.status(422).json({
-      error: 'INSUFFICIENT_BALANCE',
-      message: `Requested amount ${amount} exceeds available balance ${balance}`,
+  if (!phone || typeof phone !== 'string' || phone.trim() === '') {
+    res.status(400).json({
+      error: 'PHONE_REQUIRED',
+      message: 'Phone number is required for withdrawal',
     });
     return;
   }
 
-  // Create a pending withdrawal transaction (do NOT debit yet — debit on admin approval)
-  await prisma.transaction.create({
-    data: {
-      wallet_id: wallet.id,
-      type: TxType.withdrawal,
+  try {
+    // Debit atomically at request time — prevents double-spend across concurrent requests
+    await WalletService.debit(
+      playerId,
+      WalletType.main,
       amount,
-      note: `PENDING: Awaiting admin approval${phone ? ` — phone: ${phone}` : ''}`,
-    },
-  });
+      TxType.withdrawal,
+      undefined,
+      `PENDING: Awaiting admin approval — phone: ${phone.trim()}`,
+    );
 
-  res.status(200).json({
-    success: true,
-    message: 'Withdrawal request submitted for approval',
-  });
+    res.status(200).json({
+      success: true,
+      message: 'Withdrawal request submitted for approval',
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'InsufficientFundsError') {
+      res.status(422).json({ error: 'INSUFFICIENT_BALANCE', message: err.message });
+      return;
+    }
+    const message = err instanceof Error ? err.message : 'Withdrawal request failed';
+    res.status(500).json({ error: 'WITHDRAW_FAILED', message });
+  }
 });
 
 export default router;

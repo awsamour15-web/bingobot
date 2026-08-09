@@ -146,14 +146,15 @@ export const TRANSFER_TEXT =
 
 export const WITHDRAW_TEXT =
   `🤑 How to Withdraw\n\n` +
+  `⚠️ Only your winning balance can be withdrawn.\n` +
+  `Deposit and bonus balance are NOT withdrawable.\n\n` +
   `Minimum withdrawal amount: ETB 100\n\n` +
   `Steps to withdraw:\n` +
-  `1. Ensure your main wallet has the minimum withdrawal amount.\n` +
-  `2. Contact our support team with:\n` +
-  `   • Your preferred withdrawal method (CBE Birr / Telebirr / Bank Transfer)\n` +
-  `   • Your account number or phone number\n` +
-  `   • The amount you wish to withdraw\n` +
-  `3. Withdrawals are processed within 24 hours on business days.\n\n` +
+  `1. Ensure your winning balance has at least ETB 100.\n` +
+  `2. Go to Wallet in the Mini App.\n` +
+  `3. Enter the amount and your phone number.\n` +
+  `4. Tap "Request Withdrawal".\n` +
+  `5. Withdrawals are processed within 24 hours on business days.\n\n` +
   `⚠️ Your phone number must be verified before you can withdraw.`;
 
 export const CONVERT_BONUS_TEXT =

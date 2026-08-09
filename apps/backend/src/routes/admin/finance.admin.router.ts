@@ -47,6 +47,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
   }
 
   try {
+    // Funds are already debited at request time — just mark as approved
     await prisma.transaction.update({
       where: { id },
       data: { note: tx.note.replace('PENDING:', 'APPROVED:') },
@@ -71,12 +72,13 @@ router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Prom
     return;
   }
 
+  // Mark as rejected first
   await prisma.transaction.update({
     where: { id },
     data: { note: tx.note.replace('PENDING:', 'REJECTED:') },
   });
 
-  // Credit funds back — fetch wallet to get player_id
+  // Refund: credit funds back to main wallet — funds were debited at request time
   const wallet = await prisma.wallet.findUnique({ where: { id: tx.wallet_id } });
   if (wallet) {
     await WalletService.credit(

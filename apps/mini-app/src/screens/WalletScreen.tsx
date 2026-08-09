@@ -125,16 +125,18 @@ export default function WalletScreen() {
       <div style={{ background: `linear-gradient(135deg, ${C.surface2} 0%, ${C.surface} 100%)`, padding: '20px 20px 18px', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ fontSize: 11, color: C.dim, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>Your Balances</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {[
-            { label: 'Main Wallet', value: mainBal, color: C.green },
-            { label: 'Play Wallet', value: playBal, color: '#60a5fa' },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color }}>{value.toFixed(2)}</div>
-              <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
-            </div>
-          ))}
+          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Winning Balance</div>
+            <div style={{ fontSize: 9, color: C.dim, marginBottom: 6 }}>Withdrawable</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: C.green }}>{mainBal.toFixed(2)}</div>
+            <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Play Balance</div>
+            <div style={{ fontSize: 9, color: C.dim, marginBottom: 6 }}>Deposit & Bonus</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#60a5fa' }}>{playBal.toFixed(2)}</div>
+            <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
+          </div>
         </div>
       </div>
 
@@ -165,16 +167,24 @@ export default function WalletScreen() {
 
           {/* Withdraw */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 14 }}>⬆ Withdraw</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 4 }}>⬆ Withdraw</div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+              Only your winning balance can be withdrawn. Deposit & bonus balance is not withdrawable.
+            </div>
+            {mainBal <= 0 && (
+              <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: C.red }}>
+                You have no winning balance to withdraw. Play and win to earn withdrawable balance.
+              </div>
+            )}
             {withdrawSuccess && (
               <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: C.green }}>
                 ✅ Request submitted — pending admin approval.
               </div>
             )}
-            {input({ type: 'number', placeholder: `Max ${mainBal.toFixed(2)} Birr`, value: withdrawAmount, min: 1, max: mainBal, onChange: e => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }, style: { marginBottom: 10 } })}
-            {input({ type: 'tel', placeholder: 'Phone (e.g. 09XXXXXXXX)', value: withdrawPhone, onChange: e => { setWithdrawPhone(e.target.value); setWithdrawError(null); } })}
+            {input({ type: 'number', placeholder: `Max ${mainBal.toFixed(2)} Birr (winnings only)`, value: withdrawAmount, min: 100, max: mainBal, disabled: mainBal <= 0, onChange: e => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }, style: { marginBottom: 10 } })}
+            {input({ type: 'tel', placeholder: 'Phone (e.g. 09XXXXXXXX)', value: withdrawPhone, disabled: mainBal <= 0, onChange: e => { setWithdrawPhone(e.target.value); setWithdrawError(null); } })}
             {withdrawError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{withdrawError}</div>}
-            {btn('Request Withdrawal', handleWithdraw, withdrawLoading, '#0f9b8e')}
+            {btn('Request Withdrawal', handleWithdraw, withdrawLoading || mainBal <= 0, '#0f9b8e')}
           </div>
         </div>
       )}
