@@ -38,7 +38,7 @@ export class ChapaGateway implements IPaymentGateway {
     }
     this.apiKey = apiKey;
     this.returnUrl =
-      process.env['PAYMENT_RETURN_URL'] ?? 'https://t.me/beteseb_bingo_bot';
+      process.env['PAYMENT_RETURN_URL'] ?? 'https://t.me/fidelbingo_bot';
   }
 
   async initiateDeposit(
@@ -53,7 +53,7 @@ export class ChapaGateway implements IPaymentGateway {
       tx_ref: txRef,
       return_url: this.returnUrl,
       customization: {
-        title: 'Beteseb Bingo Deposit',
+        title: 'Fidel Bingo Deposit',
       },
     };
 
@@ -94,7 +94,7 @@ export class ChapaGateway implements IPaymentGateway {
     const reference = `pay_${playerId}_${Date.now()}`;
 
     const body = {
-      account_name: 'Beteseb Bingo Player',
+      account_name: 'Fidel Bingo Player',
       account_number: phone,
       amount: amount.toString(),
       currency: 'ETB',

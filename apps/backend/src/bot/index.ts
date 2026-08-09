@@ -88,7 +88,7 @@ async function getRegisteredPlayerWithWallets(telegramId: bigint) {
  * Builds an InlineKeyboard with a single web_app button for the Play handler.
  */
 export function buildPlayReplyMarkup(miniAppUrl: string): InlineKeyboard {
-  return new InlineKeyboard().webApp('Open Beteseb Bingo', miniAppUrl);
+  return new InlineKeyboard().webApp('Open Fidel Bingo', miniAppUrl);
 }
 
 // ─── Helper: Register button prompt text ─────────────────────────────────────
