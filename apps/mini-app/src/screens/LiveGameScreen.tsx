@@ -833,7 +833,25 @@ export default function LiveGameScreen() {
                 )}
               </div>
             );
-          })()}', alignItems: 'center', justifyContent: 'flex-start',
+          })()}
+
+          {game.phase === 'won' && game.winnerInfo && (() => {
+            const wi = game.winnerInfo;
+            const displayWinner = wi.winners[0];
+            const winCartelaNumber = displayWinner?.cartelaNumber ?? null;
+
+            const winGrid: number[] = winnerCartelaGrid.length > 0
+              ? winnerCartelaGrid
+              : (allCartelas.find(c => c.cartelaNumber === winCartelaNumber)?.cartelaGrid ?? []) as number[];
+            const winCells = winCellsForGrid(winGrid);
+
+            const MAX_VISIBLE_WINNERS = 3;
+            const visibleWinners = wi.winners.slice(0, MAX_VISIBLE_WINNERS);
+            const hiddenCount = wi.winners.length - visibleWinners.length;
+
+            return (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
                 padding: '28px 20px 20px',
                 overflowY: 'auto',
               }}>
