@@ -1003,18 +1003,20 @@ export default function LiveGameScreen() {
                   const cartelaWinCells = winCellsForGrid(cartelaGrid);
                   const cartelaHasWin = hasWinForGrid(cartelaGrid);
                   return (
-                    <div key={cartela.cartelaNumber} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div key={cartela.cartelaNumber} style={{ flex: 0.85, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                       {/* Cartela number label */}
-                      <div style={{ textAlign: 'center', fontSize: 7, fontWeight: 700, color: '#f5d06b', marginBottom: 1, flexShrink: 0 }}>
+                      <div style={{ textAlign: 'center', fontSize: 6, fontWeight: 700, color: '#f5d06b', marginBottom: 1, flexShrink: 0 }}>
                         #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#22c55e' }}>✓ BINGO</span>}
                       </div>
+                      {/* Gap between label section and bingo grid */}
+                      <div style={{ height: 4, flexShrink: 0 }} />
                       {/* Column headers */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, marginBottom: 1, flexShrink: 0 }}>
                         {COLS.map((c, i) => (
                           <div key={c} style={{
                             background: COL_COLORS[i], textAlign: 'center',
-                            borderRadius: 2, padding: '0',
-                            fontWeight: 900, fontSize: 7, color: '#fff',
+                            borderRadius: 2, padding: '1px 0',
+                            fontWeight: 900, fontSize: 6, color: '#fff',
                           }}>{c}</div>
                         ))}
                       </div>
@@ -1035,7 +1037,7 @@ export default function LiveGameScreen() {
                                 : 'rgba(255,255,255,0.07)',
                               color: wl ? '#1a1035' : m ? '#fff' : '#64748b',
                               borderRadius: 3,
-                              fontSize: 8,
+                              fontSize: 7,
                               fontWeight: m ? 900 : 500,
                               border: wl ? '1px solid #fff' : m ? 'none' : '1px solid rgba(255,255,255,0.06)',
                               boxShadow: wl ? '0 0 5px rgba(245,208,107,0.5)' : 'none',
