@@ -40,8 +40,8 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       disabled={disabled}
       onClick={() => onClick(num)}
       style={{
-        padding: '4px 0', borderRadius: 4, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 500, fontSize: 11,
+        padding: '6px 0', borderRadius: 6, border, background: bg, color,
+        fontWeight: isPicked || taken ? 1000 : 800, fontSize: 17,
         cursor: disabled && !taken ? 'default' : taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'background 0.1s',
@@ -489,6 +489,7 @@ export default function CartelaScreen() {
         <div style={{
           flexShrink: 0, background: '#0d1220',
           borderTop: '2px solid rgba(255,255,255,0.08)',
+          marginTop: 8,
           padding: '6px 6px 8px',
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
