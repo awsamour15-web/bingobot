@@ -4,6 +4,7 @@
 import { Bot, InlineKeyboard, Keyboard } from 'grammy';
 import type { PrismaClient } from '@prisma/client';
 import prisma from '../lib/prisma.js';
+import { AgentService } from '../services/agent.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -345,6 +346,21 @@ async function processDepositClaim(
     await tx.transaction.create({
       data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
     });
+
+    // Credit agent commission if player was referred by an active agent
+    const playerRecord = await tx.player.findUnique({
+      where: { id: playerId },
+      select: { agent_id: true },
+    });
+    if (playerRecord?.agent_id) {
+      const agentRecord = await tx.agent.findUnique({
+        where: { id: playerRecord.agent_id },
+        select: { is_active: true },
+      });
+      if (agentRecord?.is_active) {
+        await AgentService.creditCommission(tx, playerRecord.agent_id, playerId, deposit.id, deposit.amount);
+      }
+    }
   });
 
   return { success: true, amount };
@@ -360,14 +376,12 @@ if (BOT_TOKEN) {
   /**
    * /start command handler
    *
-   * Accepts an optional deep-link parameter in the format `ref_<telegramId>`,
-   * which is sent when a player clicks a referral link.
+   * Deep-link parameter routing:
+   *  1. No param / "ref_<telegramId>"  → normal player flow (unchanged)
+   *  2. "agent_<agentId>"              → agent linking flow (Task 7.1–7.2)
+   *  3. "ref_agent_<agentId>"          → new player referred by agent (Task 7.3)
    *
-   * On /start:
-   *  1. Parse the optional referral parameter from the payload.
-   *  2. Upsert the player in the database (create if new, update username if existing).
-   *  3. For new players with a valid referrer, set the referrer_id.
-   *  4. Send the Mini App inline keyboard button.
+   * Task 7.4: If no param and user is already a linked agent, show agent menu.
    */
   bot.command('start', async (ctx) => {
     try {
@@ -377,10 +391,48 @@ if (BOT_TOKEN) {
       const payload = ctx.match; // text after /start (the deep-link parameter)
       const telegramId = BigInt(from.id);
       const username = from.username ?? from.first_name ?? `user_${from.id}`;
+      const botUsername = process.env['BOT_USERNAME'] ?? '';
 
-      // Parse referral parameter: "ref_<telegramId>"
+      // ── Case 1: agent_<agentId> — agent self-activation link ──────────────
+      if (typeof payload === 'string' && payload.startsWith('agent_')) {
+        const agentId = payload.slice('agent_'.length);
+        try {
+          const agent = await AgentService.linkAgent(agentId, telegramId);
+          const inviteLink = `https://t.me/${botUsername}?start=ref_agent_${agent.id}`;
+          await ctx.reply(
+            `✅ Agent account activated!\n\n` +
+            `Share this link to invite players:\n${inviteLink}`,
+            { reply_markup: buildMainMenu() },
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : '';
+          if (msg === 'ALREADY_LINKED') {
+            await ctx.reply(
+              '⚠️ This agent link has already been activated by another account.',
+              { reply_markup: buildMainMenu() },
+            );
+          } else if (msg.includes('No Agent found')) {
+            // Invalid agent ID — fall through to normal player flow below
+            await ctx.reply(
+              '👋 Welcome to Fidel Bingo! Choose an Option below.',
+              { reply_markup: buildMainMenu() },
+            );
+          } else {
+            throw err;
+          }
+        }
+        return;
+      }
+
+      // ── Case 2: ref_agent_<agentId> — player recruited by agent ───────────
+      let agentReferralId: string | undefined;
+      if (typeof payload === 'string' && payload.startsWith('ref_agent_')) {
+        agentReferralId = payload.slice('ref_agent_'.length);
+      }
+
+      // Parse existing player referral: "ref_<telegramId>"
       let referrerId: string | undefined;
-      if (typeof payload === 'string' && payload.startsWith('ref_')) {
+      if (typeof payload === 'string' && payload.startsWith('ref_') && !payload.startsWith('ref_agent_')) {
         try {
           const referrerTelegramId = BigInt(payload.slice(4));
           const referrer = await prisma.player.findUnique({
@@ -397,7 +449,7 @@ if (BOT_TOKEN) {
       await prisma.$transaction(async (tx: PrismaTx) => {
         const existing = await tx.player.findUnique({
           where: { telegram_id: telegramId },
-          select: { id: true },
+          select: { id: true, agent_id: true },
         });
 
         if (existing) {
@@ -406,13 +458,38 @@ if (BOT_TOKEN) {
             where: { telegram_id: telegramId },
             data: { username },
           });
+
+          // Task 7.3: set agent_id only if player has no existing agent attribution
+          if (agentReferralId && !existing.agent_id) {
+            const agent = await tx.agent.findUnique({
+              where: { id: agentReferralId },
+              select: { is_active: true },
+            });
+            if (agent?.is_active) {
+              await tx.player.update({
+                where: { telegram_id: telegramId },
+                data: { agent_id: agentReferralId },
+              });
+            }
+          }
         } else {
+          // Task 7.3: resolve agent_id for new player
+          let resolvedAgentId: string | undefined;
+          if (agentReferralId) {
+            const agent = await tx.agent.findUnique({
+              where: { id: agentReferralId },
+              select: { is_active: true },
+            });
+            if (agent?.is_active) resolvedAgentId = agentReferralId;
+          }
+
           // First-time registration
           const newPlayer = await tx.player.create({
             data: {
               telegram_id: telegramId,
               username,
               ...(referrerId ? { referrer_id: referrerId } : {}),
+              ...(resolvedAgentId ? { agent_id: resolvedAgentId } : {}),
             },
             select: { id: true },
           });
@@ -426,6 +503,25 @@ if (BOT_TOKEN) {
           });
         }
       });
+
+      // Task 7.4: check if this user is a linked agent — show agent menu if so
+      if (!payload) {
+        const linkedAgent = await prisma.agent.findUnique({
+          where: { telegram_id: telegramId },
+          select: { id: true, is_active: true },
+        });
+        if (linkedAgent) {
+          const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${linkedAgent.id}`;
+          const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
+          await ctx.reply(
+            `👋 Welcome back, Agent!\n\n` +
+            `Your player invite link:\n${playerInvite}\n\n` +
+            `📊 Dashboard: ${dashboardUrl}`,
+            { reply_markup: buildMainMenu() },
+          );
+          return;
+        }
+      }
 
       // Send the persistent main menu keyboard
       await ctx.reply(
@@ -624,6 +720,14 @@ if (BOT_TOKEN) {
 
     // Ignore bot commands — they have their own handlers
     if (text.startsWith('/')) return;
+
+    // If the user pressed a menu button, clear any stale deposit session and
+    // let the dedicated bot.hears() handler take over.
+    const allMenuButtons = MENU_BUTTONS.flat() as readonly string[];
+    if (allMenuButtons.includes(text)) {
+      depositSessions.delete(telegramId);
+      return;
+    }
 
     const session = depositSessions.get(telegramId);
     if (!session) return;
@@ -845,6 +949,21 @@ if (BOT_TOKEN) {
             reference_id: txNumber,
           },
         });
+
+        // Credit agent commission if player was referred by an active agent
+        const playerRecord = await tx.player.findUnique({
+          where: { id: player.id },
+          select: { agent_id: true },
+        });
+        if (playerRecord?.agent_id) {
+          const agentRecord = await tx.agent.findUnique({
+            where: { id: playerRecord.agent_id },
+            select: { is_active: true },
+          });
+          if (agentRecord?.is_active) {
+            await AgentService.creditCommission(tx, playerRecord.agent_id, player.id, deposit.id, deposit.amount);
+          }
+        }
       });
 
       // Fetch updated play wallet balance for the reply
