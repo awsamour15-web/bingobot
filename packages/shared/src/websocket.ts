@@ -25,6 +25,8 @@ export interface RoundWonPayload {
   }>;
   totalDerash: number;
   winnerCount: number;
+  /** Complete ordered list of called numbers at the time the round ended */
+  calledNumbers?: number[];
 }
 
 export interface RoundVoidPayload {

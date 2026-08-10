@@ -32,6 +32,7 @@ type OnRoundWonCb = (
     winners: Array<{ playerId: string; username: string; cartelaNumber: number; amount: number }>;
     totalDerash: number;
     winnerCount: number;
+    calledNumbers?: number[];
   },
 ) => void | Promise<void>;
 

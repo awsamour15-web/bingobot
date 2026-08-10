@@ -752,15 +752,15 @@ export default function LiveGameScreen() {
                 {winGrid.length > 0 && (
                   <div style={{
                     background: '#fff',
-                    borderRadius: 16, overflow: 'hidden',
-                    width: '100%', maxWidth: 340,
-                    marginBottom: 22,
-                    boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+                    borderRadius: 8, overflow: 'hidden',
+                    width: '100%', maxWidth: 170,
+                    marginBottom: 11,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
                   }}>
                     {/* Trophy + cartela number */}
                     <div style={{
-                      textAlign: 'center', padding: '12px 0 8px',
-                      fontWeight: 800, fontSize: 15,
+                      textAlign: 'center', padding: '6px 0 4px',
+                      fontWeight: 800, fontSize: 8,
                       background: '#f8fafc',
                       borderBottom: '1px solid #e2e8f0',
                       color: '#1e293b',
@@ -774,13 +774,13 @@ export default function LiveGameScreen() {
                         <div key={c} style={{
                           background: ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#ef4444'][i],
                           textAlign: 'center',
-                          padding: '8px 0', fontWeight: 900, fontSize: 16, color: '#fff',
+                          padding: '4px 0', fontWeight: 900, fontSize: 8, color: '#fff',
                         }}>{c}</div>
                       ))}
                     </div>
 
                     {/* Grid cells */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, padding: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: '4px' }}>
                       {winGrid.map((val, idx) => {
                         const isFree = idx === 12;
                         const isMarkedCell = isFree || (val !== 0 && marked.has(val));
@@ -803,9 +803,9 @@ export default function LiveGameScreen() {
                         return (
                           <div key={idx} style={{
                             aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: bg, color, border, borderRadius: 6,
-                            fontSize: 16, fontWeight,
-                            boxShadow: isWinCell ? '0 0 8px rgba(34,197,94,0.5)' : 'none',
+                            background: bg, color, border, borderRadius: 3,
+                            fontSize: 8, fontWeight,
+                            boxShadow: isWinCell ? '0 0 4px rgba(34,197,94,0.5)' : 'none',
                           }}>
                             {isFree ? '✦' : val}
                           </div>
@@ -924,14 +924,14 @@ export default function LiveGameScreen() {
                 {winGrid.length > 0 && (
                   <div style={{
                     background: 'rgba(255,255,255,0.06)',
-                    borderRadius: 14, overflow: 'hidden',
-                    width: '100%', maxWidth: 320,
-                    marginBottom: 20,
+                    borderRadius: 7, overflow: 'hidden',
+                    width: '100%', maxWidth: 160,
+                    marginBottom: 10,
                     border: '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+                    boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
                   }}>
                     {/* Trophy + cartela number */}
-                    <div style={{ textAlign: 'center', padding: '10px 0 6px', fontWeight: 800, fontSize: 13, color: '#f5d06b' }}>
+                    <div style={{ textAlign: 'center', padding: '5px 0 3px', fontWeight: 800, fontSize: 7, color: '#f5d06b' }}>
                       🏆 Winning Cartela : {winCartelaNumber}
                     </div>
 
@@ -940,13 +940,13 @@ export default function LiveGameScreen() {
                       {COLS.map((c, i) => (
                         <div key={c} style={{
                           background: COL_COLORS[i], textAlign: 'center',
-                          padding: '7px 0', fontWeight: 900, fontSize: 15, color: '#fff',
+                          padding: '3px 0', fontWeight: 900, fontSize: 7, color: '#fff',
                         }}>{c}</div>
                       ))}
                     </div>
 
                     {/* Grid cells */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, padding: 6 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, padding: 3 }}>
                       {winGrid.map((val, idx) => {
                         const isFree = idx === 12;
                         const isMarkedCell = isFree || (val !== 0 && marked.has(val));
@@ -961,8 +961,8 @@ export default function LiveGameScreen() {
                         return (
                           <div key={idx} style={{
                             aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: bg, color, borderRadius: 6,
-                            fontSize: 15, fontWeight: isMarkedCell ? 800 : 400,
+                            background: bg, color, borderRadius: 3,
+                            fontSize: 7, fontWeight: isMarkedCell ? 800 : 400,
                             transition: 'background 0.2s',
                           }}>
                             {isFree ? '✦' : val}
