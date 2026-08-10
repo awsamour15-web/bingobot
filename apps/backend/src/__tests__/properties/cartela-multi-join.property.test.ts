@@ -21,7 +21,7 @@ import * as fc from 'fast-check';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MAX_SELECT = 2;
+const MAX_SELECT = 3;
 const TOTAL_CARTELAS = 800;
 
 // ─── Types ────────────────────────────────────────────────────────────────────

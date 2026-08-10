@@ -18,7 +18,7 @@ interface ProfileBalances {
 }
 
 const TOTAL = 800;
-const MAX_SELECT = 2;
+const MAX_SELECT = 3;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'];
@@ -35,10 +35,17 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
   const bg = isPicked ? '#22c55e' : taken ? '#e53e3e' : reserved ? 'rgba(234,179,8,0.18)' : '#1e293b';
   const color = isPicked ? '#fff' : taken ? '#fff' : reserved ? '#fbbf24' : '#94a3b8';
   const border = isPicked ? '2px solid #4ade80' : taken ? 'none' : reserved ? '1px solid rgba(234,179,8,0.5)' : '1px solid rgba(255,255,255,0.08)';
+  
+  // CRITICAL FIX: Prevent clicks on taken cartelas
+  const handleClick = () => {
+    if (taken) return; // Block clicks on taken cartelas
+    onClick(num);
+  };
+  
   return (
     <button
       disabled={disabled}
-      onClick={() => onClick(num)}
+      onClick={handleClick}
       style={{
         padding: '4px 0', borderRadius: 4, border, background: bg, color,
         fontWeight: isPicked || taken ? 800 : 500, fontSize: 11,
@@ -267,7 +274,7 @@ export default function CartelaScreen() {
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
-    // Poll every 3s — catches missed socket events; never overwrites local picks
+    // Poll every 1s — catches missed socket events; never overwrites local picks
     const poll = setInterval(() => {
       getCartelaAvailability(roundId!).then(fresh => {
         setAvailability(prev => {
@@ -278,7 +285,7 @@ export default function CartelaScreen() {
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
-    }, 3000);
+    }, 1000); // Increased polling frequency from 3s to 1s
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
@@ -355,6 +362,13 @@ export default function CartelaScreen() {
   }, [manualTrigger, roundId, navigate]);
 
   function togglePick(num: number) {
+    // CRITICAL FIX: Block taken cartelas at the handler level
+    if (availability && availability.taken.includes(num)) {
+      // Provide user feedback
+      setBalanceAlert(`Cartela ${num} is already taken by another player.`);
+      return; // Cartela is taken - do nothing
+    }
+    
     if (picksRef.current.has(num)) {
       const next = new Set(picksRef.current);
       next.delete(num);
@@ -365,6 +379,8 @@ export default function CartelaScreen() {
       return;
     }
     if (picksRef.current.size >= MAX_SELECT) return;
+    
+    // Check balance
     if (round && balances) {
       const stake = Number(round.stake);
       const total = (picksRef.current.size + 1) * stake;
@@ -374,10 +390,24 @@ export default function CartelaScreen() {
         return;
       }
     }
+    
+    // CRITICAL FIX: Double-check server-side availability before allowing selection
+    if (!availability?.available.includes(num)) {
+      // Cartela is not available - refresh and show message
+      setBalanceAlert(`Cartela ${num} is not available. Refreshing...`);
+      if (roundId) {
+        getCartelaAvailability(roundId).then(fresh => {
+          setAvailability(fresh);
+        }).catch(() => {});
+      }
+      return;
+    }
+    
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
     if (roundId) socket.emit('CARTELA_RESERVE' as any, { roundId, cartelaNumbers: [num] });
+    
     // Show grid instantly from local lookup, then confirm/update from server cache
     const localGrid = getLocalGrid(num);
     if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
