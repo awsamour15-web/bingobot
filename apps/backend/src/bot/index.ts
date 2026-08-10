@@ -146,16 +146,17 @@ export const TRANSFER_TEXT =
 
 export const WITHDRAW_TEXT =
   `🤑 How to Withdraw\n\n` +
-  `⚠️ Only your winning balance can be withdrawn.\n` +
+  `⚠️ Only your winning balance (main wallet) can be withdrawn.\n` +
   `Deposit and bonus balance are NOT withdrawable.\n\n` +
   `Minimum withdrawal amount: ETB 100\n\n` +
   `Steps to withdraw:\n` +
-  `1. Ensure your winning balance has at least ETB 100.\n` +
-  `2. Go to Wallet in the Mini App.\n` +
-  `3. Enter the amount and your phone number.\n` +
-  `4. Tap "Request Withdrawal".\n` +
-  `5. Withdrawals are processed within 24 hours on business days.\n\n` +
-  `⚠️ Your phone number must be verified before you can withdraw.`;
+  `1. Make sure your winning balance is at least ETB 100.\n` +
+  `2. Open the Mini App and go to the Wallet section.\n` +
+  `3. Under "Withdraw", enter the amount you want to withdraw.\n` +
+  `4. Enter your phone number (e.g. 09XXXXXXXX).\n` +
+  `5. Tap "Request Withdrawal".\n` +
+  `6. Your request will be reviewed and processed within 24 hours on business days.\n\n` +
+  `⚠️ You can only withdraw your winning balance. Play wallet (deposit) balance cannot be withdrawn.`;
 
 export const CONVERT_BONUS_TEXT =
   `💲 How to Convert Bonus Balance\n\n` +
