@@ -3,8 +3,10 @@
 
 import { Bot, InlineKeyboard, Keyboard } from 'grammy';
 import type { PrismaClient } from '@prisma/client';
+import { WalletType, TxType } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AgentService } from '../services/agent.service.js';
+import { WalletService } from '../services/wallet.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -150,13 +152,17 @@ export const WITHDRAW_TEXT =
   `⚠️ Only your winning balance (main wallet) can be withdrawn.\n` +
   `Deposit and bonus balance are NOT withdrawable.\n\n` +
   `Minimum withdrawal amount: ETB 100\n\n` +
-  `Steps to withdraw:\n` +
-  `1. Make sure your winning balance is at least ETB 100.\n` +
-  `2. Open the Mini App and go to the Wallet section.\n` +
-  `3. Under "Withdraw", enter the amount you want to withdraw.\n` +
-  `4. Enter your phone number (e.g. 09XXXXXXXX).\n` +
-  `5. Tap "Request Withdrawal".\n` +
-  `6. Your request will be reviewed and processed within 24 hours on business days.\n\n` +
+  `🤖 Option 1: Direct Bot Withdrawal (RECOMMENDED)\n` +
+  `Simply tap "Withdraw 🤑" and follow the prompts:\n` +
+  `1. Enter amount (minimum 100 ETB)\n` +
+  `2. Enter your phone number\n` +
+  `3. Your request will be reviewed within 24 hours\n\n` +
+  `📱 Option 2: Mini App Withdrawal\n` +
+  `1. Open the Mini App and go to the Wallet section.\n` +
+  `2. Under "Withdraw", enter the amount you want to withdraw.\n` +
+  `3. Enter your phone number (e.g. 09XXXXXXXX).\n` +
+  `4. Tap "Request Withdrawal".\n` +
+  `5. Your request will be reviewed and processed within 24 hours on business days.\n\n` +
   `⚠️ You can only withdraw your winning balance. Play wallet (deposit) balance cannot be withdrawn.`;
 
 export const CONVERT_BONUS_TEXT =
@@ -208,6 +214,12 @@ type DepositState =
   | { step: 'awaiting_receipt'; amount: number; telebirrNumber: string };
 
 const depositSessions = new Map<bigint, DepositState>();
+
+type WithdrawState =
+  | { step: 'awaiting_amount' }
+  | { step: 'awaiting_phone'; amount: number };
+
+const withdrawSessions = new Map<bigint, WithdrawState>();
 
 /**
  * Parses a Telebirr SMS receipt text and extracts the transaction number.
@@ -708,6 +720,41 @@ if (BOT_TOKEN) {
     await ctx.reply('💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስጊቡ።');
   }
 
+async function handleWithdrawStart(ctx: import('grammy').Context) {
+  if (!ctx.from) return;
+  const telegramId = BigInt(ctx.from.id);
+  
+  if (!(await isRegistered(telegramId))) {
+    await ctx.reply('⚠️ Please register first to use this feature. Tap Register 📝 to get started.');
+    return;
+  }
+
+  const player = await getRegisteredPlayerWithWallets(telegramId);
+  if (!player) {
+    await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+    return;
+  }
+
+  const mainWallet = player.wallets.find(w => w.type === 'main');
+  if (!mainWallet || Number(mainWallet.balance) < 100) {
+    await ctx.reply(
+      `⚠️ በመንግስት ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\n` +
+      `የአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\n` +
+      `አነስተኛ የማውጣት መጠን: 100 ብር\n\n` +
+      `እባክዎ በጨዋታ ውስጥ በማሸነፍ ወይም ቦነስ በመለወጥ የመንግስት ዋሌት ሒሳብዎን ያሳድጉ።`
+    );
+    return;
+  }
+
+  withdrawSessions.set(telegramId, { step: 'awaiting_amount' });
+  await ctx.reply(
+    `💰 ማውጣት የሚፈልጉትን መጠን ያስጊቡ።\n\n` +
+    `አነስተኛ መጠን: 100 ብር\n` +
+    `የአሁን የመንግስት ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` +
+    `⚠️ ማስታወሻ: የመንግስት ዋሌት ሒሳብ ብቻ ማውጣት ይቻላል። የተቀማጭ እና የቦነስ ሒሳብ ማውጣት አይቻልም።`
+  );
+}
+
   bot.command('deposit', handleDepositStart);
 
   bot.hears('Deposit 💰', handleDepositStart);
@@ -721,75 +768,164 @@ if (BOT_TOKEN) {
     // Ignore bot commands — they have their own handlers
     if (text.startsWith('/')) return;
 
-    // If the user pressed a menu button, clear any stale deposit session and
+    // If the user pressed a menu button, clear any stale sessions and
     // let the dedicated bot.hears() handler take over.
     const allMenuButtons = MENU_BUTTONS.flat() as readonly string[];
     if (allMenuButtons.includes(text)) {
       depositSessions.delete(telegramId);
+      withdrawSessions.delete(telegramId);
       return;
     }
 
-    const session = depositSessions.get(telegramId);
-    if (!session) return;
+    const depositSession = depositSessions.get(telegramId);
+    const withdrawSession = withdrawSessions.get(telegramId);
 
-    // ── Step 1: awaiting amount ───────────────────────────────────────────────
-    if (session.step === 'awaiting_amount') {
-      const amount = Number(text);
-      if (!Number.isFinite(amount) || amount < 10) {
-        await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን (ከ10 ብር ጀምሮ) ያስጊቡ።');
+    // Handle deposit conversation
+    if (depositSession) {
+      // ── Step 1: awaiting amount ───────────────────────────────────────────────
+      if (depositSession.step === 'awaiting_amount') {
+        const amount = Number(text);
+        if (!Number.isFinite(amount) || amount < 10) {
+          await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን (ከ10 ብር ጀምሮ) ያስጊቡ።');
+          return;
+        }
+
+        const { text: instructionText, telebirrNumber } = await buildDepositInstructionText(amount);
+        depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber });
+        await ctx.reply(instructionText);
         return;
       }
 
-      const { text: instructionText, telebirrNumber } = await buildDepositInstructionText(amount);
-      depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber });
-      await ctx.reply(instructionText);
+      // ── Step 2: awaiting receipt paste ────────────────────────────────────────
+      if (depositSession.step === 'awaiting_receipt') {
+        const parsed = parseTelebirrReceipt(text);
+        if (!parsed) {
+          await ctx.reply('⚠️ ደረሰኙን ማግኘት አልተቻለም። እባክዎ የቴሌብር ደረሰኝ SMS ን ሙሉ በሙሉ ይለጥፉ።');
+          return;
+        }
+
+        // Validate receiver phone matches configured deposit number
+        if (parsed.receiverPhone) {
+          if (!phoneMatches(parsed.receiverPhone, depositSession.telebirrNumber)) {
+            await ctx.reply(
+              `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${depositSession.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+            );
+            return;
+          }
+        }
+
+        const player = await getRegisteredPlayerWithWallets(telegramId);
+        if (!player) {
+          depositSessions.delete(telegramId);
+          await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+          return;
+        }
+
+        try {
+          const result = await processDepositClaim(player.id, parsed.txNumber);
+          depositSessions.delete(telegramId);
+
+          if (!result.success) {
+            const msgs = {
+              NOT_FOUND: '❌ Transaction number not found. Please contact support.',
+              CLAIMED: '❌ This transaction has already been used. Please contact support.',
+              CANCELLED: '❌ This transaction has been cancelled. Please contact support.',
+            };
+            await ctx.reply(msgs[result.reason]);
+            return;
+          }
+
+          await ctx.reply(`✅ Your deposit of ${result.amount} ETB is Approved.\n\nRef: ${parsed.txNumber}`);
+        } catch (err) {
+          console.error('[Bot] deposit receipt handler error:', err);
+          await ctx.reply('❌ Something went wrong. Please try again later or contact support.');
+        }
+      }
       return;
     }
 
-    // ── Step 2: awaiting receipt paste ────────────────────────────────────────
-    if (session.step === 'awaiting_receipt') {
-      const parsed = parseTelebirrReceipt(text);
-      if (!parsed) {
-        await ctx.reply('⚠️ ደረሰኙን ማግኘት አልተቻለም። እባክዎ የቴሌብር ደረሰኝ SMS ን ሙሉ በሙሉ ይለጥፉ።');
+    // Handle withdrawal conversation
+    if (withdrawSession) {
+      // ── Step 1: awaiting amount ───────────────────────────────────────────────
+      if (withdrawSession.step === 'awaiting_amount') {
+        const amount = Number(text);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን ያስጊቡ።');
+          return;
+        }
+
+        if (amount < 100) {
+          await ctx.reply('⚠️ አነስተኛ የማውጣት መጠን 100 ብር ነው። እባክዎ ከ100 ብር በላይ ያስጊቡ።');
+          return;
+        }
+
+        // Check if user has sufficient balance
+        const player = await getRegisteredPlayerWithWallets(telegramId);
+        if (!player) {
+          withdrawSessions.delete(telegramId);
+          await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+          return;
+        }
+
+        const mainWallet = player.wallets.find(w => w.type === 'main');
+        if (!mainWallet || Number(mainWallet.balance) < amount) {
+          await ctx.reply(`⚠️ በመንግስት ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\nየአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\nየጠየቁት መጠን: ${amount} ብር`);
+          return;
+        }
+
+        withdrawSessions.set(telegramId, { step: 'awaiting_phone', amount });
+        await ctx.reply('📱 እባክዎ የቴሌብር ስልክ ቁጥርዎን ያስጊቡ (ለምሳሌ: 0912345678)።\n\nብሩ ወደዚህ ቁጥር ይላካል።');
         return;
       }
 
-      // Validate receiver phone matches configured deposit number
-      if (parsed.receiverPhone) {
-        if (!phoneMatches(parsed.receiverPhone, session.telebirrNumber)) {
-          await ctx.reply(
-            `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${session.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+      // ── Step 2: awaiting phone number ─────────────────────────────────────────
+      if (withdrawSession.step === 'awaiting_phone') {
+        const phone = text.trim();
+        if (!phone || phone.length < 10) {
+          await ctx.reply('⚠️ እባክዎ ትክክለኛ ስልክ ቁጥር ያስጊቡ (ለምሳሌ: 0912345678)።');
+          return;
+        }
+
+        const player = await getRegisteredPlayerWithWallets(telegramId);
+        if (!player) {
+          withdrawSessions.delete(telegramId);
+          await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+          return;
+        }
+
+        try {
+          // Debit atomically at request time — prevents double-spend across concurrent requests
+          await WalletService.debit(
+            player.id,
+            WalletType.main,
+            withdrawSession.amount,
+            TxType.withdrawal,
+            undefined,
+            `PENDING: Awaiting admin approval — phone: ${phone}`,
           );
-          return;
+
+          withdrawSessions.delete(telegramId);
+
+          await ctx.reply(
+            `✅ የማውጣት ጥያቄዎ ተቀብለ ተረድተያል!\n\n` +
+            `መጠን: ${withdrawSession.amount} ብር\n` +
+            `ስልክ: ${phone}\n\n` +
+            `⏳ ጥያቄዎ በ24 ሰዓት ውስጥ ይፈተሻል እና ይፀድቃል።\n\n` +
+            `💰 ቀሪ ሒሳብዎ ቀንሷል እና ጥያቄዎ ሲፀድቅ ብሩ ወደ ስልክዎ ይላካል።`
+          );
+        } catch (err) {
+          withdrawSessions.delete(telegramId);
+          
+          if (err instanceof Error && err.message.includes('insufficient')) {
+            await ctx.reply('⚠️ በቂ ሳንቲም የለዎትም። እባክዎ ሒሳብዎን ያጣሩ።');
+            return;
+          }
+          
+          console.error('[Bot] withdrawal request error:', err);
+          await ctx.reply('❌ ችግር ተፈጥሯል። እባክዎ ቆየት ብለው ይሞክሩ ወይም ድጋፍ ያግኙ።');
         }
       }
-
-      const player = await getRegisteredPlayerWithWallets(telegramId);
-      if (!player) {
-        depositSessions.delete(telegramId);
-        await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
-        return;
-      }
-
-      try {
-        const result = await processDepositClaim(player.id, parsed.txNumber);
-        depositSessions.delete(telegramId);
-
-        if (!result.success) {
-          const msgs = {
-            NOT_FOUND: '❌ Transaction number not found. Please contact support.',
-            CLAIMED: '❌ This transaction has already been used. Please contact support.',
-            CANCELLED: '❌ This transaction has been cancelled. Please contact support.',
-          };
-          await ctx.reply(msgs[result.reason]);
-          return;
-        }
-
-        await ctx.reply(`✅ Your deposit of ${result.amount} ETB is Approved.\n\nRef: ${parsed.txNumber}`);
-      } catch (err) {
-        console.error('[Bot] deposit receipt handler error:', err);
-        await ctx.reply('❌ Something went wrong. Please try again later or contact support.');
-      }
+      return;
     }
   });
 
@@ -798,8 +934,8 @@ if (BOT_TOKEN) {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
 
-    const session = depositSessions.get(telegramId);
-    if (!session || session.step !== 'awaiting_receipt') return;
+    const depositSession = depositSessions.get(telegramId);
+    if (!depositSession || depositSession.step !== 'awaiting_receipt') return;
 
     const player = await getRegisteredPlayerWithWallets(telegramId);
     if (!player) {
@@ -837,9 +973,9 @@ if (BOT_TOKEN) {
 
       // Validate receiver phone matches configured deposit number
       if (txNumber.receiverPhone) {
-        if (!phoneMatches(txNumber.receiverPhone, session.telebirrNumber)) {
+        if (!phoneMatches(txNumber.receiverPhone, depositSession.telebirrNumber)) {
           await ctx.reply(
-            `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${session.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+            `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${depositSession.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
           );
           return;
         }
@@ -1010,12 +1146,13 @@ if (BOT_TOKEN) {
   });
 
   // ─── 5.4: Withdraw 🤑 handler ─────────────────────────────────────────────
-  bot.hears('Withdraw 🤑', async (ctx) => {
+  bot.hears('Withdraw 🤑', handleWithdrawStart);
+
+  // ─── /withdraw_help command for old-style instructions ──────────────────────
+  bot.command('withdraw_help', async (ctx) => {
     if (!ctx.from) return;
     if (!(await isRegistered(BigInt(ctx.from.id)))) {
-      await ctx.reply(
-        '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
-      );
+      await ctx.reply('⚠️ Please register first to use this feature. Tap Register 📝 to get started.');
       return;
     }
     await ctx.reply(WITHDRAW_TEXT);
