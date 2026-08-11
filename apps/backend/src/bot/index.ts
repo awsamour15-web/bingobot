@@ -159,7 +159,8 @@ export function buildPlayReplyMarkup(miniAppUrl: string): InlineKeyboard {
  * inside Telegram (not in an external browser).
  */
 function buildAgentDashboardButton(): InlineKeyboard {
-  return new InlineKeyboard().webApp('📊 Open Agent Dashboard', `${MINI_APP_URL}#/agent/dashboard`);
+  const baseUrl = MINI_APP_URL.endsWith('/') ? MINI_APP_URL : `${MINI_APP_URL}/`;
+  return new InlineKeyboard().webApp('📊 Open Agent Dashboard', `${baseUrl}#/agent/dashboard`);
 }
 
 // ─── Helper: Register button prompt text ─────────────────────────────────────

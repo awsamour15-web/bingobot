@@ -19,7 +19,11 @@ function Root() {
       sessionStorage.removeItem('selectedRoundId');
       sessionStorage.removeItem('selectedStake');
       // Reset the hash to home so a stale /#/rounds/:id/game URL doesn't persist
-      if (window.location.hash && window.location.hash !== '#/' && window.location.hash !== '#') {
+      // but preserve intentional deep links like /agent/dashboard
+      const keepHashes = ['/agent/dashboard'];
+      const currentHash = window.location.hash.replace('#', '');
+      const shouldKeep = keepHashes.some(h => currentHash.startsWith(h));
+      if (!shouldKeep && window.location.hash && window.location.hash !== '#/' && window.location.hash !== '#') {
         window.location.replace(window.location.pathname + '#/');
       }
     }
