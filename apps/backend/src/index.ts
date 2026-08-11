@@ -87,6 +87,28 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ─── Bot health check endpoint ─────────────────────────────────────────────────
+app.get('/bot-status', async (_req, res) => {
+  try {
+    if (!bot) {
+      return res.json({ status: 'no_bot', message: 'Bot not initialized' });
+    }
+    
+    const me = await bot.api.getMe();
+    res.json({ 
+      status: 'ok', 
+      bot_username: me.username,
+      bot_id: me.id,
+      message: 'Bot API is responsive' 
+    });
+  } catch (error: any) {
+    res.json({ 
+      status: 'error', 
+      message: error?.description || error?.message || 'Unknown error' 
+    });
+  }
+});
+
 // ─── Self-ping to prevent Render free tier from sleeping ─────────────────────
 const SELF_URL = process.env['RENDER_EXTERNAL_URL'] ?? `http://localhost:${process.env['PORT'] ?? 3000}`;
 setInterval(() => {
@@ -113,41 +135,47 @@ httpServer.listen(PORT, () => {
 });
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────
-// On Render, a new deploy starts before the old instance shuts down. The old
-// instance holds a 30-second getUpdates long-poll. We wait 35s for it to expire,
-// call deleteWebhook (which also clears any webhook/polling lock), then start.
+// SIMPLIFIED: Force bot to start immediately after clearing webhook
 if (bot) {
-  const MAX_RETRIES = 10;
-  const RETRY_DELAY_MS = 5_000;
-
-  async function startBotWithRetry(attempt = 0): Promise<void> {
+  console.log('[Bot] Immediate bot startup - bypassing wait');
+  
+  async function forceStartBot(): Promise<void> {
     try {
-      // Force-clear any existing webhook / polling lock before starting
-      await bot!.api.deleteWebhook({ drop_pending_updates: false });
+      console.log('[Bot] 1. Clearing any webhook...');
+      await bot!.api.deleteWebhook({ drop_pending_updates: true });
+      
+      console.log('[Bot] 2. Getting pending updates to clear them...');
+      await bot!.api.getUpdates({ offset: -1 });
+      
+      console.log('[Bot] 3. Starting polling...');
       await bot!.start({
         onStart: (info) => {
-          console.log(`[Bot] Started as @${info.username}`);
+          console.log(`[Bot] ✅ Successfully started as @${info.username}`);
         },
         drop_pending_updates: false,
       });
-    } catch (err: unknown) {
-      const code =
-        typeof err === 'object' && err !== null && 'error_code' in err
-          ? (err as { error_code: number }).error_code
-          : 0;
-
-      if (code === 409 && attempt < MAX_RETRIES) {
-        console.warn(`[Bot] 409 conflict — retrying in ${RETRY_DELAY_MS}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-        setTimeout(() => void startBotWithRetry(attempt + 1), RETRY_DELAY_MS);
-      } else {
-        console.error('[Bot] Failed to start long polling:', err);
+    } catch (err: any) {
+      console.error('[Bot] ❌ Failed to start:', err?.description || err?.message || err);
+      
+      // If it's a 409 conflict, wait and retry once
+      if (err?.error_code === 409) {
+        console.log('[Bot] 409 conflict detected - waiting 10s and retrying once...');
+        setTimeout(async () => {
+          try {
+            await bot!.api.deleteWebhook({ drop_pending_updates: true });
+            await bot!.start({ 
+              onStart: (info) => console.log(`[Bot] ✅ Retry success as @${info.username}`)
+            });
+          } catch (retryErr: any) {
+            console.error('[Bot] ❌ Retry also failed:', retryErr?.description || retryErr);
+          }
+        }, 10_000);
       }
     }
   }
 
-  // Wait 35s before first attempt — gives the old instance's 30s long-poll time to expire
-  console.log('[Bot] Waiting 35s for previous instance to release polling lock...');
-  setTimeout(() => void startBotWithRetry(), 35_000);
+  // Start immediately instead of waiting 35s
+  forceStartBot();
 }
 
 export default app;
