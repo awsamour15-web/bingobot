@@ -274,7 +274,7 @@ router.delete('/:id/release-all-reservations', async (req: Request, res: Respons
 });
 
 // ─── POST /api/rounds/:id/join-batch ─────────────────────────────────────────
-// Joins up to 3 cartelas in a single request to avoid race conditions
+// Joins up to 2 cartelas in a single request to avoid race conditions
 // where sequential joins trigger autoStartCheck between calls.
 
 router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void> => {
@@ -285,14 +285,14 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
   if (
     !Array.isArray(body?.cartelaNumbers) ||
     body.cartelaNumbers.length === 0 ||
-    body.cartelaNumbers.length > 3 ||
+    body.cartelaNumbers.length > 2 ||
     !body.cartelaNumbers.every(
       (n) => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 800,
     )
   ) {
     res.status(400).json({
       error: 'BAD_REQUEST',
-      message: 'cartelaNumbers must be an array of 1–3 integers between 1 and 800',
+      message: 'cartelaNumbers must be an array of 1–2 integers between 1 and 800',
     });
     return;
   }

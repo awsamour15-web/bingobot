@@ -18,7 +18,7 @@ interface ProfileBalances {
 }
 
 const TOTAL = 800;
-const MAX_SELECT = 3;
+const MAX_SELECT = 2;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'];

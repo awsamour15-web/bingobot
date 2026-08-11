@@ -2,7 +2,7 @@
 
 ## Overview
 
-Players can select up to 3 cartelas (`MAX_SELECT = 3`) when joining a round, but after the first cartela is registered with the server, the second selection is silently blocked. The guard `if (registeredNumsRef.current.length >= MAX_SELECT) return` in `togglePick` fires prematurely: it compares the number of *already-registered* cartelas against the maximum allowed, but the maximum should only block new picks once all `MAX_SELECT` slots are *fully registered* — not while there is still capacity. The fix is minimal: the guard must permit additional picks while `registeredNums.length < MAX_SELECT`, and the `registerCartelas` helper must reliably register each newly-added cartela.
+Players can select up to 2 cartelas (`MAX_SELECT = 2`) when joining a round, but after the first cartela is registered with the server, the second selection is silently blocked. The guard `if (registeredNumsRef.current.length >= MAX_SELECT) return` in `togglePick` fires prematurely: it compares the number of *already-registered* cartelas against the maximum allowed, but the maximum should only block new picks once all `MAX_SELECT` slots are *fully registered* — not while there is still capacity. The fix is minimal: the guard must permit additional picks while `registeredNums.length < MAX_SELECT`, and the `registerCartelas` helper must reliably register each newly-added cartela.
 
 ## Glossary
 
@@ -12,7 +12,7 @@ Players can select up to 3 cartelas (`MAX_SELECT = 3`) when joining a round, but
 - **togglePick**: The function in `apps/mini-app/src/screens/CartelaScreen.tsx` that handles a player tapping a cartela number on the grid
 - **registerCartelas**: The async function in the same file that calls the `joinRound` API and updates `registeredNums` state
 - **registeredNumsRef**: A `useRef` mirror of `registeredNums` state, used inside closures to avoid stale reads
-- **MAX_SELECT**: Constant `= 3` — the maximum number of cartelas a player may register per round
+- **MAX_SELECT**: Constant `= 2` — the maximum number of cartelas a player may register per round
 
 ## Bug Details
 
@@ -52,7 +52,7 @@ END FUNCTION
 **Unchanged Behaviors:**
 - Mouse clicks / tap on available cartelas must continue to invoke `togglePick` correctly
 - Cartelas already taken by other players must continue to render as disabled and non-selectable
-- Selecting more than `MAX_SELECT` (3) cartelas must continue to be blocked by `picks.length >= MAX_SELECT`
+- Selecting more than `MAX_SELECT` (2) cartelas must continue to be blocked by `picks.length >= MAX_SELECT`
 - Insufficient balance check must continue to show the balance alert and abort the pick
 - After both cartelas are registered the grid must continue to prevent any further selection (`registeredNums.length >= MAX_SELECT`)
 - The confirm button for a single pending (unregistered) selection must continue to render and trigger registration
@@ -161,7 +161,7 @@ END FOR
 
 **Test Cases**:
 1. **Taken-cartela preservation**: For any cartela in the taken set, clicking it must not call `joinRound` — verify identical behavior before and after fix.
-2. **MAX_SELECT enforcement preservation**: For any input with `picks.length >= 3`, picking a fourth cartela must still be blocked — property-test over random fourth picks.
+2. **MAX_SELECT enforcement preservation**: For any input with `picks.length >= 2`, picking a third cartela must still be blocked — property-test over random third picks.
 3. **Balance alert preservation**: For any input where `balance < stake * (picks.length + 1)`, the balance alert must appear and `joinRound` must not be called.
 4. **First-pick preservation**: For any first pick (registeredNums empty), the fix must not change behavior — `joinRound` called once, `registeredNums` updated.
 
