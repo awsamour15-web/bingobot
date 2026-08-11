@@ -277,6 +277,8 @@ model PendingWithdrawal {
   @@index([status])
   @@map("pending_withdrawals")
 }
+
+model CartelaReservation {
   id             String   @id @default(uuid())
   round_id       String
   cartela_number Int
