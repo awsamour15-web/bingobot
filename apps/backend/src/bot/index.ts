@@ -812,10 +812,10 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     if (!mainWallet || Number(mainWallet.balance) < 100) {
       console.log('[Bot] Insufficient balance for withdrawal:', mainWallet?.balance || '0');
       await ctx.reply(
-        `⚠️ በመንግስት ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\n` +
+        `⚠️  ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\n` +
         `የአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\n` +
         `አነስተኛ የማውጣት መጠን: 100 ብር\n\n` +
-        `እባክዎ በጨዋታ ውስጥ በማሸነፍ ወይም ቦነስ በመለወጥ የመንግስት ዋሌት ሒሳብዎን ያሳድጉ።`
+        `እባክዎ በጨዋታ ውስጥ በማሸነፍ ወይም ቦነስ በመለወጥ  ዋሌት ሒሳብዎን ያሳድጉ።`
       );
       return;
     }
@@ -827,8 +827,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     await ctx.reply(
       `💰 ማውጣት የሚፈልጉትን መጠን ያስጊቡ።\n\n` +
       `አነስተኛ መጠን: 100 ብር\n` +
-      `የአሁን የመንግስት ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` +
-      `⚠️ ማስታወሻ: የመንግስት ዋሌት ሒሳብ ብቻ ማውጣት ይቻላል። የተቀማጭ እና የቦነስ ሒሳብ ማውጣት አይቻልም።`
+      `የአሁን  ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` +
+      `⚠️ ማስታወሻ:  ዋሌት ሒሳብ ብቻ ማውጣት ይቻላል። የተቀማጭ እና የቦነስ ሒሳብ ማውጣት አይቻልም።`
     );
     
     console.log('[Bot] handleWithdrawStart completed successfully for user:', telegramId);
@@ -983,7 +983,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
         const mainWallet = player.wallets.find(w => w.type === 'main');
         if (!mainWallet || Number(mainWallet.balance) < amount) {
-          await ctx.reply(`⚠️ በመንግስት ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\nየአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\nየጠየቁት መጠን: ${amount} ብር`);
+          await ctx.reply(`⚠️ = ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\nየአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\nየጠየቁት መጠን: ${amount} ብር`);
           return;
         }
 
