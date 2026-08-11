@@ -844,6 +844,23 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   bot.hears('Deposit 💰', handleDepositStart);
 
+  // ─── Register ALL bot.hears handlers BEFORE bot.on('message:text') ──────────
+  // This ensures specific handlers run before the general text handler
+
+  // ─── 5.4: Withdraw 🤑 handler ─────────────────────────────────────────────
+  console.log('[Bot Setup] ✅ Registering "Withdraw 🤑" handler');
+  bot.hears('Withdraw 🤑', (ctx) => {
+    console.log('[Bot] ✅ "Withdraw 🤑" handler triggered for user:', ctx.from?.id);
+    return handleWithdrawStart(ctx);
+  });
+
+  // ─── TEST: Simple test handler ─────────────────────────────────────────────
+  console.log('[Bot Setup] ✅ Registering "test" handler');
+  bot.hears('test', async (ctx) => {
+    console.log('[Bot] ✅ Test handler triggered');
+    await ctx.reply('Test response received! Bot is working.');
+  });
+
   // ─── Global message logging ───────────────────────────────────────────────────
   bot.on('message', (ctx) => {
     messageCount++;
@@ -1228,19 +1245,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       return;
     }
     await ctx.reply(INSTRUCTION_TEXT);
-  });
-
-  // ─── 5.4: Withdraw 🤑 handler ─────────────────────────────────────────────
-  console.log('[Bot Setup] Registering "Withdraw 🤑" handler');
-  bot.hears('Withdraw 🤑', (ctx) => {
-    console.log('[Bot] "Withdraw 🤑" handler triggered for user:', ctx.from?.id);
-    return handleWithdrawStart(ctx);
-  });
-
-// ─── TEST: Simple test handler ─────────────────────────────────────────────
-  bot.hears('test', async (ctx) => {
-    console.log('[Bot] Test handler triggered');
-    await ctx.reply('Test response received! Bot is working.');
   });
 
   // ─── CRITICAL: Prevent memory leaks and duplicate handlers ──────────────────
