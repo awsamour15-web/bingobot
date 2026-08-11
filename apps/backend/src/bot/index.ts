@@ -847,17 +847,24 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     if (text.startsWith('/')) return;
 
     // If the user pressed a menu button, clear any stale sessions and
-    // let the dedicated bot.hears() handler take over.
+    // let the dedicated bot.hears() handler take over by NOT processing here
     const allMenuButtons = MENU_BUTTONS.flat() as readonly string[];
     const allAgentButtons = AGENT_MENU_BUTTONS.flat() as readonly string[];
     if (allMenuButtons.includes(text) || allAgentButtons.includes(text)) {
+      console.log(`[Bot] Menu button "${text}" detected - clearing sessions, continuing to bot.hears()`);
       depositSessions.delete(telegramId);
       withdrawSessions.delete(telegramId);
-      return;
+      // DON'T return - let message continue to bot.hears() handlers
     }
 
     const depositSession = depositSessions.get(telegramId);
     const withdrawSession = withdrawSessions.get(telegramId);
+
+    // Only process if user is in an active session (not a menu button)
+    if (!depositSession && !withdrawSession) {
+      console.log(`[Bot] No active sessions for user ${telegramId} - ignoring message: "${text}"`);
+      return;
+    }
 
     // Handle deposit conversation
     if (depositSession) {
