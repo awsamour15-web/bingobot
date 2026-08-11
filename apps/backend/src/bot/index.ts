@@ -154,6 +154,14 @@ export function buildPlayReplyMarkup(miniAppUrl: string): InlineKeyboard {
   return new InlineKeyboard().webApp('Open Fidel Bingo', miniAppUrl);
 }
 
+/**
+ * Builds an InlineKeyboard with a web_app button that opens the agent dashboard
+ * inside Telegram (not in an external browser).
+ */
+function buildAgentDashboardButton(): InlineKeyboard {
+  return new InlineKeyboard().webApp('📊 Open Agent Dashboard', `${MINI_APP_URL}#/agent/dashboard`);
+}
+
 // ─── Helper: Register button prompt text ─────────────────────────────────────
 
 export const REGISTER_PROMPT_TEXT =
@@ -589,9 +597,8 @@ if (BOT_TOKEN) {
           const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
           await ctx.reply(
             `👋 Welcome back, Agent!\n\n` +
-            `Your player invite link:\n${playerInvite}\n\n` +
-            `📊 Dashboard: ${dashboardUrl}`,
-            { reply_markup: buildAgentMenu() },
+            `Your player invite link:\n${playerInvite}`,
+            { reply_markup: buildAgentDashboardButton() },
           );
           return;
         }
@@ -1385,8 +1392,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         `👥 Total Players: ${stats.totalPlayersInvited}\n` +
         `💵 Total Commission: ETB ${stats.totalCommission}\n` +
         `📅 This Week: ETB ${stats.weeklyCommission}\n` +
-        `📅 Today: ETB ${stats.dailyCommission}\n\n` +
-        `🌐 Full Dashboard: ${dashboardUrl}`
+        `📅 Today: ETB ${stats.dailyCommission}`,
+        { reply_markup: buildAgentDashboardButton() }
       );
     } catch (err) {
       console.error('[Bot] Agent dashboard error:', err);
@@ -1534,9 +1541,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         
         await ctx.reply(
           `✅ You are already a partner!\n\n` +
-          `Your player invite link:\n${playerInvite}\n\n` +
-          `📊 Dashboard: ${dashboardUrl}`,
-          { reply_markup: buildAgentMenu() }
+          `Your player invite link:\n${playerInvite}`,
+          { reply_markup: buildAgentDashboardButton() }
         );
         return;
       }
@@ -1552,9 +1558,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         `🎉 Welcome as our new partner!\n\n` +
         `You can now earn 10% commission on all deposits from players you invite.\n\n` +
         `Your player invite link:\n${playerInvite}\n\n` +
-        `📊 Dashboard: ${dashboardUrl}\n\n` +
         `Share your invite link with friends to start earning commissions!`,
-        { reply_markup: buildAgentMenu() }
+        { reply_markup: buildAgentDashboardButton() }
       );
     } catch (err) {
       console.error('[Bot] Be Partner handler error:', err);
