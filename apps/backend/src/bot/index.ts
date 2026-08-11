@@ -825,6 +825,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
     console.log('[Bot] Setting withdrawal session for user:', telegramId);
     withdrawSessions.set(telegramId, { step: 'awaiting_amount' });
+    console.log('[Bot] Session set. Current sessions:', withdrawSessions.size, 'Session for user:', withdrawSessions.has(telegramId));
     
     console.log('[Bot] Sending withdrawal prompt to user:', telegramId);
     await ctx.reply(
@@ -865,16 +866,22 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
   });
 
   // ─── Global message logging ───────────────────────────────────────────────────
-  bot.on('message', (ctx) => {
+  bot.on('message', (ctx, next) => {
     messageCount++;
     console.log(`[Bot] Message #${messageCount} from user ${ctx.from?.id}: "${ctx.message?.text || '[non-text]'}"`);
+    return next();
   });
-  bot.on('message:text', async (ctx) => {
-    if (!ctx.from) return;
-    const telegramId = BigInt(ctx.from.id);
-    const text = ctx.message.text.trim();
 
-    console.log(`[Bot] Processing text message from ${telegramId}: "${text}"`);
+  // ─── Session middleware — intercepts messages BEFORE bot.hears() ─────────────
+  // Must be registered before all bot.hears() to handle multi-step conversations
+  bot.on('message:text', async (ctx, next) => {
+    console.log('[Bot] ✅ message:text handler called');
+    try {
+      if (!ctx.from) return next();
+      const telegramId = BigInt(ctx.from.id);
+      const text = ctx.message.text.trim();
+
+      console.log(`[Bot] Processing text message from ${telegramId}: "${text}"`);
 
     // Ignore bot commands — they have their own handlers
     if (text.startsWith('/')) return;
@@ -887,7 +894,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       console.log(`[Bot] Menu button "${text}" detected - clearing sessions, continuing to bot.hears()`);
       depositSessions.delete(telegramId);
       withdrawSessions.delete(telegramId);
-      // DON'T return - let message continue to bot.hears() handlers
+      // Pass through to bot.hears() handlers
+      return next();
     }
 
     const depositSession = depositSessions.get(telegramId);
@@ -898,7 +906,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     // Only process if user is in an active session (not a menu button)
     if (!depositSession && !withdrawSession) {
       console.log(`[Bot] No active sessions for user ${telegramId} - ignoring message: "${text}"`);
-      return;
+      return next();
     }
 
     // Handle deposit conversation
@@ -1058,6 +1066,14 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       }
       return;
     }
+  } catch (error) {
+    console.error('[Bot] Error in message:text handler:', error);
+    try {
+      await ctx.reply('❌ Something went wrong. Please try again.');
+    } catch (replyError) {
+      console.error('[Bot] Failed to send error reply:', replyError);
+    }
+  }
   });
 
   // ─── Photo handler — OCR receipt image for tx number ────────────────────────
