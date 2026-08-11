@@ -848,6 +848,14 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   bot.hears('Deposit 💰', handleDepositStart);
 
+  // ─── /menu command — refresh the keyboard for existing users ──────────────
+  bot.command('menu', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+    const menu = await getMenuForUser(telegramId);
+    await ctx.reply('Choose an option below.', { reply_markup: menu });
+  });
+
   // ─── Register ALL bot.hears handlers BEFORE bot.on('message:text') ──────────
   // This ensures specific handlers run before the general text handler
 
