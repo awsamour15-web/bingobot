@@ -96,16 +96,74 @@ app.get('/bot-status', async (_req, res): Promise<void> => {
     }
     
     const me = await bot.api.getMe();
+    
+    // Try to get recent updates to test if polling is actually working
+    let pollingStatus = 'unknown';
+    try {
+      await bot.api.getUpdates({ limit: 1, timeout: 1 });
+      pollingStatus = 'active';
+    } catch (pollErr: any) {
+      pollingStatus = pollErr?.error_code === 409 ? 'conflict' : 'error';
+    }
+    
     res.json({ 
       status: 'ok', 
       bot_username: me.username,
       bot_id: me.id,
-      message: 'Bot API is responsive' 
+      polling_status: pollingStatus,
+      message: 'Bot API is responsive',
+      timestamp: new Date().toISOString()
     });
   } catch (error: any) {
     res.json({ 
       status: 'error', 
-      message: error?.description || error?.message || 'Unknown error' 
+      message: error?.description || error?.message || 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ─── Force bot restart endpoint (emergency use) ────────────────────────────────
+app.post('/force-restart-bot', async (_req, res): Promise<void> => {
+  try {
+    if (!bot) {
+      res.json({ status: 'no_bot', message: 'Bot not initialized' });
+      return;
+    }
+    
+    console.log('[API] Force restart requested via endpoint');
+    
+    // Try to stop current bot
+    try {
+      await bot.stop();
+      console.log('[API] Bot stopped');
+    } catch (stopErr) {
+      console.log('[API] Bot stop failed or already stopped');
+    }
+    
+    // Force clear everything
+    await bot.api.deleteWebhook({ drop_pending_updates: true });
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Restart
+    await bot.start({
+      onStart: (info) => {
+        console.log(`[API] Force restart success as @${info.username}`);
+      }
+    });
+    
+    res.json({ 
+      status: 'restarted', 
+      message: 'Bot force restart completed',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('[API] Force restart failed:', error);
+    res.json({ 
+      status: 'error', 
+      message: error?.description || error?.message || 'Restart failed',
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -136,63 +194,76 @@ httpServer.listen(PORT, () => {
 });
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────
-// FIXED: Single bot polling attempt with proper conflict handling
+// AGGRESSIVE: Force kill all existing polling and start fresh
 if (bot) {
   let botStarted = false;
   
-  async function startBotOnce(): Promise<void> {
-    if (botStarted) {
-      console.log('[Bot] Already started, skipping...');
-      return;
-    }
+  async function forceKillAndStartBot(): Promise<void> {
+    if (botStarted) return;
     
     try {
-      console.log('[Bot] Starting bot polling...');
+      console.log('[Bot] FORCE: Aggressive webhook/polling cleanup...');
       
-      // Clear any existing webhook/polling locks
-      await bot!.api.deleteWebhook({ drop_pending_updates: true });
+      // Step 1: Delete webhook multiple times to ensure cleanup
+      for (let i = 0; i < 3; i++) {
+        try {
+          await bot!.api.deleteWebhook({ drop_pending_updates: true });
+          console.log(`[Bot] Webhook cleanup attempt ${i + 1}/3 success`);
+        } catch (err: any) {
+          console.log(`[Bot] Webhook cleanup attempt ${i + 1}/3 failed:`, err?.description || 'unknown');
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
       
-      // Start polling
+      // Step 2: Get updates with high offset to clear ALL pending messages
+      try {
+        console.log('[Bot] Clearing all pending updates...');
+        await bot!.api.getUpdates({ offset: 999999999, limit: 100 });
+      } catch (err: any) {
+        console.log('[Bot] Clear updates failed:', err?.description || 'unknown');
+      }
+      
+      // Step 3: Wait and try polling
+      console.log('[Bot] Starting fresh polling after cleanup...');
       await bot!.start({
         onStart: (info) => {
-          console.log(`[Bot] ✅ Polling active as @${info.username}`);
+          console.log(`[Bot] 🎉 FRESH START SUCCESS as @${info.username}`);
           botStarted = true;
         },
-        drop_pending_updates: true, // Clear old messages
+        drop_pending_updates: true,
       });
       
     } catch (err: any) {
       const errorCode = err?.error_code;
-      const errorDesc = err?.description || err?.message || 'Unknown error';
+      console.error(`[Bot] ❌ Fresh start failed (${errorCode}):`, err?.description || err);
       
-      console.error(`[Bot] ❌ Start failed (${errorCode}): ${errorDesc}`);
-      
-      // For 409 conflicts, wait and try ONE more time only
       if (errorCode === 409 && !botStarted) {
-        console.log('[Bot] 409 conflict - waiting 15s for cleanup...');
+        console.log('[Bot] STILL CONFLICT - waiting 30s for old instances to timeout...');
         setTimeout(async () => {
           try {
-            console.log('[Bot] Final retry attempt...');
+            // Nuclear option: wait for all long-polls to timeout (30s) then retry
+            console.log('[Bot] FINAL NUCLEAR ATTEMPT...');
             await bot!.api.deleteWebhook({ drop_pending_updates: true });
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Brief pause
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
             await bot!.start({
               onStart: (info) => {
-                console.log(`[Bot] ✅ Retry successful as @${info.username}`);
+                console.log(`[Bot] 🚀 NUCLEAR SUCCESS as @${info.username}`);
                 botStarted = true;
               },
               drop_pending_updates: true,
             });
-          } catch (retryErr: any) {
-            console.error('[Bot] ❌ Final retry failed:', retryErr?.description || retryErr);
-            console.error('[Bot] ❌ Bot polling is completely broken - manual intervention required');
+          } catch (nuclearErr: any) {
+            console.error('[Bot] 💥 NUCLEAR FAILED:', nuclearErr?.description || nuclearErr);
+            console.error('[Bot] 🔥 MANUAL INTERVENTION REQUIRED - BOT POLLING IS COMPLETELY BROKEN');
           }
-        }, 15_000);
+        }, 30_000); // Wait 30s for old long-polls to expire
       }
     }
   }
 
-  // Start bot after a brief delay to ensure server is ready
-  setTimeout(() => startBotOnce(), 2_000);
+  // Start after brief server initialization delay
+  setTimeout(() => forceKillAndStartBot(), 3_000);
 }
 
 export default app;
