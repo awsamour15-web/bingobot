@@ -1537,7 +1537,10 @@ export function simulateReferrerAttribution(
     return { referrerId: existingReferrer.id };
   }
   return { referrerId: null };
-} else {
+}
+
+// ─── Error handling for missing BOT_TOKEN ────────────────────────────────────────
+if (!BOT_TOKEN) {
   console.error('[Bot] 🚨 CRITICAL: Bot initialization skipped - BOT_TOKEN is missing!');
   console.error('[Bot] Available env vars:', Object.keys(process.env).filter(k => k.includes('BOT') || k.includes('TOKEN')));
 }
