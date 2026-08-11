@@ -1229,7 +1229,9 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
   process.on('SIGINT', async () => {
     console.log('[Bot] Shutting down gracefully...');
     try {
-      await bot.stop();
+      if (bot) {
+        await bot.stop();
+      }
     } catch (err) {
       console.error('[Bot] Error during shutdown:', err);
     }
@@ -1239,7 +1241,9 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
   process.on('SIGTERM', async () => {
     console.log('[Bot] Received SIGTERM, shutting down...');
     try {
-      await bot.stop();
+      if (bot) {
+        await bot.stop();
+      }
     } catch (err) {
       console.error('[Bot] Error during SIGTERM shutdown:', err);
     }
