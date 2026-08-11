@@ -31,8 +31,10 @@ vi.mock('../../lib/prisma.js', () => ({
 
 import {
   buildMainMenu,
+  buildAgentMenu,
   isGuardedButton,
   MENU_BUTTONS,
+  AGENT_MENU_BUTTONS,
   buildPlayReplyMarkup,
   REGISTER_PROMPT_TEXT,
   formatBalanceReply,
@@ -100,6 +102,68 @@ describe('buildMainMenu()', () => {
       expect(leftBtn.text).toBe(expectedRows[i]![0]);
       expect(rightBtn.text).toBe(expectedRows[i]![1]);
     }
+  });
+
+// ─── Tests for buildAgentMenu ─────────────────────────────────────────────────
+
+describe('buildAgentMenu()', () => {
+  it('returns a keyboard with exactly 10 buttons', () => {
+    const kb = buildAgentMenu();
+    const rows = kb.keyboard;
+    const totalButtons = rows.reduce((sum, row) => sum + row.length, 0);
+    expect(totalButtons).toBe(10);
+  });
+
+  it('has exactly 5 rows', () => {
+    const kb = buildAgentMenu();
+    expect(kb.keyboard.length).toBe(5);
+  });
+
+  it('has exactly 2 buttons per row', () => {
+    const kb = buildAgentMenu();
+    for (const row of kb.keyboard) {
+      expect(row.length).toBe(2);
+    }
+  });
+
+  it('has resize_keyboard = true', () => {
+    const kb = buildAgentMenu();
+    expect(kb.resize_keyboard).toBe(true);
+  });
+
+  it('has one_time_keyboard = false (persistent)', () => {
+    const kb = buildAgentMenu();
+    expect(kb.is_persistent).toBe(true);
+  });
+
+  it('contains all expected agent button labels including emojis', () => {
+    const kb = buildAgentMenu();
+    const rows = kb.keyboard;
+
+    const expectedRows = [
+      ['Play 🎮', 'Register 📝'],
+      ['Check Balance 💰', 'Deposit 💰'],
+      ['Agent Dashboard 📊', 'My Players 👥'],
+      ['Agent Invite 🔗', 'Commission Balance 💵'],
+      ['Contact Support 📞', 'Instruction 📖'],
+    ];
+
+    for (let i = 0; i < expectedRows.length; i++) {
+      const leftBtn = rows[i]![0] as { text: string };
+      const rightBtn = rows[i]![1] as { text: string };
+      expect(leftBtn.text).toBe(expectedRows[i]![0]);
+      expect(rightBtn.text).toBe(expectedRows[i]![1]);
+    }
+  });
+
+  it('includes agent-specific buttons not found in regular menu', () => {
+    const kb = buildAgentMenu();
+    const buttonTexts = kb.keyboard.flat().map((btn: { text: string }) => btn.text);
+    
+    expect(buttonTexts).toContain('Agent Dashboard 📊');
+    expect(buttonTexts).toContain('My Players 👥');
+    expect(buttonTexts).toContain('Agent Invite 🔗');
+    expect(buttonTexts).toContain('Commission Balance 💵');
   });
 });
 

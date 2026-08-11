@@ -48,11 +48,21 @@ export function isGuardedButton(text: string): boolean {
 }
 
 /**
- * Returns true if the given button text is an agent-specific menu button.
+ * Returns true if the given telegramId belongs to an active linked agent.
  */
-export function isAgentButton(text: string): boolean {
-  const allAgentButtons = AGENT_MENU_BUTTONS.flat() as readonly string[];
-  return allAgentButtons.includes(text);
+async function isLinkedAgent(telegramId: bigint): Promise<boolean> {
+  const agent = await prisma.agent.findUnique({
+    where: { telegram_id: telegramId },
+    select: { is_active: true },
+  });
+  return agent?.is_active ?? false;
+}
+
+/**
+ * Returns the appropriate menu (agent or regular) based on user status.
+ */
+async function getMenuForUser(telegramId: bigint): Promise<Keyboard> {
+  return (await isLinkedAgent(telegramId)) ? buildAgentMenu() : buildMainMenu();
 }
 
 /**
@@ -602,7 +612,7 @@ if (BOT_TOKEN) {
 
     // Check if already registered
     if (await isRegistered(BigInt(ctx.from.id))) {
-      await ctx.reply('✅ You are already registered!', { reply_markup: buildMainMenu() });
+      await ctx.reply('✅ You are already registered!', { reply_markup: await getMenuForUser(BigInt(ctx.from.id)) });
       return;
     }
 
@@ -653,7 +663,7 @@ if (BOT_TOKEN) {
       }
 
       if (player.phone_verified) {
-        await ctx.reply('✅ You are already registered!', { reply_markup: buildMainMenu() });
+        await ctx.reply('✅ You are already registered!', { reply_markup: await getMenuForUser(telegramId) });
         return;
       }
 
@@ -685,7 +695,7 @@ if (BOT_TOKEN) {
 
       await ctx.reply(
         `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 20 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
-        { reply_markup: buildMainMenu() },
+        { reply_markup: await getMenuForUser(telegramId) },
       );
     } catch (err) {
       console.error('[Bot] Registration error:', err);
@@ -833,7 +843,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     // If the user pressed a menu button, clear any stale sessions and
     // let the dedicated bot.hears() handler take over.
     const allMenuButtons = MENU_BUTTONS.flat() as readonly string[];
-    if (allMenuButtons.includes(text)) {
+    const allAgentButtons = AGENT_MENU_BUTTONS.flat() as readonly string[];
+    if (allMenuButtons.includes(text) || allAgentButtons.includes(text)) {
       depositSessions.delete(telegramId);
       withdrawSessions.delete(telegramId);
       return;
@@ -1254,6 +1265,165 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
     const link = buildInviteLink(ctx.me.username, telegramId);
     await ctx.reply(`🔗 Invite your friends!\n\nShare this link:\n${link}`);
+  });
+
+  // ─── Agent Dashboard 📊 handler ──────────────────────────────────────────
+  bot.hears('Agent Dashboard 📊', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+
+    // Check if user is a linked agent
+    const linkedAgent = await prisma.agent.findUnique({
+      where: { telegram_id: telegramId },
+      select: { id: true, is_active: true },
+    });
+
+    if (!linkedAgent) {
+      await ctx.reply('⚠️ You are not an authorized agent.');
+      return;
+    }
+
+    if (!linkedAgent.is_active) {
+      await ctx.reply('⚠️ Your agent account is currently suspended. Please contact support.');
+      return;
+    }
+
+    try {
+      const stats = await AgentService.getDashboardStats(linkedAgent.id);
+      const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
+      
+      await ctx.reply(
+        `📊 Agent Dashboard\n\n` +
+        `👥 Total Players: ${stats.totalPlayersInvited}\n` +
+        `💵 Total Commission: ETB ${stats.totalCommission}\n` +
+        `📅 This Week: ETB ${stats.weeklyCommission}\n` +
+        `📅 Today: ETB ${stats.dailyCommission}\n\n` +
+        `🌐 Full Dashboard: ${dashboardUrl}`
+      );
+    } catch (err) {
+      console.error('[Bot] Agent dashboard error:', err);
+      await ctx.reply('❌ Unable to load dashboard. Please try again later.');
+    }
+  });
+
+  // ─── My Players 👥 handler ──────────────────────────────────────────────
+  bot.hears('My Players 👥', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+
+    // Check if user is a linked agent
+    const linkedAgent = await prisma.agent.findUnique({
+      where: { telegram_id: telegramId },
+      select: { id: true, is_active: true },
+    });
+
+    if (!linkedAgent) {
+      await ctx.reply('⚠️ You are not an authorized agent.');
+      return;
+    }
+
+    if (!linkedAgent.is_active) {
+      await ctx.reply('⚠️ Your agent account is currently suspended. Please contact support.');
+      return;
+    }
+
+    try {
+      const stats = await AgentService.getDashboardStats(linkedAgent.id);
+      
+      if (stats.players.length === 0) {
+        await ctx.reply('👥 You haven\'t invited any players yet.\n\nUse "Agent Invite 🔗" to get your invitation link!');
+        return;
+      }
+
+      let playerList = `👥 Your Players (${stats.players.length}):\n\n`;
+      
+      // Show top 10 players
+      const topPlayers = stats.players.slice(0, 10);
+      topPlayers.forEach((player, index) => {
+        playerList += `${index + 1}. ${player.username}\n`;
+        playerList += `   💰 Balance: ETB ${player.depositBalance}\n`;
+        playerList += `   💵 Your Commission: ETB ${player.totalCommissionFromPlayer}\n\n`;
+      });
+
+      if (stats.players.length > 10) {
+        playerList += `... and ${stats.players.length - 10} more players.\n\n`;
+      }
+
+      playerList += `📊 See full details in your dashboard.`;
+      
+      await ctx.reply(playerList);
+    } catch (err) {
+      console.error('[Bot] My players error:', err);
+      await ctx.reply('❌ Unable to load player list. Please try again later.');
+    }
+  });
+
+  // ─── Agent Invite 🔗 handler ──────────────────────────────────────────────
+  bot.hears('Agent Invite 🔗', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+
+    // Check if user is a linked agent
+    const linkedAgent = await prisma.agent.findUnique({
+      where: { telegram_id: telegramId },
+      select: { id: true, is_active: true },
+    });
+
+    if (!linkedAgent) {
+      await ctx.reply('⚠️ You are not an authorized agent.');
+      return;
+    }
+
+    if (!linkedAgent.is_active) {
+      await ctx.reply('⚠️ Your agent account is currently suspended. Please contact support.');
+      return;
+    }
+
+    const playerInvite = `https://t.me/${ctx.me.username}?start=ref_agent_${linkedAgent.id}`;
+    
+    await ctx.reply(
+      `🔗 Your Agent Invitation Link\n\n` +
+      `Share this link to invite new players:\n${playerInvite}\n\n` +
+      `💡 When players register using this link, you'll earn 10% commission on all their deposits!`
+    );
+  });
+
+  // ─── Commission Balance 💵 handler ────────────────────────────────────────
+  bot.hears('Commission Balance 💵', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+
+    // Check if user is a linked agent
+    const linkedAgent = await prisma.agent.findUnique({
+      where: { telegram_id: telegramId },
+      select: { id: true, is_active: true, commission_balance: true },
+    });
+
+    if (!linkedAgent) {
+      await ctx.reply('⚠️ You are not an authorized agent.');
+      return;
+    }
+
+    if (!linkedAgent.is_active) {
+      await ctx.reply('⚠️ Your agent account is currently suspended. Please contact support.');
+      return;
+    }
+
+    try {
+      const stats = await AgentService.getDashboardStats(linkedAgent.id);
+      
+      await ctx.reply(
+        `💵 Commission Balance\n\n` +
+        `💰 Current Balance: ETB ${linkedAgent.commission_balance}\n` +
+        `📈 Total Earned: ETB ${stats.totalCommission}\n` +
+        `📅 This Week: ETB ${stats.weeklyCommission}\n` +
+        `📅 Today: ETB ${stats.dailyCommission}\n\n` +
+        `ℹ️ Contact support to withdraw your commission balance.`
+      );
+    } catch (err) {
+      console.error('[Bot] Commission balance error:', err);
+      await ctx.reply('❌ Unable to load commission balance. Please try again later.');
+    }
   });
 
   // Global error handler — log but never crash
