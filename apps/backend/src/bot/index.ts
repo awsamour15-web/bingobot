@@ -25,6 +25,16 @@ export const MENU_BUTTONS = [
   ['Invite 🔗', 'Convert Bonus 💲'],
 ] as const;
 
+// ─── Agent/Partner menu button labels ──────────────────────────────────────────
+
+export const AGENT_MENU_BUTTONS = [
+  ['Play 🎮', 'Register 📝'],
+  ['Check Balance 💰', 'Deposit 💰'],
+  ['Agent Dashboard 📊', 'My Players 👥'],
+  ['Agent Invite 🔗', 'Commission Balance 💵'],
+  ['Contact Support 📞', 'Instruction 📖'],
+] as const;
+
 // ─── Unguarded buttons (accessible without registration) ─────────────────────
 
 const UNGUARDED_BUTTONS = new Set(['Register 📝', 'Play 🎮']);
@@ -35,6 +45,14 @@ const UNGUARDED_BUTTONS = new Set(['Register 📝', 'Play 🎮']);
  */
 export function isGuardedButton(text: string): boolean {
   return !UNGUARDED_BUTTONS.has(text);
+}
+
+/**
+ * Returns true if the given button text is an agent-specific menu button.
+ */
+export function isAgentButton(text: string): boolean {
+  const allAgentButtons = AGENT_MENU_BUTTONS.flat() as readonly string[];
+  return allAgentButtons.includes(text);
 }
 
 /**
@@ -49,6 +67,24 @@ export function buildMainMenu(): Keyboard {
     kb.text(left).text(right);
     // Add row separator between rows (not after the last row)
     if (i < MENU_BUTTONS.length - 1) {
+      kb.row();
+    }
+  }
+  return kb.resized().persistent();
+}
+
+/**
+ * Builds the persistent agent/partner-menu ReplyKeyboard with agent-specific buttons.
+ * - resize_keyboard = true  (fits compactly on screen)
+ * - one_time_keyboard = false  (remains visible after button press)
+ */
+export function buildAgentMenu(): Keyboard {
+  const kb = new Keyboard();
+  for (let i = 0; i < AGENT_MENU_BUTTONS.length; i++) {
+    const [left, right] = AGENT_MENU_BUTTONS[i]!;
+    kb.text(left).text(right);
+    // Add row separator between rows (not after the last row)
+    if (i < AGENT_MENU_BUTTONS.length - 1) {
       kb.row();
     }
   }
@@ -414,7 +450,7 @@ if (BOT_TOKEN) {
           await ctx.reply(
             `✅ Agent account activated!\n\n` +
             `Share this link to invite players:\n${inviteLink}`,
-            { reply_markup: buildMainMenu() },
+            { reply_markup: buildAgentMenu() },
           );
         } catch (err) {
           const msg = err instanceof Error ? err.message : '';
@@ -529,7 +565,7 @@ if (BOT_TOKEN) {
             `👋 Welcome back, Agent!\n\n` +
             `Your player invite link:\n${playerInvite}\n\n` +
             `📊 Dashboard: ${dashboardUrl}`,
-            { reply_markup: buildMainMenu() },
+            { reply_markup: buildAgentMenu() },
           );
           return;
         }
@@ -721,38 +757,64 @@ if (BOT_TOKEN) {
   }
 
 async function handleWithdrawStart(ctx: import('grammy').Context) {
-  if (!ctx.from) return;
-  const telegramId = BigInt(ctx.from.id);
+  console.log('[Bot] handleWithdrawStart called for user:', ctx.from?.id);
   
-  if (!(await isRegistered(telegramId))) {
-    await ctx.reply('⚠️ Please register first to use this feature. Tap Register 📝 to get started.');
-    return;
-  }
+  try {
+    if (!ctx.from) {
+      console.log('[Bot] No ctx.from in handleWithdrawStart');
+      return;
+    }
+    
+    const telegramId = BigInt(ctx.from.id);
+    console.log('[Bot] Processing withdrawal for telegramId:', telegramId);
+    
+    if (!(await isRegistered(telegramId))) {
+      console.log('[Bot] User not registered:', telegramId);
+      await ctx.reply('⚠️ Please register first to use this feature. Tap Register 📝 to get started.');
+      return;
+    }
 
-  const player = await getRegisteredPlayerWithWallets(telegramId);
-  if (!player) {
-    await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
-    return;
-  }
+    const player = await getRegisteredPlayerWithWallets(telegramId);
+    if (!player) {
+      console.log('[Bot] No player found after registration check:', telegramId);
+      await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+      return;
+    }
 
-  const mainWallet = player.wallets.find(w => w.type === 'main');
-  if (!mainWallet || Number(mainWallet.balance) < 100) {
+    console.log('[Bot] Player found:', player.id, 'wallets:', player.wallets.length);
+    
+    const mainWallet = player.wallets.find(w => w.type === 'main');
+    console.log('[Bot] Main wallet:', mainWallet ? `${mainWallet.balance} ${mainWallet.type}` : 'not found');
+    
+    if (!mainWallet || Number(mainWallet.balance) < 100) {
+      console.log('[Bot] Insufficient balance for withdrawal:', mainWallet?.balance || '0');
+      await ctx.reply(
+        `⚠️ በመንግስት ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\n` +
+        `የአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\n` +
+        `አነስተኛ የማውጣት መጠን: 100 ብር\n\n` +
+        `እባክዎ በጨዋታ ውስጥ በማሸነፍ ወይም ቦነስ በመለወጥ የመንግስት ዋሌት ሒሳብዎን ያሳድጉ።`
+      );
+      return;
+    }
+
+    console.log('[Bot] Setting withdrawal session for user:', telegramId);
+    withdrawSessions.set(telegramId, { step: 'awaiting_amount' });
+    
+    console.log('[Bot] Sending withdrawal prompt to user:', telegramId);
     await ctx.reply(
-      `⚠️ በመንግስት ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\n` +
-      `የአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\n` +
-      `አነስተኛ የማውጣት መጠን: 100 ብር\n\n` +
-      `እባክዎ በጨዋታ ውስጥ በማሸነፍ ወይም ቦነስ በመለወጥ የመንግስት ዋሌት ሒሳብዎን ያሳድጉ።`
+      `💰 ማውጣት የሚፈልጉትን መጠን ያስጊቡ።\n\n` +
+      `አነስተኛ መጠን: 100 ብር\n` +
+      `የአሁን የመንግስት ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` +
+      `⚠️ ማስታወሻ: የመንግስት ዋሌት ሒሳብ ብቻ ማውጣት ይቻላል። የተቀማጭ እና የቦነስ ሒሳብ ማውጣት አይቻልም።`
     );
-    return;
+    
+    console.log('[Bot] handleWithdrawStart completed successfully for user:', telegramId);
+  } catch (error) {
+    console.error('[Bot] Error in handleWithdrawStart:', error);
+    if (ctx.from) {
+      await ctx.reply('❌ Something went wrong. Please try again later.').catch(console.error);
+    }
   }
-
-  withdrawSessions.set(telegramId, { step: 'awaiting_amount' });
-  await ctx.reply(
-    `💰 ማውጣት የሚፈልጉትን መጠን ያስጊቡ።\n\n` +
-    `አነስተኛ መጠን: 100 ብር\n` +
-    `የአሁን የመንግስት ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` +
-    `⚠️ ማስታወሻ: የመንግስት ዋሌት ሒሳብ ብቻ ማውጣት ይቻላል። የተቀማጭ እና የቦነስ ሒሳብ ማውጣት አይቻልም።`
-  );
 }
 
   bot.command('deposit', handleDepositStart);
@@ -1146,7 +1208,17 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
   });
 
   // ─── 5.4: Withdraw 🤑 handler ─────────────────────────────────────────────
-  bot.hears('Withdraw 🤑', handleWithdrawStart);
+  console.log('[Bot Setup] Registering "Withdraw 🤑" handler');
+  bot.hears('Withdraw 🤑', (ctx) => {
+    console.log('[Bot] "Withdraw 🤑" handler triggered for user:', ctx.from?.id);
+    return handleWithdrawStart(ctx);
+  });
+
+  // ─── TEST: Simple test handler ─────────────────────────────────────────────
+  bot.hears('test', async (ctx) => {
+    console.log('[Bot] Test handler triggered');
+    await ctx.reply('Test response received! Bot is working.');
+  });
 
   // ─── /withdraw_help command for old-style instructions ──────────────────────
   bot.command('withdraw_help', async (ctx) => {
