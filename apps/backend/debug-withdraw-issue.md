@@ -1,13 +1,44 @@
-# Withdrawal Issue Debugging Guide
+# Withdrawal Issue Debugging Guide - UPDATED 
 
-Based on my analysis of the codebase, the withdrawal functionality appears to be correctly implemented. Here are the most likely causes and solutions:
+**STATUS**: ✅ Bot is alive and responsive, but polling stopped. Render restart needed.
 
-## Most Common Issues & Solutions
+Based on my analysis of the codebase and diagnostics, the withdrawal functionality is correctly implemented. The issue is likely that the bot polling stopped working properly. Here are the solutions:
+
+## IMMEDIATE FIX (Most Likely Solution) 🚨
+
+### **Bot Polling Restart Required**
+The bot is alive but not receiving user messages. This typically happens after server deployments.
+
+**Solution**: Restart your Node.js server:
+```bash
+# Stop the current server process
+# Then restart it (npm start, node src/index.js, etc.)
+```
+
+**Wait 35 seconds** after restart for the bot to initialize properly (this is built into the code to avoid conflicts).
+
+### **Test the Fix**
+1. Have a user send "Play 🎮" or any menu button first
+2. Bot should respond immediately with the game interface
+3. If that works, then try "Withdraw 🤑" with a user who has >100 ETB balance
+
+## Root Cause Analysis ✅
+
+**Diagnostics Completed**:
+- ✅ Bot API token is valid and responsive
+- ✅ Webhook cleared (using long polling correctly)  
+- ✅ Code implementation is correct
+- ✅ Button text matching works properly
+- ❌ No recent user interactions detected
+
+**The Issue**: Bot polling isn't active despite server running.
+
+## Secondary Issues (if bot is responding but withdrawal still fails)
 
 ### 1. **Session Interference**
 **Problem**: Users have stale deposit/withdrawal sessions that block new interactions.
 
-**Solution**: Clear user sessions by restarting the bot or implementing session cleanup.
+**Solution**: Clear user sessions by having them tap any menu button (like "Play 🎮") first, then try "Withdraw 🤑" again.
 
 ### 2. **Registration Status**
 **Problem**: Users aren't properly registered or registration check is failing.
