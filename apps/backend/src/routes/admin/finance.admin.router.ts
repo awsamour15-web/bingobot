@@ -39,7 +39,10 @@ router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> =
 router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;
 
-  const tx = await prisma.transaction.findUnique({ where: { id } });
+  const tx = await prisma.transaction.findUnique({
+    where: { id },
+    include: { wallet: { select: { player_id: true } } },
+  });
 
   if (!tx || tx.type !== TxType.withdrawal || !tx.note?.startsWith('PENDING:')) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Pending withdrawal not found' });
@@ -52,6 +55,18 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
       where: { id },
       data: { note: tx.note.replace('PENDING:', 'APPROVED:') },
     });
+
+    // Extract phone from note: "PENDING: Awaiting admin approval — phone: 09XXXXXXXX"
+    const phoneMatch = tx.note.match(/phone:\s*(\S+)/);
+    const phone = phoneMatch?.[1] ?? 'N/A';
+    const amount = Number(tx.amount);
+    const playerId = tx.wallet.player_id;
+
+    // Notify player via Telegram (non-blocking)
+    import('../../bot/notifications.js').then(({ notifyWithdrawalApproved }) => {
+      void notifyWithdrawalApproved(playerId, amount, phone);
+    }).catch(() => {});
+
     res.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Approval failed';
@@ -92,7 +107,7 @@ router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Prom
 
     // Notify the player via Telegram (non-blocking)
     import('../../bot/notifications.js').then(({ notifyWithdrawalRejected }) => {
-      void notifyWithdrawalRejected(wallet.player_id);
+      void notifyWithdrawalRejected(wallet.player_id, Number(tx.amount));
     }).catch(() => {});
   }
 
