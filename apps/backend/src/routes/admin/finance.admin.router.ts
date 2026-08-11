@@ -31,21 +31,29 @@ router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> =
   res.json(result);
 });
 
-// POST /api/admin/withdrawals/:id/approve — admin paid, submits Telebirr tx number to verify
+// POST /api/admin/withdrawals/:id/approve — admin paid, submits Telebirr tx number or full SMS to verify
 router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;
   const { tx_number } = req.body as { tx_number?: string };
 
   if (!tx_number || typeof tx_number !== 'string' || tx_number.trim() === '') {
-    res.status(400).json({ error: 'TX_NUMBER_REQUIRED', message: 'Telebirr transaction number is required' });
+    res.status(400).json({ error: 'TX_NUMBER_REQUIRED', message: 'Telebirr transaction number or SMS message is required' });
     return;
   }
 
-  const txNumber = tx_number.trim().toUpperCase();
+  // Try to parse as a full Telebirr SMS first, fall back to treating as a raw tx number
+  const { parseTelebirrReceipt } = await import('../../bot/index.js');
+  const parsed = parseTelebirrReceipt(tx_number);
+  const txNumber = (parsed?.txNumber ?? tx_number.trim()).toUpperCase();
+
+  if (!txNumber || txNumber.length < 6) {
+    res.status(400).json({ error: 'INVALID_TX', message: 'Could not extract a valid transaction number from the input' });
+    return;
+  }
 
   const withdrawal = await prisma.pendingWithdrawal.findUnique({
     where: { id },
-    include: { player: { select: { id: true, telegram_id: true } } },
+    include: { player: { select: { id: true } } },
   });
 
   if (!withdrawal || withdrawal.status !== 'pending') {
@@ -53,7 +61,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
     return;
   }
 
-  // Prevent duplicate tx number
+  // Prevent duplicate tx number across all withdrawals
   const duplicate = await prisma.pendingWithdrawal.findUnique({ where: { tx_number: txNumber } });
   if (duplicate && duplicate.id !== id) {
     res.status(409).json({ error: 'DUPLICATE_TX', message: 'This transaction number has already been used' });
@@ -71,7 +79,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
       void notifyWithdrawalApproved(withdrawal.player.id, Number(withdrawal.amount), withdrawal.phone);
     }).catch(() => {});
 
-    res.json({ success: true });
+    res.json({ success: true, tx_number: txNumber });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Approval failed';
     res.status(422).json({ error: 'APPROVAL_FAILED', message: msg });
