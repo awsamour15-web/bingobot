@@ -215,6 +215,10 @@ export function getRounds(): Promise<RoundListItem[]> {
   return apiRequest<RoundListItem[]>('GET', '/api/rounds');
 }
 
+export function getSystemStats(): Promise<{ totalPlayers: number; totalGames: number }> {
+  return apiRequest<{ totalPlayers: number; totalGames: number }>('GET', '/api/system/stats');
+}
+
 export function getRound(id: string): Promise<RoundDetail> {
   return apiRequest<RoundDetail>('GET', `/api/rounds/${id}`);
 }

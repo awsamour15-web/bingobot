@@ -51,4 +51,15 @@ router.get('/state', async (_req: Request, res: Response): Promise<void> => {
   res.json(state);
 });
 
+// GET /api/system/stats — total players registered and total completed games
+router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
+  const [totalPlayers, totalGames] = await Promise.all([
+    prisma.player.count({ where: { phone_verified: true } }),
+    prisma.gameRound.count({ where: { status: 'completed' } }),
+  ]);
+
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+  res.json({ totalPlayers, totalGames });
+});
+
 export default router;

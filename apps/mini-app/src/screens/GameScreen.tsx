@@ -1,10 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initAuth, getAgentJwt } from '../lib/auth';
-import { getRounds } from '../lib/api';
+import { getRounds, getSystemStats } from '../lib/api';
+import { socket } from '../lib/socket';
 import type { RoundListItem } from '@fidel/shared';
 
 const ALLOWED_STAKES = [10, 20, 50];
+
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
 
 export default function GameScreen() {
   const navigate = useNavigate();
@@ -13,25 +20,37 @@ export default function GameScreen() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isAgent, setIsAgent] = useState(false);
+  const [stats, setStats] = useState<{ totalPlayers: number; totalGames: number } | null>(null);
+
+  // Live player counts per round (updated by WebSocket)
+  const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
+
+  const updateCount = useCallback((roundId: string, count: number) => {
+    setLiveCounts(prev => ({ ...prev, [roundId]: count }));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true); setError(null);
       try {
-        const [data] = await Promise.all([
+        const [data, statsData] = await Promise.all([
           getRounds(),
+          getSystemStats().catch(() => null),
           initAuth(),
         ]);
-        if (!cancelled) setRounds(
-          data
-            .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))
-            .sort((a, b) => Number(a.stake) - Number(b.stake))
-        );
-        // Check if user is an agent
         if (!cancelled) {
+          const filtered = data
+            .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))
+            .sort((a, b) => Number(a.stake) - Number(b.stake));
+          setRounds(filtered);
+          // Seed live counts from initial API data
+          const initial: Record<string, number> = {};
+          filtered.forEach(r => { initial[r.id] = r.player_count; });
+          setLiveCounts(initial);
           setIsAgent(!!getAgentJwt());
         }
+        if (!cancelled && statsData) setStats(statsData);
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
@@ -41,6 +60,51 @@ export default function GameScreen() {
     load();
     return () => { cancelled = true; };
   }, [retryCount]);
+
+  // Listen for live player count updates from WebSocket
+  useEffect(() => {
+    function onPlayerJoined(payload: { playerCount: number }, roundId?: string) {
+      // PLAYER_JOINED fires in the round room — we listen globally and match by room
+      // but on GameScreen we don't know roundId from the payload alone, so we
+      // refresh rounds list every time a player joins any visible round
+      setRounds(prev => prev.map(r =>
+        r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
+      ));
+    }
+
+    function onCartelaTaken(payload: { playerCount: number }) {
+      setRounds(prev => prev.map(r =>
+        r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
+      ));
+    }
+
+    function onRoundStarted(payload: { roundId: string; playerCount: number; derash: number }) {
+      setRounds(prev => prev.map(r =>
+        r.id === payload.roundId
+          ? { ...r, status: 'active', player_count: payload.playerCount, derash: payload.derash }
+          : r
+      ));
+      updateCount(payload.roundId, payload.playerCount);
+    }
+
+    function onRoundVoidOrCancelled(payload: { roundId: string }) {
+      setRounds(prev => prev.filter(r => r.id !== payload.roundId));
+    }
+
+    socket.on('PLAYER_JOINED', onPlayerJoined);
+    socket.on('CARTELA_TAKEN', onCartelaTaken);
+    socket.on('ROUND_STARTED', onRoundStarted);
+    socket.on('ROUND_VOID', onRoundVoidOrCancelled);
+    socket.on('ROUND_CANCELLED', onRoundVoidOrCancelled);
+
+    return () => {
+      socket.off('PLAYER_JOINED', onPlayerJoined);
+      socket.off('CARTELA_TAKEN', onCartelaTaken);
+      socket.off('ROUND_STARTED', onRoundStarted);
+      socket.off('ROUND_VOID', onRoundVoidOrCancelled);
+      socket.off('ROUND_CANCELLED', onRoundVoidOrCancelled);
+    };
+  }, [updateCount]);
 
   return (
     <div style={{ minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
@@ -111,6 +175,7 @@ export default function GameScreen() {
 
         {!loading && !error && rounds.map((round) => {
           const isPending = round.status === 'pending';
+          const playerCount = liveCounts[round.id] ?? round.player_count;
 
           return (
             <button key={round.id}
@@ -141,19 +206,59 @@ export default function GameScreen() {
                   <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Prize Pool</div>
                 </div>
               </div>
+
+              {/* Player count bar */}
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13 }}>👥</span>
+                  <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
+                    {playerCount} / {round.max_players} players
+                  </span>
+                </div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                  color: isPending ? '#34d399' : '#f59e0b',
+                  background: isPending ? 'rgba(52,211,153,0.12)' : 'rgba(245,158,11,0.12)',
+                  borderRadius: 8, padding: '3px 8px',
+                }}>
+                  {isPending ? '● WAITING' : '● IN PROGRESS'}
+                </div>
+              </div>
+
+              {/* Fill bar */}
+              <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 4,
+                  width: `${Math.min(100, (playerCount / round.max_players) * 100)}%`,
+                  background: isPending
+                    ? 'linear-gradient(90deg, #34d399, #10b981)'
+                    : 'linear-gradient(90deg, #f59e0b, #d97706)',
+                  transition: 'width 0.4s ease',
+                }} />
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* ── Stats strip ── */}
+      {/* ── Stats strip — real data ── */}
       <div style={{ margin: '0 16px 24px', background: '#0d1b2e', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '18px 0', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
-        {[['45K+', 'Players'], ['60K+', 'Games Played'], ['24/7', 'Always Live']].map(([val, label]) => (
-          <div key={label}>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>{val}</div>
-            <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>{label}</div>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>
+            {stats ? fmt(stats.totalPlayers) : '…'}
           </div>
-        ))}
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>Players</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>
+            {stats ? fmt(stats.totalGames) : '…'}
+          </div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>Games Played</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>24/7</div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>Always Live</div>
+        </div>
       </div>
 
       {/* ── Agent Dashboard Button ── */}
@@ -162,34 +267,19 @@ export default function GameScreen() {
           <button
             onClick={() => navigate('/agent/dashboard')}
             style={{
-              display: 'block',
-              width: '100%',
+              display: 'block', width: '100%',
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: 'none',
-              borderRadius: 16,
-              padding: '16px 20px',
-              cursor: 'pointer',
-              textAlign: 'left',
+              border: 'none', borderRadius: 16, padding: '16px 20px',
+              cursor: 'pointer', textAlign: 'left',
               boxShadow: '0 4px 16px rgba(16,185,129,0.3)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 12,
-                  background: 'rgba(255,255,255,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18,
-                }}>
-                  📊
-                </div>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📊</div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 2 }}>
-                    Agent Dashboard
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
-                    View your referrals and earnings
-                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 2 }}>Agent Dashboard</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>View your referrals and earnings</div>
                 </div>
               </div>
               <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.8)' }}>→</div>
