@@ -15,6 +15,15 @@ type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 const BOT_TOKEN = process.env['BOT_TOKEN'];
 const MINI_APP_URL = process.env['MINI_APP_URL'] ?? 'https://bingobot-mini-app.vercel.app/';
 
+console.log('[Bot] 🔍 Environment check:');
+console.log(`[Bot] BOT_TOKEN: ${BOT_TOKEN ? '✅ Present' : '❌ MISSING'}`);
+console.log(`[Bot] MINI_APP_URL: ${MINI_APP_URL}`);
+
+if (!BOT_TOKEN) {
+  console.error('[Bot] 🚨 FATAL: BOT_TOKEN environment variable is missing!');
+  console.error('[Bot] Bot initialization will be skipped.');
+}
+
 // ─── Global message counter for debugging ────────────────────────────────────
 let messageCount = 0;
 
@@ -431,7 +440,9 @@ async function processDepositClaim(
 let bot: Bot | null = null;
 
 if (BOT_TOKEN) {
+  console.log('[Bot] ✅ BOT_TOKEN found, initializing bot...');
   bot = new Bot(BOT_TOKEN);
+  console.log('[Bot] ✅ Bot instance created successfully');
 
   /**
    * /start command handler
@@ -1526,6 +1537,9 @@ export function simulateReferrerAttribution(
     return { referrerId: existingReferrer.id };
   }
   return { referrerId: null };
+} else {
+  console.error('[Bot] 🚨 CRITICAL: Bot initialization skipped - BOT_TOKEN is missing!');
+  console.error('[Bot] Available env vars:', Object.keys(process.env).filter(k => k.includes('BOT') || k.includes('TOKEN')));
 }
 
 export { bot, MINI_APP_URL };
