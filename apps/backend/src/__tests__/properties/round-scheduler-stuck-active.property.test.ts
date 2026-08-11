@@ -89,8 +89,8 @@ const LEAD_TIME_MS = 60_000;
 
 // Stale threshold: 75 numbers × 5000ms interval + 5min buffer = ~380s
 // For tests, we use a simplified version: start_time < (now - staleThresholdMs)
-const CALL_INTERVAL_MS = 5_000;
-const STALE_THRESHOLD_MS = 75 * CALL_INTERVAL_MS + 5 * 60_000; // ~380_000ms
+const CALL_INTERVAL_MS = 4_000;
+const STALE_THRESHOLD_MS = 75 * CALL_INTERVAL_MS + 5 * 60_000; // ~305_000ms
 
 // ─── In-memory simulation of ensureRoundsExist ───────────────────────────────
 //

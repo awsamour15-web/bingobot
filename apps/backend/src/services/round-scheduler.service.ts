@@ -28,8 +28,8 @@ export const RoundScheduler = {
     console.log('[Scheduler] Starting round scheduler');
     void prisma.config.upsert({
       where: { key: 'call_interval_ms' },
-      update: { value: '5000' },
-      create: { key: 'call_interval_ms', value: '5000' },
+      update: { value: '4000' },
+      create: { key: 'call_interval_ms', value: '4000' },
     });
     void RoundScheduler.recoverActiveRounds();
     void RoundScheduler.tick();
@@ -72,7 +72,7 @@ export const RoundScheduler = {
   async recoverStaleActiveRounds(): Promise<void> {
     try {
       const callIntervalRow = await prisma.config.findUnique({ where: { key: 'call_interval_ms' } });
-      const callIntervalMs = callIntervalRow ? parseInt(callIntervalRow.value, 10) : 5_000;
+      const callIntervalMs = callIntervalRow ? parseInt(callIntervalRow.value, 10) : 4_000;
       const staleThreshold = new Date(Date.now() - (75 * callIntervalMs + 5 * 60_000));
 
       const activeRounds = await prisma.gameRound.findMany({

@@ -1,5 +1,5 @@
-// Feature: beteseb-bingo-telegram, Property 10: Every Wallet Mutation Produces a Transaction Record
-// Feature: beteseb-bingo-telegram, Property 11: Play Wallet Cannot Be Withdrawn
+// Feature: fidel-bingo-telegram, Property 10: Every Wallet Mutation Produces a Transaction Record
+// Feature: fidel-bingo-telegram, Property 11: Play Wallet Cannot Be Withdrawn
 // Validates: Requirements 6.2, 6.6
 
 import { describe, it, expect } from 'vitest';
@@ -223,7 +223,7 @@ describe('Property 11: Play Wallet Cannot Be Withdrawn', () => {
 });
 
 // ─── Property 17: Cancellation / Void Refund Invariant ───────────────────────
-// Feature: beteseb-bingo-telegram, Property 17: Cancellation / Void Refund Invariant
+// Feature: fidel-bingo-telegram, Property 17: Cancellation / Void Refund Invariant
 // Validates: Requirements 13.3, 16.3
 
 /**
@@ -406,7 +406,7 @@ describe('Property 17: Cancellation / Void Refund Invariant', () => {
 });
 
 // ─── Property 8: Derash Calculation Invariant ─────────────────────────────────
-// Feature: beteseb-bingo-telegram, Property 8: Derash Calculation Invariant
+// Feature: fidel-bingo-telegram, Property 8: Derash Calculation Invariant
 // Validates: Requirements 5.5
 
 /**
@@ -481,7 +481,7 @@ describe('Property 8: Derash Calculation Invariant', () => {
 });
 
 // ─── Property 9: Winner Receives Exact Derash Amount ─────────────────────────
-// Feature: beteseb-bingo-telegram, Property 9: Winner Receives Exact Derash Amount
+// Feature: fidel-bingo-telegram, Property 9: Winner Receives Exact Derash Amount
 // Validates: Requirements 5.3
 
 interface WinnerWallet {

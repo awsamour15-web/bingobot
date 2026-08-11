@@ -1,4 +1,4 @@
-// Feature: beteseb-bingo-telegram, Property 19: Config Change Isolation
+// Feature: fidel-bingo-telegram, Property 19: Config Change Isolation
 // Validates: Requirements 15.4
 
 import { describe, it, expect } from 'vitest';
@@ -150,7 +150,7 @@ describe('Property 19: Config Change Isolation', () => {
 });
 
 // ─── Property 16: Suspended Player Cannot Join Rounds ─────────────────────────
-// Feature: beteseb-bingo-telegram, Property 16: Suspended Player Cannot Join Rounds
+// Feature: fidel-bingo-telegram, Property 16: Suspended Player Cannot Join Rounds
 // Validates: Requirements 12.3
 
 /**
@@ -263,7 +263,7 @@ describe('Property 16: Suspended Player Cannot Join Rounds', () => {
 });
 
 // ─── Property 18: Admin Manual Adjustment Integrity ──────────────────────────
-// Feature: beteseb-bingo-telegram, Property 18: Admin Manual Adjustment Integrity
+// Feature: fidel-bingo-telegram, Property 18: Admin Manual Adjustment Integrity
 // Validates: Requirements 14.1
 
 interface AdjustmentWallet {

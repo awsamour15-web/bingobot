@@ -30,6 +30,23 @@ export type {
   PaginatedResponse,
 };
 
+// Agent dashboard types
+export interface AgentDashboardStats {
+  totalPlayersInvited: number;
+  totalCommission: number;
+  weeklyCommission: number;   // UTC+3 current week Mon–Sun
+  dailyCommission: number;    // UTC+3 today
+  players: AgentPlayerRow[];
+}
+
+export interface AgentPlayerRow {
+  playerId: string;
+  username: string;
+  depositBalance: number;     // play wallet balance
+  totalCommissionFromPlayer: number;
+  joinedAt: string;           // ISO date
+}
+
 // Re-export WebSocket payload types
 export type {
   NumberCalledPayload,
@@ -63,11 +80,27 @@ function getJwt(): string | null {
   return localStorage.getItem('jwt');
 }
 
+function getAgentJwt(): string | null {
+  return localStorage.getItem('agentJwt');
+}
+
 function buildHeaders(hasBody = false): Record<string, string> {
   const headers: Record<string, string> = {};
   const jwt = getJwt();
   if (jwt) {
     headers['Authorization'] = `Bearer ${jwt}`;
+  }
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+}
+
+function buildAgentHeaders(hasBody = false): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const agentJwt = getAgentJwt();
+  if (agentJwt) {
+    headers['Authorization'] = `Bearer ${agentJwt}`;
   }
   if (hasBody) {
     headers['Content-Type'] = 'application/json';
@@ -115,6 +148,40 @@ export async function apiRequest<T>(
       });
     }
 
+    throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
+      status: response.status,
+      code: errorData.error,
+    });
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function fetchOnceAgent(method: string, path: string, body?: unknown): Promise<Response> {
+  const hasBody = body !== undefined;
+  return fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: buildAgentHeaders(hasBody),
+    body: hasBody ? JSON.stringify(body) : null,
+  });
+}
+
+export async function agentApiRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const response = await fetchOnceAgent(method, path, body);
+
+  if (response.status === 401) {
+    // Clear agent session but don't redirect - just throw error
+    localStorage.removeItem('agentJwt');
+    localStorage.removeItem('agentId');
+    throw new Error('Agent session expired');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
     throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
       status: response.status,
       code: errorData.error,
@@ -202,6 +269,26 @@ export function leaveRound(roundId: string, cartelaNumber: number): Promise<{ ok
 }
 
 // ---------------------------------------------------------------------------
+// Cartela Reservations
+// ---------------------------------------------------------------------------
+
+export function reserveCartela(roundId: string, cartelaNumber: number): Promise<{ cartelaNumber: number; reserved: boolean; message: string }> {
+  return apiRequest('POST', `/api/rounds/${roundId}/reserve-cartela`, { cartelaNumber });
+}
+
+export function releaseCartela(roundId: string, cartelaNumber: number): Promise<{ cartelaNumber: number; released: boolean }> {
+  return apiRequest('DELETE', `/api/rounds/${roundId}/release-cartela/${cartelaNumber}`);
+}
+
+export function getMyReservations(roundId: string): Promise<{ reservations: number[] }> {
+  return apiRequest('GET', `/api/rounds/${roundId}/my-reservations`);
+}
+
+export function releaseAllReservations(roundId: string): Promise<{ released: number; cartelas: number[] }> {
+  return apiRequest('DELETE', `/api/rounds/${roundId}/release-all-reservations`);
+}
+
+// ---------------------------------------------------------------------------
 // System state
 // ---------------------------------------------------------------------------
 
@@ -264,4 +351,16 @@ export function getReferralLink(): Promise<ReferralStats> {
 
 export function verifyPhone(phone: string): Promise<void> {
   return apiRequest<void>('POST', '/api/players/verify-phone', { phone });
+}
+
+// ---------------------------------------------------------------------------
+// Agent API
+// ---------------------------------------------------------------------------
+
+export function getAgentDashboard(): Promise<AgentDashboardStats> {
+  return agentApiRequest<AgentDashboardStats>('GET', '/api/agent/dashboard');
+}
+
+export function getAgentInviteLink(): Promise<{ playerInviteLink: string }> {
+  return agentApiRequest<{ playerInviteLink: string }>('GET', '/api/agent/invite-link');
 }

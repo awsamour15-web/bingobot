@@ -1,5 +1,5 @@
-// Feature: beteseb-bingo-telegram, Property 12: Game History Ordering Invariant
-// Feature: beteseb-bingo-telegram, Property 13: Called Numbers Round-Trip Persistence
+// Feature: fidel-bingo-telegram, Property 12: Game History Ordering Invariant
+// Feature: fidel-bingo-telegram, Property 13: Called Numbers Round-Trip Persistence
 // Validates: Requirements 8.2, 8.3, 16.4
 
 import { describe, it, expect } from 'vitest';

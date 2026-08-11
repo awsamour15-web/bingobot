@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature adds an **Agent/Cashier** role to the Beteseb Bingo platform. Agents are human operators (shop owners, kiosk workers, local representatives) who act as physical cash intermediaries between players and the platform. They top up player wallets in exchange for cash collected in person, earn commissions on each top-up, and operate through a dedicated web interface (`apps/agent`).
+This feature adds an **Agent/Cashier** role to the Fidel Bingo platform. Agents are human operators (shop owners, kiosk workers, local representatives) who act as physical cash intermediaries between players and the platform. They top up player wallets in exchange for cash collected in person, earn commissions on each top-up, and operate through a dedicated web interface (`apps/agent`).
 
 The design spans three layers:
 1. **Backend** — new Prisma models, a dedicated agent auth middleware, and `/api/agent/*` route group

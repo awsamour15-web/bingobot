@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, memo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached, reserveCartela, releaseCartela } from '../lib/api';
 import cartelaGrids from '../lib/cartela-grids.json';
 
 // Instant local grid lookup — no network needed
@@ -375,7 +375,14 @@ export default function CartelaScreen() {
       picksRef.current = next;
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-      if (roundId) socket.emit('CARTELA_UNRESERVE' as any, { roundId, cartelaNumbers: [num] });
+      
+      // Release reservation via API
+      if (roundId) {
+        releaseCartela(roundId, num).catch(err => {
+          console.warn('Failed to release cartela reservation:', err);
+          // Still update UI optimistically - reservation will expire anyway
+        });
+      }
       return;
     }
     if (picksRef.current.size >= MAX_SELECT) return;
@@ -403,22 +410,48 @@ export default function CartelaScreen() {
       return;
     }
     
-    const next = new Set([...picksRef.current, num]);
-    picksRef.current = next;
-    setPicks(next);
-    if (roundId) socket.emit('CARTELA_RESERVE' as any, { roundId, cartelaNumbers: [num] });
-    
-    // Show grid instantly from local lookup, then confirm/update from server cache
-    const localGrid = getLocalGrid(num);
-    if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
+    // Reserve cartela via API first, then update UI if successful
     if (roundId) {
-      getCartelaGridCached(roundId, num)
-        .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
-        .catch(() => {});
+      reserveCartela(roundId, num)
+        .then(() => {
+          // Only update UI if reservation was successful
+          const next = new Set([...picksRef.current, num]);
+          picksRef.current = next;
+          setPicks(next);
+          
+          // Show grid instantly from local lookup, then confirm/update from server cache
+          const localGrid = getLocalGrid(num);
+          if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
+          getCartelaGridCached(roundId, num)
+            .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
+            .catch(() => {});
+        })
+        .catch(err => {
+          // Reservation failed - show error and refresh availability
+          const errorMsg = err.message || 'Failed to reserve cartela';
+          if (errorMsg.includes('reserved') || errorMsg.includes('taken')) {
+            setBalanceAlert(`Cartela ${num} was just taken by another player. Refreshing...`);
+          } else {
+            setBalanceAlert(`Failed to select cartela ${num}: ${errorMsg}`);
+          }
+          
+          // Refresh availability to get current state
+          getCartelaAvailability(roundId).then(fresh => {
+            setAvailability(fresh);
+          }).catch(() => {});
+        });
+    } else {
+      // Fallback for when roundId is not available yet
+      const next = new Set([...picksRef.current, num]);
+      picksRef.current = next;
+      setPicks(next);
+      
+      const localGrid = getLocalGrid(num);
+      if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
     }
   }
 
-  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances]);
+  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances, availability]);
 
   if (loading) return (
     <div style={{ height: '100dvh', background: '#0a0e1a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 16 }}>
@@ -528,19 +561,20 @@ export default function CartelaScreen() {
             const grid = pickedGrids.get(cartelaNum);
             return (
               <div key={cartelaNum} style={{ minWidth: 0 }}>
-                <div style={{ textAlign: 'center', fontSize: 10, color: '#f59e0b', fontWeight: 800, marginBottom: 3 }}>
+                <div style={{ textAlign: 'center', fontSize: 12, color: '#f59e0b', fontWeight: 900, marginBottom: 4 }}>
                   Cartela No : {cartelaNum}
                 </div>
-                {/* BINGO header row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 2 }}>
+                {/* BINGO header row with better visibility */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 3 }}>
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
                       background: COL_COLORS[ci], color: '#fff', fontWeight: 900,
-                      fontSize: 10, textAlign: 'center', borderRadius: 3, padding: '2px 0',
+                      fontSize: 12, textAlign: 'center', borderRadius: 4, padding: '3px 0',
+                      minHeight: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>{col}</div>
                   ))}
                 </div>
-                {/* 5×5 grid */}
+                {/* 5×5 grid with improved readability */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
                   {grid ? grid.map((val, idx) => {
                     const isFree = idx === 12;
@@ -548,19 +582,22 @@ export default function CartelaScreen() {
                       <div key={idx} style={{
                         background: isFree ? '#22c55e' : '#1e293b',
                         color: isFree ? '#fff' : '#e2e8f0',
-                        fontWeight: isFree ? 900 : 600,
-                        fontSize: 10, textAlign: 'center', borderRadius: 3,
-                        padding: '3px 0', border: '1px solid rgba(255,255,255,0.07)',
-                        minWidth: 0,
+                        fontWeight: 900,
+                        fontSize: 12,
+                        textAlign: 'center', borderRadius: 4,
+                        padding: '4px 0', border: '1px solid rgba(255,255,255,0.07)',
+                        minWidth: 0, minHeight: '24px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         {isFree ? '★' : val}
                       </div>
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: '#1e293b', borderRadius: 3, padding: '3px 0',
-                      border: '1px solid rgba(255,255,255,0.07)', minWidth: 0,
-                      fontSize: 10, textAlign: 'center', color: '#334155',
+                      background: '#1e293b', borderRadius: 4, padding: '4px 0',
+                      border: '1px solid rgba(255,255,255,0.07)', minWidth: 0, minHeight: '24px',
+                      fontSize: 12, textAlign: 'center', color: '#334155',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>·</div>
                   ))}
                 </div>

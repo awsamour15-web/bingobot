@@ -21,10 +21,13 @@ import adminRoundsRouter from './routes/admin/rounds.admin.router.js';
 import adminFinanceRouter from './routes/admin/finance.admin.router.js';
 import adminConfigRouter from './routes/admin/config.admin.router.js';
 import adminDepositsRouter from './routes/admin/deposits.admin.router.js';
+import adminAgentsRouter from './routes/admin/agents.router.js';
+import agentRouter from './routes/agent.router.js';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
 import { RoundScheduler } from './services/round-scheduler.service.js';
+import { CleanupService } from './services/cleanup.service.js';
 
 const app: Express = express();
 
@@ -74,8 +77,10 @@ app.use('/api/admin/auth', adminAuthRouter);
 app.use('/api/admin/players', jwtAdminMiddleware, adminPlayersRouter);
 app.use('/api/admin/rounds', jwtAdminMiddleware, adminRoundsRouter);
 app.use('/api/admin/deposits', jwtAdminMiddleware, adminDepositsRouter);
+app.use('/api/admin/agents', jwtAdminMiddleware, adminAgentsRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminFinanceRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminConfigRouter);
+app.use('/api/agent', agentRouter);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
@@ -103,6 +108,8 @@ httpServer.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
   // Start auto-round scheduler after server is up
   RoundScheduler.start();
+  // Start cleanup service for expired reservations
+  CleanupService.start();
 });
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────

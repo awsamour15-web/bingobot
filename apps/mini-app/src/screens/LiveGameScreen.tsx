@@ -546,10 +546,9 @@ export default function LiveGameScreen() {
           {/* Numbers 1-75 in 5 columns, 15 rows */}
           <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(15, 1fr)', gap: 1, padding: 2 }}>
             {Array.from({ length: 75 }, (_, i) => {
-              // Fill column by column: col 0 = 1-15, col 1 = 16-30, etc.
-              const col = i % 5;
-              const row = Math.floor(i / 5);
-              const num = col * 15 + row + 1;
+              // Standard 75-number bingo: B(1-15), I(16-30), N(31-45), G(46-60), O(61-75)
+              const num = i + 1;
+              const col = Math.floor((num - 1) / 15); // Which column this number belongs to
               const called = game.calledNumbers.has(num);
               const isLast = num === game.lastCalled;
               return (
@@ -1003,25 +1002,25 @@ export default function LiveGameScreen() {
                   const cartelaWinCells = winCellsForGrid(cartelaGrid);
                   const cartelaHasWin = hasWinForGrid(cartelaGrid);
                   return (
-                    <div key={cartela.cartelaNumber} style={{ flex: 0.85, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div key={cartela.cartelaNumber} style={{ flex: 0.6, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '150px' }}>
                       {/* Cartela number label */}
-                      <div style={{ textAlign: 'center', fontSize: 6, fontWeight: 700, color: '#f5d06b', marginBottom: 1, flexShrink: 0 }}>
+                      <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#f5d06b', marginBottom: 2, flexShrink: 0 }}>
                         #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#22c55e' }}>✓ BINGO</span>}
                       </div>
                       {/* Gap between label section and bingo grid */}
-                      <div style={{ height: 4, flexShrink: 0 }} />
+                      <div style={{ height: 2, flexShrink: 0 }} />
                       {/* Column headers */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, marginBottom: 1, flexShrink: 0 }}>
                         {COLS.map((c, i) => (
                           <div key={c} style={{
                             background: COL_COLORS[i], textAlign: 'center',
-                            borderRadius: 2, padding: '1px 0',
-                            fontWeight: 900, fontSize: 6, color: '#fff',
+                            borderRadius: 2, padding: '2px 0',
+                            fontWeight: 900, fontSize: 8, color: '#fff',
                           }}>{c}</div>
                         ))}
                       </div>
-                      {/* 5×5 grid */}
-                      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 1, minHeight: 0 }}>
+                      {/* 5×5 grid - reduced size and increased font */}
+                      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 2, minHeight: 0, maxHeight: '120px' }}>
                         {cartelaGrid.length > 0 ? cartelaGrid.map((val, idx) => {
                           const isFree = idx === 12;
                           const colIdx = idx % 5;
@@ -1035,20 +1034,21 @@ export default function LiveGameScreen() {
                                 : m
                                 ? COL_COLORS[colIdx]
                                 : 'rgba(255,255,255,0.07)',
-                              color: wl ? '#1a1035' : m ? '#fff' : '#64748b',
+                              color: wl ? '#1a1035' : m ? '#fff' : '#e2e8f0',
                               borderRadius: 3,
-                              fontSize: 7,
-                              fontWeight: m ? 900 : 500,
-                              border: wl ? '1px solid #fff' : m ? 'none' : '1px solid rgba(255,255,255,0.06)',
-                              boxShadow: wl ? '0 0 5px rgba(245,208,107,0.5)' : 'none',
+                              fontSize: 12,
+                              fontWeight: 900,
+                              border: wl ? '2px solid #fff' : m ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                              boxShadow: wl ? '0 0 8px rgba(245,208,107,0.5)' : 'none',
                               transition: 'background 0.2s',
+                              minHeight: '20px',
                             }}>
                               {isFree ? '★' : val}
                             </div>
                           );
                         }) : (
                           Array.from({ length: 25 }).map((_, idx) => (
-                            <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 3 }} />
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 3, minHeight: '20px' }} />
                           ))
                         )}
                       </div>

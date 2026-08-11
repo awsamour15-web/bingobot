@@ -16,6 +16,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string;
   playerId: string;
+  agentToken?: string;
+  agentId?: string;
 }
 
 // ---------------------------------------------------------------------------

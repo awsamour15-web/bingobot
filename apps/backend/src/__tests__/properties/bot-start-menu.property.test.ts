@@ -169,7 +169,7 @@ describe('Property 7: isGuardedButton()', () => {
 
 describe('buildPlayReplyMarkup()', () => {
   it('returns an inline keyboard containing the correct MINI_APP_URL', () => {
-    const testUrl = 'https://t.me/beteseb_bingo_bot/app';
+    const testUrl = 'https://t.me/fidel_bingo_bot/app';
     const markup = buildPlayReplyMarkup(testUrl);
     // grammY InlineKeyboard stores rows in .inline_keyboard (array of rows, each row is array of buttons)
     const buttons = markup.inline_keyboard.flat();
@@ -180,11 +180,11 @@ describe('buildPlayReplyMarkup()', () => {
     expect(webAppButton).toBeDefined();
   });
 
-  it('labels the button "Open Beteseb Bingo"', () => {
+  it('labels the button "Open Fidel Bingo"', () => {
     const markup = buildPlayReplyMarkup('https://example.com');
     const buttons = markup.inline_keyboard.flat();
     const webAppButton = buttons.find((btn) => 'web_app' in btn);
-    expect(webAppButton?.text).toBe('Open Beteseb Bingo');
+    expect(webAppButton?.text).toBe('Open Fidel Bingo');
   });
 });
 
@@ -274,7 +274,7 @@ describe('buildDepositText()', () => {
 
   it('does not contain a hardcoded support handle', async () => {
     const text = await buildDepositText();
-    expect(text).not.toContain('@betesebbingosupport');
+    expect(text).not.toContain('@fidelbingosupport');
   });
 
   it('contains the Telebirr step instruction', async () => {
@@ -343,8 +343,8 @@ describe('CONVERT_BONUS_TEXT', () => {
 
 describe('Property 1: buildInviteLink()', () => {
   it('produces the exact expected format for a concrete example', () => {
-    const link = buildInviteLink('beteseb_bingo_bot', BigInt(123456789));
-    expect(link).toBe('https://t.me/beteseb_bingo_bot?start=ref_123456789');
+    const link = buildInviteLink('fidel_bingo_bot', BigInt(123456789));
+    expect(link).toBe('https://t.me/fidel_bingo_bot?start=ref_123456789');
   });
 
   it('for any bot username and telegram ID, link matches the expected format', () => {

@@ -1,5 +1,5 @@
-// Feature: beteseb-bingo-telegram, Property 1: initData Authentication Soundness
-// Feature: beteseb-bingo-telegram, Property 2: Player Upsert Idempotency
+// Feature: fidel-bingo-telegram, Property 1: initData Authentication Soundness
+// Feature: fidel-bingo-telegram, Property 2: Player Upsert Idempotency
 // Validates: Requirements 1.1, 1.2, 1.3
 
 import { describe, it, expect } from 'vitest';

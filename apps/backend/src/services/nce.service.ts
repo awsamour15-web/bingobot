@@ -373,13 +373,13 @@ export class NumberCallingEngine {
     }).catch(() => {});
   }
 
-  /** Read call_interval_ms from Config, falling back to 5 000 ms. Enforces a 1 000 ms floor. */
+  /** Read call_interval_ms from Config, falling back to 4 000 ms. Enforces a 1 000 ms floor. */
   private async readCallInterval(): Promise<number> {
     const row = await prisma.config.findUnique({
       where: { key: 'call_interval_ms' },
     });
-    const parsed = row ? parseInt(row.value, 10) : NaN;
-    const value = isNaN(parsed) ? 5_000 : parsed;
+    const parsed = row ? parseInt(row.value, 10) : 4_000;
+    const value = isNaN(parsed) ? 4_000 : parsed;
     return Math.max(value, 1_000); // never faster than 1 number/second
   }
 }

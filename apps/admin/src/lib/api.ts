@@ -208,3 +208,49 @@ export function createAdmin(body: CreateAdminRequest): Promise<AdminAccount> {
 export function updateAdmin(id: string, body: UpdateAdminRequest): Promise<AdminAccount> {
   return adminApiRequest<AdminAccount>('PATCH', `/api/admin/admins/${id}`, body);
 }
+
+// ---------------------------------------------------------------------------
+// Agents
+// ---------------------------------------------------------------------------
+
+export interface AgentSummary {
+  id: string;
+  telegramUsername: string;
+  agentInviteLink: string;
+  totalPlayersInvited: number;
+  totalCommission: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AgentPlayerRow {
+  playerId: string;
+  username: string;
+  depositBalance: number;
+  totalCommissionFromPlayer: number;
+  joinedAt: string;
+}
+
+export interface AgentDetail extends AgentSummary {
+  players: AgentPlayerRow[];
+}
+
+export function createAgent(telegramUsername: string): Promise<{ agent: AgentSummary & { agentInviteLink: string } }> {
+  return adminApiRequest('POST', '/api/admin/agents', { telegramUsername });
+}
+
+export function listAgents(): Promise<{ agents: AgentSummary[] }> {
+  return adminApiRequest('GET', '/api/admin/agents');
+}
+
+export function getAgentDetail(id: string): Promise<{ agent: AgentDetail }> {
+  return adminApiRequest('GET', `/api/admin/agents/${id}`);
+}
+
+export function suspendAgent(id: string): Promise<{ ok: boolean }> {
+  return adminApiRequest('PATCH', `/api/admin/agents/${id}/suspend`);
+}
+
+export function restoreAgent(id: string): Promise<{ ok: boolean }> {
+  return adminApiRequest('PATCH', `/api/admin/agents/${id}/restore`);
+}

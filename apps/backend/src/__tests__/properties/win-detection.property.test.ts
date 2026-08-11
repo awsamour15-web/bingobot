@@ -1,5 +1,5 @@
-// Feature: beteseb-bingo-telegram, Property 6: Win Detection Soundness
-// Feature: beteseb-bingo-telegram, Property 7: Win Claim for Watching-Only Player is Rejected
+// Feature: fidel-bingo-telegram, Property 6: Win Detection Soundness
+// Feature: fidel-bingo-telegram, Property 7: Win Claim for Watching-Only Player is Rejected
 // Validates: Requirements 4.5, 4.7, 5.1, 5.2
 
 import { describe, it, expect } from 'vitest';

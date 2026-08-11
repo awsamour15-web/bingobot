@@ -1,5 +1,5 @@
 // POST /api/auth/login — Telegram initData verification, player upsert, JWT issuance
-// Requirements: 1.1, 1.2, 9.2
+// Requirements: 1.1, 1.2, 8.1, 8.2, 9.2
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import jwt from 'jsonwebtoken';
@@ -18,6 +18,8 @@ interface LoginRequest {
 interface LoginResponse {
   token: string;
   playerId: string;
+  agentToken?: string;
+  agentId?: string;
 }
 
 const router: RouterType = Router();
@@ -133,10 +135,23 @@ router.post(
       expiresIn: '24h',
     });
 
-    const response: LoginResponse = {
-      token,
-      playerId: player.id,
-    };
+    // ── Step 5: Check if this Telegram user is also an Agent ─────────────────
+    const agentRecord = await prisma.agent.findUnique({
+      where: { telegram_id: telegramId },
+      select: { id: true, is_active: true },
+    });
+
+    const response: LoginResponse = { token, playerId: player.id };
+
+    if (agentRecord) {
+      const agentToken = jwt.sign(
+        { agentId: agentRecord.id, role: 'agent' },
+        jwtSecret,
+        { expiresIn: '24h' },
+      );
+      response.agentToken = agentToken;
+      response.agentId = agentRecord.id;
+    }
 
     res.status(200).json(response);
   }

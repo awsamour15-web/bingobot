@@ -1,4 +1,4 @@
-// Feature: beteseb-bingo-telegram, Property 3: Available Cartelas Exclude Taken Ones
+// Feature: fidel-bingo-telegram, Property 3: Available Cartelas Exclude Taken Ones
 // Validates: Requirements 3.1, 3.2
 
 import { describe, it } from 'vitest';
@@ -68,7 +68,7 @@ describe('Property 3: Available Cartelas Exclude Taken Ones', () => {
 });
 
 // ─── Property 5: Insufficient Balance Prevents Any Wallet Debit ──────────────
-// Feature: beteseb-bingo-telegram, Property 5: Insufficient Balance Prevents Any Wallet Debit
+// Feature: fidel-bingo-telegram, Property 5: Insufficient Balance Prevents Any Wallet Debit
 // Validates: Requirements 3.4, 6.4
 
 import { InsufficientFundsError } from '../../services/wallet.service.js';
@@ -131,7 +131,7 @@ describe('Property 5: Insufficient Balance Prevents Any Wallet Debit', () => {
 });
 
 // ─── Property 4: Cartela Join Atomicity — Balance Deduction ──────────────────
-// Feature: beteseb-bingo-telegram, Property 4: Cartela Join Atomicity — Balance Deduction
+// Feature: fidel-bingo-telegram, Property 4: Cartela Join Atomicity — Balance Deduction
 // Validates: Requirements 3.3
 
 import { expect } from 'vitest';

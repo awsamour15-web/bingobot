@@ -42,15 +42,25 @@ export function isLoggedIn(): boolean {
 export function clearSession(): void {
   localStorage.removeItem('jwt');
   localStorage.removeItem('playerId');
+  localStorage.removeItem('agentJwt');
+  localStorage.removeItem('agentId');
 }
 
 async function doLogin(): Promise<void> {
   const initData = WebApp.initData || DEV_MOCK_INIT_DATA;
   const startParam = (WebApp.initDataUnsafe as { start_param?: string }).start_param;
 
-  const { token, playerId } = await login(initData, startParam);
-  localStorage.setItem('jwt', token);
-  localStorage.setItem('playerId', playerId);
+  const response = await login(initData, startParam);
+  localStorage.setItem('jwt', response.token);
+  localStorage.setItem('playerId', response.playerId);
+
+  // Store agent JWT if the user is also an agent
+  if (response.agentToken) {
+    localStorage.setItem('agentJwt', response.agentToken);
+  }
+  if (response.agentId) {
+    localStorage.setItem('agentId', response.agentId);
+  }
 }
 
 export async function initAuth(): Promise<void> {
@@ -80,4 +90,12 @@ export function getPlayerId(): string | null {
 
 export function getJwt(): string | null {
   return localStorage.getItem('jwt');
+}
+
+export function getAgentJwt(): string | null {
+  return localStorage.getItem('agentJwt');
+}
+
+export function getAgentId(): string | null {
+  return localStorage.getItem('agentId');
 }

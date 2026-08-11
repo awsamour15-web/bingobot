@@ -7,6 +7,7 @@ import HistoryScreen from './screens/HistoryScreen';
 import HistoryDetailScreen from './screens/HistoryDetailScreen';
 import WalletScreen from './screens/WalletScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import AgentDashboardScreen from './screens/AgentDashboardScreen';
 import { socket } from './lib/socket';
 
 // ─── Error boundary ───────────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ function AppInner() {
         <Route path="/history/:roundId" element={<HistoryDetailScreen />} />
         <Route path="/wallet" element={<WalletScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/agent/dashboard" element={<AgentDashboardScreen />} />
         <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />
         <Route path="/rounds/:id/game" element={<LiveGameScreen />} />
       </Routes>

@@ -25,7 +25,7 @@ router.get('/link', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const botUsername = process.env['BOT_USERNAME'] ?? 'BetesebBingoBot';
+  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
   const referralLink = `https://t.me/${botUsername}?start=ref_${player.telegram_id}`;
 
   // Count successful referrals

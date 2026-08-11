@@ -6,6 +6,7 @@ import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { nce } from './nce.service.js';
 import { ReferralService } from './referral.service.js';
+import { CartelaReservationService } from './cartela-reservation.service.js';
 
 // ─── Typed errors ─────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ export const GameRoundService = {
   /**
    * Join a player to a pending round with multiple cartela numbers in a single transaction.
    * No balance deduction here — payment is collected when the game starts.
+   * Removes any existing reservations for these cartelas by this player.
    */
   async joinBatch(
     roundId: string,
@@ -130,7 +132,7 @@ export const GameRoundService = {
         if (!player) throw new Error(`Player ${playerId} not found`);
         if (player.is_suspended) throw new PlayerSuspendedError(playerId);
 
-        // 3. Check all cartelas are available
+        // 3. Check all cartelas are available (not taken by others)
         const existingEntries = await tx.roundEntry.findMany({
           where: { round_id: roundId, cartela_number: { in: cartelaNumbers } },
           select: { cartela_number: true },
@@ -154,7 +156,16 @@ export const GameRoundService = {
           throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, totalStake);
         }
 
-        // 5. Insert all RoundEntries (no payment yet)
+        // 5. Remove any existing reservations for these cartelas by this player
+        await tx.cartelaReservation.deleteMany({
+          where: {
+            round_id: roundId,
+            player_id: playerId,
+            cartela_number: { in: cartelaNumbers }
+          }
+        });
+
+        // 6. Insert all RoundEntries (no payment yet)
         await tx.roundEntry.createMany({
           data: cartelaNumbers.map((cartelaNumber) => ({
             round_id: roundId,
@@ -164,7 +175,7 @@ export const GameRoundService = {
           })),
         });
 
-        // 6. Recalculate derash (preview — will be recalculated at start with actual payers)
+        // 7. Recalculate derash (preview — will be recalculated at start with actual payers)
         const entryCount = await tx.roundEntry.count({
           where: { round_id: roundId, is_watching: false },
         });
@@ -193,6 +204,7 @@ export const GameRoundService = {
   /**
    * Join a player to a pending round with a specific cartela number.
    * No balance deduction here — payment is collected when the game starts.
+   * Removes any existing reservation for this cartela by this player.
    */
   async join(
     roundId: string,
@@ -224,7 +236,7 @@ export const GameRoundService = {
       if (!player) throw new Error(`Player ${playerId} not found`);
       if (player.is_suspended) throw new PlayerSuspendedError(playerId);
 
-      // 3. Check cartela availability
+      // 3. Check cartela availability (not taken by others)
       const existing = await tx.roundEntry.findUnique({
         where: { round_id_cartela_number: { round_id: roundId, cartela_number: cartelaNumber } },
       });
@@ -246,7 +258,16 @@ export const GameRoundService = {
         throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, stake);
       }
 
-      // 5. Insert RoundEntry (no payment yet)
+      // 5. Remove any existing reservation for this cartela by this player
+      await tx.cartelaReservation.deleteMany({
+        where: {
+          round_id: roundId,
+          player_id: playerId,
+          cartela_number: cartelaNumber
+        }
+      });
+
+      // 6. Insert RoundEntry (no payment yet)
       await tx.roundEntry.create({
         data: {
           round_id: roundId,
@@ -256,7 +277,7 @@ export const GameRoundService = {
         },
       });
 
-      // 6. Recalculate and update derash (preview)
+      // 7. Recalculate and update derash (preview)
       const entryCount = await tx.roundEntry.count({
         where: { round_id: roundId, is_watching: false },
       });

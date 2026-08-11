@@ -1,4 +1,4 @@
-# Beteseb Bingo — Deployment & Telegram Bot Setup Guide
+# Fidel Bingo — Deployment & Telegram Bot Setup Guide
 
 ## Overview
 
@@ -13,8 +13,8 @@ This project has 3 parts to deploy:
 
 1. Open Telegram and search for `@BotFather`
 2. Send `/newbot`
-3. Enter a display name (e.g. `Beteseb Bingo`)
-4. Enter a username (must end in `bot`, e.g. `beteseb_bingo_bot`)
+3. Enter a display name (e.g. `Fidel Bingo`)
+4. Enter a username (must end in `bot`, e.g. `fidel_bingo_bot`)
 5. BotFather will give you a token like:
    ```
    8643757251:AAEp5dRCld3yQTCpND8h5xV78M7M_vhauEU
@@ -27,7 +27,7 @@ This project has 3 parts to deploy:
 
 1. In BotFather, send `/newapp`
 2. Select your bot
-3. Enter an app name (e.g. `Beteseb Bingo`)
+3. Enter an app name (e.g. `Fidel Bingo`)
 4. Enter a short description
 5. Upload a photo (optional, can skip)
 6. Set the Web App URL → you will get this URL after deploying the Mini App in Step 6
@@ -178,11 +178,11 @@ Redeploy the backend after updating env vars.
 ## Step 9: Test the Bot
 
 1. Open Telegram
-2. Search for your bot username (e.g. `@beteseb_bingo_bot`)
+2. Search for your bot username (e.g. `@fidel_bingo_bot`)
 3. Send `/start`
 4. You should see:
    - A welcome message
-   - A **"🎮 Open Beteseb Bingo"** button
+   - A **"🎮 Open Fidel Bingo"** button
 5. Tap the button — the Mini App should open inside Telegram
 
 ---

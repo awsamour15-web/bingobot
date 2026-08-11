@@ -14,6 +14,11 @@ import {
   PlayerSuspendedError,
   RoundNotFoundError,
 } from '../services/game-round.service.js';
+import { 
+  CartelaReservationService, 
+  CartelaAlreadyReservedError, 
+  ReservationNotFoundError 
+} from '../services/cartela-reservation.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
 import { WalletType } from '@fidel/shared';
 import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
@@ -136,27 +141,24 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
   const { id } = req.params as { id: string };
 
   // Single query: get taken cartelas and verify round exists simultaneously
-  const [round, takenEntries] = await Promise.all([
-    prisma.gameRound.findUnique({ where: { id }, select: { id: true } }),
-    prisma.roundEntry.findMany({
-      where: { round_id: id, is_watching: false },
-      select: { cartela_number: true },
-    }),
-  ]);
-
+  const round = await prisma.gameRound.findUnique({ where: { id }, select: { id: true } });
   if (!round) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' });
     return;
   }
 
-  const takenSet = new Set(takenEntries.map((e) => e.cartela_number));
+  // Get taken and reserved cartelas
+  const { taken, reserved } = await CartelaReservationService.getTakenAndReserved(id);
 
   // All cartela numbers 1–800
   const ALL_CARTELAS = Array.from({ length: 800 }, (_, i) => i + 1);
-  const available = ALL_CARTELAS.filter((n) => !takenSet.has(n));
-  const taken = ALL_CARTELAS.filter((n) => takenSet.has(n));
+  const takenAndReservedSet = new Set([...taken, ...reserved]);
+  const available = ALL_CARTELAS.filter((n) => !takenAndReservedSet.has(n));
 
-  const response: CartelaAvailability = { available, taken };
+  const response: CartelaAvailability = { 
+    available, 
+    taken: [...taken, ...reserved] // Include reserved as "taken" for frontend
+  };
   // No cache for availability - always return fresh data to prevent race conditions
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.status(200).json(response);
@@ -176,6 +178,99 @@ router.get('/:id/cartelas/:num/grid', async (req: Request, res: Response): Promi
     return;
   }
   res.json({ cartela_number: num, grid: def.grid });
+});
+
+// ─── POST /api/rounds/:id/reserve-cartela ────────────────────────────────────
+// Reserve a cartela temporarily (30 seconds) to prevent others from taking it
+
+router.post('/:id/reserve-cartela', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+  const body = req.body as { cartelaNumber?: unknown };
+
+  if (
+    body?.cartelaNumber === undefined ||
+    typeof body.cartelaNumber !== 'number' ||
+    !Number.isInteger(body.cartelaNumber) ||
+    body.cartelaNumber < 1 ||
+    body.cartelaNumber > 800
+  ) {
+    res.status(400).json({
+      error: 'BAD_REQUEST',
+      message: 'cartelaNumber must be an integer between 1 and 800',
+    });
+    return;
+  }
+
+  const cartelaNumber = body.cartelaNumber as number;
+
+  try {
+    await CartelaReservationService.reserve(id, playerId, cartelaNumber);
+    res.status(200).json({ 
+      cartelaNumber,
+      reserved: true,
+      message: 'Cartela reserved for 30 seconds'
+    });
+  } catch (err) {
+    if (err instanceof CartelaAlreadyReservedError) {
+      res.status(409).json({ error: 'CARTELA_RESERVED', message: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+// ─── DELETE /api/rounds/:id/release-cartela/:cartelaNumber ───────────────────
+// Release a cartela reservation
+
+router.delete('/:id/release-cartela/:cartelaNumber', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+  const cartelaNumber = parseInt(req.params['cartelaNumber'] as string, 10);
+
+  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > 800) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
+    return;
+  }
+
+  try {
+    await CartelaReservationService.release(id, playerId, cartelaNumber);
+    res.status(200).json({ 
+      cartelaNumber,
+      released: true 
+    });
+  } catch (err) {
+    if (err instanceof ReservationNotFoundError) {
+      res.status(404).json({ error: 'RESERVATION_NOT_FOUND', message: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+// ─── GET /api/rounds/:id/my-reservations ─────────────────────────────────────
+// Get player's current reservations for a round
+
+router.get('/:id/my-reservations', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+
+  const reservations = await CartelaReservationService.getPlayerReservations(id, playerId);
+  res.status(200).json({ reservations });
+});
+
+// ─── DELETE /api/rounds/:id/release-all-reservations ─────────────────────────
+// Release all reservations for a player in a round
+
+router.delete('/:id/release-all-reservations', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+
+  const releasedCartelas = await CartelaReservationService.releaseAll(id, playerId);
+  res.status(200).json({ 
+    released: releasedCartelas.length,
+    cartelas: releasedCartelas
+  });
 });
 
 // ─── POST /api/rounds/:id/join-batch ─────────────────────────────────────────
@@ -211,6 +306,10 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
   } catch (err) {
     if (err instanceof CartelaTakenError) {
       res.status(409).json({ error: 'CARTELA_TAKEN', message: err.message });
+      return;
+    }
+    if (err instanceof CartelaAlreadyReservedError) {
+      res.status(409).json({ error: 'CARTELA_RESERVED', message: err.message });
       return;
     }
     if (err instanceof RoundNotPendingError) {
@@ -271,6 +370,10 @@ router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {
   } catch (err) {
     if (err instanceof CartelaTakenError) {
       res.status(409).json({ error: 'CARTELA_TAKEN', message: err.message });
+      return;
+    }
+    if (err instanceof CartelaAlreadyReservedError) {
+      res.status(409).json({ error: 'CARTELA_RESERVED', message: err.message });
       return;
     }
     if (err instanceof RoundNotPendingError) {

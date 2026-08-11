@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature introduces an **Agent/Cashier** role to the Beteseb Bingo system. An agent is a human operator (e.g. a shop owner, kiosk worker, or local representative) who acts as a physical intermediary between players and the platform. Agents can register players, top up player wallets with cash, assist with cartela purchases, and manage payouts on behalf of players in their area. The admin panel gains agent management capabilities, and agents receive a dedicated interface to perform their daily operations.
+This feature introduces an **Agent/Cashier** role to the Fidel Bingo system. An agent is a human operator (e.g. a shop owner, kiosk worker, or local representative) who acts as a physical intermediary between players and the platform. Agents can register players, top up player wallets with cash, assist with cartela purchases, and manage payouts on behalf of players in their area. The admin panel gains agent management capabilities, and agents receive a dedicated interface to perform their daily operations.
 
 ## Glossary
 
@@ -16,7 +16,7 @@ This feature introduces an **Agent/Cashier** role to the Beteseb Bingo system. A
 - **Agent_Wallet**: An internal ledger tracking the agent's accumulated commission earnings.
 - **Super_Admin**: An admin with elevated privileges who can create, manage, and deactivate agents.
 - **JWT**: JSON Web Token used for stateless authentication.
-- **System**: The Beteseb Bingo backend (Node.js/Express + Prisma + PostgreSQL).
+- **System**: The Fidel Bingo backend (Node.js/Express + Prisma + PostgreSQL).
 
 ---
 

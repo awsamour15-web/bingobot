@@ -17,6 +17,8 @@ export interface RoundWonPayload {
     }>;
     totalDerash: number;
     winnerCount: number;
+    /** Complete ordered list of called numbers at the time the round ended */
+    calledNumbers?: number[];
 }
 export interface RoundVoidPayload {
     roundId: string;
@@ -32,6 +34,9 @@ export interface PlayerJoinedPayload {
 export interface CartelaTakenPayload {
     cartelaNumbers: number[];
     playerCount: number;
+}
+export interface CartelaReservedPayload {
+    cartelaNumbers: number[];
 }
 export interface WinRejectedPayload {
     reason: string;
@@ -53,6 +58,8 @@ export interface ServerToClientEvents {
     ROUND_CANCELLED: (payload: RoundCancelledPayload) => void;
     PLAYER_JOINED: (payload: PlayerJoinedPayload) => void;
     CARTELA_TAKEN: (payload: CartelaTakenPayload) => void;
+    CARTELA_RESERVED: (payload: CartelaReservedPayload) => void;
+    CARTELA_UNRESERVED: (payload: CartelaReservedPayload) => void;
     WIN_REJECTED: (payload: WinRejectedPayload) => void;
 }
 /** Events emitted by the client and received by the server */
@@ -62,5 +69,13 @@ export interface ClientToServerEvents {
         roundId: string;
     }) => void;
     CLAIM_WIN: (event: ClaimWinEvent) => void;
+    CARTELA_RESERVE: (event: {
+        roundId: string;
+        cartelaNumbers: number[];
+    }) => void;
+    CARTELA_UNRESERVE: (event: {
+        roundId: string;
+        cartelaNumbers: number[];
+    }) => void;
 }
 //# sourceMappingURL=websocket.d.ts.map
