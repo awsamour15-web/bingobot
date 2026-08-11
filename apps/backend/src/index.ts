@@ -136,47 +136,63 @@ httpServer.listen(PORT, () => {
 });
 
 // ─── Telegram Bot (long polling) ─────────────────────────────────────────────
-// SIMPLIFIED: Force bot to start immediately after clearing webhook
+// FIXED: Single bot polling attempt with proper conflict handling
 if (bot) {
-  console.log('[Bot] Immediate bot startup - bypassing wait');
+  let botStarted = false;
   
-  async function forceStartBot(): Promise<void> {
+  async function startBotOnce(): Promise<void> {
+    if (botStarted) {
+      console.log('[Bot] Already started, skipping...');
+      return;
+    }
+    
     try {
-      console.log('[Bot] 1. Clearing any webhook...');
+      console.log('[Bot] Starting bot polling...');
+      
+      // Clear any existing webhook/polling locks
       await bot!.api.deleteWebhook({ drop_pending_updates: true });
       
-      console.log('[Bot] 2. Getting pending updates to clear them...');
-      await bot!.api.getUpdates({ offset: -1 });
-      
-      console.log('[Bot] 3. Starting polling...');
+      // Start polling
       await bot!.start({
         onStart: (info) => {
-          console.log(`[Bot] ✅ Successfully started as @${info.username}`);
+          console.log(`[Bot] ✅ Polling active as @${info.username}`);
+          botStarted = true;
         },
-        drop_pending_updates: false,
+        drop_pending_updates: true, // Clear old messages
       });
-    } catch (err: any) {
-      console.error('[Bot] ❌ Failed to start:', err?.description || err?.message || err);
       
-      // If it's a 409 conflict, wait and retry once
-      if (err?.error_code === 409) {
-        console.log('[Bot] 409 conflict detected - waiting 10s and retrying once...');
+    } catch (err: any) {
+      const errorCode = err?.error_code;
+      const errorDesc = err?.description || err?.message || 'Unknown error';
+      
+      console.error(`[Bot] ❌ Start failed (${errorCode}): ${errorDesc}`);
+      
+      // For 409 conflicts, wait and try ONE more time only
+      if (errorCode === 409 && !botStarted) {
+        console.log('[Bot] 409 conflict - waiting 15s for cleanup...');
         setTimeout(async () => {
           try {
+            console.log('[Bot] Final retry attempt...');
             await bot!.api.deleteWebhook({ drop_pending_updates: true });
-            await bot!.start({ 
-              onStart: (info) => console.log(`[Bot] ✅ Retry success as @${info.username}`)
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Brief pause
+            await bot!.start({
+              onStart: (info) => {
+                console.log(`[Bot] ✅ Retry successful as @${info.username}`);
+                botStarted = true;
+              },
+              drop_pending_updates: true,
             });
           } catch (retryErr: any) {
-            console.error('[Bot] ❌ Retry also failed:', retryErr?.description || retryErr);
+            console.error('[Bot] ❌ Final retry failed:', retryErr?.description || retryErr);
+            console.error('[Bot] ❌ Bot polling is completely broken - manual intervention required');
           }
-        }, 10_000);
+        }, 15_000);
       }
     }
   }
 
-  // Start immediately instead of waiting 35s
-  forceStartBot();
+  // Start bot after a brief delay to ensure server is ready
+  setTimeout(() => startBotOnce(), 2_000);
 }
 
 export default app;

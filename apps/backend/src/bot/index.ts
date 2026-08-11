@@ -15,6 +15,9 @@ type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 const BOT_TOKEN = process.env['BOT_TOKEN'];
 const MINI_APP_URL = process.env['MINI_APP_URL'] ?? 'https://bingobot-mini-app.vercel.app/';
 
+// ─── Global message counter for debugging ────────────────────────────────────
+let messageCount = 0;
+
 // ─── Main menu button labels ───────────────────────────────────────────────────
 
 export const MENU_BUTTONS = [
@@ -830,7 +833,11 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   bot.hears('Deposit 💰', handleDepositStart);
 
-  // ─── Deposit conversation — handle amount input and receipt paste ────────────
+  // ─── Global message logging ───────────────────────────────────────────────────
+  bot.on('message', (ctx) => {
+    messageCount++;
+    console.log(`[Bot] Message #${messageCount} from user ${ctx.from?.id}: "${ctx.message?.text || '[non-text]'}"`);
+  });
   bot.on('message:text', async (ctx) => {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
@@ -1212,10 +1219,31 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     return handleWithdrawStart(ctx);
   });
 
-  // ─── TEST: Simple test handler ─────────────────────────────────────────────
+// ─── TEST: Simple test handler ─────────────────────────────────────────────
   bot.hears('test', async (ctx) => {
     console.log('[Bot] Test handler triggered');
     await ctx.reply('Test response received! Bot is working.');
+  });
+
+  // ─── CRITICAL: Prevent memory leaks and duplicate handlers ──────────────────
+  process.on('SIGINT', async () => {
+    console.log('[Bot] Shutting down gracefully...');
+    try {
+      await bot.stop();
+    } catch (err) {
+      console.error('[Bot] Error during shutdown:', err);
+    }
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    console.log('[Bot] Received SIGTERM, shutting down...');
+    try {
+      await bot.stop();
+    } catch (err) {
+      console.error('[Bot] Error during SIGTERM shutdown:', err);
+    }
+    process.exit(0);
   });
 
   // ─── /withdraw_help command for old-style instructions ──────────────────────
