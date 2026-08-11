@@ -200,7 +200,14 @@ if (bot) {
   if (WEBHOOK_URL) {
     // ── Production (Render): use webhook — no polling conflicts on rolling deploys
     const webhookPath = '/telegram-webhook';
+    let botReady = false;
+
     app.post(webhookPath, express.json(), (req, res) => {
+      if (!botReady) {
+        // Bot not initialized yet — tell Telegram to retry
+        res.sendStatus(503);
+        return;
+      }
       bot!.handleUpdate(req.body)
         .then(() => res.sendStatus(200))
         .catch((err) => {
@@ -212,6 +219,8 @@ if (bot) {
     // Set the webhook after server is listening
     setTimeout(async () => {
       try {
+        await bot!.init(); // fetch botInfo before handling updates
+        botReady = true;
         const fullUrl = `${WEBHOOK_URL}${webhookPath}`;
         await bot!.api.setWebhook(fullUrl, { drop_pending_updates: true });
         const info = await bot!.api.getMe();
