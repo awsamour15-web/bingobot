@@ -17,6 +17,7 @@ import {
 import { 
   CartelaReservationService, 
   CartelaAlreadyReservedError, 
+  MaxCartelaLimitExceededError,
   ReservationNotFoundError 
 } from '../services/cartela-reservation.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
@@ -214,6 +215,10 @@ router.post('/:id/reserve-cartela', async (req: Request, res: Response): Promise
   } catch (err) {
     if (err instanceof CartelaAlreadyReservedError) {
       res.status(409).json({ error: 'CARTELA_RESERVED', message: err.message });
+      return;
+    }
+    if (err instanceof MaxCartelaLimitExceededError) {
+      res.status(400).json({ error: 'MAX_CARTELA_LIMIT_EXCEEDED', message: `You can only select up to 2 cartelas per round.` });
       return;
     }
     throw err;

@@ -1,9 +1,12 @@
 // Feature: Cartela Reservation System
 // Property-based tests for cartela locking mechanism
+// Property-based tests for cartela locking mechanism
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fc from 'fast-check';
 import { CartelaReservationService, CartelaAlreadyReservedError } from '../../services/cartela-reservation.service.js';
+
+const MAX_SELECT = 2; // Same as in the service
 
 // Mock Prisma for property testing
 const mockReservations = new Map<string, {
@@ -47,6 +50,19 @@ const mockCartelaReservationService = {
     const existing = mockReservations.get(key);
     if (existing && existing.player_id !== playerId) {
       throw new CartelaAlreadyReservedError(roundId, cartelaNumber, existing.player_id);
+    }
+    
+    // Check MAX_SELECT limit if this is a new reservation
+    if (!existing) {
+      const currentReservations = Array.from(mockReservations.values())
+        .filter(res => res.round_id === roundId && res.player_id === playerId).length;
+      const joinedCartelas = Array.from(mockRoundEntries.values())
+        .filter(entry => entry.round_id === roundId && entry.player_id === playerId && !entry.is_watching).length;
+      
+      const totalCount = currentReservations + joinedCartelas;
+      if (totalCount >= MAX_SELECT) {
+        throw new Error(`Player ${playerId} has reached maximum limit of ${MAX_SELECT} cartelas in round ${roundId} (currently has ${totalCount})`);
+      }
     }
     
     // Create/update reservation
@@ -158,7 +174,7 @@ describe('Property: Cartela Reservation System', () => {
       fc.asyncProperty(
         fc.string({ minLength: 1, maxLength: 36 }), // roundId
         fc.array(fc.integer({ min: 1, max: 800 }), { maxLength: 10 }), // taken cartelas
-        fc.array(fc.integer({ min: 1, max: 800 }), { maxLength: 10 }), // reserved cartelas
+        fc.array(fc.integer({ min: 1, max: 800 }), { maxLength: 4 }), // reserved cartelas (limited to 4 = 2 players * MAX_SELECT)
         async (roundId, takenNums, reservedNums) => {
           // Simulate taken cartelas
           takenNums.forEach((num, i) => {
@@ -171,11 +187,29 @@ describe('Property: Cartela Reservation System', () => {
           });
           
           // Simulate reserved cartelas (only those not already taken)
-          const availableForReservation = reservedNums.filter(num => !takenNums.includes(num));
+          // Remove duplicates and limit to ensure we don't exceed MAX_SELECT per player
+          const availableForReservation = [...new Set(reservedNums)].filter(num => !takenNums.includes(num));
+          const playerReservations = new Map<string, number>();
+          
           for (let i = 0; i < availableForReservation.length; i++) {
             const num = availableForReservation[i];
             if (num !== undefined) {
-              await mockCartelaReservationService.reserve(roundId, `reserving_player${i}`, num);
+              // Use different players and track their reservation count
+              const basePlayerId = Math.floor(i / MAX_SELECT);
+              const playerId = `reserving_player${basePlayerId}`;
+              const currentCount = playerReservations.get(playerId) || 0;
+              
+              if (currentCount < MAX_SELECT) {
+                try {
+                  await mockCartelaReservationService.reserve(roundId, playerId, num);
+                  playerReservations.set(playerId, currentCount + 1);
+                } catch (err) {
+                  // Skip if we hit the limit - this is expected behavior
+                  if (!(err instanceof Error) || !err.message.includes('maximum limit')) {
+                    throw err;
+                  }
+                }
+              }
             }
           }
           

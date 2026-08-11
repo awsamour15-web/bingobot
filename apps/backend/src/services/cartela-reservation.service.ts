@@ -4,6 +4,7 @@
 import prisma from '../lib/prisma.js';
 
 const RESERVATION_DURATION_MS = 30000; // 30 seconds
+const MAX_SELECT = 2; // Maximum number of cartelas a player can reserve/select
 
 export class CartelaAlreadyReservedError extends Error {
   constructor(roundId: string, cartelaNumber: number, reservedBy?: string) {
@@ -22,10 +23,18 @@ export class ReservationNotFoundError extends Error {
   }
 }
 
+export class MaxCartelaLimitExceededError extends Error {
+  constructor(roundId: string, playerId: string, currentCount: number) {
+    super(`Player ${playerId} has reached maximum limit of ${MAX_SELECT} cartelas in round ${roundId} (currently has ${currentCount})`);
+    this.name = 'MaxCartelaLimitExceededError';
+  }
+}
+
 export const CartelaReservationService = {
   /**
    * Reserve a cartela for a player temporarily.
    * Throws CartelaAlreadyReservedError if cartela is already taken or reserved.
+   * Throws MaxCartelaLimitExceededError if player already has MAX_SELECT cartelas reserved/joined.
    */
   async reserve(roundId: string, playerId: string, cartelaNumber: number): Promise<void> {
     try {
@@ -66,7 +75,33 @@ export const CartelaReservationService = {
           throw new CartelaAlreadyReservedError(roundId, cartelaNumber, existingReservation.player_id);
         }
 
-        // 4. Create or update reservation
+        // 4. If this is a new reservation (not extending existing one), check MAX_SELECT limit
+        if (!existingReservation) {
+          // Count player's current reservations + joined cartelas
+          const [currentReservations, joinedCartelas] = await Promise.all([
+            tx.cartelaReservation.count({
+              where: {
+                round_id: roundId,
+                player_id: playerId
+              }
+            }),
+            tx.roundEntry.count({
+              where: {
+                round_id: roundId,
+                player_id: playerId,
+                is_watching: false
+              }
+            })
+          ]);
+
+          const totalCartelaCount = currentReservations + joinedCartelas;
+          
+          if (totalCartelaCount >= MAX_SELECT) {
+            throw new MaxCartelaLimitExceededError(roundId, playerId, totalCartelaCount);
+          }
+        }
+
+        // 5. Create or update reservation
         const expiresAt = new Date(Date.now() + RESERVATION_DURATION_MS);
         
         await tx.cartelaReservation.upsert({

@@ -431,6 +431,8 @@ export default function CartelaScreen() {
           const errorMsg = err.message || 'Failed to reserve cartela';
           if (errorMsg.includes('reserved') || errorMsg.includes('taken')) {
             setBalanceAlert(`Cartela ${num} was just taken by another player. Refreshing...`);
+          } else if (err.code === 'MAX_CARTELA_LIMIT_EXCEEDED') {
+            setBalanceAlert(`You can only select up to 2 cartelas per round.`);
           } else {
             setBalanceAlert(`Failed to select cartela ${num}: ${errorMsg}`);
           }

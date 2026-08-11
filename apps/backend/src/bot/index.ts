@@ -874,6 +874,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     const telegramId = BigInt(ctx.from.id);
     const text = ctx.message.text.trim();
 
+    console.log(`[Bot] Processing text message from ${telegramId}: "${text}"`);
+
     // Ignore bot commands — they have their own handlers
     if (text.startsWith('/')) return;
 
@@ -890,6 +892,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
     const depositSession = depositSessions.get(telegramId);
     const withdrawSession = withdrawSessions.get(telegramId);
+
+    console.log('[Bot] Session check for user', telegramId, '- deposit:', !!depositSession, 'withdraw:', !!withdrawSession);
 
     // Only process if user is in an active session (not a menu button)
     if (!depositSession && !withdrawSession) {
@@ -963,20 +967,26 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
     // Handle withdrawal conversation
     if (withdrawSession) {
+      console.log('[Bot] Processing withdrawal session for user:', telegramId, 'step:', withdrawSession.step);
       // ── Step 1: awaiting amount ───────────────────────────────────────────────
       if (withdrawSession.step === 'awaiting_amount') {
+        console.log('[Bot] Processing withdrawal amount:', text);
         const amount = Number(text);
+        console.log('[Bot] Parsed amount:', amount, 'isFinite:', Number.isFinite(amount));
         if (!Number.isFinite(amount) || amount <= 0) {
+          console.log('[Bot] Invalid amount - sending error message');
           await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን ያስጊቡ።');
           return;
         }
 
         if (amount < 100) {
+          console.log('[Bot] Amount too small - sending minimum error');
           await ctx.reply('⚠️ አነስተኛ የማውጣት መጠን 100 ብር ነው። እባክዎ ከ100 ብር በላይ ያስጊቡ።');
           return;
         }
 
         // Check if user has sufficient balance
+        console.log('[Bot] Checking user balance for withdrawal...');
         const player = await getRegisteredPlayerWithWallets(telegramId);
         if (!player) {
           withdrawSessions.delete(telegramId);
@@ -985,13 +995,17 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         const mainWallet = player.wallets.find(w => w.type === 'main');
+        console.log('[Bot] Main wallet found:', mainWallet ? `${mainWallet.balance} balance` : 'none');
         if (!mainWallet || Number(mainWallet.balance) < amount) {
+          console.log('[Bot] Insufficient balance - current:', mainWallet?.balance, 'requested:', amount);
           await ctx.reply(`⚠️ = ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\nየአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር\nየጠየቁት መጠን: ${amount} ብር`);
           return;
         }
 
+        console.log('[Bot] Balance sufficient - moving to phone step');
         withdrawSessions.set(telegramId, { step: 'awaiting_phone', amount });
-        await ctx.reply('📱 እባክዎ የቴሌብር ስልክ ቁጥርዎን ያስጊቡ (ለምሳሌ: 0912345678)።\n\nብሩ ወደዚህ ቁጥር ይላካል።');
+        console.log('[Bot] Sending phone number request to user');
+        await ctx.reply('📱 እባክዎ የቴሌብር ስልክ ቁጥርዎን ያስጊቡ (ለምሳሌ: 0912345678)።\n\nብሩ ወደዚህ ቁጥር ይላካል។');
         return;
       }
 
