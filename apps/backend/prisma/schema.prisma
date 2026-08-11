@@ -70,6 +70,7 @@ model Player {
   round_wins       RoundWinner[]
   won_rounds       GameRound[]          @relation("RoundWinner")
   pending_deposits PendingDeposit[]
+  pending_withdrawals PendingWithdrawal[]
   agent_commissions AgentCommission[]
   cartela_reservations CartelaReservation[]
 
@@ -258,7 +259,24 @@ model AgentCommission {
   @@map("agent_commissions")
 }
 
-model CartelaReservation {
+model PendingWithdrawal {
+  id         String   @id @default(uuid())
+  player_id  String
+  amount     Decimal  @db.Decimal(14, 2)
+  phone      String
+  status     String   @default("pending") // pending | approved | rejected
+  tx_number  String?  @unique              // Telebirr tx ID filled by admin on payment
+  tx_id      String?                       // internal Transaction record id (set on debit)
+  note       String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  player Player @relation(fields: [player_id], references: [id])
+
+  @@index([player_id])
+  @@index([status])
+  @@map("pending_withdrawals")
+}
   id             String   @id @default(uuid())
   round_id       String
   cartela_number Int

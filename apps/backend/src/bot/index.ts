@@ -1041,7 +1041,15 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         try {
-          // Debit atomically at request time — prevents double-spend across concurrent requests
+          // Check balance once more before creating the request
+          const mainWallet = player.wallets.find(w => w.type === 'main');
+          if (!mainWallet || Number(mainWallet.balance) < withdrawSession.amount) {
+            withdrawSessions.delete(telegramId);
+            await ctx.reply(`⚠️ ዋሌት ውስጥ በቂ ሳንቲም የለዎትም።\n\nየአሁን ሂሳብ: ${mainWallet?.balance || '0'} ብር`);
+            return;
+          }
+
+          // Debit immediately to lock the funds, then create PendingWithdrawal record
           await WalletService.debit(
             player.id,
             WalletType.main,
@@ -1051,23 +1059,33 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             `PENDING: Awaiting admin approval — phone: ${phone}`,
           );
 
+          // Create a pending withdrawal record for admin to verify with tx ID
+          const pendingWithdrawal = await prisma.pendingWithdrawal.create({
+            data: {
+              player_id: player.id,
+              amount: withdrawSession.amount,
+              phone,
+              status: 'pending',
+            },
+          });
+
           withdrawSessions.delete(telegramId);
 
           await ctx.reply(
-            `✅ የማውጣት ጥያቄዎ ተቀብለ ተረድተያል!\n\n` +
-            `መጠን: ${withdrawSession.amount} ብር\n` +
-            `ስልክ: ${phone}\n\n` +
-            `⏳ ጥያቄዎ በ24 ሰዓት ውስጥ ይፈተሻል እና ይፀድቃል።\n\n` +
-            `💰 ቀሪ ሒሳብዎ ቀንሷል እና ጥያቄዎ ሲፀድቅ ብሩ ወደ ስልክዎ ይላካል።`
+            `✅ የማውጣት ጥያቄዎ ተቀብሏል!\n\n` +
+            `🆔 ጥያቄ ID: ${pendingWithdrawal.id.slice(0, 8).toUpperCase()}\n` +
+            `💵 መጠን: ${withdrawSession.amount} ብር\n` +
+            `📱 ስልክ: ${phone}\n\n` +
+            `⏳ አስተዳዳሪው ብሩን ከከፈለ በኋላ የአቴቴ (Telebirr) ግብይት ቁጥሩን ያስገባሉ። ስኬታማ ሲሆን ማሳወቂያ ይደርስዎታል።`
           );
         } catch (err) {
           withdrawSessions.delete(telegramId);
-          
+
           if (err instanceof Error && err.message.includes('insufficient')) {
             await ctx.reply('⚠️ በቂ ሳንቲም የለዎትም። እባክዎ ሒሳብዎን ያጣሩ።');
             return;
           }
-          
+
           console.error('[Bot] withdrawal request error:', err);
           await ctx.reply('❌ ችግር ተፈጥሯል። እባክዎ ቆየት ብለው ይሞክሩ ወይም ድጋፍ ያግኙ።');
         }

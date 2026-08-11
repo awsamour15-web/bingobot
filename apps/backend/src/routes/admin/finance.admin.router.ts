@@ -8,63 +8,67 @@ import { WalletService } from '../../services/wallet.service.js';
 
 const router: RouterType = Router();
 
-// GET /api/admin/withdrawals — list pending withdrawal transactions
+// GET /api/admin/withdrawals — list pending withdrawal requests
 router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> => {
-  const withdrawals = await prisma.transaction.findMany({
-    where: { type: TxType.withdrawal, note: { startsWith: 'PENDING:' } },
+  const withdrawals = await prisma.pendingWithdrawal.findMany({
+    where: { status: 'pending' },
     orderBy: { created_at: 'desc' },
     include: {
-      wallet: {
-        select: {
-          player: { select: { id: true, username: true, phone: true } },
-        },
-      },
+      player: { select: { id: true, username: true, phone: true } },
     },
   });
 
-  const result = withdrawals.map((tx) => ({
-    id: tx.id,
-    player_id: tx.wallet.player.id,
-    username: tx.wallet.player.username,
-    phone: tx.wallet.player.phone ?? '',
-    amount: Number(tx.amount),
-    created_at: tx.created_at.toISOString(),
-    status: 'pending' as const,
+  const result = withdrawals.map((w) => ({
+    id: w.id,
+    player_id: w.player.id,
+    username: w.player.username,
+    phone: w.phone,
+    amount: Number(w.amount),
+    created_at: w.created_at.toISOString(),
+    status: w.status,
   }));
 
   res.json(result);
 });
 
-// POST /api/admin/withdrawals/:id/approve — approve withdrawal
+// POST /api/admin/withdrawals/:id/approve — admin paid, submits Telebirr tx number to verify
 router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;
+  const { tx_number } = req.body as { tx_number?: string };
 
-  const tx = await prisma.transaction.findUnique({
+  if (!tx_number || typeof tx_number !== 'string' || tx_number.trim() === '') {
+    res.status(400).json({ error: 'TX_NUMBER_REQUIRED', message: 'Telebirr transaction number is required' });
+    return;
+  }
+
+  const txNumber = tx_number.trim().toUpperCase();
+
+  const withdrawal = await prisma.pendingWithdrawal.findUnique({
     where: { id },
-    include: { wallet: { select: { player_id: true } } },
+    include: { player: { select: { id: true, telegram_id: true } } },
   });
 
-  if (!tx || tx.type !== TxType.withdrawal || !tx.note?.startsWith('PENDING:')) {
+  if (!withdrawal || withdrawal.status !== 'pending') {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Pending withdrawal not found' });
     return;
   }
 
-  try {
-    // Funds are already debited at request time — just mark as approved
-    await prisma.transaction.update({
-      where: { id },
-      data: { note: tx.note.replace('PENDING:', 'APPROVED:') },
-    });
+  // Prevent duplicate tx number
+  const duplicate = await prisma.pendingWithdrawal.findUnique({ where: { tx_number: txNumber } });
+  if (duplicate && duplicate.id !== id) {
+    res.status(409).json({ error: 'DUPLICATE_TX', message: 'This transaction number has already been used' });
+    return;
+  }
 
-    // Extract phone from note: "PENDING: Awaiting admin approval — phone: 09XXXXXXXX"
-    const phoneMatch = tx.note.match(/phone:\s*(\S+)/);
-    const phone = phoneMatch?.[1] ?? 'N/A';
-    const amount = Number(tx.amount);
-    const playerId = tx.wallet.player_id;
+  try {
+    await prisma.pendingWithdrawal.update({
+      where: { id },
+      data: { status: 'approved', tx_number: txNumber },
+    });
 
     // Notify player via Telegram (non-blocking)
     import('../../bot/notifications.js').then(({ notifyWithdrawalApproved }) => {
-      void notifyWithdrawalApproved(playerId, amount, phone);
+      void notifyWithdrawalApproved(withdrawal.player.id, Number(withdrawal.amount), withdrawal.phone);
     }).catch(() => {});
 
     res.json({ success: true });
@@ -74,42 +78,40 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
   }
 });
 
-// POST /api/admin/withdrawals/:id/reject — reject withdrawal, credit back funds
+// POST /api/admin/withdrawals/:id/reject — reject and refund
 router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;
 
-  const tx = await prisma.transaction.findUnique({
+  const withdrawal = await prisma.pendingWithdrawal.findUnique({
     where: { id },
+    include: { player: { select: { id: true } } },
   });
 
-  if (!tx || tx.type !== TxType.withdrawal || !tx.note?.startsWith('PENDING:')) {
+  if (!withdrawal || withdrawal.status !== 'pending') {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Pending withdrawal not found' });
     return;
   }
 
-  // Mark as rejected first
-  await prisma.transaction.update({
+  // Mark rejected
+  await prisma.pendingWithdrawal.update({
     where: { id },
-    data: { note: tx.note.replace('PENDING:', 'REJECTED:') },
+    data: { status: 'rejected' },
   });
 
-  // Refund: credit funds back to main wallet — funds were debited at request time
-  const wallet = await prisma.wallet.findUnique({ where: { id: tx.wallet_id } });
-  if (wallet) {
-    await WalletService.credit(
-      wallet.player_id,
-      WalletType.main,
-      Number(tx.amount),
-      TxType.refund,
-      id,
-      'Withdrawal rejected by admin — funds returned',
-    );
+  // Refund: the funds were already debited when the bot request was created
+  await WalletService.credit(
+    withdrawal.player.id,
+    WalletType.main,
+    Number(withdrawal.amount),
+    TxType.refund,
+    id,
+    'Withdrawal rejected by admin — funds returned',
+  );
 
-    // Notify the player via Telegram (non-blocking)
-    import('../../bot/notifications.js').then(({ notifyWithdrawalRejected }) => {
-      void notifyWithdrawalRejected(wallet.player_id, Number(tx.amount));
-    }).catch(() => {});
-  }
+  // Notify player via Telegram (non-blocking)
+  import('../../bot/notifications.js').then(({ notifyWithdrawalRejected }) => {
+    void notifyWithdrawalRejected(withdrawal.player.id, Number(withdrawal.amount));
+  }).catch(() => {});
 
   res.json({ success: true });
 });
