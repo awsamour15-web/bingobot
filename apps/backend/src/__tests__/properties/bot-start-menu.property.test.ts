@@ -103,6 +103,7 @@ describe('buildMainMenu()', () => {
       expect(rightBtn.text).toBe(expectedRows[i]![1]);
     }
   });
+});
 
 // ─── Tests for buildAgentMenu ─────────────────────────────────────────────────
 

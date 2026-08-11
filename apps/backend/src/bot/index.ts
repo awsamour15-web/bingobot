@@ -21,8 +21,7 @@ export const MENU_BUTTONS = [
   ['Play 🎮', 'Register 📝'],
   ['Check Balance 💰', 'Deposit 💰'],
   ['Contact Support 📞', 'Instruction 📖'],
-  ['Transfer 🎁', 'Withdraw 🤑'],
-  ['Invite 🔗', 'Convert Bonus 💲'],
+  ['Withdraw 🤑', 'Invite 🔗'],
 ] as const;
 
 // ─── Agent/Partner menu button labels ──────────────────────────────────────────
@@ -182,17 +181,6 @@ export const INSTRUCTION_TEXT =
   `5. 💵 Winners receive their prize directly to their play wallet.\n\n` +
   `Good luck and may you win big! 🍀`;
 
-export const TRANSFER_TEXT =
-  `🎁 How to Transfer Balance\n\n` +
-  `You can transfer your main wallet balance to another player.\n\n` +
-  `Steps:\n` +
-  `1. Contact our support team with:\n` +
-  `   • The recipient's Telegram username or ID\n` +
-  `   • The amount you wish to transfer\n` +
-  `2. Our team will process the transfer after verification.\n` +
-  `3. Both you and the recipient will be notified upon completion.\n\n` +
-  `⚠️ Only main wallet balance can be transferred. Play wallet balance is not transferable.`;
-
 export const WITHDRAW_TEXT =
   `🤑 How to Withdraw\n\n` +
   `⚠️ Only your winning balance (main wallet) can be withdrawn.\n` +
@@ -210,16 +198,6 @@ export const WITHDRAW_TEXT =
   `4. Tap "Request Withdrawal".\n` +
   `5. Your request will be reviewed and processed within 24 hours on business days.\n\n` +
   `⚠️ You can only withdraw your winning balance. Play wallet (deposit) balance cannot be withdrawn.`;
-
-export const CONVERT_BONUS_TEXT =
-  `💲 How to Convert Bonus Balance\n\n` +
-  `You can convert your bonus balance to your main wallet!\n\n` +
-  `Steps:\n` +
-  `1. Earn bonus credits by inviting friends or through promotions.\n` +
-  `2. Once you have enough bonus balance, contact our support team.\n` +
-  `3. Request a bonus-to-main wallet conversion.\n` +
-  `4. The converted amount will be credited to your main wallet.\n\n` +
-  `⚠️ Conversion rates and minimum thresholds apply. Contact support for current rates.`;
 
 // ─── Helper: Check Balance button — format balance reply ─────────────────────
 
@@ -1206,18 +1184,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     await ctx.reply(INSTRUCTION_TEXT);
   });
 
-  // ─── 5.3: Transfer 🎁 handler ─────────────────────────────────────────────
-  bot.hears('Transfer 🎁', async (ctx) => {
-    if (!ctx.from) return;
-    if (!(await isRegistered(BigInt(ctx.from.id)))) {
-      await ctx.reply(
-        '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
-      );
-      return;
-    }
-    await ctx.reply(TRANSFER_TEXT);
-  });
-
   // ─── 5.4: Withdraw 🤑 handler ─────────────────────────────────────────────
   console.log('[Bot Setup] Registering "Withdraw 🤑" handler');
   bot.hears('Withdraw 🤑', (ctx) => {
@@ -1241,16 +1207,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     await ctx.reply(WITHDRAW_TEXT);
   });
 
-  // ─── 5.5: Convert Bonus 💲 handler ────────────────────────────────────────
-  bot.hears('Convert Bonus 💲', async (ctx) => {
-    if (!ctx.from) return;
-    if (!(await isRegistered(BigInt(ctx.from.id)))) {
-      await ctx.reply(
-        '⚠️ Please register first to use this feature. Tap Register 📝 to get started.',
-      );
-      return;
-    }
-    await ctx.reply(CONVERT_BONUS_TEXT);
+
   });
 
   // ─── 6.1: Invite 🔗 handler ───────────────────────────────────────────────
