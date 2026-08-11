@@ -88,10 +88,11 @@ app.get('/health', (_req, res) => {
 });
 
 // ─── Bot health check endpoint ─────────────────────────────────────────────────
-app.get('/bot-status', async (_req, res) => {
+app.get('/bot-status', async (_req, res): Promise<void> => {
   try {
     if (!bot) {
-      return res.json({ status: 'no_bot', message: 'Bot not initialized' });
+      res.json({ status: 'no_bot', message: 'Bot not initialized' });
+      return;
     }
     
     const me = await bot.api.getMe();

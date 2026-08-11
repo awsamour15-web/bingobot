@@ -181,6 +181,17 @@ export const INSTRUCTION_TEXT =
   `5. 💵 Winners receive their prize directly to their play wallet.\n\n` +
   `Good luck and may you win big! 🍀`;
 
+export const TRANSFER_TEXT =
+  `🎁 How to Transfer Balance\n\n` +
+  `You can transfer your main wallet balance to another player.\n\n` +
+  `Steps:\n` +
+  `1. Contact our support team with:\n` +
+  `   • The recipient's Telegram username or ID\n` +
+  `   • The amount you wish to transfer\n` +
+  `2. Our team will process the transfer after verification.\n` +
+  `3. Both you and the recipient will be notified upon completion.\n\n` +
+  `⚠️ Only main wallet balance can be transferred. Play wallet balance is not transferable.`;
+
 export const WITHDRAW_TEXT =
   `🤑 How to Withdraw\n\n` +
   `⚠️ Only your winning balance (main wallet) can be withdrawn.\n` +
@@ -198,6 +209,16 @@ export const WITHDRAW_TEXT =
   `4. Tap "Request Withdrawal".\n` +
   `5. Your request will be reviewed and processed within 24 hours on business days.\n\n` +
   `⚠️ You can only withdraw your winning balance. Play wallet (deposit) balance cannot be withdrawn.`;
+
+export const CONVERT_BONUS_TEXT =
+  `💲 How to Convert Bonus Balance\n\n` +
+  `You can convert your bonus balance to your main wallet!\n\n` +
+  `Steps:\n` +
+  `1. Earn bonus credits by inviting friends or through promotions.\n` +
+  `2. Once you have enough bonus balance, contact our support team.\n` +
+  `3. Request a bonus-to-main wallet conversion.\n` +
+  `4. The converted amount will be credited to your main wallet.\n\n` +
+  `ℹ️ Conversion rates and minimum thresholds apply. Contact support for current rates.`;
 
 // ─── Helper: Check Balance button — format balance reply ─────────────────────
 
@@ -1205,9 +1226,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       return;
     }
     await ctx.reply(WITHDRAW_TEXT);
-  });
-
-
   });
 
   // ─── 6.1: Invite 🔗 handler ───────────────────────────────────────────────

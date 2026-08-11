@@ -159,7 +159,7 @@ describe('buildAgentMenu()', () => {
 
   it('includes agent-specific buttons not found in regular menu', () => {
     const kb = buildAgentMenu();
-    const buttonTexts = kb.keyboard.flat().map((btn: { text: string }) => btn.text);
+    const buttonTexts = kb.keyboard.flat().map((btn) => (btn as { text: string }).text);
     
     expect(buttonTexts).toContain('Agent Dashboard 📊');
     expect(buttonTexts).toContain('My Players 👥');
