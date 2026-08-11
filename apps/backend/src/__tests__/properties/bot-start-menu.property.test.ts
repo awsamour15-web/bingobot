@@ -53,12 +53,12 @@ import {
 // ─── Task 1.2: Unit tests for buildMainMenu ───────────────────────────────────
 
 describe('buildMainMenu()', () => {
-  it('returns a keyboard with exactly 10 buttons', () => {
+  it('returns a keyboard with exactly 9 buttons', () => {
     const kb = buildMainMenu();
     // grammY Keyboard stores rows in kb.keyboard (array of rows, each row is array of buttons)
     const rows = kb.keyboard;
     const totalButtons = rows.reduce((sum, row) => sum + row.length, 0);
-    expect(totalButtons).toBe(10);
+    expect(totalButtons).toBe(9);
   });
 
   it('has exactly 5 rows', () => {
@@ -66,10 +66,14 @@ describe('buildMainMenu()', () => {
     expect(kb.keyboard.length).toBe(5);
   });
 
-  it('has exactly 2 buttons per row', () => {
+  it('has 2 buttons per row for the first 4 rows and 1 button for the last row', () => {
     const kb = buildMainMenu();
-    for (const row of kb.keyboard) {
-      expect(row.length).toBe(2);
+    for (let i = 0; i < kb.keyboard.length; i++) {
+      if (i < 4) {
+        expect(kb.keyboard[i]!.length).toBe(2);
+      } else {
+        expect(kb.keyboard[i]!.length).toBe(1);
+      }
     }
   });
 
@@ -92,15 +96,22 @@ describe('buildMainMenu()', () => {
       ['Play 🎮', 'Register 📝'],
       ['Check Balance 💰', 'Deposit 💰'],
       ['Contact Support 📞', 'Instruction 📖'],
-      ['Transfer 🎁', 'Withdraw 🤑'],
-      ['Invite 🔗', 'Convert Bonus 💲'],
+      ['Withdraw 🤑', 'Invite 🔗'],
+      ['Be Partner 🤝'],
     ];
 
     for (let i = 0; i < expectedRows.length; i++) {
-      const leftBtn = rows[i]![0] as { text: string };
-      const rightBtn = rows[i]![1] as { text: string };
-      expect(leftBtn.text).toBe(expectedRows[i]![0]);
-      expect(rightBtn.text).toBe(expectedRows[i]![1]);
+      if (i < 4) {
+        // First 4 rows have 2 buttons each
+        const leftBtn = rows[i]![0] as { text: string };
+        const rightBtn = rows[i]![1] as { text: string };
+        expect(leftBtn.text).toBe(expectedRows[i]![0]);
+        expect(rightBtn.text).toBe(expectedRows[i]![1]);
+      } else {
+        // Last row has 1 button
+        const singleBtn = rows[i]![0] as { text: string };
+        expect(singleBtn.text).toBe(expectedRows[i]![0]);
+      }
     }
   });
 });
@@ -180,16 +191,18 @@ describe('Property 7: isGuardedButton()', () => {
     expect(isGuardedButton('Play 🎮')).toBe(false);
   });
 
-  it('returns true for all other 8 menu button texts (example check)', () => {
+  it('returns false for "Be Partner 🤝"', () => {
+    expect(isGuardedButton('Be Partner 🤝')).toBe(false);
+  });
+
+  it('returns true for all other 6 menu button texts (example check)', () => {
     const guardedButtons = [
       'Check Balance 💰',
       'Deposit 💰',
       'Contact Support 📞',
       'Instruction 📖',
-      'Transfer 🎁',
       'Withdraw 🤑',
       'Invite 🔗',
-      'Convert Bonus 💲',
     ];
     for (const label of guardedButtons) {
       expect(isGuardedButton(label)).toBe(true);
@@ -197,10 +210,10 @@ describe('Property 7: isGuardedButton()', () => {
   });
 
   // Property 7: fast-check property test
-  it('for any menu button text not in the exempt set, isGuardedButton returns true; for the 2 exempt buttons it returns false', () => {
+  it('for any menu button text not in the exempt set, isGuardedButton returns true; for the 3 exempt buttons it returns false', () => {
     // All menu button labels (flat)
     const allLabels = MENU_BUTTONS.flat() as string[];
-    const unguarded = new Set(['Register 📝', 'Play 🎮']);
+    const unguarded = new Set(['Register 📝', 'Play 🎮', 'Be Partner 🤝']);
 
     fc.assert(
       fc.property(
@@ -220,7 +233,7 @@ describe('Property 7: isGuardedButton()', () => {
   it('returns true for any arbitrary string that is not an exempt button', () => {
     fc.assert(
       fc.property(
-        fc.string().filter((s) => s !== 'Register 📝' && s !== 'Play 🎮'),
+        fc.string().filter((s) => s !== 'Register 📝' && s !== 'Play 🎮' && s !== 'Be Partner 🤝'),
         (text) => {
           expect(isGuardedButton(text)).toBe(true);
         },

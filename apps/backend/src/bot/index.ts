@@ -34,6 +34,7 @@ export const MENU_BUTTONS = [
   ['Check Balance 💰', 'Deposit 💰'],
   ['Contact Support 📞', 'Instruction 📖'],
   ['Withdraw 🤑', 'Invite 🔗'],
+  ['Be Partner 🤝'],
 ] as const;
 
 // ─── Agent/Partner menu button labels ──────────────────────────────────────────
@@ -48,7 +49,7 @@ export const AGENT_MENU_BUTTONS = [
 
 // ─── Unguarded buttons (accessible without registration) ─────────────────────
 
-const UNGUARDED_BUTTONS = new Set(['Register 📝', 'Play 🎮']);
+const UNGUARDED_BUTTONS = new Set(['Register 📝', 'Play 🎮', 'Be Partner 🤝']);
 
 /**
  * Returns true if the given button text requires the player to be registered.
@@ -84,8 +85,10 @@ async function getMenuForUser(telegramId: bigint): Promise<Keyboard> {
 export function buildMainMenu(): Keyboard {
   const kb = new Keyboard();
   for (let i = 0; i < MENU_BUTTONS.length; i++) {
-    const [left, right] = MENU_BUTTONS[i]!;
-    kb.text(left).text(right);
+    const row = MENU_BUTTONS[i]!;
+    const [left, right] = row;
+    if (left) kb.text(left);
+    if (right) kb.text(right);
     // Add row separator between rows (not after the last row)
     if (i < MENU_BUTTONS.length - 1) {
       kb.row();
@@ -827,8 +830,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     await ctx.reply(
       `💰 ማውጣት የሚፈልጉትን መጠን ያስጊቡ።\n\n` +
       `አነስተኛ መጠን: 100 ብር\n` +
-      `የአሁን  ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` +
-      `⚠️ ማስታወሻ:  ዋሌት ሒሳብ ብቻ ማውጣት ይቻላል። የተቀማጭ እና የቦነስ ሒሳብ ማውጣት አይቻልም።`
+      `የአሁን  ዋሌት ሒሳብ: ${mainWallet.balance} ብር\n\n` 
+
     );
     
     console.log('[Bot] handleWithdrawStart completed successfully for user:', telegramId);
@@ -1452,6 +1455,54 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     } catch (err) {
       console.error('[Bot] Commission balance error:', err);
       await ctx.reply('❌ Unable to load commission balance. Please try again later.');
+    }
+  });
+
+  // ─── Be Partner 🤝 handler ─────────────────────────────────────────────────
+  bot.hears('Be Partner 🤝', async (ctx) => {
+    if (!ctx.from) return;
+    const telegramId = BigInt(ctx.from.id);
+    const username = ctx.from.username ?? ctx.from.first_name ?? `user_${ctx.from.id}`;
+    const botUsername = process.env['BOT_USERNAME'] ?? '';
+
+    try {
+      // Check if user is already a linked agent
+      const existingAgent = await prisma.agent.findUnique({
+        where: { telegram_id: telegramId },
+        select: { id: true, is_active: true },
+      });
+
+      if (existingAgent) {
+        const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${existingAgent.id}`;
+        const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
+        
+        await ctx.reply(
+          `✅ You are already a partner!\n\n` +
+          `Your player invite link:\n${playerInvite}\n\n` +
+          `📊 Dashboard: ${dashboardUrl}`,
+          { reply_markup: buildAgentMenu() }
+        );
+        return;
+      }
+
+      // Create new agent account and link it
+      const newAgent = await AgentService.createAgent(username);
+      await AgentService.linkAgent(newAgent.id, telegramId);
+
+      const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${newAgent.id}`;
+      const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
+
+      await ctx.reply(
+        `🎉 Welcome as our new partner!\n\n` +
+        `You can now earn 10% commission on all deposits from players you invite.\n\n` +
+        `Your player invite link:\n${playerInvite}\n\n` +
+        `📊 Dashboard: ${dashboardUrl}\n\n` +
+        `Share your invite link with friends to start earning commissions!`,
+        { reply_markup: buildAgentMenu() }
+      );
+    } catch (err) {
+      console.error('[Bot] Be Partner handler error:', err);
+      await ctx.reply('❌ Something went wrong while setting up your partner account. Please try again later or contact support.');
     }
   });
 
