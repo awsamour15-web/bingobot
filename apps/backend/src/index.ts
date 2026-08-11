@@ -238,13 +238,22 @@ if (bot) {
       console.error(`[Bot] ❌ Fresh start failed (${errorCode}):`, err?.description || err);
       
       if (errorCode === 409 && !botStarted) {
-        console.log('[Bot] STILL CONFLICT - waiting 30s for old instances to timeout...');
+        console.log('[Bot] STILL CONFLICT - waiting 60s for ALL old instances to timeout...');
         setTimeout(async () => {
           try {
-            // Nuclear option: wait for all long-polls to timeout (30s) then retry
-            console.log('[Bot] FINAL NUCLEAR ATTEMPT...');
-            await bot!.api.deleteWebhook({ drop_pending_updates: true });
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Nuclear option: wait for all long-polls to timeout (60s) then retry
+            console.log('[Bot] FINAL NUCLEAR ATTEMPT after 60s wait...');
+            
+            // Multiple cleanup attempts
+            for (let i = 0; i < 5; i++) {
+              try {
+                await bot!.api.deleteWebhook({ drop_pending_updates: true });
+                console.log(`[Bot] Nuclear cleanup attempt ${i + 1}/5 success`);
+              } catch (cleanupErr: any) {
+                console.log(`[Bot] Nuclear cleanup attempt ${i + 1}/5 failed:`, cleanupErr?.description);
+              }
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
             
             await bot!.start({
               onStart: (info) => {
@@ -257,7 +266,7 @@ if (bot) {
             console.error('[Bot] 💥 NUCLEAR FAILED:', nuclearErr?.description || nuclearErr);
             console.error('[Bot] 🔥 MANUAL INTERVENTION REQUIRED - BOT POLLING IS COMPLETELY BROKEN');
           }
-        }, 30_000); // Wait 30s for old long-polls to expire
+        }, 60_000); // Wait 60s for old long-polls to expire
       }
     }
   }
