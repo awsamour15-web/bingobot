@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fidel Bingo</title>
+    <!-- Telegram Web injects tgWebApp* params into the pathname before the hash.
+         This ensures the hash fragment is always present so HashRouter matches correctly. -->
+    <script>
+      if (!window.location.hash || window.location.hash === '#') {
+        history.replaceState(null, '', window.location.href.split('#')[0] + '#/');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
