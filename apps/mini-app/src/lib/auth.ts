@@ -49,6 +49,12 @@ export function clearSession(): void {
 async function doLogin(): Promise<void> {
   const initData = WebApp.initData || DEV_MOCK_INIT_DATA;
   
+  console.log('[Auth] Attempting login...', {
+    hasInitData: !!WebApp.initData,
+    initDataLength: WebApp.initData?.length || 0,
+    isMock: initData === DEV_MOCK_INIT_DATA,
+  });
+  
   // Check if we're running outside Telegram (no real initData)
   if (!WebApp.initData && initData === DEV_MOCK_INIT_DATA) {
     console.warn('Running outside Telegram - using mock auth data. This will fail in production.');
@@ -58,6 +64,7 @@ async function doLogin(): Promise<void> {
 
   try {
     const response = await login(initData, startParam);
+    console.log('[Auth] Login successful', { playerId: response.playerId });
     localStorage.setItem('jwt', response.token);
     localStorage.setItem('playerId', response.playerId);
 
@@ -69,6 +76,7 @@ async function doLogin(): Promise<void> {
       localStorage.setItem('agentId', response.agentId);
     }
   } catch (error) {
+    console.error('[Auth] Login failed:', error);
     if (!WebApp.initData) {
       throw new Error('This app must be opened from Telegram. Please use @BetesebBingoBot to play.');
     }

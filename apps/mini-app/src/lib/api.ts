@@ -113,11 +113,27 @@ async function fetchOnce(method: string, path: string, body?: unknown): Promise<
   const headers = buildHeaders(hasBody);
   // Prevent browser from serving stale cached responses for GET requests
   if (!hasBody) headers['Cache-Control'] = 'no-cache';
-  return fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: hasBody ? JSON.stringify(body) : null,
-  });
+  
+  console.log(`[API] ${method} ${BASE_URL}${path}`, { headers: Object.keys(headers) });
+  
+  try {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: hasBody ? JSON.stringify(body) : null,
+    });
+    
+    console.log(`[API] Response:`, {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url,
+    });
+    
+    return response;
+  } catch (error) {
+    console.error(`[API] Network error:`, error);
+    throw error;
+  }
 }
 
 export async function apiRequest<T>(
@@ -135,6 +151,13 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
+
+    // Log the error for debugging
+    console.error(`API Error [${method} ${path}]:`, {
+      status: response.status,
+      error: errorData,
+      url: `${BASE_URL}${path}`,
+    });
 
     // Stale JWT pointing at a deleted/reset player — re-auth and retry once
     if (response.status === 404 && errorData.error === 'NOT_FOUND') {
