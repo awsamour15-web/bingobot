@@ -4,6 +4,12 @@ import { HashRouter } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 import App from './App';
 
+// Telegram appends tgWebApp* params to the URL pathname which confuses React Router.
+// Strip them out and redirect to the clean root before anything renders.
+if (window.location.pathname.includes('tgWebApp')) {
+  window.location.replace(window.location.origin + '/#/');
+}
+
 function Root() {
   useEffect(() => {
     WebApp.ready();
