@@ -298,7 +298,7 @@ const withdrawSessions = new Map<bigint, WithdrawState>();
  *   Standalone uppercase alphanumeric codes (8-12 chars) as fallback.
  * Returns null if the pattern is not found.
  */
-export function parseTelebirrReceipt(text: string): { txNumber: string; receiverPhone: string | null } | null {
+export function parseTelebirrReceipt(text: string): { txNumber: string; receiverPhone: string | null; amount: number | null } | null {
   // Normalize OCR artifacts: collapse extra whitespace
   const normalized = text.replace(/\s+/g, ' ');
 
@@ -309,9 +309,9 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
   const labeled = normalized.match(/(?:your\s+)?transaction\s+number\s+is\s+([A-Z0-9]{6,20})/i);
   if (labeled?.[1]) txNumber = labeled[1].toUpperCase();
 
-  // Amharic pattern: "የሂሳብ እንቅስቃሴ ቁጥርዎ DHC8QENUF0 ነዉ"
+  // Amharic pattern: "የሂሳብ እንቅስቃሴ ቁጥርዎ DHC8QENUF0 ነዉ" (with or without trailing ።)
   if (!txNumber) {
-    const amharicMatch = normalized.match(/የሂሳብ\s+እንቅስቃሴ\s+ቁጥርዎ\s+([A-Z0-9]{6,20})\s+ነዉ/i);
+    const amharicMatch = normalized.match(/የሂሳብ\s+እንቅስቃሴ\s+ቁጥርዎ\s+([A-Z0-9]{6,20})/i);
     if (amharicMatch?.[1]) txNumber = amharicMatch[1].toUpperCase();
   }
 
@@ -356,7 +356,23 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
     }
   }
 
-  return { txNumber, receiverPhone };
+  // Extract transfer amount — e.g. "30.00 ብር" appearing after sender/receiver info
+  // Amharic: "ወደ Name(phone) 30.00 ብር በ" or English: "sent 30.00 ETB"
+  let amount: number | null = null;
+  const amountMatch = normalized.match(/\)\s+([\d]+(?:\.\d+)?)\s+ብር/);
+  if (amountMatch?.[1]) {
+    const parsed = parseFloat(amountMatch[1]);
+    if (!isNaN(parsed) && parsed > 0) amount = parsed;
+  }
+  if (!amount) {
+    const englishAmountMatch = normalized.match(/(?:sent|transferred|amount)[:\s]+([\d]+(?:\.\d+)?)\s*(?:ETB|birr)/i);
+    if (englishAmountMatch?.[1]) {
+      const parsed = parseFloat(englishAmountMatch[1]);
+      if (!isNaN(parsed) && parsed > 0) amount = parsed;
+    }
+  }
+
+  return { txNumber, receiverPhone, amount };
 }
 
 /**
@@ -991,7 +1007,25 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         try {
-          const result = await processDepositClaim(player.id, parsed.txNumber);
+          let result = await processDepositClaim(player.id, parsed.txNumber);
+
+          // Auto-create the pending deposit from the receipt when admin hasn't pre-registered it
+          if (!result.success && result.reason === 'NOT_FOUND' && parsed.amount) {
+            try {
+              await prisma.pendingDeposit.create({
+                data: {
+                  tx_number: parsed.txNumber,
+                  amount: parsed.amount,
+                  status: 'pending',
+                },
+              });
+              result = await processDepositClaim(player.id, parsed.txNumber);
+            } catch (createErr) {
+              // If creation failed (e.g. race condition duplicate), retry claim
+              result = await processDepositClaim(player.id, parsed.txNumber);
+            }
+          }
+
           depositSessions.delete(telegramId);
 
           if (!result.success) {
@@ -1186,7 +1220,24 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
       }
 
-      const result = await processDepositClaim(player.id, txNumber.txNumber);
+      let result = await processDepositClaim(player.id, txNumber.txNumber);
+
+      // Auto-create the pending deposit from the receipt when admin hasn't pre-registered it
+      if (!result.success && result.reason === 'NOT_FOUND' && txNumber.amount) {
+        try {
+          await prisma.pendingDeposit.create({
+            data: {
+              tx_number: txNumber.txNumber,
+              amount: txNumber.amount,
+              status: 'pending',
+            },
+          });
+          result = await processDepositClaim(player.id, txNumber.txNumber);
+        } catch {
+          result = await processDepositClaim(player.id, txNumber.txNumber);
+        }
+      }
+
       depositSessions.delete(telegramId);
 
       if (!result.success) {
