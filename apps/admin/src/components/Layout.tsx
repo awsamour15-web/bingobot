@@ -9,7 +9,6 @@ const navItems = [
   { to: '/deposits', label: 'Deposits', icon: '📥' },
   { to: '/agents', label: 'Agents', icon: '🤝' },
   { to: '/promotions', label: 'Promotions', icon: '📢' },
-  { to: '/promotions', label: 'Promotions', icon: '📢' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 

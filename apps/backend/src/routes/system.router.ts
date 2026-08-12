@@ -12,13 +12,26 @@ import { GameStatus } from '@fidel/shared';
 
 const router: RouterType = Router();
 
-router.use(jwtAuthMiddleware);
-
 export interface SystemState {
   phase: 'cartela' | 'live' | 'idle';
   roundId: string | null;
   stake: number | null;
 }
+
+// GET /api/system/stats — total players registered and total completed games
+// Public endpoint - no auth required
+router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
+  const [totalPlayers, totalGames] = await Promise.all([
+    prisma.player.count({ where: { phone_verified: true } }),
+    prisma.gameRound.count({ where: { status: 'completed' } }),
+  ]);
+
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+  res.json({ totalPlayers, totalGames });
+});
+
+// All routes below require authentication
+router.use(jwtAuthMiddleware);
 
 // Priority: active > pending (earliest start_time)
 router.get('/state', async (_req: Request, res: Response): Promise<void> => {
@@ -49,17 +62,6 @@ router.get('/state', async (_req: Request, res: Response): Promise<void> => {
 
   const state: SystemState = { phase: 'idle', roundId: null, stake: null };
   res.json(state);
-});
-
-// GET /api/system/stats — total players registered and total completed games
-router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
-  const [totalPlayers, totalGames] = await Promise.all([
-    prisma.player.count({ where: { phone_verified: true } }),
-    prisma.gameRound.count({ where: { status: 'completed' } }),
-  ]);
-
-  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
-  res.json({ totalPlayers, totalGames });
 });
 
 export default router;

@@ -1,4 +1,6 @@
 // Admin promotion management endpoints
+// Requirements: 1.1, 1.3, 1.4, 1.5, 3.1, 3.4, 3.6, 4.1, 6.2, 6.6
+
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import { PromotionService } from '../../services/promotion.service.js';
 
@@ -8,14 +10,14 @@ type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 
 const router: RouterType = Router();
 
-// GET /promotions
-router.get('/promotions', async (_req: Request, res: Response): Promise<void> => {
+// GET / — list all promotions
+router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const promotions = await PromotionService.list();
   res.json(promotions);
 });
 
-// POST /promotions
-router.post('/promotions', async (req: Request, res: Response): Promise<void> => {
+// POST / — create promotion
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const promotion = await PromotionService.create(req.body as {
       title: string;
@@ -29,8 +31,8 @@ router.post('/promotions', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
-// PATCH /promotions/:id
-router.patch('/promotions/:id', async (req: Request, res: Response): Promise<void> => {
+// PATCH /:id — update promotion content/status
+router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const promotion = await PromotionService.update(req.params['id'] as string, req.body);
     res.json(promotion);
@@ -39,22 +41,22 @@ router.patch('/promotions/:id', async (req: Request, res: Response): Promise<voi
   }
 });
 
-// PATCH /promotions/:id/status
-router.patch('/promotions/:id/status', async (req: Request, res: Response): Promise<void> => {
+// PATCH /:id/status — toggle active/inactive
+router.patch('/:id/status', async (req: Request, res: Response): Promise<void> => {
   const { status } = req.body as { status: PromotionStatus };
   if (!status) { res.status(400).json({ error: 'STATUS_REQUIRED' }); return; }
   const promotion = await PromotionService.setStatus(req.params['id'] as string, status);
   res.json(promotion);
 });
 
-// GET /promotions/:id/schedules
-router.get('/promotions/:id/schedules', async (req: Request, res: Response): Promise<void> => {
+// GET /:id/schedules — list schedules
+router.get('/:id/schedules', async (req: Request, res: Response): Promise<void> => {
   const schedules = await PromotionService.listSchedules(req.params['id'] as string);
   res.json(schedules);
 });
 
-// POST /promotions/:id/schedules
-router.post('/promotions/:id/schedules', async (req: Request, res: Response): Promise<void> => {
+// POST /:id/schedules — create schedule
+router.post('/:id/schedules', async (req: Request, res: Response): Promise<void> => {
   try {
     const body = req.body as { channel_ids: string[]; frequency: PromotionScheduleFrequency; send_at: string };
     const schedule = await PromotionService.createSchedule(req.params['id'] as string, {
@@ -68,14 +70,14 @@ router.post('/promotions/:id/schedules', async (req: Request, res: Response): Pr
   }
 });
 
-// DELETE /promotions/schedules/:scheduleId
-router.delete('/promotions/schedules/:scheduleId', async (req: Request, res: Response): Promise<void> => {
+// DELETE /schedules/:scheduleId — cancel schedule
+router.delete('/schedules/:scheduleId', async (req: Request, res: Response): Promise<void> => {
   await PromotionService.cancelSchedule(req.params['scheduleId'] as string);
   res.json({ success: true });
 });
 
-// GET /promotions/logs
-router.get('/promotions/logs', async (req: Request, res: Response): Promise<void> => {
+// GET /logs — get delivery logs (supports ?promotionId= filter)
+router.get('/logs', async (req: Request, res: Response): Promise<void> => {
   const promotionId = req.query['promotionId'] as string | undefined;
   const logs = await PromotionService.getLogs(promotionId);
   res.json(logs);

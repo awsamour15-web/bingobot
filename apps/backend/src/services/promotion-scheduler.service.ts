@@ -1,5 +1,6 @@
 // Promotion Scheduler Service
 // Sends scheduled promotions to Telegram channels via the bot.
+// Requirements: 3.2, 3.3, 3.5, 4.3, 5.1, 5.2, 5.3, 5.6, 6.1, 6.3
 import prisma from '../lib/prisma.js';
 import { bot } from '../bot/index.js';
 import { PromotionService } from './promotion.service.js';

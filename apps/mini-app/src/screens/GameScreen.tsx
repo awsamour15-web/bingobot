@@ -52,7 +52,15 @@ export default function GameScreen() {
         }
         if (!cancelled && statsData) setStats(statsData);
       } catch (err: unknown) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load');
+        if (!cancelled) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to load';
+          // Check if this is an auth error when running outside Telegram
+          if (errorMessage.includes('Unauthorized') || errorMessage.includes('INVALID_TELEGRAM_AUTH')) {
+            setError('This app must be opened from Telegram. Please use the @BetesebBingoBot to access the game.');
+          } else {
+            setError(errorMessage);
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

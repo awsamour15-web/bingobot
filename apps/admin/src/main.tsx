@@ -12,7 +12,6 @@ import { SettingsPage } from './pages/SettingsPage';
 import { DepositsPage } from './pages/DepositsPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { PromotionsPage } from './pages/PromotionsPage';
-import { PromotionsPage } from './pages/PromotionsPage';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -27,7 +26,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="finance" element={<FinancePage />} />
           <Route path="deposits" element={<DepositsPage />} />
           <Route path="agents" element={<AgentsPage />} />
-          <Route path="promotions" element={<PromotionsPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

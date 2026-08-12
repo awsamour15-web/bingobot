@@ -61,17 +61,31 @@ router.post(
 
     // ── Step 1: Verify initData ──────────────────────────────────────────────
     let telegramUser: { id: number; first_name: string; username?: string };
-    try {
-      telegramUser = verifyTelegramInitData(body.initData, botToken);
-    } catch (err) {
-      if (err instanceof TelegramAuthError) {
-        res.status(401).json({
-          error: 'INVALID_TELEGRAM_AUTH',
-          message: err.message,
-        });
-        return;
+    
+    // Development mode: accept mock initData for testing
+    const isDevelopment = process.env['NODE_ENV'] === 'development';
+    const isMockData = body.initData === 'mock_init_data_for_development';
+    
+    if (isDevelopment && isMockData) {
+      // Mock user for development
+      telegramUser = {
+        id: 999999999,
+        first_name: 'Dev User',
+        username: 'devuser',
+      };
+    } else {
+      try {
+        telegramUser = verifyTelegramInitData(body.initData, botToken);
+      } catch (err) {
+        if (err instanceof TelegramAuthError) {
+          res.status(401).json({
+            error: 'INVALID_TELEGRAM_AUTH',
+            message: err.message,
+          });
+          return;
+        }
+        throw err;
       }
-      throw err;
     }
 
     // ── Step 2 & 3: Upsert player + wallets in a transaction ─────────────────
