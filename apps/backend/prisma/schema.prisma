@@ -182,12 +182,22 @@ model Agent {
   telegram_id        BigInt?           @unique
   agent_invite_code  String            @unique
   is_active          Boolean           @default(true)
+  approval_status    AgentApprovalStatus @default(pending)
   commission_balance Decimal           @default(0) @db.Decimal(14, 2)
   created_at         DateTime          @default(now())
+  approved_at        DateTime?
+  approved_by        String?
   referred_players   AgentCommission[] @relation("AgentCommissions")
   players            Player[]
 
+  @@index([approval_status])
   @@map("agents")
+}
+
+enum AgentApprovalStatus {
+  pending
+  approved
+  rejected
 }
 
 model AgentCommission {

@@ -52,7 +52,11 @@ function agentInviteLink(agentId: string): string {
  * Format: https://t.me/<BOT_USERNAME>?start=ref_agent_<agentId>
  */
 export function playerInviteLink(agentId: string): string {
-  return `https://t.me/${process.env.BOT_USERNAME}?start=ref_agent_${agentId}`;
+  const botUsername = process.env.BOT_USERNAME || 'BetesebBingoBot';
+  if (!botUsername) {
+    console.error('[Agent Service] BOT_USERNAME is not configured in environment variables');
+  }
+  return `https://t.me/${botUsername}?start=ref_agent_${agentId}`;
 }
 
 /**

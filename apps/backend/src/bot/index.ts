@@ -305,11 +305,17 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
   // Extract transaction number
   let txNumber: string | null = null;
 
-  // Primary: explicit label — "Your transaction number is DH87MNVFCT"
+  // Primary: explicit label — "Your transaction number is DH87MNVFCT" (English)
   const labeled = normalized.match(/(?:your\s+)?transaction\s+number\s+is\s+([A-Z0-9]{6,20})/i);
   if (labeled?.[1]) txNumber = labeled[1].toUpperCase();
 
-  // Secondary: receipt URL — /receipt/DH87MNVFCT
+  // Amharic pattern: "የሂሳብ እንቅስቃሴ ቁጥርዎ DHC8QENUF0 ነዉ"
+  if (!txNumber) {
+    const amharicMatch = normalized.match(/የሂሳብ\s+እንቅስቃሴ\s+ቁጥርዎ\s+([A-Z0-9]{6,20})\s+ነዉ/i);
+    if (amharicMatch?.[1]) txNumber = amharicMatch[1].toUpperCase();
+  }
+
+  // Secondary: receipt URL — /receipt/DH87MNVFCT or transactioninfo.ethiotelecom.et/receipt/DH87MNVFCT
   if (!txNumber) {
     const urlMatch = normalized.match(/\/receipt\/([A-Z0-9]{6,20})/i);
     if (urlMatch?.[1]) txNumber = urlMatch[1].toUpperCase();
@@ -324,13 +330,31 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
     }
   }
 
+  // Fallback: Look for any standalone alphanumeric code 6-20 chars long
+  if (!txNumber) {
+    const standaloneMatch = normalized.match(/\b([A-Z0-9]{6,20})\b/);
+    if (standaloneMatch?.[1]) txNumber = standaloneMatch[1].toUpperCase();
+  }
+
   if (!txNumber) return null;
 
-  // Extract receiver phone — Telebirr format: "to Name (2519****1234)"
+  // Extract receiver phone — Telebirr format: "to Name (2519****1234)" or "ወደ Name(0934****72)"
   // Also handles masked formats like 2519****5324 or +2519****5324
   let receiverPhone: string | null = null;
+  
+  // English format: (2519****1234)
   const phoneMatch = normalized.match(/\((\+?251[\d*]{8,})\)/);
-  if (phoneMatch?.[1]) receiverPhone = phoneMatch[1].replace(/^\+/, '');
+  if (phoneMatch?.[1]) {
+    receiverPhone = phoneMatch[1].replace(/^\+/, '');
+  }
+  
+  // Amharic format with 09 prefix: (09xxxxxxxx) - convert to 2519xxxxxxxx
+  if (!receiverPhone) {
+    const amharicPhoneMatch = normalized.match(/\((09[\d*]{8,})\)/);
+    if (amharicPhoneMatch?.[1]) {
+      receiverPhone = '251' + amharicPhoneMatch[1].substring(1); // Replace 0 with 251
+    }
+  }
 
   return { txNumber, receiverPhone };
 }

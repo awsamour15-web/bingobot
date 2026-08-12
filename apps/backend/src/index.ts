@@ -1,5 +1,8 @@
 // apps/backend — Express + Socket.IO server entry point
 
+// Load environment variables
+import 'dotenv/config';
+
 // BigInt serialization: Prisma returns telegram_id as BigInt; JSON.stringify
 // doesn't handle BigInt natively, so we patch toJSON globally to convert to string.
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
