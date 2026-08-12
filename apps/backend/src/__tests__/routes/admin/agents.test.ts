@@ -54,6 +54,7 @@ describe('Admin Agents Router', () => {
           totalPlayersInvited: 5,
           totalCommission: 100.50,
           isActive: true,
+          approvalStatus: 'approved',
           createdAt: '2025-01-01T00:00:00.000Z',
         },
       ];
@@ -88,6 +89,7 @@ describe('Admin Agents Router', () => {
         totalPlayersInvited: 5,
         totalCommission: 100.50,
         isActive: true,
+        approvalStatus: 'approved',
         createdAt: '2025-01-01T00:00:00.000Z',
         players: [
           {
