@@ -23,11 +23,13 @@ import adminConfigRouter from './routes/admin/config.admin.router.js';
 import adminDepositsRouter from './routes/admin/deposits.admin.router.js';
 import adminAgentsRouter from './routes/admin/agents.router.js';
 import agentRouter from './routes/agent.router.js';
+import promotionsAdminRouter from './routes/admin/promotions.admin.router.js';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
 import { RoundScheduler } from './services/round-scheduler.service.js';
 import { CleanupService } from './services/cleanup.service.js';
+import { PromotionScheduler } from './services/promotion-scheduler.service.js';
 
 const app: Express = express();
 
@@ -81,6 +83,7 @@ app.use('/api/admin/agents', jwtAdminMiddleware, adminAgentsRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminFinanceRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminConfigRouter);
 app.use('/api/agent', agentRouter);
+app.use('/api/admin/promotions', jwtAdminMiddleware, promotionsAdminRouter);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
@@ -191,6 +194,8 @@ httpServer.listen(PORT, () => {
   RoundScheduler.start();
   // Start cleanup service for expired reservations
   CleanupService.start();
+  // Start promotion scheduler
+  PromotionScheduler.start();
 });
 
 // ─── Telegram Bot — webhook on Render, polling locally ───────────────────────

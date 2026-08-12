@@ -110,9 +110,12 @@ function buildAgentHeaders(hasBody = false): Record<string, string> {
 
 async function fetchOnce(method: string, path: string, body?: unknown): Promise<Response> {
   const hasBody = body !== undefined;
+  const headers = buildHeaders(hasBody);
+  // Prevent browser from serving stale cached responses for GET requests
+  if (!hasBody) headers['Cache-Control'] = 'no-cache';
   return fetch(`${BASE_URL}${path}`, {
     method,
-    headers: buildHeaders(hasBody),
+    headers,
     body: hasBody ? JSON.stringify(body) : null,
   });
 }

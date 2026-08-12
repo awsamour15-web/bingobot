@@ -103,6 +103,9 @@ export default function CartelaScreen() {
   const picksRef = useRef<Set<number>>(new Set());
   useEffect(() => { picksRef.current = picks; }, [picks]);
 
+  // Cartelas being released — keep them out of taken until release API confirms
+  const pendingReleaseRef = useRef<Set<number>>(new Set());
+
   // Track cartelas reserved by OTHER users (optimistic, not yet committed to DB)
   const [reservedByOthers, setReservedByOthers] = useState<Set<number>>(new Set());
 
@@ -280,8 +283,13 @@ export default function CartelaScreen() {
         setAvailability(prev => {
           if (!prev) return fresh;
           const localPicks = picksRef.current;
-          const takenFromServer = fresh.taken.filter(n => !localPicks.has(n));
-          const available = fresh.available.filter(n => !localPicks.has(n));
+          const pendingRelease = pendingReleaseRef.current;
+          // Exclude local picks AND cartelas being released from the taken set.
+          // Union prev.taken with server taken so socket-added entries aren't lost
+          // if the server response is slightly behind.
+          const merged = new Set([...prev.taken, ...fresh.taken]);
+          const takenFromServer = [...merged].filter(n => !localPicks.has(n) && !pendingRelease.has(n));
+          const available = fresh.available.filter(n => !localPicks.has(n) && !merged.has(n));
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
@@ -376,12 +384,12 @@ export default function CartelaScreen() {
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
       
-      // Release reservation via API
+      // Release reservation via API — guard poll from marking it taken during flight
       if (roundId) {
-        releaseCartela(roundId, num).catch(err => {
-          console.warn('Failed to release cartela reservation:', err);
-          // Still update UI optimistically - reservation will expire anyway
-        });
+        pendingReleaseRef.current.add(num);
+        releaseCartela(roundId, num)
+          .catch(err => console.warn('Failed to release cartela reservation:', err))
+          .finally(() => pendingReleaseRef.current.delete(num));
       }
       return;
     }

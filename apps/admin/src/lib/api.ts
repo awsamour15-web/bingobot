@@ -254,3 +254,90 @@ export function suspendAgent(id: string): Promise<{ ok: boolean }> {
 export function restoreAgent(id: string): Promise<{ ok: boolean }> {
   return adminApiRequest('PATCH', `/api/admin/agents/${id}/restore`);
 }
+
+// ---------------------------------------------------------------------------
+// Promotions
+// ---------------------------------------------------------------------------
+
+export type PromotionContentType = 'text' | 'image' | 'video' | 'gif';
+export type PromotionStatus = 'active' | 'inactive';
+export type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+
+export interface Promotion {
+  id: string;
+  title: string;
+  content_type: PromotionContentType;
+  text_content: string | null;
+  media_file_id: string | null;
+  status: PromotionStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromotionSchedule {
+  id: string;
+  promotion_id: string;
+  channel_ids: string[];
+  frequency: PromotionScheduleFrequency;
+  send_at: string;
+  next_run_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PromotionLog {
+  id: string;
+  promotion_id: string;
+  schedule_id: string | null;
+  channel_id: string;
+  status: 'sent' | 'failed';
+  error_message: string | null;
+  sent_at: string;
+}
+
+export function listPromotions(): Promise<Promotion[]> {
+  return adminApiRequest('GET', '/api/admin/promotions');
+}
+
+export function createPromotion(data: {
+  title: string;
+  content_type: PromotionContentType;
+  text_content?: string;
+  media_file_id?: string;
+}): Promise<Promotion> {
+  return adminApiRequest('POST', '/api/admin/promotions', data);
+}
+
+export function updatePromotion(id: string, data: Partial<{
+  title: string;
+  content_type: PromotionContentType;
+  text_content: string;
+  media_file_id: string;
+}>): Promise<Promotion> {
+  return adminApiRequest('PATCH', `/api/admin/promotions/${id}`, data);
+}
+
+export function setPromotionStatus(id: string, status: PromotionStatus): Promise<Promotion> {
+  return adminApiRequest('PATCH', `/api/admin/promotions/${id}/status`, { status });
+}
+
+export function listSchedules(promotionId: string): Promise<PromotionSchedule[]> {
+  return adminApiRequest('GET', `/api/admin/promotions/${promotionId}/schedules`);
+}
+
+export function createSchedule(promotionId: string, data: {
+  channel_ids: string[];
+  frequency: PromotionScheduleFrequency;
+  send_at: string;
+}): Promise<PromotionSchedule> {
+  return adminApiRequest('POST', `/api/admin/promotions/${promotionId}/schedules`, data);
+}
+
+export function cancelSchedule(scheduleId: string): Promise<{ success: boolean }> {
+  return adminApiRequest('DELETE', `/api/admin/promotions/schedules/${scheduleId}`);
+}
+
+export function getPromotionLogs(promotionId?: string): Promise<PromotionLog[]> {
+  const query = promotionId ? `?promotionId=${promotionId}` : '';
+  return adminApiRequest('GET', `/api/admin/promotions/logs${query}`);
+}

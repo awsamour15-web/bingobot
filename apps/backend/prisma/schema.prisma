@@ -18,6 +18,25 @@ enum WalletType {
   play
 }
 
+enum PromotionContentType {
+  text
+  image
+  video
+  gif
+}
+
+enum PromotionStatus {
+  active
+  inactive
+}
+
+enum PromotionScheduleFrequency {
+  once
+  daily
+  weekly
+  monthly
+}
+
 enum TxType {
   deposit
   withdrawal
@@ -294,4 +313,56 @@ model CartelaReservation {
   @@index([player_id])
   @@index([expires_at])
   @@map("cartela_reservations")
+}
+
+model Promotion {
+  id            String               @id @default(uuid())
+  title         String
+  content_type  PromotionContentType
+  text_content  String?
+  media_file_id String?
+  status        PromotionStatus      @default(active)
+  created_at    DateTime             @default(now())
+  updated_at    DateTime             @updatedAt
+
+  schedules PromotionSchedule[]
+  logs      PromotionLog[]
+
+  @@index([status])
+  @@map("promotions")
+}
+
+model PromotionSchedule {
+  id            String                     @id @default(uuid())
+  promotion_id  String
+  channel_ids   String[]
+  frequency     PromotionScheduleFrequency
+  send_at       DateTime
+  next_run_at   DateTime?
+  is_active     Boolean                    @default(true)
+  created_at    DateTime                   @default(now())
+
+  promotion Promotion    @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
+  logs      PromotionLog[]
+
+  @@index([promotion_id])
+  @@index([is_active, next_run_at])
+  @@map("promotion_schedules")
+}
+
+model PromotionLog {
+  id            String   @id @default(uuid())
+  promotion_id  String
+  schedule_id   String?
+  channel_id    String
+  status        String   // sent | failed
+  error_message String?
+  sent_at       DateTime @default(now())
+
+  promotion Promotion          @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
+  schedule  PromotionSchedule? @relation(fields: [schedule_id], references: [id], onDelete: SetNull)
+
+  @@index([promotion_id])
+  @@index([schedule_id])
+  @@map("promotion_logs")
 }
