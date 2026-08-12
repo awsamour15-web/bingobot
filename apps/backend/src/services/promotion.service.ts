@@ -90,10 +90,13 @@ export const PromotionService = {
   },
 
   async getLogs(promotionId?: string) {
-    return prisma.promotionLog.findMany({
-      where: promotionId ? { promotion_id: promotionId } : undefined,
+    const query: any = {
       orderBy: { sent_at: 'desc' },
       take: 200,
-    });
+    };
+    if (promotionId) {
+      query.where = { promotion_id: promotionId };
+    }
+    return prisma.promotionLog.findMany(query);
   },
 };
