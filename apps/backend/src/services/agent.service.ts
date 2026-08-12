@@ -363,6 +363,7 @@ export const AgentService = {
       totalPlayersInvited: agent._count.players,
       totalCommission: Number(totalCommission),
       isActive: agent.is_active,
+      approvalStatus: agent.approval_status,
       createdAt: agent.created_at.toISOString(),
       players: playerRows,
     };
@@ -400,7 +401,7 @@ export const AgentService = {
         const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
         const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${agent.id}`;
         
-        await bot?.telegram.sendMessage(
+        await bot?.api.sendMessage(
           agent.telegram_id.toString(),
           `🎉 Congratulations! Your partner application has been approved!\n\n` +
           `You can now earn 10% commission on all deposits from players you invite.\n\n` +
@@ -433,7 +434,7 @@ export const AgentService = {
       try {
         const { bot } = await import('../bot/index.js');
         
-        await bot?.telegram.sendMessage(
+        await bot?.api.sendMessage(
           agent.telegram_id.toString(),
           `❌ Your partner application has been reviewed.\n\n` +
           `Unfortunately, we cannot approve your application at this time.\n\n` +
