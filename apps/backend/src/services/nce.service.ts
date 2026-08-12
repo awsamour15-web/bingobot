@@ -132,6 +132,7 @@ export class NumberCallingEngine {
       try {
         const number = sequence[sequenceIndex];
         if (number === undefined) {
+          console.log(`[NCE] Round ${roundId} exhausted all numbers at index ${sequenceIndex} — triggering void`);
           await this.triggerVoid(roundId);
           this.activeTimers.delete(roundId);
           return;

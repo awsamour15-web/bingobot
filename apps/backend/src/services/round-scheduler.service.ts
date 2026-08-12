@@ -14,6 +14,10 @@ const CHECK_INTERVAL_MS = 15_000;
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
 
+// Tracks how many consecutive ticks a round has been timer-less (stuck)
+const stuckRoundTicks = new Map<string, number>();
+const STUCK_TICK_THRESHOLD = 3; // force-void after 3 ticks (~45s) with no timer
+
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
 
@@ -81,15 +85,40 @@ export const RoundScheduler = {
       });
 
       for (const round of activeRounds) {
-        if (nce.activeTimers.has(round.id)) continue;
+        if (nce.activeTimers.has(round.id)) {
+          // Timer is running — reset stuck counter
+          stuckRoundTicks.delete(round.id);
+          continue;
+        }
         // Skip rounds where NCE win-distribution is in progress (round still active in DB but being finalized)
         if (nce.stoppingRounds.has(round.id)) continue;
+
+        const ticks = (stuckRoundTicks.get(round.id) ?? 0) + 1;
+        stuckRoundTicks.set(round.id, ticks);
+
         const isStale = round.start_time <= staleThreshold;
-        console.log(`[Scheduler] Timer-less active round ${round.id} (stake=${round.stake}, stale=${isStale}) - resuming NCE`);
+        console.log(`[Scheduler] Timer-less active round ${round.id} (stake=${round.stake}, stale=${isStale}, stuck_ticks=${ticks}) - resuming NCE`);
+
+        if (ticks >= STUCK_TICK_THRESHOLD) {
+          console.warn(`[Scheduler] Round ${round.id} stuck for ${ticks} ticks — force-voiding`);
+          stuckRoundTicks.delete(round.id);
+          try {
+            await prisma.gameRound.update({
+              where: { id: round.id },
+              data: { status: GameStatus.void, ended_at: new Date() },
+            });
+            console.log(`[Scheduler] Force-voided stuck round ${round.id}`);
+          } catch (voidErr) {
+            console.error(`[Scheduler] Failed to force-void stuck round ${round.id}:`, voidErr);
+          }
+          continue;
+        }
+
         try {
           await nce.start(round.id);
         } catch (err) {
           console.error(`[Scheduler] NCE resume failed for ${round.id} - force-voiding:`, err);
+          stuckRoundTicks.delete(round.id);
           try {
             await prisma.gameRound.update({
               where: { id: round.id },
