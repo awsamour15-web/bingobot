@@ -384,6 +384,15 @@ export default function CartelaScreen() {
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
       
+      // Update availability immediately - move cartela from taken to available
+      setAvailability(prev => {
+        if (!prev) return prev;
+        return {
+          taken: prev.taken.filter(n => n !== num),
+          available: [...prev.available, num].sort((a, b) => a - b)
+        };
+      });
+      
       // Release reservation via API — guard poll from marking it taken during flight
       if (roundId) {
         pendingReleaseRef.current.add(num);
@@ -426,6 +435,15 @@ export default function CartelaScreen() {
           const next = new Set([...picksRef.current, num]);
           picksRef.current = next;
           setPicks(next);
+          
+          // Update availability - move cartela from available to taken
+          setAvailability(prev => {
+            if (!prev) return prev;
+            return {
+              taken: [...prev.taken, num],
+              available: prev.available.filter(n => n !== num)
+            };
+          });
           
           // Show grid instantly from local lookup, then confirm/update from server cache
           const localGrid = getLocalGrid(num);
@@ -628,21 +646,29 @@ export default function CartelaScreen() {
         </div>
       )}
 
-      {/* ── Insufficient balance modal ── */}
-      {balanceAlert && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 24 }}
-          onClick={() => setBalanceAlert(null)}>
-          <div style={{ background: '#1a1035', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 16, padding: '28px 24px', maxWidth: 320, width: '100%', textAlign: 'center', boxShadow: '0 0 40px rgba(239,68,68,0.2)' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>💳</div>
-            <div style={{ fontWeight: 900, fontSize: 18, color: '#f87171', marginBottom: 8 }}>Insufficient Balance</div>
-            {balanceAlert.split('\n').map((line, i) => (
-              <div key={i} style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>{line}</div>
-            ))}
-            <button onClick={() => setBalanceAlert(null)} style={{ marginTop: 20, width: '100%', padding: '12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>OK</button>
+      {/* ── Alert modal (balance/availability errors) ── */}
+      {balanceAlert && (() => {
+        const isBalanceError = balanceAlert.includes('ቀሪ ሂሳብ') || balanceAlert.toLowerCase().includes('insufficient');
+        const isAvailabilityError = balanceAlert.includes('not available') || balanceAlert.includes('taken');
+        
+        const icon = isBalanceError ? '💳' : isAvailabilityError ? '🎫' : '⚠️';
+        const title = isBalanceError ? 'Insufficient Balance' : isAvailabilityError ? 'Cartela Unavailable' : 'Alert';
+        
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 24 }}
+            onClick={() => setBalanceAlert(null)}>
+            <div style={{ background: '#1a1035', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 16, padding: '28px 24px', maxWidth: 320, width: '100%', textAlign: 'center', boxShadow: '0 0 40px rgba(239,68,68,0.2)' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>{icon}</div>
+              <div style={{ fontWeight: 900, fontSize: 18, color: '#f87171', marginBottom: 8 }}>{title}</div>
+              {balanceAlert.split('\n').map((line, i) => (
+                <div key={i} style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>{line}</div>
+              ))}
+              <button onClick={() => setBalanceAlert(null)} style={{ marginTop: 20, width: '100%', padding: '12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>OK</button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Join error modal ── */}
       {joinError && (
