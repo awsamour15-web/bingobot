@@ -127,7 +127,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([activeSchedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendMessage).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -168,7 +168,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([imageSchedule] as any);
-      vi.mocked(bot?.api.sendPhoto).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendPhoto).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -203,7 +203,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([videoSchedule] as any);
-      vi.mocked(bot?.api.sendVideo).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendVideo).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -232,7 +232,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([gifSchedule] as any);
-      vi.mocked(bot?.api.sendAnimation).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendAnimation).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -261,7 +261,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([onceSchedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendMessage).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -297,7 +297,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([dailySchedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendMessage).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -334,7 +334,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([weeklySchedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendMessage).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -371,7 +371,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([monthlySchedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendMessage).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -407,7 +407,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([schedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockRejectedValue(new Error('Channel not found'));
+      vi.mocked(bot!.api.sendMessage).mockRejectedValue(new Error('Channel not found'));
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 
@@ -462,7 +462,7 @@ describe('PromotionScheduler', () => {
       ];
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue(schedules as any);
-      vi.mocked(bot?.api.sendMessage)
+      vi.mocked(bot!.api.sendMessage)
         .mockRejectedValueOnce(new Error('First failed'))
         .mockResolvedValueOnce({} as any);
       vi.mocked(PromotionService.logDelivery).mockResolvedValue({} as any);
@@ -511,7 +511,7 @@ describe('PromotionScheduler', () => {
       };
 
       vi.mocked(prisma.promotionSchedule.findMany).mockResolvedValue([schedule] as any);
-      vi.mocked(bot?.api.sendMessage).mockResolvedValue({} as any);
+      vi.mocked(bot!.api.sendMessage).mockResolvedValue({} as any);
       vi.mocked(PromotionService.logDelivery).mockRejectedValue(new Error('Log failed'));
       vi.mocked(prisma.promotionSchedule.update).mockResolvedValue({} as any);
 

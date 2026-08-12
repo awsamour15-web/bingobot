@@ -47,10 +47,8 @@ describe('Property 3: After a successful send, next_run_at advances by exactly t
         const nextRunAt = advanceNextRunAt('daily', currentRunAt);
         
         expect(nextRunAt).not.toBeNull();
-        if (nextRunAt) {
-          const diffSeconds = (nextRunAt.getTime() - currentRunAt.getTime()) / 1000;
-          expect(diffSeconds).toBe(86400);
-        }
+        const diffSeconds = (nextRunAt!.getTime() - currentRunAt.getTime()) / 1000;
+        expect(diffSeconds).toBe(86400);
       }),
       { numRuns: 100 }
     );
@@ -62,10 +60,8 @@ describe('Property 3: After a successful send, next_run_at advances by exactly t
         const nextRunAt = advanceNextRunAt('weekly', currentRunAt);
         
         expect(nextRunAt).not.toBeNull();
-        if (nextRunAt) {
-          const diffSeconds = (nextRunAt.getTime() - currentRunAt.getTime()) / 1000;
-          expect(diffSeconds).toBe(604800);
-        }
+        const diffSeconds = (nextRunAt!.getTime() - currentRunAt.getTime()) / 1000;
+        expect(diffSeconds).toBe(604800);
       }),
       { numRuns: 100 }
     );

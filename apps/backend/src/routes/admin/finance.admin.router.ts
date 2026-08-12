@@ -62,7 +62,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
   }
 
   // Prevent duplicate tx number across all withdrawals
-  const duplicate = await prisma.pendingWithdrawal.findUnique({ where: { tx_number: txNumber } });
+  const duplicate = await prisma.pendingWithdrawal.findFirst({ where: { tx_number: txNumber } });
   if (duplicate && duplicate.id !== id) {
     res.status(409).json({ error: 'DUPLICATE_TX', message: 'This transaction number has already been used' });
     return;
