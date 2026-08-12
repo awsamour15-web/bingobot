@@ -215,12 +215,8 @@ export class NumberCallingEngine {
       }
     };
 
-    // Call first number immediately after round starts
-    const handle = setTimeout(() => {
-      void callNext();
-    }, 0);
-
-    this.activeTimers.set(roundId, handle);
+    // Call first number immediately after round starts (no setTimeout delay)
+    void callNext();
     this.startingRounds.delete(roundId);
     } catch (err) {
       this.startingRounds.delete(roundId);
