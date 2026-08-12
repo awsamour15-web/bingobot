@@ -378,7 +378,6 @@ export const AgentService = {
       data: { is_active: isActive },
     });
   },
-};
 
   /**
    * Approve an agent application
@@ -474,3 +473,4 @@ export const AgentService = {
       playerCount: a._count.players,
     }));
   },
+};
