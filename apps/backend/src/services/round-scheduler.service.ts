@@ -92,12 +92,32 @@ export const RoundScheduler = {
         }
         // Skip rounds where NCE win-distribution is in progress (round still active in DB but being finalized)
         if (nce.stoppingRounds.has(round.id)) continue;
+        // Skip rounds that NCE is currently starting — callNext hasn't set its timer handle yet
+        // (startingRounds is a private Set on the NCE instance, but we can infer this by checking
+        //  if nce.start() reports "already running/starting" — we do that by attempting start first)
+
+        const isStale = round.start_time <= staleThreshold;
+
+        // Attempt NCE start first — it will log and return early if already running/starting
+        let alreadyRunning = false;
+        try {
+          const before = nce.activeTimers.size;
+          await nce.start(round.id);
+          // If activeTimers grew, NCE successfully kicked off — reset stuck counter
+          if (nce.activeTimers.has(round.id) || nce.activeTimers.size > before) {
+            stuckRoundTicks.delete(round.id);
+            continue;
+          }
+          // If start() returned without adding a timer, NCE completed synchronously
+          // (all numbers called or round ended) — count as stuck
+          alreadyRunning = false;
+        } catch {
+          alreadyRunning = false;
+        }
 
         const ticks = (stuckRoundTicks.get(round.id) ?? 0) + 1;
         stuckRoundTicks.set(round.id, ticks);
-
-        const isStale = round.start_time <= staleThreshold;
-        console.log(`[Scheduler] Timer-less active round ${round.id} (stake=${round.stake}, stale=${isStale}, stuck_ticks=${ticks}) - resuming NCE`);
+        console.log(`[Scheduler] Timer-less active round ${round.id} (stake=${round.stake}, stale=${isStale}, stuck_ticks=${ticks})`);
 
         if (ticks >= STUCK_TICK_THRESHOLD) {
           console.warn(`[Scheduler] Round ${round.id} stuck for ${ticks} ticks — force-voiding`);
@@ -110,23 +130,6 @@ export const RoundScheduler = {
             console.log(`[Scheduler] Force-voided stuck round ${round.id}`);
           } catch (voidErr) {
             console.error(`[Scheduler] Failed to force-void stuck round ${round.id}:`, voidErr);
-          }
-          continue;
-        }
-
-        try {
-          await nce.start(round.id);
-        } catch (err) {
-          console.error(`[Scheduler] NCE resume failed for ${round.id} - force-voiding:`, err);
-          stuckRoundTicks.delete(round.id);
-          try {
-            await prisma.gameRound.update({
-              where: { id: round.id },
-              data: { status: GameStatus.void, ended_at: new Date() },
-            });
-            console.log(`[Scheduler] Force-voided stuck active round ${round.id}`);
-          } catch (voidErr) {
-            console.error(`[Scheduler] Failed to force-void round ${round.id}:`, voidErr);
           }
         }
       }

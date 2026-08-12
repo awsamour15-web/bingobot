@@ -279,7 +279,33 @@ export default function CartelaScreen() {
 
     // Poll every 1s — catches missed socket events; never overwrites local picks
     const poll = setInterval(() => {
-      getCartelaAvailability(roundId!).then(fresh => {
+      // Also fetch round status to catch missed ROUND_STARTED socket events
+      Promise.all([
+        getCartelaAvailability(roundId!),
+        getRound(roundId!),
+      ]).then(([fresh, latestRound]) => {
+        // If round went active and we haven't joined yet, trigger join flow
+        if (latestRound.status === 'active' && !joinedRef.current) {
+          joinedRef.current = true;
+          clearInterval(poll);
+          sessionStorage.setItem('selectedRoundId', roundId!);
+          if (picksRef.current.size > 0) {
+            commitPicks(picksRef.current).then(() => {
+              navigate(`/rounds/${roundId}/game`, { replace: true });
+            });
+          } else {
+            sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+            navigate(`/rounds/${roundId}/game`, { replace: true });
+          }
+          return;
+        }
+        // Round ended (void/cancelled) — go home
+        if (latestRound.status === 'void' || latestRound.status === 'cancelled') {
+          clearInterval(poll);
+          sessionStorage.removeItem('stakeSelectedForRound');
+          navigate('/', { replace: true });
+          return;
+        }
         setAvailability(prev => {
           if (!prev) return fresh;
           const localPicks = picksRef.current;
@@ -293,7 +319,7 @@ export default function CartelaScreen() {
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
-    }, 1000); // Increased polling frequency from 3s to 1s
+    }, 1000);
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);

@@ -48,7 +48,7 @@ export class NumberCallingEngine {
   readonly stoppingRounds = new Set<string>();
 
   /** Rounds currently being started — synchronous guard against concurrent start() calls */
-  private readonly startingRounds = new Set<string>();
+  readonly startingRounds = new Set<string>();
 
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
