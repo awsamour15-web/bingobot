@@ -216,7 +216,9 @@ export class NumberCallingEngine {
     };
 
     // Call first number immediately after round starts (no setTimeout delay)
+    // The timer handle will be set by callNext() after the first call
     void callNext();
+    
     this.startingRounds.delete(roundId);
     } catch (err) {
       this.startingRounds.delete(roundId);
