@@ -22,6 +22,7 @@ model Player {
   cartela_reservations CartelaReservation[]
   won_rounds           GameRound[]          @relation("RoundWinner")
   pending_deposits     PendingDeposit[]
+  pending_withdrawals  PendingWithdrawal[]
   agent                Agent?               @relation(fields: [agent_id], references: [id])
   referrer             Player?              @relation("PlayerReferrals", fields: [referrer_id], references: [id])
   referrals            Player[]             @relation("PlayerReferrals")
