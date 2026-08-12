@@ -217,7 +217,7 @@ describe('Property 3: After a successful send, next_run_at advances by exactly t
           
           // Each date should be strictly greater than the previous
           for (let i = 1; i < dates.length; i++) {
-            expect(dates[i].getTime()).toBeGreaterThan(dates[i - 1].getTime());
+            expect(dates[i]!.getTime()).toBeGreaterThan(dates[i - 1]!.getTime());
           }
         }
       ),
