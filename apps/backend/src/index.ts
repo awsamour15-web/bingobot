@@ -48,10 +48,18 @@ const allowedOrigins = process.env['CORS_ORIGIN']
 // including on error responses (401, 502, etc.) that would otherwise strip them.
 app.use((req, res, next) => {
   const origin = req.headers['origin'];
+  
+  // Allow Telegram WebView origins (they don't send standard Origin headers)
+  // Also allow configured origins
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
+  } else if (!origin || origin === 'null') {
+    // Telegram WebView and some mobile browsers don't send Origin header
+    // Allow requests without origin (common in Telegram Mini Apps)
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
+  
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
