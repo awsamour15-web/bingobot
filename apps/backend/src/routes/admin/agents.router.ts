@@ -114,4 +114,74 @@ router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> 
   }
 });
 
+// GET /pending — list pending agent applications
+// Protected by adminAuthMiddleware (applied in index.ts)
+router.get('/pending', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pendingAgents = await AgentService.getPendingAgents();
+    res.status(200).json({ agents: pendingAgents });
+  } catch (err) {
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+  }
+});
+
+// POST /:id/approve — approve pending agent application
+// Protected by adminAuthMiddleware (applied in index.ts)
+router.post('/:id/approve', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  
+  if (!id || typeof id !== 'string') {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Agent ID is required' });
+    return;
+  }
+
+  try {
+    const adminId = req.admin?.adminId || 'system';
+    const agent = await AgentService.approveAgent(id, adminId);
+    res.status(200).json({ 
+      ok: true,
+      agent: {
+        id: agent.id,
+        approvalStatus: agent.approval_status,
+        approvedAt: agent.approved_at?.toISOString(),
+      }
+    });
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2025') {
+      res.status(404).json({ error: 'AGENT_NOT_FOUND', message: 'Agent not found' });
+      return;
+    }
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+  }
+});
+
+// POST /:id/reject — reject pending agent application
+// Protected by adminAuthMiddleware (applied in index.ts)
+router.post('/:id/reject', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  
+  if (!id || typeof id !== 'string') {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Agent ID is required' });
+    return;
+  }
+
+  try {
+    const adminId = req.admin?.adminId || 'system';
+    const agent = await AgentService.rejectAgent(id, adminId);
+    res.status(200).json({ 
+      ok: true,
+      agent: {
+        id: agent.id,
+        approvalStatus: agent.approval_status,
+      }
+    });
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2025') {
+      res.status(404).json({ error: 'AGENT_NOT_FOUND', message: 'Agent not found' });
+      return;
+    }
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+  }
+});
+
 export default router;

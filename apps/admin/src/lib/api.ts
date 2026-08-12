@@ -220,6 +220,7 @@ export interface AgentSummary {
   totalPlayersInvited: number;
   totalCommission: number;
   isActive: boolean;
+  approvalStatus: string;
   createdAt: string;
 }
 
@@ -253,6 +254,26 @@ export function suspendAgent(id: string): Promise<{ ok: boolean }> {
 
 export function restoreAgent(id: string): Promise<{ ok: boolean }> {
   return adminApiRequest('PATCH', `/api/admin/agents/${id}/restore`);
+}
+
+export interface PendingAgent {
+  id: string;
+  telegramUsername: string;
+  telegramId: string | null;
+  createdAt: string;
+  playerCount: number;
+}
+
+export function getPendingAgents(): Promise<{ agents: PendingAgent[] }> {
+  return adminApiRequest('GET', '/api/admin/agents/pending');
+}
+
+export function approveAgent(id: string): Promise<{ ok: boolean }> {
+  return adminApiRequest('POST', `/api/admin/agents/${id}/approve`);
+}
+
+export function rejectAgent(id: string): Promise<{ ok: boolean }> {
+  return adminApiRequest('POST', `/api/admin/agents/${id}/reject`);
 }
 
 // ---------------------------------------------------------------------------

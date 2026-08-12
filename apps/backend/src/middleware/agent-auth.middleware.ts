@@ -55,10 +55,10 @@ export async function agentAuthMiddleware(
     return;
   }
 
-  // Check agent exists and is active
+  // Check agent exists, is active, and is approved
   const agent = await prisma.agent.findUnique({
     where: { id: payload.agentId },
-    select: { is_active: true },
+    select: { is_active: true, approval_status: true },
   });
 
   if (!agent) {
@@ -68,6 +68,11 @@ export async function agentAuthMiddleware(
 
   if (!agent.is_active) {
     res.status(403).json({ error: 'FORBIDDEN', message: 'Agent account is suspended' });
+    return;
+  }
+
+  if (agent.approval_status !== 'approved') {
+    res.status(403).json({ error: 'FORBIDDEN', message: 'Agent application is pending approval' });
     return;
   }
 

@@ -30,6 +30,7 @@ export interface AgentSummary {
   totalPlayersInvited: number;
   totalCommission: number;
   isActive: boolean;
+  approvalStatus: string;
   createdAt: string;
 }
 
@@ -52,7 +53,7 @@ function agentInviteLink(agentId: string): string {
  * Format: https://t.me/<BOT_USERNAME>?start=ref_agent_<agentId>
  */
 export function playerInviteLink(agentId: string): string {
-  const botUsername = process.env.BOT_USERNAME || 'BetesebBingoBot';
+  const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
   if (!botUsername) {
     console.error('[Agent Service] BOT_USERNAME is not configured in environment variables');
   }
@@ -300,6 +301,7 @@ export const AgentService = {
         totalPlayersInvited: a._count.players,
         totalCommission: Number(totalCommission),
         isActive: a.is_active,
+        approvalStatus: a.approval_status,
         createdAt: a.created_at.toISOString(),
       };
     });
@@ -377,3 +379,98 @@ export const AgentService = {
     });
   },
 };
+
+  /**
+   * Approve an agent application
+   */
+  async approveAgent(agentId: string, approvedBy: string) {
+    const agent = await prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        approval_status: 'approved',
+        approved_at: new Date(),
+        approved_by: approvedBy,
+        is_active: true,
+      },
+    });
+
+    // Notify agent via bot if they have telegram_id
+    if (agent.telegram_id) {
+      try {
+        const { bot } = await import('../bot/index.js');
+        const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
+        const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${agent.id}`;
+        
+        await bot?.telegram.sendMessage(
+          agent.telegram_id.toString(),
+          `🎉 Congratulations! Your partner application has been approved!\n\n` +
+          `You can now earn 10% commission on all deposits from players you invite.\n\n` +
+          `Your player invite link:\n${playerInvite}\n\n` +
+          `Share your invite link with friends to start earning commissions!`
+        );
+      } catch (err) {
+        console.error('[Agent Service] Failed to notify agent of approval:', err);
+      }
+    }
+
+    return agent;
+  },
+
+  /**
+   * Reject an agent application
+   */
+  async rejectAgent(agentId: string, rejectedBy: string) {
+    const agent = await prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        approval_status: 'rejected',
+        approved_by: rejectedBy,
+        is_active: false,
+      },
+    });
+
+    // Notify agent via bot if they have telegram_id
+    if (agent.telegram_id) {
+      try {
+        const { bot } = await import('../bot/index.js');
+        
+        await bot?.telegram.sendMessage(
+          agent.telegram_id.toString(),
+          `❌ Your partner application has been reviewed.\n\n` +
+          `Unfortunately, we cannot approve your application at this time.\n\n` +
+          `Please contact support for more information.`
+        );
+      } catch (err) {
+        console.error('[Agent Service] Failed to notify agent of rejection:', err);
+      }
+    }
+
+    return agent;
+  },
+
+  /**
+   * Get pending agent applications
+   */
+  async getPendingAgents() {
+    const agents = await prisma.agent.findMany({
+      where: { approval_status: 'pending' },
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        telegram_username: true,
+        telegram_id: true,
+        created_at: true,
+        _count: {
+          select: { players: true },
+        },
+      },
+    });
+
+    return agents.map((a) => ({
+      id: a.id,
+      telegramUsername: a.telegram_username,
+      telegramId: a.telegram_id ? a.telegram_id.toString() : null,
+      createdAt: a.created_at.toISOString(),
+      playerCount: a._count.players,
+    }));
+  },

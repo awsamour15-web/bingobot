@@ -6,12 +6,17 @@ import {
   suspendAgent,
   restoreAgent,
   getAgentDetail,
+  getPendingAgents,
+  approveAgent,
+  rejectAgent,
   type AgentSummary,
   type AgentDetail,
+  type PendingAgent,
 } from '../lib/api';
 
 export function AgentsPage() {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
+  const [pendingAgents, setPendingAgents] = useState<PendingAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,8 +33,12 @@ export function AgentsPage() {
   async function load() {
     try {
       setLoading(true);
-      const res = await listAgents();
-      setAgents(res.agents);
+      const [agentsRes, pendingRes] = await Promise.all([
+        listAgents(),
+        getPendingAgents(),
+      ]);
+      setAgents(agentsRes.agents);
+      setPendingAgents(pendingRes.agents);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load agents');
     } finally {
@@ -76,6 +85,25 @@ export function AgentsPage() {
     }
   }
 
+  async function handleApprove(id: string) {
+    try {
+      await approveAgent(id);
+      void load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to approve agent');
+    }
+  }
+
+  async function handleReject(id: string) {
+    if (!confirm('Are you sure you want to reject this agent application?')) return;
+    try {
+      await rejectAgent(id);
+      void load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to reject agent');
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -90,6 +118,53 @@ export function AgentsPage() {
 
       {loading && <div style={{ color: C.muted }}>Loading...</div>}
       {error && <div style={{ color: '#f87171' }}>{error}</div>}
+
+      {/* Pending Approvals Section */}
+      {!loading && !error && pendingAgents.length > 0 && (
+        <div style={{ marginBottom: 32, padding: 16, background: '#1e293b', borderRadius: 8, border: '1px solid #fbbf24' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fbbf24', marginTop: 0, marginBottom: 16 }}>
+            ⏳ Pending Approvals ({pendingAgents.length})
+          </h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#0f172a', color: C.muted }}>
+                  {['Username', 'Telegram ID', 'Applied', 'Actions'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pendingAgents.map((a) => (
+                  <tr key={a.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '10px 12px', color: C.text, fontWeight: 600 }}>@{a.telegramUsername}</td>
+                    <td style={{ padding: '10px 12px', color: C.muted, fontSize: 12 }}>{a.telegramId || 'Not linked'}</td>
+                    <td style={{ padding: '10px 12px', color: C.muted, fontSize: 12 }}>
+                      {new Date(a.createdAt).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => handleApprove(a.id)}
+                          style={{ background: '#14532d', color: '#4ade80', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(a.id)}
+                          style={{ background: '#7f1d1d', color: '#fca5a5', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                        >
+                          ✗ Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {!loading && !error && (
         <div style={{ overflowX: 'auto' }}>

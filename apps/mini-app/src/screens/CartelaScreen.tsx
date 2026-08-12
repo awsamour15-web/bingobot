@@ -17,7 +17,7 @@ interface ProfileBalances {
   playWallet: { balance: number };
 }
 
-const TOTAL = 800;
+const TOTAL = 880;
 const MAX_SELECT = 2;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
@@ -48,7 +48,7 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       onClick={handleClick}
       style={{
         padding: '4px 0', borderRadius: 4, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 500, fontSize: 11,
+        fontWeight: isPicked || taken ? 800 : 500, fontSize: 13,
         cursor: disabled && !taken ? 'default' : taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'background 0.1s',

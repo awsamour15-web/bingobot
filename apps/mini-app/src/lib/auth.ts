@@ -78,7 +78,7 @@ async function doLogin(): Promise<void> {
   } catch (error) {
     console.error('[Auth] Login failed:', error);
     if (!WebApp.initData) {
-      throw new Error('This app must be opened from Telegram. Please use @BetesebBingoBot to play.');
+      throw new Error('This app must be opened from Telegram. Please use @FidelBingoBot to play.');
     }
     throw error;
   }

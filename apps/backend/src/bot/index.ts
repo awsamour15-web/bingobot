@@ -460,9 +460,9 @@ async function processDepositClaim(
     if (playerRecord?.agent_id) {
       const agentRecord = await tx.agent.findUnique({
         where: { id: playerRecord.agent_id },
-        select: { is_active: true },
+        select: { is_active: true, approval_status: true },
       });
-      if (agentRecord?.is_active) {
+      if (agentRecord?.is_active && agentRecord.approval_status === 'approved') {
         await AgentService.creditCommission(tx, playerRecord.agent_id, playerId, deposit.id, deposit.amount);
       }
     }
@@ -1299,9 +1299,9 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         if (playerRecord?.agent_id) {
           const agentRecord = await tx.agent.findUnique({
             where: { id: playerRecord.agent_id },
-            select: { is_active: true },
+            select: { is_active: true, approval_status: true },
           });
-          if (agentRecord?.is_active) {
+          if (agentRecord?.is_active && agentRecord.approval_status === 'approved') {
             await AgentService.creditCommission(tx, playerRecord.agent_id, player.id, deposit.id, deposit.amount);
           }
         }
@@ -1557,12 +1557,28 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       // Check if user is already a linked agent
       const existingAgent = await prisma.agent.findUnique({
         where: { telegram_id: telegramId },
-        select: { id: true, is_active: true },
+        select: { id: true, is_active: true, approval_status: true },
       });
 
       if (existingAgent) {
+        if (existingAgent.approval_status === 'pending') {
+          await ctx.reply(
+            `⏳ Your partner application is pending approval.\n\n` +
+            `You will be notified once an admin reviews your request.`
+          );
+          return;
+        }
+
+        if (existingAgent.approval_status === 'rejected') {
+          await ctx.reply(
+            `❌ Your partner application was rejected.\n\n` +
+            `Please contact support for more information.`
+          );
+          return;
+        }
+
+        // Approved agent
         const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${existingAgent.id}`;
-        const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
         
         await ctx.reply(
           `✅ You are already a partner!\n\n` +
@@ -1572,23 +1588,18 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         return;
       }
 
-      // Create new agent account and link it
+      // Create new agent account with pending status and link it
       const newAgent = await AgentService.createAgent(username);
       await AgentService.linkAgent(newAgent.id, telegramId);
 
-      const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${newAgent.id}`;
-      const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
-
       await ctx.reply(
-        `🎉 Welcome as our new partner!\n\n` +
-        `You can now earn 10% commission on all deposits from players you invite.\n\n` +
-        `Your player invite link:\n${playerInvite}\n\n` +
-        `Share your invite link with friends to start earning commissions!`,
-        { reply_markup: buildAgentDashboardButton() }
+        `📝 Your partner application has been submitted!\n\n` +
+        `You will be notified once an admin reviews your request.\n\n` +
+        `Thank you for your interest in becoming a partner!`
       );
     } catch (err) {
       console.error('[Bot] Be Partner handler error:', err);
-      await ctx.reply('❌ Something went wrong while setting up your partner account. Please try again later or contact support.');
+      await ctx.reply('❌ Something went wrong while submitting your partner application. Please try again later or contact support.');
     }
   });
 
