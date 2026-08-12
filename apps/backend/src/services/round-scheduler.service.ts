@@ -92,27 +92,21 @@ export const RoundScheduler = {
         }
         // Skip rounds where NCE win-distribution is in progress (round still active in DB but being finalized)
         if (nce.stoppingRounds.has(round.id)) continue;
-        // Skip rounds that NCE is currently starting — callNext hasn't set its timer handle yet
-        // (startingRounds is a private Set on the NCE instance, but we can infer this by checking
-        //  if nce.start() reports "already running/starting" — we do that by attempting start first)
+        // Skip rounds that NCE is currently starting — timer handle not yet registered
+        if (nce.startingRounds.has(round.id)) continue;
 
         const isStale = round.start_time <= staleThreshold;
 
-        // Attempt NCE start first — it will log and return early if already running/starting
-        let alreadyRunning = false;
+        // Attempt NCE start — it will log and no-op if already running/starting
         try {
-          const before = nce.activeTimers.size;
           await nce.start(round.id);
-          // If activeTimers grew, NCE successfully kicked off — reset stuck counter
-          if (nce.activeTimers.has(round.id) || nce.activeTimers.size > before) {
+          // If activeTimers now has this round, NCE successfully kicked off
+          if (nce.activeTimers.has(round.id) || nce.startingRounds.has(round.id)) {
             stuckRoundTicks.delete(round.id);
             continue;
           }
-          // If start() returned without adding a timer, NCE completed synchronously
-          // (all numbers called or round ended) — count as stuck
-          alreadyRunning = false;
         } catch {
-          alreadyRunning = false;
+          // fall through to stuck-tick counting
         }
 
         const ticks = (stuckRoundTicks.get(round.id) ?? 0) + 1;
