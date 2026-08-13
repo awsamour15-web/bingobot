@@ -47,14 +47,14 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       disabled={disabled || taken}
       onClick={handleClick}
       style={{
-        padding: '4px 0', borderRadius: 4, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 500, fontSize: 13,
+        padding: '4.4px 0', borderRadius: 4, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 500, fontSize: 14.3,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'background 0.15s, transform 0.1s',
         transform: isPicked ? 'scale(1.05)' : 'scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '26.4px',
       }}
     >
       {num}
