@@ -551,34 +551,37 @@ export default function LiveGameScreen() {
         {/* LEFT: Full 1-75 bingo board */}
         <div style={{ width: '42%', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 1, padding: '4px 2px 2px' }}>
             {COLS.map((c, i) => (
-              <div key={c} style={{ background: COL_COLORS[i], textAlign: 'center', padding: '6px 0', fontWeight: 900, fontSize: 14 }}>{c}</div>
+              <div key={c} style={{ background: COL_COLORS[i], textAlign: 'center', padding: '8px 0', fontWeight: 900, fontSize: 14, borderRadius: 4, boxShadow: `0 0 8px ${COL_COLORS[i]}66` }}>{c}</div>
             ))}
           </div>
-          {/* Numbers 1-75 in 5 columns, 15 rows */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(15, 1fr)', gap: 1, padding: 2 }}>
-            {Array.from({ length: 75 }, (_, i) => {
-              // Standard 75-number bingo: B(1-15), I(16-30), N(31-45), G(46-60), O(61-75)
-              const num = i + 1;
-              const col = Math.floor((num - 1) / 15); // Which column this number belongs to
-              const called = game.calledNumbers.has(num);
-              const isLast = num === game.lastCalled;
-              return (
-                <div key={num} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  aspectRatio: '1',
-                  background: isLast ? '#f5d06b' : called ? COL_COLORS[col] : 'rgba(255,255,255,0.06)',
-                  color: isLast ? '#1a1035' : called ? '#fff' : '#888',
-                  borderRadius: 4,
-                  fontWeight: called ? 800 : 400,
-                  fontSize: 12,
-                  transition: 'background 0.2s',
-                }}>
-                  {num}
-                </div>
-              );
-            })}
+          {/* Numbers 1-75 in 5 columns (B,I,N,G,O), 15 rows each */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
+            {/* Generate columns: B(1-15), I(16-30), N(31-45), G(46-60), O(61-75) */}
+            {Array.from({ length: 5 }, (_, colIdx) => {
+              return Array.from({ length: 15 }, (_, rowIdx) => {
+                const num = colIdx * 15 + 1 + rowIdx;
+                const called = game.calledNumbers.has(num);
+                const isLast = num === game.lastCalled;
+                return (
+                  <div key={num} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    aspectRatio: '1',
+                    background: isLast ? 'linear-gradient(135deg, #f5d06b, #f59e0b)' : called ? `linear-gradient(135deg, ${COL_COLORS[colIdx]}, ${COL_COLORS[colIdx]}dd)` : 'rgba(255,255,255,0.06)',
+                    color: isLast || called ? '#fff' : '#94a3b8',
+                    border: isLast ? '2px solid #fff' : called ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 6,
+                    fontWeight: isLast ? 900 : called ? 800 : 500,
+                    fontSize: 13,
+                    transition: 'all 0.2s ease',
+                    boxShadow: isLast ? `0 0 16px ${COL_COLORS[colIdx]}88` : called ? `inset 0 0 4px rgba(0,0,0,0.3)` : 'none',
+                  }}>
+                    {num}
+                  </div>
+                );
+              });
+            }).flat()}
           </div>
         </div>
 
