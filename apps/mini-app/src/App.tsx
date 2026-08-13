@@ -1,14 +1,31 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import GameScreen from './screens/GameScreen';
-import CartelaScreen from './screens/CartelaScreen';
-import LiveGameScreen from './screens/LiveGameScreen';
-import HistoryScreen from './screens/HistoryScreen';
-import HistoryDetailScreen from './screens/HistoryDetailScreen';
-import WalletScreen from './screens/WalletScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import AgentDashboardScreen from './screens/AgentDashboardScreen';
+
+// Lazy-load screens for faster initial load
+const GameScreen = lazy(() => import('./screens/GameScreen'));
+const CartelaScreen = lazy(() => import('./screens/CartelaScreen'));
+const LiveGameScreen = lazy(() => import('./screens/LiveGameScreen'));
+const HistoryScreen = lazy(() => import('./screens/HistoryScreen'));
+const HistoryDetailScreen = lazy(() => import('./screens/HistoryDetailScreen'));
+const WalletScreen = lazy(() => import('./screens/WalletScreen'));
+const ProfileScreen = lazy(() => import('./screens/ProfileScreen'));
+const AgentDashboardScreen = lazy(() => import('./screens/AgentDashboardScreen'));
+
 import { socket } from './lib/socket';
+
+// Loading fallback screen
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: '100dvh', background: '#0a0e1a', color: '#64748b',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'center', padding: 24, fontFamily: 'inherit',
+    }}>
+      <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
+      <div>Loading...</div>
+    </div>
+  );
+}
 
 // ─── Error boundary ───────────────────────────────────────────────────────────
 
@@ -102,16 +119,18 @@ function AppInner() {
 
   return (
     <div style={{ paddingBottom: isSubPage ? 0 : 70, minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
-      <Routes>
-        <Route path="/" element={<GameScreen />} />
-        <Route path="/history" element={<HistoryScreen />} />
-        <Route path="/history/:roundId" element={<HistoryDetailScreen />} />
-        <Route path="/wallet" element={<WalletScreen />} />
-        <Route path="/profile" element={<ProfileScreen />} />
-        <Route path="/agent/dashboard" element={<AgentDashboardScreen />} />
-        <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />
-        <Route path="/rounds/:id/game" element={<LiveGameScreen />} />
-      </Routes>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/" element={<GameScreen />} />
+          <Route path="/history" element={<HistoryScreen />} />
+          <Route path="/history/:roundId" element={<HistoryDetailScreen />} />
+          <Route path="/wallet" element={<WalletScreen />} />
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/agent/dashboard" element={<AgentDashboardScreen />} />
+          <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />
+          <Route path="/rounds/:id/game" element={<LiveGameScreen />} />
+        </Routes>
+      </Suspense>
       <BottomNav />
     </div>
   );
