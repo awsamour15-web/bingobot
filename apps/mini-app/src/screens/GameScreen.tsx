@@ -118,7 +118,7 @@ export default function GameScreen() {
     <div style={{ minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: 'linear-gradient(135deg, #0d1b2e 0%, #112240 100%)', padding: '18px 20px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(10,14,22,0.96) 0%, rgba(15,23,42,0.92) 100%)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(148,163,184,0.08)', padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.18)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
@@ -130,32 +130,32 @@ export default function GameScreen() {
             }}>FB</div>
             <div>
               <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: 0.3, color: '#f1f5f9' }}>Fidel Bingo</div>
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>Ethiopia's #1 Bingo</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Ethiopia's #1 Bingo</div>
             </div>
           </div>
           <div style={{
-            background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
-            borderRadius: 20, padding: '5px 12px', fontSize: 11, color: '#f87171', fontWeight: 700, letterSpacing: 0.5,
+            background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
+            borderRadius: 20, padding: '6px 10px', fontSize: 10, color: '#fca5a5', fontWeight: 800, letterSpacing: 0.8,
           }}>
-            ● LIVE
+            LIVE
           </div>
         </div>
       </div>
 
       {/* ── Hero ── */}
-      <div style={{ padding: '24px 20px 20px', background: 'linear-gradient(180deg, #112240 0%, #0a0e1a 100%)' }}>
-        <div style={{ fontSize: 12, color: '#64748b', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-          Pick a stake, win big
+      <div style={{ padding: '22px 16px 18px', background: 'linear-gradient(180deg, rgba(17,34,64,0.8) 0%, rgba(10,14,26,0.9) 100%)', borderBottom: '1px solid rgba(148,163,184,0.06)' }}>
+        <div style={{ fontSize: 12, color: '#9fb0c9', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>
+          Choose your stake
         </div>
-        <div style={{ fontSize: 30, fontWeight: 900, lineHeight: 1.2 }}>
-          Win Up To <span style={{ color: '#f59e0b' }}>40,000 Birr</span><br />
-          <span style={{ fontSize: 16, fontWeight: 500, color: '#94a3b8' }}>Every game, every round</span>
+        <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2, color: '#f8fafc' }}>
+          Win Up To <span style={{ color: '#f59e0b' }}>40,000 Birr</span>
         </div>
+        <div style={{ fontSize: 14, color: '#cbd5e1', marginTop: 6 }}>Pick a live round and jump in instantly.</div>
       </div>
 
       {/* ── Games list ── */}
-      <div style={{ padding: '0 16px 24px' }}>
-        <div style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>
+      <div style={{ padding: '16px 16px 24px' }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 }}>
           Active Rounds
         </div>
 
@@ -199,47 +199,48 @@ export default function GameScreen() {
                 }
               }}
               style={{
-                display: 'block', width: '100%', marginBottom: 16,
-                background: '#0d1b2e', border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left',
+                display: 'block', width: '100%', marginBottom: 14,
+                background: 'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.82) 100%)',
+                border: '1px solid rgba(148,163,184,0.08)',
+                borderRadius: 18, padding: '16px 16px 14px', cursor: 'pointer', textAlign: 'left',
+                boxShadow: '0 8px 24px rgba(15,23,42,0.18)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <span style={{ fontSize: 26, fontWeight: 900, color: '#f1f5f9' }}>{round.stake}</span>
-                  <span style={{ fontSize: 13, color: '#64748b', marginLeft: 5 }}>Birr / cartela</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 28, fontWeight: 900, color: '#f8fafc' }}>{round.stake}</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Birr / cartela</span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: '#f59e0b' }}>{Math.round(round.derash)} Birr</div>
-                  <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Prize Pool</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, letterSpacing: 0.6, textTransform: 'uppercase' }}>Prize pool</div>
                 </div>
               </div>
 
-              {/* Player count bar */}
               <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 13 }}>👥</span>
-                  <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>
-                    {playerCount} / {round.max_players} players
+                  <span style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 600 }}>
+                    {playerCount} / {round.max_players}
                   </span>
                 </div>
                 <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-                  color: isPending ? '#34d399' : '#f59e0b',
-                  background: isPending ? 'rgba(52,211,153,0.12)' : 'rgba(245,158,11,0.12)',
-                  borderRadius: 8, padding: '3px 8px',
+                  fontSize: 10, fontWeight: 800, letterSpacing: 0.8,
+                  color: isPending ? '#a7f3d0' : '#fcd34d',
+                  background: isPending ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                  border: isPending ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(245,158,11,0.28)',
+                  borderRadius: 10, padding: '4px 8px',
                 }}>
-                  {isPending ? '● WAITING' : '● IN PROGRESS'}
+                  {isPending ? 'WAITING' : 'LIVE'}
                 </div>
               </div>
 
-              {/* Fill bar */}
-              <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+              <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgba(148,163,184,0.08)', overflow: 'hidden' }}>
                 <div style={{
-                  height: '100%', borderRadius: 4,
+                  height: '100%', borderRadius: 999,
                   width: `${Math.min(100, (playerCount / round.max_players) * 100)}%`,
                   background: isPending
-                    ? 'linear-gradient(90deg, #34d399, #10b981)'
+                    ? 'linear-gradient(90deg, #2dd4bf, #14b8a6)'
                     : 'linear-gradient(90deg, #f59e0b, #d97706)',
                   transition: 'width 0.4s ease',
                 }} />
@@ -250,12 +251,12 @@ export default function GameScreen() {
       </div>
 
       {/* ── Stats strip — real data ── */}
-      <div style={{ margin: '0 16px 24px', background: '#0d1b2e', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '18px 0', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+      <div style={{ margin: '0 16px 24px', background: 'linear-gradient(180deg, rgba(13,27,46,0.82) 0%, rgba(15,23,42,0.94) 100%)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 18, padding: '16px 0', display: 'flex', justifyContent: 'space-around', textAlign: 'center', boxShadow: '0 6px 18px rgba(15,23,42,0.12)' }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>
             {stats ? fmt(stats.totalPlayers) : '…'}
           </div>
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>Players</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Players</div>
         </div>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>

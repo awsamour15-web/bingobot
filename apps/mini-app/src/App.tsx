@@ -80,28 +80,59 @@ function BottomNav() {
 
   return (
     <nav style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      display: 'flex',
-      background: '#0d1b2e',
-      borderTop: '1px solid rgba(255,255,255,0.07)',
+      position: 'fixed',
+      left: 12,
+      right: 12,
+      bottom: 10,
       zIndex: 100,
-      paddingBottom: 'env(safe-area-inset-bottom)',
+      paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+      pointerEvents: 'none',
     }}>
-      {tabs.map((tab) => {
-        const isActive = tab.to === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.to);
-        return (
-          <NavLink key={tab.to} to={tab.to} style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-            padding: '10px 0 8px', textDecoration: 'none', gap: 3,
-            color: isActive ? '#f59e0b' : '#475569',
-            fontSize: 10, fontWeight: isActive ? 700 : 400,
-            borderTop: isActive ? '2px solid #f59e0b' : '2px solid transparent',
-          }}>
-            <span style={{ fontSize: 20 }}>{tab.icon}</span>
-            {tab.label}
-          </NavLink>
-        );
-      })}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        padding: 8,
+        borderRadius: 22,
+        background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.72) 100%)',
+        border: '1px solid rgba(148,163,184,0.12)',
+        boxShadow: '0 12px 32px rgba(2,6,23,0.45)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        pointerEvents: 'auto',
+      }}>
+        {tabs.map((tab) => {
+          const isActive = tab.to === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.to);
+          return (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                padding: '8px 10px 7px',
+                borderRadius: 16,
+                textDecoration: 'none',
+                color: isActive ? '#f8fafc' : '#94a3b8',
+                background: isActive ? 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(244,114,182,0.12) 100%)' : 'transparent',
+                border: isActive ? '1px solid rgba(245,158,11,0.35)' : '1px solid transparent',
+                boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(245,158,11,0.12)' : 'none',
+                fontSize: 10,
+                fontWeight: isActive ? 700 : 600,
+                letterSpacing: '0.01em',
+                transition: 'all 0.2s ease',
+                minHeight: 58,
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </NavLink>
+          );
+        })}
+      </div>
     </nav>
   );
 }
