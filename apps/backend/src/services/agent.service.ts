@@ -45,7 +45,7 @@ export interface AgentDetail extends AgentSummary {
  * Format: https://t.me/<BOT_USERNAME>?start=agent_<agentId>
  */
 function agentInviteLink(agentId: string): string {
-  return `https://t.me/${process.env.BOT_USERNAME}?start=agent_${agentId}`;
+  return `https://t.me/${process.env.BOT_USERNAME}?start=ref_agent_${agentId}`;
 }
 
 /**
