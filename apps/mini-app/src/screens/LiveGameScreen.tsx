@@ -547,15 +547,15 @@ export default function LiveGameScreen() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* LEFT: Full 1-75 bingo board */}
-        <div style={{ width: '42%', borderRight: '1px solid rgba(148,163,184,0.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.7) 100%)' }}>
+        <div style={{ width: '44%', minWidth: 0, borderRight: '1px solid rgba(148,163,184,0.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.7) 100%)' }}>
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 2, padding: '6px 4px 4px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 1, padding: '4px 3px 3px' }}>
             {COLS.map((c, i) => (
-              <div key={c} style={{ background: 'linear-gradient(180deg, ' + COL_COLORS[i] + ' 0%, rgba(15,23,42,0.82) 100%)', textAlign: 'center', padding: '8px 0', fontWeight: 900, fontSize: 14, borderRadius: 6, boxShadow: '0 4px 12px rgba(15,23,42,0.18)' }}>{c}</div>
+              <div key={c} style={{ background: 'linear-gradient(180deg, ' + COL_COLORS[i] + ' 0%, rgba(15,23,42,0.82) 100%)', textAlign: 'center', padding: '6px 0', fontWeight: 900, fontSize: 13, borderRadius: 5, boxShadow: '0 4px 12px rgba(15,23,42,0.18)' }}>{c}</div>
             ))}
           </div>
           {/* Numbers 1-75 in 5 columns (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75), row by row */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4, background: 'rgba(2,6,23,0.24)' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, padding: 3, background: 'rgba(2,6,23,0.24)' }}>
             {Array.from({ length: 15 }, (_, rowIdx) =>
               Array.from({ length: 5 }, (_, colIdx) => {
                 const num = colIdx * 15 + 1 + rowIdx;
@@ -568,9 +568,9 @@ export default function LiveGameScreen() {
                     background: isLast ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : called ? 'linear-gradient(135deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.22) 100%)' : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.84) 100%)',
                     color: isLast || called ? '#f8fafc' : '#cbd5e1',
                     border: isLast ? '2px solid rgba(255,255,255,0.9)' : called ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(148,163,184,0.12)',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     fontWeight: isLast ? 900 : called ? 800 : 600,
-                    fontSize: 13,
+                    fontSize: 11,
                     transition: 'all 0.2s ease',
                     boxShadow: isLast ? '0 0 20px rgba(251,191,36,0.45)' : called ? 'inset 0 1px 0 rgba(255,255,255,0.05)' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}>
