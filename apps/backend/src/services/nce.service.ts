@@ -216,11 +216,11 @@ export class NumberCallingEngine {
       }
     };
 
-    // Delay the first call by 1 second after round start, then let callNext()
+    // Call the first number immediately, then let callNext()
     // take over (it re-reads the configured interval for subsequent calls).
     const initialHandle = setTimeout(() => {
       void callNext();
-    }, 1_000);
+    }, 0);
     this.activeTimers.set(roundId, initialHandle);
     this.startingRounds.delete(roundId);
     } catch (err) {
@@ -375,13 +375,13 @@ export class NumberCallingEngine {
     }).catch(() => {});
   }
 
-  /** Read call_interval_ms from Config, falling back to 4 000 ms. Enforces a 1 000 ms floor. */
+  /** Read call_interval_ms from Config, falling back to 1 000 ms. Enforces a 1 000 ms floor. */
   private async readCallInterval(): Promise<number> {
     const row = await prisma.config.findUnique({
       where: { key: 'call_interval_ms' },
     });
-    const parsed = row ? parseInt(row.value, 10) : 4_000;
-    const value = isNaN(parsed) ? 4_000 : parsed;
+    const parsed = row ? parseInt(row.value, 10) : 1_000;
+    const value = isNaN(parsed) ? 1_000 : parsed;
     return Math.max(value, 1_000); // never faster than 1 number/second
   }
 }
