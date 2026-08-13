@@ -192,8 +192,6 @@ export class NumberCallingEngine {
           void callNext();
         }, nextInterval);
         this.activeTimers.set(roundId, handle);
-        // Safe to clear startingRounds now — the timer handle is registered
-        this.startingRounds.delete(roundId);
       } catch (err) {
         consecutiveErrors += 1;
         console.error(`[NCE] Error calling number for round ${roundId} (attempt ${consecutiveErrors}):`, err);
@@ -218,12 +216,16 @@ export class NumberCallingEngine {
       }
     };
 
-    // Call first number immediately after round starts (no setTimeout delay)
-    // startingRounds is deleted inside callNext() after the first timer handle is set,
-    // so the scheduler does not miscount this round as stuck during the first async gap.
+    // Set a sentinel timer handle so callNext()'s activeTimers guard passes on
+    // the very first invocation. The real handle is set inside callNext() after
+    // the first number is processed; clearTimeout(sentinel) is a no-op.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.activeTimers.set(roundId, null as any);
+    this.startingRounds.delete(roundId);
     void callNext();
     } catch (err) {
       this.startingRounds.delete(roundId);
+      this.activeTimers.delete(roundId);
       throw err;
     }
   }
