@@ -190,8 +190,8 @@ function EditModal({ promotion, onClose, onSaved }: {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: C.bgCard, borderRadius: 12, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-        <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: C.text }}>Edit Promotion</h3>
+      <div style={{ background: 'var(--c-bg-card)', border: '1px solid var(--c-border)', borderRadius: 12, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+        <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--c-text)' }}>Edit Promotion</h3>
         {error && <Alert type="error">{error}</Alert>}
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Field label="Title">

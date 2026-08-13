@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { C } from '../components/ui';
 import {
-  listAgents,
-  createAgent,
-  suspendAgent,
-  restoreAgent,
-  getAgentDetail,
-  getPendingAgents,
-  approveAgent,
-  rejectAgent,
-  type AgentSummary,
-  type AgentDetail,
-  type PendingAgent,
+  Btn, Badge, Card, CardHeader, Table, Th, Td, TrEmpty, TrLoading,
+  Alert, Field, PageHeader, inputCss,
+} from '../components/ui';
+import {
+  listAgents, createAgent, suspendAgent, restoreAgent, getAgentDetail,
+  getPendingAgents, approveAgent, rejectAgent,
+  type AgentSummary, type AgentDetail, type PendingAgent,
 } from '../lib/api';
 
 export function AgentsPage() {
@@ -20,23 +15,18 @@ export function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create modal state
   const [showCreate, setShowCreate] = useState(false);
   const [createUsername, setCreateUsername] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
 
-  // Detail modal state
   const [detail, setDetail] = useState<AgentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   async function load() {
     try {
       setLoading(true);
-      const [agentsRes, pendingRes] = await Promise.all([
-        listAgents(),
-        getPendingAgents(),
-      ]);
+      const [agentsRes, pendingRes] = await Promise.all([listAgents(), getPendingAgents()]);
       setAgents(agentsRes.agents);
       setPendingAgents(pendingRes.agents);
     } catch (e) {
@@ -64,247 +54,180 @@ export function AgentsPage() {
     }
   }
 
-  async function handleSuspend(id: string) {
-    await suspendAgent(id);
-    void load();
-  }
-
-  async function handleRestore(id: string) {
-    await restoreAgent(id);
-    void load();
-  }
-
-  async function handleDetail(id: string) {
-    setDetailLoading(true);
-    setDetail(null);
-    try {
-      const res = await getAgentDetail(id);
-      setDetail(res.agent);
-    } finally {
-      setDetailLoading(false);
-    }
-  }
-
   async function handleApprove(id: string) {
-    try {
-      await approveAgent(id);
-      void load();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to approve agent');
-    }
+    try { await approveAgent(id); void load(); }
+    catch (e) { alert(e instanceof Error ? e.message : 'Failed'); }
   }
 
   async function handleReject(id: string) {
-    if (!confirm('Are you sure you want to reject this agent application?')) return;
-    try {
-      await rejectAgent(id);
-      void load();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to reject agent');
-    }
+    if (!confirm('Reject this agent application?')) return;
+    try { await rejectAgent(id); void load(); }
+    catch (e) { alert(e instanceof Error ? e.message : 'Failed'); }
+  }
+
+  async function handleDetail(id: string) {
+    setDetailLoading(true); setDetail(null);
+    try { const res = await getAgentDetail(id); setDetail(res.agent); }
+    finally { setDetailLoading(false); }
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>Agents</h1>
-        <button
-          onClick={() => { setShowCreate(true); setCreatedLink(null); }}
-          style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
-        >
-          + Create Agent
-        </button>
-      </div>
+    <div className="fade-in">
+      <PageHeader
+        title="Agents"
+        action={
+          <Btn onClick={() => { setShowCreate(true); setCreatedLink(null); }}>
+            + Create Agent
+          </Btn>
+        }
+      />
 
-      {loading && <div style={{ color: C.muted }}>Loading...</div>}
-      {error && <div style={{ color: '#f87171' }}>{error}</div>}
+      {loading && <p style={{ color: 'var(--c-muted)' }}>Loading…</p>}
+      {error && <Alert type="error">{error}</Alert>}
 
-      {/* Pending Approvals Section */}
+      {/* Pending Approvals */}
       {!loading && !error && pendingAgents.length > 0 && (
-        <div style={{ marginBottom: 32, padding: 16, background: '#1e293b', borderRadius: 8, border: '1px solid #fbbf24' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fbbf24', marginTop: 0, marginBottom: 16 }}>
-            ⏳ Pending Approvals ({pendingAgents.length})
-          </h2>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#0f172a', color: C.muted }}>
-                  {['Username', 'Telegram ID', 'Applied', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pendingAgents.map((a) => (
-                  <tr key={a.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                    <td style={{ padding: '10px 12px', color: C.text, fontWeight: 600 }}>@{a.telegramUsername}</td>
-                    <td style={{ padding: '10px 12px', color: C.muted, fontSize: 12 }}>{a.telegramId || 'Not linked'}</td>
-                    <td style={{ padding: '10px 12px', color: C.muted, fontSize: 12 }}>
-                      {new Date(a.createdAt).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          onClick={() => handleApprove(a.id)}
-                          style={{ background: '#14532d', color: '#4ade80', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-                        >
-                          ✓ Approve
-                        </button>
-                        <button
-                          onClick={() => handleReject(a.id)}
-                          style={{ background: '#7f1d1d', color: '#fca5a5', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-                        >
-                          ✗ Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <Card style={{ marginBottom: 24, border: '1px solid #f59e0b' }}>
+          <CardHeader
+            title={`⏳ Pending Approvals (${pendingAgents.length})`}
+            subtitle="These agents are waiting for approval"
+          />
+          <Table>
             <thead>
-              <tr style={{ background: '#1e293b', color: C.muted }}>
-                {['Username', 'Invite Link', 'Players', 'Commission', 'Status', 'Created', 'Actions'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
+              <tr>
+                <Th>Username</Th>
+                <Th>Telegram ID</Th>
+                <Th>Applied</Th>
+                <Th>Actions</Th>
               </tr>
             </thead>
             <tbody>
-              {agents.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: C.muted }}>No agents yet.</td></tr>
-              )}
-              {agents.map((a) => (
-                <tr key={a.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  <td style={{ padding: '10px 12px', color: C.text, fontWeight: 600 }}>@{a.telegramUsername}</td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <a href={a.agentInviteLink} target="_blank" rel="noopener noreferrer"
-                      style={{ color: '#818cf8', fontSize: 12, wordBreak: 'break-all' }}>
-                      {a.agentInviteLink}
-                    </a>
-                  </td>
-                  <td style={{ padding: '10px 12px', color: C.text }}>{a.totalPlayersInvited}</td>
-                  <td style={{ padding: '10px 12px', color: '#4ade80', fontWeight: 600 }}>
-                    ETB {a.totalCommission.toFixed(2)}
-                  </td>
-                  <td style={{ padding: '10px 12px' }}>
-                    <span style={{
-                      background: a.approvalStatus === 'approved' && a.isActive ? '#14532d'
-                        : a.approvalStatus === 'rejected' ? '#450a0a'
-                        : '#7f1d1d',
-                      color: a.approvalStatus === 'approved' && a.isActive ? '#4ade80'
-                        : a.approvalStatus === 'rejected' ? '#fca5a5'
-                        : '#fbbf24',
-                      borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700,
-                    }}>
-                      {a.approvalStatus === 'pending' ? 'Pending'
-                        : a.approvalStatus === 'rejected' ? 'Rejected'
-                        : a.isActive ? 'Active' : 'Suspended'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px 12px', color: C.muted, fontSize: 12 }}>
-                    {new Date(a.createdAt).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: '10px 12px' }}>
+              {pendingAgents.map((a) => (
+                <tr key={a.id}>
+                  <Td><span style={{ fontWeight: 600 }}>@{a.telegramUsername}</span></Td>
+                  <Td mono>{a.telegramId || '—'}</Td>
+                  <Td muted>{new Date(a.createdAt).toLocaleDateString()}</Td>
+                  <Td>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button
-                        onClick={() => handleDetail(a.id)}
-                        style={{ background: '#1e293b', color: '#94a3b8', border: `1px solid ${C.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
-                      >
-                        Detail
-                      </button>
-                      {a.isActive ? (
-                        <button
-                          onClick={() => handleSuspend(a.id)}
-                          style={{ background: '#7f1d1d', color: '#fca5a5', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
-                        >
-                          Suspend
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(a.id)}
-                          style={{ background: '#14532d', color: '#86efac', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
-                        >
-                          Restore
-                        </button>
-                      )}
+                      <Btn size="sm" variant="success" onClick={() => handleApprove(a.id)}>✓ Approve</Btn>
+                      <Btn size="sm" variant="danger" onClick={() => handleReject(a.id)}>✗ Reject</Btn>
                     </div>
-                  </td>
+                  </Td>
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+          </Table>
+        </Card>
+      )}
+
+      {/* Agents Table */}
+      {!loading && !error && (
+        <Card>
+          <CardHeader title="All Agents" />
+          <Table>
+            <thead>
+              <tr>
+                <Th>Username</Th>
+                <Th>Invite Link</Th>
+                <Th>Players</Th>
+                <Th>Commission</Th>
+                <Th>Status</Th>
+                <Th>Created</Th>
+                <Th>Actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {agents.length === 0
+                ? <TrEmpty cols={7} message="No agents yet." />
+                : agents.map((a) => (
+                  <tr key={a.id}>
+                    <Td><span style={{ fontWeight: 600 }}>@{a.telegramUsername}</span></Td>
+                    <Td>
+                      <a href={a.agentInviteLink} target="_blank" rel="noopener noreferrer"
+                        style={{ color: '#6366f1', fontSize: 12, wordBreak: 'break-all' }}>
+                        {a.agentInviteLink}
+                      </a>
+                    </Td>
+                    <Td>{a.totalPlayersInvited}</Td>
+                    <Td><span style={{ fontWeight: 600, color: '#22c55e' }}>ETB {a.totalCommission.toFixed(2)}</span></Td>
+                    <Td>
+                      <Badge variant={
+                        a.approvalStatus === 'approved' && a.isActive ? 'success'
+                          : a.approvalStatus === 'rejected' ? 'danger'
+                          : a.approvalStatus === 'pending' ? 'warning'
+                          : 'neutral'
+                      }>
+                        {a.approvalStatus === 'pending' ? 'Pending'
+                          : a.approvalStatus === 'rejected' ? 'Rejected'
+                          : a.isActive ? 'Active' : 'Suspended'}
+                      </Badge>
+                    </Td>
+                    <Td muted>{new Date(a.createdAt).toLocaleDateString()}</Td>
+                    <Td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <Btn size="sm" variant="outline" onClick={() => handleDetail(a.id)}>Detail</Btn>
+                        {a.isActive
+                          ? <Btn size="sm" variant="danger" onClick={() => suspendAgent(a.id).then(load)}>Suspend</Btn>
+                          : <Btn size="sm" variant="success" onClick={() => restoreAgent(a.id).then(load)}>Restore</Btn>
+                        }
+                      </div>
+                    </Td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </Table>
+        </Card>
       )}
 
       {/* Create Agent Modal */}
       {showCreate && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 500,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(2px)',
         }}>
-          <div style={{ background: '#1e293b', borderRadius: 12, padding: 28, width: 400, maxWidth: '90vw' }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: C.text, marginBottom: 18, marginTop: 0 }}>Create Agent</h2>
-
+          <div style={{
+            background: 'var(--c-bg-card)', borderRadius: 12, padding: 28,
+            width: 400, maxWidth: '90vw',
+            border: '1px solid var(--c-border)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text)', marginBottom: 18, marginTop: 0 }}>
+              Create Agent
+            </h2>
             {createdLink ? (
               <>
-                <div style={{ color: '#4ade80', fontSize: 13, marginBottom: 12, fontWeight: 600 }}>
-                  ✅ Agent created! Share this activation link:
-                </div>
+                <Alert type="success">Agent created! Share this activation link:</Alert>
                 <div style={{
-                  background: '#0f172a', borderRadius: 8, padding: '10px 14px',
-                  color: '#818cf8', fontSize: 12, wordBreak: 'break-all',
-                  border: `1px solid ${C.border}`, marginBottom: 16,
+                  background: 'var(--c-bg)', borderRadius: 8, padding: '10px 14px',
+                  color: '#6366f1', fontSize: 12, wordBreak: 'break-all',
+                  border: '1px solid var(--c-border)', marginBottom: 16,
                 }}>
                   {createdLink}
                 </div>
-                <button
-                  onClick={() => { navigator.clipboard.writeText(createdLink); }}
-                  style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, marginRight: 8 }}
-                >
-                  Copy Link
-                </button>
-                <button
-                  onClick={() => { setShowCreate(false); setCreatedLink(null); }}
-                  style={{ background: '#334155', color: C.muted, border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13 }}
-                >
-                  Close
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn onClick={() => navigator.clipboard.writeText(createdLink!)}>Copy Link</Btn>
+                  <Btn variant="outline" onClick={() => { setShowCreate(false); setCreatedLink(null); }}>Close</Btn>
+                </div>
               </>
             ) : (
               <form onSubmit={handleCreate}>
-                <label style={{ fontSize: 12, color: C.muted, display: 'block', marginBottom: 6 }}>Telegram Username</label>
-                <input
-                  value={createUsername}
-                  onChange={e => setCreateUsername(e.target.value)}
-                  placeholder="e.g. johndoe (without @)"
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    background: '#0f172a', border: `1px solid ${C.border}`,
-                    color: C.text, borderRadius: 8, padding: '9px 12px', fontSize: 14, marginBottom: 18,
-                  }}
-                />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="submit"
-                    disabled={createLoading}
-                    style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14, flex: 1, opacity: createLoading ? 0.7 : 1 }}
-                  >
-                    {createLoading ? 'Creating...' : 'Create'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreate(false)}
-                    style={{ background: '#334155', color: C.muted, border: 'none', borderRadius: 8, padding: '9px 18px', cursor: 'pointer', fontSize: 14 }}
-                  >
+                <Field label="Telegram Username">
+                  <input
+                    value={createUsername}
+                    onChange={(e) => setCreateUsername(e.target.value)}
+                    placeholder="e.g. johndoe (without @)"
+                    style={inputCss}
+                  />
+                </Field>
+                <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+                  <Btn type="submit" disabled={createLoading} fullWidth>
+                    {createLoading ? 'Creating…' : 'Create'}
+                  </Btn>
+                  <Btn variant="outline" type="button" onClick={() => setShowCreate(false)} fullWidth>
                     Cancel
-                  </button>
+                  </Btn>
                 </div>
               </form>
             )}
@@ -315,16 +238,27 @@ export function AgentsPage() {
       {/* Detail Modal */}
       {(detail || detailLoading) && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 500,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(2px)',
         }}>
-          <div style={{ background: '#1e293b', borderRadius: 12, padding: 28, width: 560, maxWidth: '95vw', maxHeight: '85vh', overflowY: 'auto' }}>
-            {detailLoading && <div style={{ color: C.muted }}>Loading...</div>}
+          <div style={{
+            background: 'var(--c-bg-card)', borderRadius: 12, padding: 28,
+            width: 560, maxWidth: '95vw', maxHeight: '85vh', overflowY: 'auto',
+            border: '1px solid var(--c-border)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          }}>
+            {detailLoading && <p style={{ color: 'var(--c-muted)' }}>Loading…</p>}
             {detail && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h2 style={{ fontSize: 17, fontWeight: 700, color: C.text, margin: 0 }}>@{detail.telegramUsername}</h2>
-                  <button onClick={() => setDetail(null)} style={{ background: 'transparent', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text)', margin: 0 }}>
+                    @{detail.telegramUsername}
+                  </h2>
+                  <button onClick={() => setDetail(null)} style={{
+                    background: 'transparent', border: 'none',
+                    color: 'var(--c-muted)', fontSize: 18, cursor: 'pointer',
+                  }}>✕</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                   {[
@@ -333,35 +267,41 @@ export function AgentsPage() {
                     { label: 'Status', value: detail.isActive ? 'Active' : 'Suspended' },
                     { label: 'Created', value: new Date(detail.createdAt).toLocaleDateString() },
                   ].map(({ label, value }) => (
-                    <div key={label} style={{ background: '#0f172a', borderRadius: 8, padding: '12px 14px' }}>
-                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{label}</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{value}</div>
+                    <div key={label} style={{
+                      background: 'var(--c-bg)', borderRadius: 8, padding: '12px 14px',
+                      border: '1px solid var(--c-border)',
+                    }}>
+                      <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)' }}>{value}</div>
                     </div>
                   ))}
                 </div>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: C.muted, marginBottom: 10 }}>Referred Players</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-secondary)', marginBottom: 10 }}>
+                  Referred Players
+                </h3>
+                <Table>
                   <thead>
-                    <tr style={{ background: '#0f172a', color: C.muted }}>
-                      {['Username', 'Deposit Bal.', 'Commission', 'Joined'].map(h => (
-                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
-                      ))}
+                    <tr>
+                      <Th>Username</Th>
+                      <Th>Deposit Bal.</Th>
+                      <Th>Commission</Th>
+                      <Th>Joined</Th>
                     </tr>
                   </thead>
                   <tbody>
-                    {detail.players.length === 0 && (
-                      <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: C.muted }}>No players yet.</td></tr>
-                    )}
-                    {detail.players.map(p => (
-                      <tr key={p.playerId} style={{ borderBottom: `1px solid ${C.border}` }}>
-                        <td style={{ padding: '8px 10px', color: C.text }}>@{p.username}</td>
-                        <td style={{ padding: '8px 10px', color: C.text }}>ETB {p.depositBalance.toFixed(2)}</td>
-                        <td style={{ padding: '8px 10px', color: '#4ade80' }}>ETB {p.totalCommissionFromPlayer.toFixed(2)}</td>
-                        <td style={{ padding: '8px 10px', color: C.muted }}>{new Date(p.joinedAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
+                    {detail.players.length === 0
+                      ? <TrEmpty cols={4} message="No players yet." />
+                      : detail.players.map((p) => (
+                        <tr key={p.playerId}>
+                          <Td>@{p.username}</Td>
+                          <Td>ETB {p.depositBalance.toFixed(2)}</Td>
+                          <Td><span style={{ color: '#22c55e' }}>ETB {p.totalCommissionFromPlayer.toFixed(2)}</span></Td>
+                          <Td muted>{new Date(p.joinedAt).toLocaleDateString()}</Td>
+                        </tr>
+                      ))
+                    }
                   </tbody>
-                </table>
+                </Table>
               </>
             )}
           </div>

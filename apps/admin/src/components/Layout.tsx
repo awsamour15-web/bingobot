@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { GLOBAL_CSS, C } from './ui';
+import { GLOBAL_CSS, DarkToggle } from './ui';
+import { useTheme } from './ThemeContext';
 
 const navItems = [
   { to: '/players', label: 'Players', icon: '👥' },
@@ -15,6 +16,7 @@ const navItems = [
 export function Layout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { theme, toggle } = useTheme();
 
   function handleLogout() {
     localStorage.clear();
@@ -24,31 +26,146 @@ export function Layout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'inherit' }}>
       <style>{GLOBAL_CSS}{`
-        .sidebar { width: 240px; background: ${C.sidebar}; display: flex; flex-direction: column; flex-shrink: 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; transition: transform 0.25s ease; }
-        .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid #1e293b; }
-        .sidebar-logo-title { font-size: 17px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.01em; }
-        .sidebar-logo-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
-        .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
-        .sidebar-nav-label { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 10px 4px; }
-        .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; text-decoration: none; color: #94a3b8; font-size: 14px; font-weight: 500; transition: all 0.15s; margin-bottom: 2px; }
+        .sidebar {
+          width: 240px;
+          background: var(--c-sidebar);
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          position: fixed;
+          top: 0; left: 0; bottom: 0;
+          z-index: 200;
+          transition: transform 0.25s ease;
+          border-right: 1px solid var(--c-border);
+        }
+        .sidebar-logo {
+          padding: 20px 20px 16px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .sidebar-logo-title {
+          font-size: 17px;
+          font-weight: 700;
+          color: #f1f5f9;
+          letter-spacing: -0.01em;
+        }
+        .sidebar-logo-sub {
+          font-size: 11px;
+          color: #64748b;
+          margin-top: 2px;
+        }
+        .sidebar-nav {
+          padding: 12px 10px;
+          flex: 1;
+          overflow-y: auto;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .sidebar-nav-label {
+          font-size: 10px;
+          font-weight: 700;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          padding: 8px 10px 4px;
+        }
+        .nav-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 12px;
+          border-radius: 8px;
+          text-decoration: none;
+          color: #94a3b8;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.15s;
+          margin-bottom: 2px;
+        }
         .nav-item:hover { background: #1e293b; color: #e2e8f0; }
         .nav-item.active { background: #312e81; color: #c7d2fe; }
         .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
-        .sidebar-footer { padding: 12px 10px; border-top: 1px solid #1e293b; }
-        .logout-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border-radius: 8px; background: transparent; border: none; color: #94a3b8; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+        .sidebar-footer {
+          padding: 12px 10px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .logout-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+          padding: 9px 12px;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+          color: #94a3b8;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
         .logout-btn:hover { background: #1e293b; color: #fca5a5; }
-        .topbar { height: 56px; background: ${C.header}; border-bottom: 1px solid ${C.border}; display: flex; align-items: center; padding: 0 24px; gap: 12px; position: fixed; top: 0; right: 0; left: 240px; z-index: 100; }
-        .topbar-title { font-size: 15px; font-weight: 600; color: ${C.text}; flex: 1; }
-        .main-content { margin-left: 240px; margin-top: 56px; padding: 28px; min-height: calc(100vh - 56px); background: ${C.bg}; }
-        .hamburger { display: none; background: transparent; border: 1px solid ${C.border}; color: ${C.text}; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 16px; align-items: center; justify-content: center; }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150; }
+        .topbar {
+          height: 56px;
+          background: var(--c-header);
+          border-bottom: 1px solid var(--c-border);
+          display: flex;
+          align-items: center;
+          padding: 0 20px 0 24px;
+          gap: 12px;
+          position: fixed;
+          top: 0; right: 0; left: 240px;
+          z-index: 100;
+          transition: background 0.2s, border-color 0.2s;
+        }
+        .topbar-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--c-text);
+          flex: 1;
+        }
+        .topbar-date {
+          font-size: 12px;
+          color: var(--c-muted);
+        }
+        .main-content {
+          margin-left: 240px;
+          margin-top: 56px;
+          padding: 28px;
+          min-height: calc(100vh - 56px);
+          background: var(--c-bg);
+          transition: background 0.2s;
+        }
+        .hamburger {
+          display: none;
+          background: transparent;
+          border: 1px solid var(--c-border);
+          color: var(--c-text);
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 16px;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.6);
+          z-index: 150;
+          backdrop-filter: blur(2px);
+        }
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
           .sidebar.open { transform: translateX(0); }
-          .topbar { left: 0; }
+          .topbar { left: 0; padding: 0 16px; }
           .main-content { margin-left: 0; padding: 16px; }
           .hamburger { display: flex; }
           .overlay.open { display: block; }
+          .topbar-date { display: none; }
         }
       `}</style>
 
@@ -89,9 +206,10 @@ export function Layout() {
           {menuOpen ? '✕' : '☰'}
         </button>
         <span className="topbar-title">Admin Panel</span>
-        <span style={{ fontSize: 12, color: C.muted }}>
+        <span className="topbar-date">
           {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
         </span>
+        <DarkToggle dark={theme === 'dark'} onToggle={toggle} />
       </header>
 
       {/* Main */}
