@@ -308,6 +308,19 @@ export default function LiveGameScreen() {
       setGame((g) => ({ ...g, playerCount: p.playerCount }));
     const onWon = (p: RoundWonPayload) => {
       setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.totalDerash }));
+      
+      // Play winning sound
+      if (soundOnRef.current) {
+        try {
+          const winAudio = new Audio('/sounds/bingo-win.mp3');
+          winAudio.volume = 0.8;
+          winAudio.play().catch(() => {
+            // Autoplay blocked - retry after short delay
+            setTimeout(() => winAudio.play().catch(() => {}), 300);
+          });
+        } catch {}
+      }
+      
       // Fetch the winning cartela grid so ALL users (including watchers) can see it
       // Retry up to 3 times in case the DB write hasn't propagated yet
       const winnerCartelaNum = p.winners[0]?.cartelaNumber;
