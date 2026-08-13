@@ -112,10 +112,8 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     },
     // Prefer WebSocket for lower latency; fall back to polling for restrictive networks
     transports: ['websocket', 'polling'],
-    // Optimize connection settings for smoother real-time updates
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 3000,
-    timeout: 10000,
+    // Connection timeout
+    connectTimeout: 10000,
   }) as InstanceType<typeof SocketIOServer>;
 
   // ── JWT auth middleware on every socket connection ──────────────────────────
