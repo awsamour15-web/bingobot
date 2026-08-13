@@ -366,7 +366,7 @@ export default function CartelaScreen() {
   // Countdown hit 0 — commit picks and navigate
   useEffect(() => {
     if (msLeft !== 0 || !countdownStartedRef.current || joinedRef.current) return;
-    const t = setTimeout(async () => {
+    (async () => {
       if (joinedRef.current) return;
       joinedRef.current = true;
       sessionStorage.setItem('selectedRoundId', roundId ?? '');
@@ -376,8 +376,7 @@ export default function CartelaScreen() {
         sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
       navigate(`/rounds/${roundId}/game`, { replace: true });
-    }, 3000);
-    return () => clearTimeout(t);
+    })();
   }, [msLeft, roundId, navigate]);
 
   // Manual "Go to Game" trigger (edge case when countdown already passed)
