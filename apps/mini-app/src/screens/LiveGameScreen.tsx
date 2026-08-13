@@ -15,13 +15,12 @@ import type {
 } from '../lib/api';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
-// Distinct color per BINGO column — bold but not rainbow
 const COL_COLORS = [
-  '#1d4ed8', // B — deep blue
-  '#0f766e', // I — teal
-  '#7c3aed', // N — purple
-  '#b45309', // G — amber-brown
-  '#be123c', // O — crimson
+  '#60a5fa',
+  '#2dd4bf',
+  '#8b5cf6',
+  '#f4b942',
+  '#f87171',
 ];
 
 type GamePhase = 'waiting' | 'active' | 'won' | 'void' | 'cancelled';
@@ -503,12 +502,12 @@ export default function LiveGameScreen() {
   }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending]);
 
   if (loading) return (
-    <div style={{ height: '100dvh', background: '#1a1035', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
       Loading game...
     </div>
   );
   if (error || !round) return (
-    <div style={{ height: '100dvh', background: '#1a1035', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e53e3e', padding: 24, textAlign: 'center' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center' }}>
       {error ?? 'Could not load game'}
     </div>
   );
@@ -517,20 +516,19 @@ export default function LiveGameScreen() {
   void lastCol; // kept for potential future use
 
   return (
-    <div style={{ height: '100dvh', background: '#1a1035', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div style={{ background: '#0f0c29', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-        <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
-        {/* Fidel Bingo header */}
-        <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1, color: '#f5d06b' }}>Fidel Bingo</span>
-        <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 18, cursor: 'pointer' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(10,14,22,0.96) 0%, rgba(15,23,42,0.92) 100%)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)', flexShrink: 0 }}>
+        <span style={{ cursor: 'pointer', fontSize: 20, color: '#f8fafc' }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
+        <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1, color: '#f8fafc' }}>Fidel Bingo</span>
+        <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#cbd5e1', fontSize: 18, cursor: 'pointer' }}>
           {soundOn ? '🔊' : '🔇'}
         </button>
       </div>
 
       {/* ── Stats row ───────────────────────────────────────────────────────── */}
-      <div style={{ background: '#2d1b69', display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+      <div style={{ background: 'rgba(15,23,42,0.75)', display: 'flex', borderBottom: '1px solid rgba(148,163,184,0.08)', flexShrink: 0 }}>
         {[
           { label: 'Game ID', value: round.id.slice(-8).toUpperCase() },
           { label: 'Players', value: game.playerCount },
@@ -538,9 +536,9 @@ export default function LiveGameScreen() {
           { label: 'Derash', value: Math.round(game.derash) },
           { label: 'Called', value: game.calledNumbers.size },
         ].map(({ label, value }) => (
-          <div key={label} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: 9, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
-            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2 }}>{value}</div>
+          <div key={label} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(148,163,184,0.12)', background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>{label}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, color: '#f8fafc' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -549,18 +547,17 @@ export default function LiveGameScreen() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* LEFT: Full 1-75 bingo board */}
-        <div style={{ width: '42%', borderRight: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ width: '42%', borderRight: '1px solid rgba(148,163,184,0.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.7) 100%)' }}>
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 1, padding: '4px 2px 2px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 2, padding: '6px 4px 4px' }}>
             {COLS.map((c, i) => (
-              <div key={c} style={{ background: COL_COLORS[i], textAlign: 'center', padding: '8px 0', fontWeight: 900, fontSize: 14, borderRadius: 4, boxShadow: `0 0 8px ${COL_COLORS[i]}66` }}>{c}</div>
+              <div key={c} style={{ background: 'linear-gradient(180deg, ' + COL_COLORS[i] + ' 0%, rgba(15,23,42,0.82) 100%)', textAlign: 'center', padding: '8px 0', fontWeight: 900, fontSize: 14, borderRadius: 6, boxShadow: '0 4px 12px rgba(15,23,42,0.18)' }}>{c}</div>
             ))}
           </div>
-          {/* Numbers 1-75 in 5 columns (B,I,N,G,O), 15 rows each */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4 }}>
-            {/* Generate columns: B(1-15), I(16-30), N(31-45), G(46-60), O(61-75) */}
-            {Array.from({ length: 5 }, (_, colIdx) => {
-              return Array.from({ length: 15 }, (_, rowIdx) => {
+          {/* Numbers 1-75 in 5 columns (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75), row by row */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, padding: 4, background: 'rgba(2,6,23,0.24)' }}>
+            {Array.from({ length: 15 }, (_, rowIdx) =>
+              Array.from({ length: 5 }, (_, colIdx) => {
                 const num = colIdx * 15 + 1 + rowIdx;
                 const called = game.calledNumbers.has(num);
                 const isLast = num === game.lastCalled;
@@ -568,20 +565,20 @@ export default function LiveGameScreen() {
                   <div key={num} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     aspectRatio: '1',
-                    background: isLast ? 'linear-gradient(135deg, #f5d06b, #f59e0b)' : called ? `linear-gradient(135deg, ${COL_COLORS[colIdx]}, ${COL_COLORS[colIdx]}dd)` : 'rgba(255,255,255,0.06)',
-                    color: isLast || called ? '#fff' : '#94a3b8',
-                    border: isLast ? '2px solid #fff' : called ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    background: isLast ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : called ? 'linear-gradient(135deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.22) 100%)' : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.84) 100%)',
+                    color: isLast || called ? '#f8fafc' : '#cbd5e1',
+                    border: isLast ? '2px solid rgba(255,255,255,0.9)' : called ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(148,163,184,0.12)',
                     borderRadius: 6,
-                    fontWeight: isLast ? 900 : called ? 800 : 500,
+                    fontWeight: isLast ? 900 : called ? 800 : 600,
                     fontSize: 13,
                     transition: 'all 0.2s ease',
-                    boxShadow: isLast ? `0 0 16px ${COL_COLORS[colIdx]}88` : called ? `inset 0 0 4px rgba(0,0,0,0.3)` : 'none',
+                    boxShadow: isLast ? '0 0 20px rgba(251,191,36,0.45)' : called ? 'inset 0 1px 0 rgba(255,255,255,0.05)' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}>
                     {num}
                   </div>
                 );
-              });
-            }).flat()}
+              })
+            ).flat()}
           </div>
         </div>
 
@@ -589,44 +586,43 @@ export default function LiveGameScreen() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* ── Last Called — big prominent display ── */}
-          <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, textAlign: 'center' }}>
+          <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid rgba(148,163,184,0.12)', flexShrink: 0, textAlign: 'center', background: 'rgba(15,23,42,0.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-              <span style={{ fontSize: 9, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 1 }}>Last Called</span>
-              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 13, cursor: 'pointer' }}>
+              <span style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Last Called</span>
+              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#cbd5e1', fontSize: 13, cursor: 'pointer' }}>
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
             {game.lastCalled ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {/* Column letter badge */}
                 <div style={{
                   width: 28, height: 28, borderRadius: 6,
-                  background: COL_COLORS[getColIndex(game.lastCalled)],
+                  background: 'linear-gradient(180deg, ' + COL_COLORS[getColIndex(game.lastCalled)] + ' 0%, rgba(15,23,42,0.8) 100%)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: 900, fontSize: 14, color: '#fff', flexShrink: 0,
+                  boxShadow: '0 6px 12px rgba(15,23,42,0.2)',
                 }}>
                   {getColLabel(game.lastCalled)}
                 </div>
-                {/* Big number */}
                 <div style={{
                   fontSize: 48, fontWeight: 900, lineHeight: 1,
-                  color: '#f5d06b',
-                  textShadow: '0 0 20px rgba(245,208,107,0.5)',
+                  color: '#f8fafc',
+                  textShadow: '0 0 12px rgba(148,163,184,0.4)',
                   fontVariantNumeric: 'tabular-nums',
                 }}>
                   {game.lastCalled}
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 12, color: '#475569', padding: '8px 0' }}>
+              <div style={{ fontSize: 12, color: '#64748b', padding: '8px 0' }}>
                 {game.phase === 'waiting' ? 'Starting...' : '—'}
               </div>
             )}
           </div>
 
           {/* ── Called Numbers — scrollable history strip ── */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '4px 6px 4px' }}>
-            <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>
+          <div style={{ borderBottom: '1px solid rgba(148,163,184,0.12)', flexShrink: 0, padding: '6px 6px 4px', background: 'rgba(15,23,42,0.4)' }}>
+            <div style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3, fontWeight: 700 }}>
               Called ({game.calledOrder.length}/75)
             </div>
             <div style={{
@@ -636,7 +632,7 @@ export default function LiveGameScreen() {
               scrollbarWidth: 'none',
             }}>
               {game.calledOrder.length === 0 ? (
-                <div style={{ color: '#334155', fontSize: 10, padding: '4px 0' }}>—</div>
+                <div style={{ color: '#64748b', fontSize: 10, padding: '4px 0' }}>—</div>
               ) : (
                 [...game.calledOrder].reverse().map((num, idx) => {
                   const isNewest = idx === 0;
@@ -645,11 +641,12 @@ export default function LiveGameScreen() {
                     <div key={`h-${num}-${idx}`} style={{
                       flexShrink: 0,
                       width: 26, height: 26, borderRadius: '50%',
-                      background: isNewest ? COL_COLORS[col] : `${COL_COLORS[col]}55`,
-                      border: `1px solid ${isNewest ? COL_COLORS[col]! : 'rgba(255,255,255,0.08)'}`,
+                      background: isNewest ? 'linear-gradient(135deg, ' + COL_COLORS[col] + ' 0%, rgba(15,23,42,0.9) 100%)' : 'rgba(148,163,184,0.16)',
+                      border: `1px solid ${isNewest ? 'rgba(255,255,255,0.18)' : 'rgba(148,163,184,0.12)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 8, fontWeight: isNewest ? 900 : 600,
-                      color: isNewest ? '#fff' : '#94a3b8',
+                      color: isNewest ? '#fff' : '#cbd5e1',
+                      boxShadow: isNewest ? '0 0 12px rgba(251,191,36,0.2)' : 'none',
                     }}>
                       {num}
                     </div>
@@ -1044,7 +1041,7 @@ export default function LiveGameScreen() {
 
           {/* Next round countdown (non-won phases) */}
           {nextCountdown !== null && game.phase !== 'won' && (
-            <div style={{ background: '#1e3a5f', padding: '8px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.9) 100%)', borderTop: '1px solid rgba(148,163,184,0.08)', padding: '8px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, color: '#cbd5e1' }}>
               {nextCountdown > 0 ? `Next round in ${nextCountdown}s` : 'Finding next round...'}
             </div>
           )}
@@ -1058,24 +1055,20 @@ export default function LiveGameScreen() {
                   const cartelaWinCells = winCellsForGrid(cartelaGrid);
                   const cartelaHasWin = hasWinForGrid(cartelaGrid);
                   return (
-                    <div key={cartela.cartelaNumber} style={{ flex: 0.6, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '150px' }}>
-                      {/* Cartela number label */}
-                      <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#f5d06b', marginBottom: 2, flexShrink: 0 }}>
-                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#22c55e' }}>✓ BINGO</span>}
+                    <div key={cartela.cartelaNumber} style={{ flex: 0.6, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '150px', background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(17,24,39,0.86) 100%)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: 10, padding: '6px 4px 4px', boxShadow: '0 8px 18px rgba(15,23,42,0.2)' }}>
+                      <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#fbbf24', marginBottom: 2, flexShrink: 0, letterSpacing: '0.04em' }}>
+                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#34d399' }}>✓ BINGO</span>}
                       </div>
-                      {/* Gap between label section and bingo grid */}
                       <div style={{ height: 2, flexShrink: 0 }} />
-                      {/* Column headers */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, marginBottom: 1, flexShrink: 0 }}>
                         {COLS.map((c, i) => (
                           <div key={c} style={{
-                            background: COL_COLORS[i], textAlign: 'center',
+                            background: 'linear-gradient(180deg, ' + COL_COLORS[i] + ' 0%, rgba(15,23,42,0.82) 100%)', textAlign: 'center',
                             borderRadius: 2, padding: '2px 0',
                             fontWeight: 900, fontSize: 8, color: '#fff',
                           }}>{c}</div>
                         ))}
                       </div>
-                      {/* 5×5 grid - reduced size and increased font */}
                       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 2, minHeight: 0, maxHeight: '120px' }}>
                         {cartelaGrid.length > 0 ? cartelaGrid.map((val, idx) => {
                           const isFree = idx === 12;
@@ -1086,16 +1079,16 @@ export default function LiveGameScreen() {
                             <div key={idx} style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               background: wl
-                                ? 'linear-gradient(135deg, #f5d06b, #f59e0b)'
+                                ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
                                 : m
-                                ? COL_COLORS[colIdx]
-                                : 'rgba(255,255,255,0.07)',
-                              color: wl ? '#1a1035' : m ? '#fff' : '#e2e8f0',
+                                ? 'linear-gradient(135deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.22) 100%)'
+                                : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.84) 100%)',
+                              color: wl ? '#0f172a' : m ? '#f8fafc' : '#e2e8f0',
                               borderRadius: 3,
                               fontSize: 12,
                               fontWeight: 900,
-                              border: wl ? '2px solid #fff' : m ? 'none' : '1px solid rgba(255,255,255,0.06)',
-                              boxShadow: wl ? '0 0 8px rgba(245,208,107,0.5)' : 'none',
+                              border: wl ? '2px solid rgba(255,255,255,0.9)' : m ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(148,163,184,0.12)',
+                              boxShadow: wl ? '0 0 10px rgba(251,191,36,0.5)' : m ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                               transition: 'background 0.2s',
                               minHeight: '20px',
                             }}>
@@ -1104,7 +1097,7 @@ export default function LiveGameScreen() {
                           );
                         }) : (
                           Array.from({ length: 25 }).map((_, idx) => (
-                            <div key={idx} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 3, minHeight: '20px' }} />
+                            <div key={idx} style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.7) 100%)', borderRadius: 3, minHeight: '20px', border: '1px solid rgba(148,163,184,0.12)' }} />
                           ))
                         )}
                       </div>
