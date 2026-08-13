@@ -21,7 +21,7 @@ const TOTAL = 880;
 const MAX_SELECT = 2;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
-const COL_COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444'];
+const COL_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171'];
 
 interface CartelaCellProps {
   num: number;
@@ -32,29 +32,44 @@ interface CartelaCellProps {
   onClick: (num: number) => void;
 }
 const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, disabled, onClick }: CartelaCellProps) {
-  const bg = isPicked ? '#22c55e' : taken ? '#e53e3e' : reserved ? 'rgba(234,179,8,0.18)' : '#1e293b';
-  const color = isPicked ? '#fff' : taken ? '#fff' : reserved ? '#fbbf24' : '#94a3b8';
-  const border = isPicked ? '2px solid #4ade80' : taken ? 'none' : reserved ? '1px solid rgba(234,179,8,0.5)' : '1px solid rgba(255,255,255,0.08)';
-  
+  const bg = isPicked
+    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+    : taken
+      ? 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)'
+      : reserved
+        ? 'linear-gradient(135deg, rgba(251,191,36,0.24) 0%, rgba(245,158,11,0.18) 100%)'
+        : 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(15,23,42,0.8) 100%)';
+  const color = isPicked ? '#f8fafc' : taken ? '#fff1f2' : reserved ? '#fbbf24' : '#cbd5e1';
+  const border = isPicked
+    ? '1px solid rgba(34,197,94,0.6)'
+    : taken
+      ? '1px solid rgba(239,68,68,0.4)'
+      : reserved
+        ? '1px solid rgba(251,191,36,0.55)'
+        : '1px solid rgba(148,163,184,0.12)';
+
+  const shadow = isPicked ? '0 0 0 1px rgba(34,197,94,0.35), 0 8px 18px rgba(34,197,94,0.18)' : reserved ? '0 0 0 1px rgba(251,191,36,0.2), 0 5px 12px rgba(251,191,36,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.04)';
+
   // CRITICAL FIX: Prevent clicks on taken cartelas
   const handleClick = () => {
     if (taken || disabled) return; // Block clicks on taken/disabled cartelas
     onClick(num);
   };
-  
+
   return (
     <button
       disabled={disabled || taken}
       onClick={handleClick}
       style={{
-        padding: '4.4px 0', borderRadius: 4, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 500, fontSize: 14.3,
+        padding: '4.4px 0', borderRadius: 7, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 600, fontSize: 13.5,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: 1,
-        transition: 'background 0.15s, transform 0.1s',
-        transform: isPicked ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.2s ease',
+        transform: isPicked ? 'translateY(-1px) scale(1.02)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '26.4px',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '27px',
+        boxShadow: shadow,
       }}
     >
       {num}
@@ -636,8 +651,9 @@ export default function CartelaScreen() {
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
-        gap: 6, padding: '16px', alignContent: 'start',
-        background: 'rgba(0,0,0,0.2)',
+        gap: 7, padding: '16px', alignContent: 'start',
+        background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.76) 100%)',
+        borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);
@@ -665,17 +681,17 @@ export default function CartelaScreen() {
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
-              <div key={cartelaNum} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 12 }}>
-                <div style={{ textAlign: 'center', fontSize: 13, color: '#f59e0b', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <div key={cartelaNum} style={{ background: 'linear-gradient(180deg, rgba(148,163,184,0.06) 0%, rgba(15,23,42,0.88) 100%)', border: '1px solid rgba(148,163,184,0.12)', borderRadius: 12, padding: 12, boxShadow: '0 8px 24px rgba(15,23,42,0.22)' }}>
+                <div style={{ textAlign: 'center', fontSize: 13, color: '#f8d77a', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   🎴 Cartela #{cartelaNum}
                 </div>
                 {/* BINGO header row with better visibility */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginBottom: 4 }}>
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
-                      background: COL_COLORS[ci], color: '#fff', fontWeight: 900,
+                      background: 'linear-gradient(180deg, ' + COL_COLORS[ci] + ' 0%, rgba(15,23,42,0.82) 100%)', color: '#fff', fontWeight: 900,
                       fontSize: 11, textAlign: 'center', borderRadius: 6, padding: '4px 2px',
-                      minHeight: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      minHeight: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(15,23,42,0.2)',
                     }}>{col}</div>
                   ))}
                 </div>
@@ -685,23 +701,23 @@ export default function CartelaScreen() {
                     const isFree = idx === 12;
                     return (
                       <div key={idx} style={{
-                        background: isFree ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#1e293b',
+                        background: isFree ? 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)' : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.88) 100%)',
                         color: isFree ? '#fff' : '#e2e8f0',
                         fontWeight: 900,
                         fontSize: 11,
                         textAlign: 'center', borderRadius: 6,
-                        padding: '4px 0', border: '1px solid ' + (isFree ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'),
+                        padding: '4px 0', border: '1px solid ' + (isFree ? 'rgba(52,211,153,0.35)' : 'rgba(148,163,184,0.12)'),
                         minWidth: 0, minHeight: '26px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isFree ? '0 0 8px rgba(34,197,94,0.3)' : 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isFree ? '0 0 8px rgba(52,211,153,0.3)' : 'inset 0 1px 0 rgba(255,255,255,0.03)',
                       }}>
                         {isFree ? '★' : val}
                       </div>
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: '#1e293b', borderRadius: 6, padding: '4px 0',
-                      border: '1px solid rgba(255,255,255,0.1)', minWidth: 0, minHeight: '26px',
-                      fontSize: 11, textAlign: 'center', color: '#334155',
+                      background: 'linear-gradient(180deg, rgba(30,41,59,0.92) 0%, rgba(15,23,42,0.82) 100%)', borderRadius: 6, padding: '4px 0',
+                      border: '1px solid rgba(148,163,184,0.12)', minWidth: 0, minHeight: '26px',
+                      fontSize: 11, textAlign: 'center', color: '#475569',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>·</div>
                   ))}
