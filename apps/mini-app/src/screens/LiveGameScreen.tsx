@@ -160,14 +160,22 @@ export default function LiveGameScreen() {
         audio.preload = 'auto';
         audioCache.current.set(num, audio);
       }
+
+      // Prevent overlapping sounds from stacking when the same number is triggered rapidly.
+      audio.pause();
       audio.currentTime = 0;
+
       const p = audio.play();
       if (p) {
         p.catch((err) => {
           // Autoplay blocked — retry once after a short delay
           // (happens when user hasn't interacted with the page yet)
           if (err?.name === 'NotAllowedError') {
-            setTimeout(() => { audio.currentTime = 0; audio.play().catch(() => {}); }, 300);
+            setTimeout(() => {
+              audio.pause();
+              audio.currentTime = 0;
+              audio.play().catch(() => {});
+            }, 300);
           }
         });
       }
@@ -313,9 +321,15 @@ export default function LiveGameScreen() {
         try {
           const winAudio = new Audio('/sounds/bingo-win.mp3');
           winAudio.volume = 0.8;
+          winAudio.pause();
+          winAudio.currentTime = 0;
           winAudio.play().catch(() => {
             // Autoplay blocked - retry after short delay
-            setTimeout(() => winAudio.play().catch(() => {}), 300);
+            setTimeout(() => {
+              winAudio.pause();
+              winAudio.currentTime = 0;
+              winAudio.play().catch(() => {});
+            }, 300);
           });
         } catch {}
       }
