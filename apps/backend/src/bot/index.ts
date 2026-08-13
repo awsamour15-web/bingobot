@@ -175,18 +175,33 @@ export const REGISTER_PROMPT_TEXT =
  * then asks the player to paste the receipt.
  * Requirements: 2.1, 2.2, 2.3
  */
-export async function buildDepositInstructionText(amount: number): Promise<{ text: string; telebirrNumber: string }> {
-  const config = await prisma.config.findUnique({
-    where: { key: 'deposit_telebirr_number' },
-  });
-  const telebirrNumber = config?.value ?? 'N/A (contact support)';
+export async function buildDepositInstructionText(amount: number): Promise<{ text: string; telebirrNumber: string; receiverName: string | null }> {
+  // Pick a random active deposit account; fall back to legacy config key if none exist
+  const accounts = await prisma.depositAccount.findMany({ where: { is_active: true } });
+
+  let telebirrNumber: string;
+  let receiverName: string | null;
+
+  if (accounts.length > 0) {
+    const account = accounts[Math.floor(Math.random() * accounts.length)] as { phone: string; name: string };
+    telebirrNumber = account.phone;
+    receiverName = account.name;
+  } else {
+    // Legacy fallback — single config keys
+    const [phoneConfig, nameConfig] = await Promise.all([
+      prisma.config.findUnique({ where: { key: 'deposit_telebirr_number' } }),
+      prisma.config.findUnique({ where: { key: 'deposit_receiver_name' } }),
+    ]);
+    telebirrNumber = phoneConfig?.value ?? 'N/A (contact support)';
+    receiverName = nameConfig?.value ?? null;
+  }
 
   const text =
     `1. ከታቹ ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n` +
-    `   Phone: ${telebirrNumber}\n\n` +
+    `   Phone: ${telebirrNumber}${receiverName ? `\n   Name: ${receiverName}` : ''}\n\n` +
     `2. የካፈሉትን አጭር የደሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
 
-  return { text, telebirrNumber };
+  return { text, telebirrNumber, receiverName };
 }
 
 // Keep legacy export for any existing callers
@@ -280,7 +295,7 @@ export function buildInviteLink(botUsername: string, telegramId: bigint): string
 
 type DepositState =
   | { step: 'awaiting_amount' }
-  | { step: 'awaiting_receipt'; amount: number; telebirrNumber: string };
+  | { step: 'awaiting_receipt'; amount: number; telebirrNumber: string; receiverName: string | null };
 
 const depositSessions = new Map<bigint, DepositState>();
 
@@ -298,30 +313,30 @@ const withdrawSessions = new Map<bigint, WithdrawState>();
  *   Standalone uppercase alphanumeric codes (8-12 chars) as fallback.
  * Returns null if the pattern is not found.
  */
-export function parseTelebirrReceipt(text: string): { txNumber: string; receiverPhone: string | null; amount: number | null } | null {
-  // Normalize OCR artifacts: collapse extra whitespace
-  const normalized = text.replace(/\s+/g, ' ');
+export function parseTelebirrReceipt(text: string): { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null } | null {
+  // Normalize: collapse whitespace, unify curly/smart quotes
+  const normalized = text.replace(/\s+/g, ' ').replace(/[""'']/g, '"');
 
-  // Extract transaction number
+  // ── Transaction number ──────────────────────────────────────────────────────
   let txNumber: string | null = null;
 
-  // Primary: explicit label — "Your transaction number is DH87MNVFCT" (English)
+  // English: "Your transaction number is DHD8R7PFDQ"
   const labeled = normalized.match(/(?:your\s+)?transaction\s+number\s+is\s+([A-Z0-9]{6,20})/i);
   if (labeled?.[1]) txNumber = labeled[1].toUpperCase();
 
-  // Amharic pattern: "የሂሳብ እንቅስቃሴ ቁጥርዎ DHC8QENUF0 ነዉ" (with or without trailing ።)
+  // Amharic: "የሂሳብ እንቅስቃሴ ቁጥርዎ DHC8QENUF0 ነዉ"
   if (!txNumber) {
     const amharicMatch = normalized.match(/የሂሳብ\s+እንቅስቃሴ\s+ቁጥርዎ\s+([A-Z0-9]{6,20})/i);
     if (amharicMatch?.[1]) txNumber = amharicMatch[1].toUpperCase();
   }
 
-  // Secondary: receipt URL — /receipt/DH87MNVFCT or transactioninfo.ethiotelecom.et/receipt/DH87MNVFCT
+  // Receipt URL: /receipt/DHD8R7PFDQ
   if (!txNumber) {
     const urlMatch = normalized.match(/\/receipt\/([A-Z0-9]{6,20})/i);
     if (urlMatch?.[1]) txNumber = urlMatch[1].toUpperCase();
   }
 
-  // Tertiary: "number is" with possible OCR space inside the code
+  // Loose label with possible OCR spaces inside the code
   if (!txNumber) {
     const looseLabeled = normalized.match(/number\s+is\s+([A-Z0-9 ]{6,25})/i);
     if (looseLabeled?.[1]) {
@@ -330,49 +345,84 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
     }
   }
 
-  // Fallback: Look for any standalone alphanumeric code 6-20 chars long
+  // Last resort: any standalone 10-char uppercase alphanumeric (Telebirr tx IDs are 10 chars)
   if (!txNumber) {
-    const standaloneMatch = normalized.match(/\b([A-Z0-9]{6,20})\b/);
+    const standaloneMatch = normalized.match(/\b([A-Z0-9]{10})\b/);
     if (standaloneMatch?.[1]) txNumber = standaloneMatch[1].toUpperCase();
   }
 
   if (!txNumber) return null;
 
-  // Extract receiver phone — Telebirr format: "to Name (2519****1234)" or "ወደ Name(0934****72)"
-  // Also handles masked formats like 2519****5324 or +2519****5324
+  // ── Receiver name & phone ───────────────────────────────────────────────────
+  // English: "to Abebe Zewude (2519****2672)"
+  // Amharic: "ወደ Abebe Zewude(0934****72)"
   let receiverPhone: string | null = null;
-  
-  // English format: (2519****1234)
-  const phoneMatch = normalized.match(/\((\+?251[\d*]{8,})\)/);
-  if (phoneMatch?.[1]) {
-    receiverPhone = phoneMatch[1].replace(/^\+/, '');
+  let receiverName: string | null = null;
+
+  // English format: "to <Name> (<phone>)"
+  const englishReceiverMatch = normalized.match(/\bto\s+([A-Za-z\s]{2,40}?)\s*\((\+?251[\d*]{8,})\)/i);
+  if (englishReceiverMatch) {
+    receiverName = englishReceiverMatch[1]!.trim();
+    receiverPhone = englishReceiverMatch[2]!.replace(/^\+/, '');
   }
-  
-  // Amharic format with 09 prefix: (09xxxxxxxx) - convert to 2519xxxxxxxx
+
+  // Amharic format: "ወደ <Name>(<phone>)" with 251 prefix
   if (!receiverPhone) {
-    const amharicPhoneMatch = normalized.match(/\((09[\d*]{8,})\)/);
-    if (amharicPhoneMatch?.[1]) {
-      receiverPhone = '251' + amharicPhoneMatch[1].substring(1); // Replace 0 with 251
+    const amharicReceiverMatch = normalized.match(/ወደ\s+([^\(]{2,40}?)\s*\((\+?251[\d*]{8,})\)/);
+    if (amharicReceiverMatch) {
+      receiverName = amharicReceiverMatch[1]!.trim();
+      receiverPhone = amharicReceiverMatch[2]!.replace(/^\+/, '');
     }
   }
 
-  // Extract transfer amount — e.g. "30.00 ብር" appearing after sender/receiver info
-  // Amharic: "ወደ Name(phone) 30.00 ብር በ" or English: "sent 30.00 ETB"
+  // Amharic format with 09 prefix: "ወደ <Name>(09xxxxxxxx)"
+  if (!receiverPhone) {
+    const amharicPhoneMatch = normalized.match(/ወደ\s+([^\(]{2,40}?)\s*\((09[\d*]{8,})\)/);
+    if (amharicPhoneMatch) {
+      receiverName = amharicPhoneMatch[1]!.trim();
+      receiverPhone = '251' + amharicPhoneMatch[2]!.substring(1);
+    }
+  }
+
+  // Fallback: phone only, no name context
+  if (!receiverPhone) {
+    const phoneMatch = normalized.match(/\((\+?251[\d*]{8,})\)/);
+    if (phoneMatch?.[1]) receiverPhone = phoneMatch[1].replace(/^\+/, '');
+  }
+  if (!receiverPhone) {
+    const amharicPhoneMatch = normalized.match(/\((09[\d*]{8,})\)/);
+    if (amharicPhoneMatch?.[1]) receiverPhone = '251' + amharicPhoneMatch[1].substring(1);
+  }
+
+  // ── Transfer amount ─────────────────────────────────────────────────────────
   let amount: number | null = null;
-  const amountMatch = normalized.match(/\)\s+([\d]+(?:\.\d+)?)\s+ብር/);
-  if (amountMatch?.[1]) {
-    const parsed = parseFloat(amountMatch[1]);
+
+  // English format A: "transferred ETB 20.00 to" (ETB before number)
+  const englishEtbBefore = normalized.match(/(?:transferred|sent)\s+ETB\s+([\d]+(?:\.\d+)?)/i);
+  if (englishEtbBefore?.[1]) {
+    const parsed = parseFloat(englishEtbBefore[1]);
     if (!isNaN(parsed) && parsed > 0) amount = parsed;
   }
+
+  // English format B: "transferred 20.00 ETB" (ETB after number)
   if (!amount) {
-    const englishAmountMatch = normalized.match(/(?:sent|transferred|amount)[:\s]+([\d]+(?:\.\d+)?)\s*(?:ETB|birr)/i);
-    if (englishAmountMatch?.[1]) {
-      const parsed = parseFloat(englishAmountMatch[1]);
+    const englishEtbAfter = normalized.match(/(?:transferred|sent|amount)[:\s]+([\d]+(?:\.\d+)?)\s*(?:ETB|birr)/i);
+    if (englishEtbAfter?.[1]) {
+      const parsed = parseFloat(englishEtbAfter[1]);
       if (!isNaN(parsed) && parsed > 0) amount = parsed;
     }
   }
 
-  return { txNumber, receiverPhone, amount };
+  // Amharic: "Name(phone) 30.00 ብር በ"
+  if (!amount) {
+    const amharicAmount = normalized.match(/\)\s+([\d]+(?:\.\d+)?)\s+ብር/);
+    if (amharicAmount?.[1]) {
+      const parsed = parseFloat(amharicAmount[1]);
+      if (!isNaN(parsed) && parsed > 0) amount = parsed;
+    }
+  }
+
+  return { txNumber, receiverPhone, receiverName, amount };
 }
 
 /**
@@ -975,8 +1025,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           return;
         }
 
-        const { text: instructionText, telebirrNumber } = await buildDepositInstructionText(amount);
-        depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber });
+        const { text: instructionText, telebirrNumber, receiverName } = await buildDepositInstructionText(amount);
+        depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber, receiverName });
         await ctx.reply(instructionText);
         return;
       }
@@ -989,11 +1039,64 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           return;
         }
 
-        // Validate receiver phone matches configured deposit number
+        // Validate receiver phone matches any active deposit account
         if (parsed.receiverPhone) {
-          if (!phoneMatches(parsed.receiverPhone, depositSession.telebirrNumber)) {
+          const activeAccounts = await prisma.depositAccount.findMany({ where: { is_active: true } });
+          const matchedAccount = activeAccounts.find((a: { phone: string }) => phoneMatches(parsed.receiverPhone!, a.phone));
+
+          // Fall back to legacy config if no deposit accounts exist yet
+          if (activeAccounts.length === 0) {
+            if (!phoneMatches(parsed.receiverPhone, depositSession.telebirrNumber)) {
+              await ctx.reply(
+                `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${depositSession.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+              );
+              return;
+            }
+          } else if (!matchedAccount) {
             await ctx.reply(
-              `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${depositSession.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+              `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ ወደ ትክክለኛ አካውንት አልተላከም።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+            );
+            return;
+          }
+        }
+
+        // Validate receiver name against the matched account (if name is in SMS)
+        if (parsed.receiverName) {
+          const activeAccounts = await prisma.depositAccount.findMany({ where: { is_active: true } });
+          if (activeAccounts.length > 0) {
+            const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+            const smsName = normalize(parsed.receiverName);
+            const nameMatched = activeAccounts.some((a: { name: string }) => {
+              const configName = normalize(a.name);
+              return smsName.includes(configName) || configName.includes(smsName);
+            });
+            if (!nameMatched) {
+              await ctx.reply(
+                `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nተቀባዩ ስም አይዛመድም። እባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+              );
+              return;
+            }
+          } else if (depositSession.receiverName) {
+            // Legacy fallback
+            const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+            const smsName = normalize(parsed.receiverName);
+            const configName = normalize(depositSession.receiverName);
+            if (!smsName.includes(configName) && !configName.includes(smsName)) {
+              await ctx.reply(
+                `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nተቀባዩ ስም አይዛመድም። እባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
+              );
+              return;
+            }
+          }
+        }
+
+        // Validate SMS amount matches the amount the player declared in step 1
+        // Allow ±1 ETB tolerance to account for rounding in different SMS formats
+        if (parsed.amount !== null) {
+          const tolerance = 1;
+          if (Math.abs(parsed.amount - depositSession.amount) > tolerance) {
+            await ctx.reply(
+              `❌ የደረሰኙ መጠን አይዛመድም።\n\nያስገቡት መጠን: ${depositSession.amount} ብር\nደረሰኙ ላይ ያለው: ${parsed.amount} ብር\n\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ።`,
             );
             return;
           }
@@ -1009,21 +1112,23 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         try {
           let result = await processDepositClaim(player.id, parsed.txNumber);
 
-          // Auto-create the pending deposit from the receipt when admin hasn't pre-registered it
-          if (!result.success && result.reason === 'NOT_FOUND' && parsed.amount) {
+          // Auto-create the pending deposit when admin hasn't pre-registered it.
+          // Use the SMS-parsed amount if available, otherwise fall back to the
+          // amount the player entered in step 1.
+          if (!result.success && result.reason === 'NOT_FOUND') {
+            const depositAmount = parsed.amount ?? depositSession.amount;
             try {
               await prisma.pendingDeposit.create({
                 data: {
                   tx_number: parsed.txNumber,
-                  amount: parsed.amount,
+                  amount: depositAmount,
                   status: 'pending',
                 },
               });
-              result = await processDepositClaim(player.id, parsed.txNumber);
-            } catch (createErr) {
-              // If creation failed (e.g. race condition duplicate), retry claim
-              result = await processDepositClaim(player.id, parsed.txNumber);
+            } catch {
+              // Duplicate tx_number (race condition) — deposit already exists, just claim it
             }
+            result = await processDepositClaim(player.id, parsed.txNumber);
           }
 
           depositSessions.delete(telegramId);

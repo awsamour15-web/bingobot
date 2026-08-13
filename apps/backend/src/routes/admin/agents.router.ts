@@ -17,6 +17,18 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// GET /pending — list pending agent applications
+// Protected by adminAuthMiddleware (applied in index.ts)
+// NOTE: must be defined BEFORE GET /:id to avoid being shadowed by the param route
+router.get('/pending', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pendingAgents = await AgentService.getPendingAgents();
+    res.status(200).json({ agents: pendingAgents });
+  } catch (err) {
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+  }
+});
+
 // GET /:id — get agent detail
 // Protected by adminAuthMiddleware (applied in index.ts)
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
@@ -110,17 +122,6 @@ router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> 
       res.status(404).json({ error: 'AGENT_NOT_FOUND', message: 'Agent not found' });
       return;
     }
-    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
-  }
-});
-
-// GET /pending — list pending agent applications
-// Protected by adminAuthMiddleware (applied in index.ts)
-router.get('/pending', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const pendingAgents = await AgentService.getPendingAgents();
-    res.status(200).json({ agents: pendingAgents });
-  } catch (err) {
     res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
   }
 });

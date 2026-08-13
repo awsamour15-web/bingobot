@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest, AdminRole } from '@fidel/shared';
-import { getConfig, updateConfig, getAdmins, createAdmin, updateAdmin } from '../lib/api';
+import {
+  getConfig, updateConfig, getAdmins, createAdmin, updateAdmin,
+  getDepositAccounts, createDepositAccount, updateDepositAccount, deleteDepositAccount,
+} from '../lib/api';
+import type { DepositAccount } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td,
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, selectCss,
@@ -253,10 +257,119 @@ function AdminAccountsSection() {
   );
 }
 
+function DepositAccountsSection() {
+  const [accounts, setAccounts] = useState<DepositAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newPhone, setNewPhone] = useState('');
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createMsg, setCreateMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setLoading(true);
+    getDepositAccounts()
+      .then((data) => { setAccounts(data); setLoading(false); })
+      .catch((e: Error) => { setError(e.message); setLoading(false); });
+  }, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPhone.trim() || !newName.trim()) {
+      setCreateMsg({ type: 'error', text: 'Phone and name are required.' }); return;
+    }
+    setCreating(true); setCreateMsg(null);
+    try {
+      const account = await createDepositAccount(newPhone.trim(), newName.trim());
+      setAccounts((p) => [account, ...p]);
+      setNewPhone(''); setNewName('');
+      setCreateMsg({ type: 'success', text: 'Account added.' });
+    } catch (e: unknown) {
+      setCreateMsg({ type: 'error', text: (e as Error).message ?? 'Failed' });
+    } finally { setCreating(false); }
+  }
+
+  async function handleToggle(account: DepositAccount) {
+    setSaving((p) => ({ ...p, [account.id]: true }));
+    try {
+      const updated = await updateDepositAccount(account.id, { is_active: !account.is_active });
+      setAccounts((p) => p.map((a) => a.id === account.id ? updated : a));
+    } finally { setSaving((p) => ({ ...p, [account.id]: false })); }
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Delete this deposit account?')) return;
+    setSaving((p) => ({ ...p, [id]: true }));
+    try {
+      await deleteDepositAccount(id);
+      setAccounts((p) => p.filter((a) => a.id !== id));
+    } finally { setSaving((p) => ({ ...p, [id]: false })); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 24 }}>
+      <CardHeader title="Deposit Accounts" subtitle="Active accounts are shown to players when depositing. One is picked at random." />
+      {error && <Alert type="error">{error}</Alert>}
+      {loading ? <p style={{ color: C.muted, fontSize: 13 }}>Loading…</p> : (
+        <Table>
+          <thead>
+            <tr>
+              <Th>Phone</Th>
+              <Th>Name</Th>
+              <Th>Status</Th>
+              <Th>Actions</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {!accounts.length ? <TrEmpty cols={4} /> :
+              accounts.map((a) => (
+                <tr key={a.id}>
+                  <Td mono>{a.phone}</Td>
+                  <Td>{a.name}</Td>
+                  <Td>
+                    <Badge variant={a.is_active ? 'success' : 'neutral'}>
+                      {a.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Btn size="sm" variant={a.is_active ? 'danger' : 'success'} onClick={() => handleToggle(a)} disabled={saving[a.id]}>
+                        {saving[a.id] ? '…' : a.is_active ? 'Deactivate' : 'Activate'}
+                      </Btn>
+                      <Btn size="sm" variant="danger" onClick={() => handleDelete(a.id)} disabled={saving[a.id]}>
+                        Delete
+                      </Btn>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+          </tbody>
+        </Table>
+      )}
+
+      <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, marginTop: 16 }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: C.text }}>Add Deposit Account</h3>
+        {createMsg && <Alert type={createMsg.type}>{createMsg.text}</Alert>}
+        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <Field label="Phone">
+            <input style={{ ...inputCss, width: 160 }} type="text" placeholder="e.g. 0912345678" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} disabled={creating} required />
+          </Field>
+          <Field label="Account Name">
+            <input style={{ ...inputCss, width: 200 }} type="text" placeholder="e.g. Abebe Zewude" value={newName} onChange={(e) => setNewName(e.target.value)} disabled={creating} required />
+          </Field>
+          <Btn type="submit" disabled={creating}>{creating ? 'Adding…' : '+ Add Account'}</Btn>
+        </form>
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   return (
     <div className="fade-in">
       <PageHeader title="Settings" />
+      <DepositAccountsSection />
       <ConfigSection />
       <AdminAccountsSection />
     </div>

@@ -163,6 +163,35 @@ export function updateConfig(key: string, value: string): Promise<ConfigEntry> {
 }
 
 // ---------------------------------------------------------------------------
+// Deposit Accounts
+// ---------------------------------------------------------------------------
+
+export interface DepositAccount {
+  id: string;
+  phone: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getDepositAccounts(): Promise<DepositAccount[]> {
+  return adminApiRequest('GET', '/api/admin/deposit-accounts');
+}
+
+export function createDepositAccount(phone: string, name: string): Promise<DepositAccount> {
+  return adminApiRequest('POST', '/api/admin/deposit-accounts', { phone, name });
+}
+
+export function updateDepositAccount(id: string, data: Partial<{ phone: string; name: string; is_active: boolean }>): Promise<DepositAccount> {
+  return adminApiRequest('PATCH', `/api/admin/deposit-accounts/${id}`, data);
+}
+
+export function deleteDepositAccount(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest('DELETE', `/api/admin/deposit-accounts/${id}`);
+}
+
+// ---------------------------------------------------------------------------
 // Deposits
 // ---------------------------------------------------------------------------
 
@@ -361,4 +390,42 @@ export function cancelSchedule(scheduleId: string): Promise<{ success: boolean }
 export function getPromotionLogs(promotionId?: string): Promise<PromotionLog[]> {
   const query = promotionId ? `?promotionId=${promotionId}` : '';
   return adminApiRequest('GET', `/api/admin/promotions/logs${query}`);
+}
+
+// ---------------------------------------------------------------------------
+// Cartelas
+// ---------------------------------------------------------------------------
+
+export interface CartelaDefinition {
+  cartela_number: number;
+  grid: number[];
+}
+
+export interface CartelasResponse {
+  items: CartelaDefinition[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export function getCartelas(page = 1, search?: string): Promise<CartelasResponse> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (search) params.set('search', search);
+  return adminApiRequest<CartelasResponse>('GET', `/api/admin/cartelas?${params}`);
+}
+
+export function getCartela(num: number): Promise<CartelaDefinition> {
+  return adminApiRequest<CartelaDefinition>('GET', `/api/admin/cartelas/${num}`);
+}
+
+export function createCartela(cartela_number: number, grid: number[]): Promise<CartelaDefinition> {
+  return adminApiRequest<CartelaDefinition>('POST', '/api/admin/cartelas', { cartela_number, grid });
+}
+
+export function updateCartela(num: number, grid: number[]): Promise<CartelaDefinition> {
+  return adminApiRequest<CartelaDefinition>('PUT', `/api/admin/cartelas/${num}`, { grid });
+}
+
+export function deleteCartela(num: number): Promise<{ success: boolean }> {
+  return adminApiRequest<{ success: boolean }>('DELETE', `/api/admin/cartelas/${num}`);
 }

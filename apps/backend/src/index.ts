@@ -24,9 +24,11 @@ import adminRoundsRouter from './routes/admin/rounds.admin.router.js';
 import adminFinanceRouter from './routes/admin/finance.admin.router.js';
 import adminConfigRouter from './routes/admin/config.admin.router.js';
 import adminDepositsRouter from './routes/admin/deposits.admin.router.js';
+import adminDepositAccountsRouter from './routes/admin/deposit-accounts.admin.router.js';
 import adminAgentsRouter from './routes/admin/agents.router.js';
 import agentRouter from './routes/agent.router.js';
 import promotionsAdminRouter from './routes/admin/promotions.admin.router.js';
+import adminCartelasRouter from './routes/admin/cartelas.admin.router.js';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
@@ -90,11 +92,13 @@ app.use('/api/admin/auth', adminAuthRouter);
 app.use('/api/admin/players', jwtAdminMiddleware, adminPlayersRouter);
 app.use('/api/admin/rounds', jwtAdminMiddleware, adminRoundsRouter);
 app.use('/api/admin/deposits', jwtAdminMiddleware, adminDepositsRouter);
+app.use('/api/admin/deposit-accounts', jwtAdminMiddleware, adminDepositAccountsRouter);
 app.use('/api/admin/agents', jwtAdminMiddleware, adminAgentsRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminFinanceRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminConfigRouter);
 app.use('/api/agent', agentRouter);
 app.use('/api/admin/promotions', jwtAdminMiddleware, promotionsAdminRouter);
+app.use('/api/admin/cartelas', jwtAdminMiddleware, adminCartelasRouter);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
