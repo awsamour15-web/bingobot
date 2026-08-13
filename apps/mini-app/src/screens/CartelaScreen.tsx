@@ -251,6 +251,19 @@ export default function CartelaScreen() {
         p.cartelaNumbers.forEach(n => next.delete(n));
         return next;
       });
+      
+      // INSTANT UPDATE: Also update availability to show cartela as available immediately
+      setAvailability(prev => {
+        if (!prev) return prev;
+        // Move from reserved/taken back to available
+        const unreservedSet = new Set(p.cartelaNumbers);
+        const newTaken = prev.taken.filter(n => !unreservedSet.has(n));
+        const newAvailable = [...new Set([...prev.available, ...p.cartelaNumbers])].sort((a, b) => a - b);
+        return {
+          taken: newTaken,
+          available: newAvailable
+        };
+      });
     };
 
     const onStarted = async (_p: RoundStartedPayload) => {
@@ -279,7 +292,7 @@ export default function CartelaScreen() {
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
-    // Poll every 1s — catches missed socket events; never overwrites local picks
+    // Poll every 500ms for faster updates — catches missed socket events
     const poll = setInterval(() => {
       // Also fetch round status to catch missed ROUND_STARTED socket events
       Promise.all([
@@ -321,7 +334,7 @@ export default function CartelaScreen() {
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
-    }, 1000);
+    }, 500);
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);
@@ -412,6 +425,11 @@ export default function CartelaScreen() {
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
       
+      // INSTANT FEEDBACK: Emit WebSocket event IMMEDIATELY for other players
+      if (roundId && socket.connected) {
+        socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
+      }
+      
       // Update availability immediately - move cartela from taken to available
       setAvailability(prev => {
         if (!prev) return prev;
@@ -457,6 +475,11 @@ export default function CartelaScreen() {
     
     // Reserve cartela via API first, then update UI if successful
     if (roundId) {
+      // INSTANT FEEDBACK: Emit WebSocket reservation IMMEDIATELY before API call
+      if (socket.connected) {
+        socket.emit('CARTELA_RESERVE', { roundId, cartelaNumbers: [num] });
+      }
+      
       reserveCartela(roundId, num)
         .then(() => {
           // Only update UI if reservation was successful
@@ -481,7 +504,12 @@ export default function CartelaScreen() {
             .catch(() => {});
         })
         .catch(err => {
-          // Reservation failed - show error and refresh availability
+          // Reservation failed - undo WebSocket broadcast
+          if (socket.connected) {
+            socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
+          }
+          
+          // Show error and refresh availability
           const errorMsg = err.message || 'Failed to reserve cartela';
           if (errorMsg.includes('reserved') || errorMsg.includes('taken')) {
             setBalanceAlert(`Cartela ${num} was just taken by another player. Refreshing...`);
