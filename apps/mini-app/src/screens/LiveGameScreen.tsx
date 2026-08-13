@@ -621,59 +621,38 @@ export default function LiveGameScreen() {
             )}
           </div>
 
-          {/* ── All 75 Bingo Numbers Grid ── */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '8px', background: 'rgba(10,14,26,0.5)', maxHeight: '340px', overflowY: 'auto' }}>
-            <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, fontWeight: 700 }}>
-              📊 Called: {game.calledOrder.length}/75
+          {/* ── Called Numbers — scrollable history strip ── */}
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '4px 6px 4px' }}>
+            <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>
+              Called ({game.calledOrder.length}/75)
             </div>
-            
-            {/* BINGO column headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 4 }}>
-              {COLS.map((col, idx) => (
-                <div key={col} style={{
-                  background: COL_COLORS[idx],
-                  color: '#fff',
-                  padding: '3px 0',
-                  textAlign: 'center',
-                  fontWeight: 900,
-                  fontSize: 9,
-                  borderRadius: 3,
-                  boxShadow: `0 0 8px ${COL_COLORS[idx]}66`,
-                }}>
-                  {col}
-                </div>
-              ))}
-            </div>
-
-            {/* 75 numbers in 5x15 grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
-              {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
-                const called = game.calledNumbers.has(num);
-                const col = getColIndex(num);
-                const isNewest = num === game.lastCalled;
-                
-                return (
-                  <div key={num} style={{
-                    aspectRatio: '1',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: called 
-                      ? isNewest 
-                        ? `linear-gradient(135deg, ${COL_COLORS[col]}, ${COL_COLORS[col]}dd)` 
-                        : `${COL_COLORS[col]}55`
-                      : 'rgba(255,255,255,0.07)',
-                    color: called ? '#fff' : '#cbd5e1',
-                    border: isNewest ? `2px solid #fff` : called ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    fontSize: 7.5,
-                    fontWeight: called ? 800 : 500,
-                    cursor: 'default',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isNewest ? `0 0 12px ${COL_COLORS[col]}88` : called ? `inset 0 0 4px rgba(0,0,0,0.3)` : 'none',
-                  }}>
-                    {num}
-                  </div>
-                );
-              })}
+            <div style={{
+              display: 'flex', gap: 3, overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: 2,
+              scrollbarWidth: 'none',
+            }}>
+              {game.calledOrder.length === 0 ? (
+                <div style={{ color: '#334155', fontSize: 10, padding: '4px 0' }}>—</div>
+              ) : (
+                [...game.calledOrder].reverse().map((num, idx) => {
+                  const isNewest = idx === 0;
+                  const col = getColIndex(num);
+                  return (
+                    <div key={`h-${num}-${idx}`} style={{
+                      flexShrink: 0,
+                      width: 26, height: 26, borderRadius: '50%',
+                      background: isNewest ? COL_COLORS[col] : `${COL_COLORS[col]}55`,
+                      border: `1px solid ${isNewest ? COL_COLORS[col]! : 'rgba(255,255,255,0.08)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 8, fontWeight: isNewest ? 900 : 600,
+                      color: isNewest ? '#fff' : '#94a3b8',
+                    }}>
+                      {num}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
