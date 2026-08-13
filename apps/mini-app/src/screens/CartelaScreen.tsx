@@ -537,13 +537,17 @@ export default function CartelaScreen() {
   const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances, availability]);
 
   if (loading) return (
-    <div style={{ height: '100dvh', background: '#0a0e1a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 16 }}>
-      Loading cartelas…
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+      <div style={{ width: 48, height: 48, background: 'rgba(245, 158, 11, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, animation: 'spin 1s linear infinite' }}>⏳</div>
+      <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 500 }}>Loading cartelas…</div>
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
   if (!round || !availability) return (
-    <div style={{ height: '100dvh', background: '#0a0e1a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center' }}>
-      {error ?? 'Could not load round data'}
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 48 }}>🚫</div>
+      <div style={{ fontSize: 16, fontWeight: 600 }}>{error ? 'Failed to Load' : 'Round Not Found'}</div>
+      <div style={{ fontSize: 13, color: '#94a3b8' }}>{error ?? 'Could not load round data'}</div>
     </div>
   );
 
@@ -555,69 +559,85 @@ export default function CartelaScreen() {
   const previewCount = picksArr.length;
 
   return (
-    <div style={{ height: '100dvh', background: '#0a0e1a', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── Header ── */}
-      <div style={{ background: '#0d1b2e', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '6px 10px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
-          {[
-            { label: 'Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
-            { label: 'Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
-            { label: 'Stake', value: round ? Number(round.stake) : 0 },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: '4px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#f1f5f9', marginTop: 1 }}>{value}</div>
+      {/* ── Professional Header ── */}
+      <div style={{ background: 'linear-gradient(180deg, rgba(13,27,46,0.95) 0%, rgba(13,27,46,0.8) 100%)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 16px', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+        {/* Header Top - Title & Timer */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => navigate(-1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transition: 'all 0.2s' }}>
+              ←
+            </button>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>Select Cartelas</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>Choose up to 2 cartelas</div>
             </div>
-          ))}
-          <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 6, padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 42 }}>
-            <span style={{ fontSize: 15, fontWeight: 900, color: '#f5d06b', fontVariantNumeric: 'tabular-nums' }}>
-              {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '▶' : '⏳'}
-            </span>
+          </div>
+          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'), borderRadius: 8, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 18 }}>⏱️</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+                {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '●' : '⏳'}
+              </span>
+            </div>
+            <button onClick={() => window.location.reload()} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', padding: '6px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+              ↻
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span onClick={() => navigate(-1)} style={{ cursor: 'pointer', fontSize: 16, color: '#64748b' }}>← Back</span>
-          <button
-            onClick={() => window.location.reload()}
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '4px 10px', color: '#e2e8f0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-          >
-            ↺ Refresh
-          </button>
+
+        {/* Header Bottom - Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+          {[
+            { label: '💰 Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
+            { label: '🎮 Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
+            { label: '🎯 Stake', value: round ? Number(round.stake) : 0 },
+            { label: '👥 Players', value: round?.player_count ?? 0 },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9' }}>{value.toLocaleString()}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-
-
-      {/* ── Error ── */}
+      {/* ── Error Banner ── */}
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', padding: '8px 16px', fontSize: 13, flexShrink: 0, borderBottom: '1px solid rgba(239,68,68,0.2)' }}>
-          {error}
+        <div style={{ background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.2)', color: '#f87171', padding: '10px 16px', fontSize: 13, flexShrink: 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
-      {/* ── Legend ── */}
-      <div style={{ padding: '4px 12px', display: 'flex', gap: 14, fontSize: 10, color: '#64748b', flexShrink: 0, alignItems: 'center' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 2, display: 'inline-block' }} />
-          Available
+      {/* ── Legend/Info Bar ── */}
+      <div style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 16, fontSize: 11, color: '#64748b', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 12, height: 12, background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 3, display: 'inline-block' }} />
+          <span>Available</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, background: '#22c55e', borderRadius: 2, display: 'inline-block' }} />
-          Selected
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 12, height: 12, background: '#22c55e', borderRadius: 3, display: 'inline-block', boxShadow: '0 0 8px rgba(34,197,94,0.4)' }} />
+          <span>Selected</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, background: '#e53e3e', borderRadius: 2, display: 'inline-block' }} />
-          Taken
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 12, height: 12, background: '#e53e3e', borderRadius: 3, display: 'inline-block', boxShadow: '0 0 8px rgba(229,62,62,0.4)' }} />
+          <span>Taken</span>
         </span>
-        {!canPick && <span style={{ color: '#f59e0b', fontWeight: 700, marginLeft: 'auto' }}>Max {MAX_SELECT} selected</span>}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 12, height: 12, background: 'rgba(251,191,36,0.3)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: 3, display: 'inline-block' }} />
+          <span>Reserved</span>
+        </span>
+        {!canPick && <div style={{ marginLeft: 'auto', fontWeight: 700, color: '#f59e0b' }}>✓ {MAX_SELECT} cartelas selected</div>}
       </div>
 
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
-        gap: 2, padding: '3px 6px', alignContent: 'start',
+        gap: 6, padding: '16px', alignContent: 'start',
+        background: 'rgba(0,0,0,0.2)',
       }}>
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);
@@ -633,53 +653,55 @@ export default function CartelaScreen() {
       {/* ── Selected cartela BINGO preview ── */}
       {previewCount > 0 && (
         <div style={{
-          flexShrink: 0, background: '#0d1220',
-          borderTop: '2px solid rgba(255,255,255,0.08)',
-          padding: '6px 6px 8px',
+          flexShrink: 0, background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          padding: '16px', gap: 12,
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
-          gap: 6,
+          boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
+          maxHeight: '45%',
+          overflowY: 'auto',
         }}>
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
-              <div key={cartelaNum} style={{ minWidth: 0 }}>
-                <div style={{ textAlign: 'center', fontSize: 12, color: '#f59e0b', fontWeight: 900, marginBottom: 4 }}>
-                  Cartela No : {cartelaNum}
+              <div key={cartelaNum} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 12 }}>
+                <div style={{ textAlign: 'center', fontSize: 13, color: '#f59e0b', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  🎴 Cartela #{cartelaNum}
                 </div>
                 {/* BINGO header row with better visibility */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 3 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginBottom: 4 }}>
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
                       background: COL_COLORS[ci], color: '#fff', fontWeight: 900,
-                      fontSize: 12, textAlign: 'center', borderRadius: 4, padding: '3px 0',
-                      minHeight: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, textAlign: 'center', borderRadius: 6, padding: '4px 2px',
+                      minHeight: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                     }}>{col}</div>
                   ))}
                 </div>
                 {/* 5×5 grid with improved readability */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3 }}>
                   {grid ? grid.map((val, idx) => {
                     const isFree = idx === 12;
                     return (
                       <div key={idx} style={{
-                        background: isFree ? '#22c55e' : '#1e293b',
+                        background: isFree ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#1e293b',
                         color: isFree ? '#fff' : '#e2e8f0',
                         fontWeight: 900,
-                        fontSize: 12,
-                        textAlign: 'center', borderRadius: 4,
-                        padding: '4px 0', border: '1px solid rgba(255,255,255,0.07)',
-                        minWidth: 0, minHeight: '24px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11,
+                        textAlign: 'center', borderRadius: 6,
+                        padding: '4px 0', border: '1px solid ' + (isFree ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'),
+                        minWidth: 0, minHeight: '26px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isFree ? '0 0 8px rgba(34,197,94,0.3)' : 'none',
                       }}>
                         {isFree ? '★' : val}
                       </div>
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: '#1e293b', borderRadius: 4, padding: '4px 0',
-                      border: '1px solid rgba(255,255,255,0.07)', minWidth: 0, minHeight: '24px',
-                      fontSize: 12, textAlign: 'center', color: '#334155',
+                      background: '#1e293b', borderRadius: 6, padding: '4px 0',
+                      border: '1px solid rgba(255,255,255,0.1)', minWidth: 0, minHeight: '26px',
+                      fontSize: 11, textAlign: 'center', color: '#334155',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>·</div>
                   ))}
@@ -692,12 +714,15 @@ export default function CartelaScreen() {
 
       {/* ── Starting overlay ── */}
       {(starting || committing) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14, zIndex: 50 }}>
-          <div style={{ fontSize: 48 }}>🎮</div>
-          <div style={{ color: '#f59e0b', fontWeight: 900, fontSize: 20 }}>Starting game…</div>
-          <div style={{ color: '#64748b', fontSize: 14 }}>
-            {picks.size > 0 ? `Joining with cartela ${picksArr.join(' & ')}` : 'Joining as watcher'}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, zIndex: 50 }}>
+          <div style={{ width: 60, height: 60, background: 'rgba(245,158,11,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, animation: 'pulse 2s ease-in-out infinite' }}>🎮</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Starting game…</div>
+            <div style={{ color: '#64748b', fontSize: 13 }}>
+              {picks.size > 0 ? `Joining with cartela ${picksArr.join(' & ')}` : 'Joining as watcher'}
+            </div>
           </div>
+          <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }`}</style>
         </div>
       )}
 
@@ -708,18 +733,23 @@ export default function CartelaScreen() {
         
         const icon = isBalanceError ? '💳' : isAvailabilityError ? '🎫' : '⚠️';
         const title = isBalanceError ? 'Insufficient Balance' : isAvailabilityError ? 'Cartela Unavailable' : 'Alert';
+        const bgColor = isBalanceError ? 'rgba(249,115,22,0.15)' : isAvailabilityError ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)';
+        const borderColor = isBalanceError ? 'rgba(249,115,22,0.3)' : isAvailabilityError ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)';
+        const titleColor = isBalanceError ? '#fb923c' : isAvailabilityError ? '#fbbf24' : '#f87171';
         
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 24 }}
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 20 }}
             onClick={() => setBalanceAlert(null)}>
-            <div style={{ background: '#1a1035', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 16, padding: '28px 24px', maxWidth: 320, width: '100%', textAlign: 'center', boxShadow: '0 0 40px rgba(239,68,68,0.2)' }}
+            <div style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: 16, padding: '28px 24px', maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }}
               onClick={e => e.stopPropagation()}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>{icon}</div>
-              <div style={{ fontWeight: 900, fontSize: 18, color: '#f87171', marginBottom: 8 }}>{title}</div>
+              <div style={{ fontSize: 48, marginBottom: 14 }}>{icon}</div>
+              <div style={{ fontWeight: 700, fontSize: 18, color: titleColor, marginBottom: 10 }}>{title}</div>
               {balanceAlert.split('\n').map((line, i) => (
-                <div key={i} style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>{line}</div>
+                <div key={i} style={{ fontSize: 13, color: '#cbd5e1', marginBottom: 4 }}>{line}</div>
               ))}
-              <button onClick={() => setBalanceAlert(null)} style={{ marginTop: 20, width: '100%', padding: '12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>OK</button>
+              <button onClick={() => setBalanceAlert(null)} style={{ marginTop: 20, width: '100%', padding: '12px', background: titleColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}>
+                Got it
+              </button>
             </div>
           </div>
         );
@@ -727,14 +757,16 @@ export default function CartelaScreen() {
 
       {/* ── Join error modal ── */}
       {joinError && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 24 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 20 }}
           onClick={() => setJoinError(null)}>
-          <div style={{ background: '#1a1035', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 16, padding: '28px 24px', maxWidth: 320, width: '100%', textAlign: 'center', boxShadow: '0 0 40px rgba(239,68,68,0.2)' }}
+          <div style={{ background: 'rgba(239,68,68,0.15)', border: '1.5px solid rgba(239,68,68,0.3)', borderRadius: 16, padding: '28px 24px', maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 900, fontSize: 18, color: '#f87171', marginBottom: 8 }}>{joinError.title}</div>
-            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>{joinError.message}</div>
-            <button onClick={() => setJoinError(null)} style={{ marginTop: 20, width: '100%', padding: '12px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>OK</button>
+            <div style={{ fontSize: 48, marginBottom: 14 }}>⚠️</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: '#f87171', marginBottom: 10 }}>{joinError.title}</div>
+            <div style={{ fontSize: 13, color: '#cbd5e1', marginBottom: 4 }}>{joinError.message}</div>
+            <button onClick={() => setJoinError(null)} style={{ marginTop: 20, width: '100%', padding: '12px', background: '#f87171', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }}>
+              Dismiss
+            </button>
           </div>
         </div>
       )}
