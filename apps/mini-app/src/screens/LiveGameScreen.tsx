@@ -78,17 +78,19 @@ export default function LiveGameScreen() {
         src.start(0);
       } catch {}
       // Play+pause the first cached audio element to prime the HTML5 audio pipeline
-      // Use a short timeout to ensure the preload loop has run first
+      // Reduced timeout for faster audio initialization
       setTimeout(() => {
         const first = audioCache.current.get(1);
         if (first) { first.play().catch(() => {}); first.pause(); first.currentTime = 0; }
-      }, 50);
+      }, 20);
     };
     window.addEventListener('touchstart', unlock, { once: true });
     window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('click', unlock, { once: true });
     return () => {
       window.removeEventListener('touchstart', unlock);
       window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('click', unlock);
     };
   }, []);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
@@ -131,23 +133,21 @@ export default function LiveGameScreen() {
         }
       };
 
-      // Phase 1: load first 15 numbers immediately (B column — called first)
-      await Promise.all(Array.from({ length: 15 }, (_, i) => load(i + 1)));
+      // Phase 1: load first 20 numbers immediately for instant playback
+      await Promise.all(Array.from({ length: 20 }, (_, i) => load(i + 1)));
 
-      // Phase 2: load remaining 60 in background batches of 10
-      // Use requestIdleCallback when available so it doesn't compete with UI
+      // Phase 2: load remaining 55 in background batches of 15 for faster coverage
+      // Use shorter delays to ensure sounds are ready when called
       const loadBatch = async (start: number, end: number) => {
         await Promise.all(Array.from({ length: end - start }, (_, i) => load(start + i)));
       };
       const scheduleBatch = (start: number, end: number, delay: number) => {
         setTimeout(() => { loadBatch(start, end).catch(() => {}); }, delay);
       };
-      scheduleBatch(16, 26, 500);
-      scheduleBatch(26, 36, 1000);
-      scheduleBatch(36, 46, 1500);
-      scheduleBatch(46, 56, 2000);
-      scheduleBatch(56, 66, 2500);
-      scheduleBatch(66, 76, 3000);
+      scheduleBatch(21, 36, 200);
+      scheduleBatch(36, 51, 400);
+      scheduleBatch(51, 66, 600);
+      scheduleBatch(66, 76, 800);
     }
     preloadSounds();
   }, []);

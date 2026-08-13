@@ -9,14 +9,14 @@ import { GameStatus } from '@fidel/shared';
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 60_000;
 const DEFAULT_MAX_PLAYERS = 800;
-const CHECK_INTERVAL_MS = 15_000;
+const CHECK_INTERVAL_MS = 10_000; // Check every 10 seconds for faster response
 
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
 
 // Tracks how many consecutive ticks a round has been timer-less (stuck)
 const stuckRoundTicks = new Map<string, number>();
-const STUCK_TICK_THRESHOLD = 3; // force-void after 3 ticks (~45s) with no timer
+const STUCK_TICK_THRESHOLD = 2; // force-void after 2 ticks (~20s) with no timer for faster recovery
 
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
@@ -30,10 +30,11 @@ export const RoundScheduler = {
 
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
+    // Reduced interval for smoother game flow
     void prisma.config.upsert({
       where: { key: 'call_interval_ms' },
-      update: { value: '4000' },
-      create: { key: 'call_interval_ms', value: '4000' },
+      update: { value: '3000' },
+      create: { key: 'call_interval_ms', value: '3000' },
     });
     void RoundScheduler.recoverActiveRounds();
     void RoundScheduler.tick();

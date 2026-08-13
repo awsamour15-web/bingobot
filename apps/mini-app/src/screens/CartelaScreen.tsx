@@ -38,20 +38,21 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
   
   // CRITICAL FIX: Prevent clicks on taken cartelas
   const handleClick = () => {
-    if (taken) return; // Block clicks on taken cartelas
+    if (taken || disabled) return; // Block clicks on taken/disabled cartelas
     onClick(num);
   };
   
   return (
     <button
-      disabled={disabled}
+      disabled={disabled || taken}
       onClick={handleClick}
       style={{
         padding: '4px 0', borderRadius: 4, border, background: bg, color,
         fontWeight: isPicked || taken ? 800 : 500, fontSize: 13,
-        cursor: disabled && !taken ? 'default' : taken ? 'not-allowed' : 'pointer',
+        cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: 1,
-        transition: 'background 0.1s',
+        transition: 'background 0.15s, transform 0.1s',
+        transform: isPicked ? 'scale(1.05)' : 'scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
         lineHeight: 1, boxSizing: 'border-box', userSelect: 'none',
       }}
@@ -74,7 +75,8 @@ function useServerCountdown(targetIso: string | null) {
     totalMsRef.current = Math.max(1, target - (Date.now() - 100));
     const tick = () => setMsLeft(Math.max(0, target - Date.now()));
     tick();
-    const id = setInterval(tick, 250);
+    // Update every 100ms for smoother countdown animation
+    const id = setInterval(tick, 100);
     return () => clearInterval(id);
   }, [targetIso]);
 

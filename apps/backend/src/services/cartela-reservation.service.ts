@@ -3,7 +3,7 @@
 
 import prisma from '../lib/prisma.js';
 
-const RESERVATION_DURATION_MS = 30000; // 30 seconds
+const RESERVATION_DURATION_MS = 20000; // 20 seconds for faster availability turnover
 const MAX_SELECT = 2; // Maximum number of cartelas a player can reserve/select
 
 export class CartelaAlreadyReservedError extends Error {

@@ -78,6 +78,7 @@ export class NumberCallingEngine {
     this.startingRounds.add(roundId);
 
     try {
+    // Reduce call interval for smoother game flow (3s instead of 4s)
     const callIntervalMs = await this.readCallInterval();
 
     // Load already-called numbers from DB (ordered by sequence_index)

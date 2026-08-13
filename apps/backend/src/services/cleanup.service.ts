@@ -3,7 +3,7 @@
 
 import { CartelaReservationService } from './cartela-reservation.service.js';
 
-const CLEANUP_INTERVAL_MS = 30000; // 30 seconds
+const CLEANUP_INTERVAL_MS = 15000; // 15 seconds for faster reservation cleanup
 
 export const CleanupService = {
   _intervalId: undefined as NodeJS.Timeout | undefined,

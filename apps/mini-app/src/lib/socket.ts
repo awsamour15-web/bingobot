@@ -9,6 +9,10 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(WS_
   autoConnect: false,
   // Prefer WebSocket directly — avoids the polling→upgrade round-trip latency
   transports: ['websocket', 'polling'],
+  // Optimize reconnection for smoother experience
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 3000,
+  timeout: 10000,
   auth: (cb) => {
     // Fetch the JWT dynamically at connection time so the token is always fresh.
     cb({ token: localStorage.getItem('jwt') ?? '' });
