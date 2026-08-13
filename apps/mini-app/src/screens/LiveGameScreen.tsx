@@ -1046,8 +1046,8 @@ export default function LiveGameScreen() {
             </div>
           )}
 
-          {/* Cartela cards — no scroll, fit both in remaining space */}
-          <div style={{ flex: 1, overflow: 'hidden', padding: '2px 3px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Cartela cards — scrollable, each cartela fully visible */}
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 3px', display: 'flex', flexDirection: 'column', gap: 6, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
             {!isWatching && allCartelas.length > 0 ? (
               <>
                 {allCartelas.map((cartela) => {
@@ -1055,7 +1055,7 @@ export default function LiveGameScreen() {
                   const cartelaWinCells = winCellsForGrid(cartelaGrid);
                   const cartelaHasWin = hasWinForGrid(cartelaGrid);
                   return (
-                    <div key={cartela.cartelaNumber} style={{ flex: 0.6, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '150px', background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(17,24,39,0.86) 100%)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: 10, padding: '6px 4px 4px', boxShadow: '0 8px 18px rgba(15,23,42,0.2)' }}>
+                    <div key={cartela.cartelaNumber} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(17,24,39,0.86) 100%)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: 10, padding: '6px 4px 4px', boxShadow: '0 8px 18px rgba(15,23,42,0.2)' }}>
                       <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#fbbf24', marginBottom: 2, flexShrink: 0, letterSpacing: '0.04em' }}>
                         #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#34d399' }}>✓ BINGO</span>}
                       </div>
@@ -1069,7 +1069,7 @@ export default function LiveGameScreen() {
                           }}>{c}</div>
                         ))}
                       </div>
-                      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: 2, minHeight: 0, maxHeight: '120px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
                         {cartelaGrid.length > 0 ? cartelaGrid.map((val, idx) => {
                           const isFree = idx === 12;
                           const colIdx = idx % 5;
@@ -1078,6 +1078,7 @@ export default function LiveGameScreen() {
                           return (
                             <div key={idx} style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              aspectRatio: '1',
                               background: wl
                                 ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
                                 : m
@@ -1085,19 +1086,18 @@ export default function LiveGameScreen() {
                                 : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.84) 100%)',
                               color: wl ? '#0f172a' : m ? '#f8fafc' : '#e2e8f0',
                               borderRadius: 3,
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: 900,
                               border: wl ? '2px solid rgba(255,255,255,0.9)' : m ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(148,163,184,0.12)',
                               boxShadow: wl ? '0 0 10px rgba(251,191,36,0.5)' : m ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
                               transition: 'background 0.2s',
-                              minHeight: '20px',
                             }}>
                               {isFree ? '★' : val}
                             </div>
                           );
                         }) : (
                           Array.from({ length: 25 }).map((_, idx) => (
-                            <div key={idx} style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.7) 100%)', borderRadius: 3, minHeight: '20px', border: '1px solid rgba(148,163,184,0.12)' }} />
+                            <div key={idx} style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.7) 100%)', borderRadius: 3, aspectRatio: '1', border: '1px solid rgba(148,163,184,0.12)' }} />
                           ))
                         )}
                       </div>
