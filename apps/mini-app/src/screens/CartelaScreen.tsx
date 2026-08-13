@@ -701,7 +701,7 @@ export default function CartelaScreen() {
             const grid = pickedGrids.get(cartelaNum);
             return (
               <div key={cartelaNum} style={{ background: 'rgba(15,23,42,0.88)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 8, padding: '5px 5px 4px', boxShadow: '0 4px 10px rgba(15,23,42,0.12)' }}>
-                <div style={{ textAlign: 'center', fontSize: 10, color: '#f8fafc', fontWeight: 700, marginBottom: 3, letterSpacing: '0.01em' }}>
+                <div style={{ textAlign: 'center', fontSize: 16, color: '#f8fafc', fontWeight: 700, marginBottom: 3, letterSpacing: '0.01em' }}>
                   Cartela #{cartelaNum}
                 </div>
                 {/* BINGO header row */}
