@@ -154,8 +154,8 @@ export default function GameScreen() {
       </div>
 
       {/* ── Games list ── */}
-      <div style={{ padding: '16px 16px 24px' }}>
-        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 }}>
+      <div style={{ padding: '18px 16px 28px' }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 }}>
           Active Rounds
         </div>
 
@@ -200,10 +200,10 @@ export default function GameScreen() {
               }}
               style={{
                 display: 'block', width: '100%', marginBottom: 14,
-                background: 'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.82) 100%)',
+                background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(17,24,39,0.88) 100%)',
                 border: '1px solid rgba(148,163,184,0.08)',
-                borderRadius: 18, padding: '16px 16px 14px', cursor: 'pointer', textAlign: 'left',
-                boxShadow: '0 8px 24px rgba(15,23,42,0.18)',
+                borderRadius: 20, padding: '16px 16px 14px', cursor: 'pointer', textAlign: 'left',
+                boxShadow: '0 14px 28px rgba(15,23,42,0.2), inset 0 1px 0 rgba(255,255,255,0.02)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -251,7 +251,7 @@ export default function GameScreen() {
       </div>
 
       {/* ── Stats strip — real data ── */}
-      <div style={{ margin: '0 16px 24px', background: 'linear-gradient(180deg, rgba(13,27,46,0.82) 0%, rgba(15,23,42,0.94) 100%)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 18, padding: '16px 0', display: 'flex', justifyContent: 'space-around', textAlign: 'center', boxShadow: '0 6px 18px rgba(15,23,42,0.12)' }}>
+      <div style={{ margin: '0 16px 24px', background: 'linear-gradient(180deg, rgba(13,27,46,0.82) 0%, rgba(15,23,42,0.94) 100%)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 20, padding: '16px 10px', display: 'flex', justifyContent: 'space-around', textAlign: 'center', boxShadow: '0 12px 26px rgba(15,23,42,0.16), inset 0 1px 0 rgba(255,255,255,0.02)' }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>
             {stats ? fmt(stats.totalPlayers) : '…'}

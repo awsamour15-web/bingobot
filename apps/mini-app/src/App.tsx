@@ -72,10 +72,10 @@ function BottomNav() {
   if (location.pathname.includes('/cartela') || location.pathname.includes('/game')) return null;
 
   const tabs = [
-    { to: '/', icon: '🎮', label: 'Play' },
-    { to: '/history', icon: '📋', label: 'History' },
-    { to: '/wallet', icon: '💳', label: 'Wallet' },
-    { to: '/profile', icon: '👤', label: 'Profile' },
+    { to: '/', icon: '�', label: 'Play' },
+    { to: '/history', icon: '🧾', label: 'History' },
+    { to: '/wallet', icon: '💼', label: 'Wallet' },
+    { to: '/profile', icon: '◎', label: 'Profile' },
   ];
 
   return (
@@ -85,19 +85,19 @@ function BottomNav() {
       right: 12,
       bottom: 10,
       zIndex: 100,
-      paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+      paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
       pointerEvents: 'none',
     }}>
       <div style={{
         display: 'flex',
         gap: 8,
         padding: 8,
-        borderRadius: 22,
-        background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.72) 100%)',
+        borderRadius: 24,
+        background: 'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 100%)',
         border: '1px solid rgba(148,163,184,0.12)',
-        boxShadow: '0 12px 32px rgba(2,6,23,0.45)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        boxShadow: '0 18px 38px rgba(2,6,23,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
         pointerEvents: 'auto',
       }}>
         {tabs.map((tab) => {
@@ -112,22 +112,34 @@ function BottomNav() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 4,
+                gap: 5,
                 padding: '8px 10px 7px',
                 borderRadius: 16,
                 textDecoration: 'none',
                 color: isActive ? '#f8fafc' : '#94a3b8',
-                background: isActive ? 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(244,114,182,0.12) 100%)' : 'transparent',
-                border: isActive ? '1px solid rgba(245,158,11,0.35)' : '1px solid transparent',
-                boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(245,158,11,0.12)' : 'none',
+                background: isActive ? 'linear-gradient(135deg, rgba(245,158,11,0.22) 0%, rgba(251,191,36,0.09) 100%)' : 'transparent',
+                border: isActive ? '1px solid rgba(245,158,11,0.34)' : '1px solid transparent',
+                boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 18px rgba(245,158,11,0.12)' : 'none',
                 fontSize: 10,
-                fontWeight: isActive ? 700 : 600,
+                fontWeight: isActive ? 800 : 600,
                 letterSpacing: '0.01em',
                 transition: 'all 0.2s ease',
-                minHeight: 58,
+                minHeight: 64,
               }}
             >
-              <span style={{ fontSize: 18, lineHeight: 1 }}>{tab.icon}</span>
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                borderRadius: 10,
+                background: isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+                boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.02)',
+                fontSize: 18,
+                lineHeight: 1,
+                filter: isActive ? 'drop-shadow(0 6px 8px rgba(245,158,11,0.2))' : 'none',
+              }}>{tab.icon}</span>
               <span>{tab.label}</span>
             </NavLink>
           );
