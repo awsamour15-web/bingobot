@@ -119,10 +119,24 @@ export default function CartelaScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Local picks — purely local until game starts
-  const [picks, setPicks] = useState<Set<number>>(new Set());
+  // Local picks — restore from sessionStorage on mount, persist on change
+  const [picks, setPicks] = useState<Set<number>>(() => {
+    if (!roundId) return new Set();
+    try {
+      const saved = sessionStorage.getItem(`selectedCartelas:${roundId}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const picksRef = useRef<Set<number>>(new Set());
   useEffect(() => { picksRef.current = picks; }, [picks]);
+
+  // Persist picks to sessionStorage whenever they change
+  useEffect(() => {
+    if (!roundId) return;
+    sessionStorage.setItem(`selectedCartelas:${roundId}`, JSON.stringify([...picks]));
+  }, [picks, roundId]);
 
   // Cartelas being released — keep them out of taken until release API confirms
   const pendingReleaseRef = useRef<Set<number>>(new Set());
@@ -188,6 +202,8 @@ export default function CartelaScreen() {
       setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
       // Store confirmed cartela numbers for the game screen (scoped to round)
       sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(result.cartelaNumbers));
+      // Clear the temporary picks storage after successful commit
+      sessionStorage.removeItem(`selectedCartelas:${roundId}`);
       return true;
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
@@ -369,6 +385,8 @@ export default function CartelaScreen() {
       socket.off('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
       clearInterval(poll);
       socket.emit('LEAVE_ROUND' as any, { roundId });
+      // Clear selected cartelas when leaving the round
+      if (roundId) sessionStorage.removeItem(`selectedCartelas:${roundId}`);
     };
   }, [roundId, navigate]);
 
