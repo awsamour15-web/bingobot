@@ -1602,7 +1602,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
     const username = ctx.from.username ?? ctx.from.first_name ?? `user_${ctx.from.id}`;
-    const botUsername = process.env['BOT_USERNAME'] ?? '';
 
     try {
       // Check if user is already a linked agent
@@ -1629,7 +1628,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         // Approved agent
-        const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${existingAgent.id}`;
+        const playerInvite = `https://t.me/${ctx.me.username}?start=ref_agent_${existingAgent.id}`;
         
         await ctx.reply(
           `✅ You are already a partner!\n\n` +
