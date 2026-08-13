@@ -334,10 +334,10 @@ function DepositAccountsSection() {
                   </Td>
                   <Td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <Btn size="sm" variant={a.is_active ? 'danger' : 'success'} onClick={() => handleToggle(a)} disabled={saving[a.id]}>
+                      <Btn size="sm" variant={a.is_active ? 'danger' : 'success'} onClick={() => handleToggle(a)} disabled={saving[a.id] ?? false}>
                         {saving[a.id] ? '…' : a.is_active ? 'Deactivate' : 'Activate'}
                       </Btn>
-                      <Btn size="sm" variant="danger" onClick={() => handleDelete(a.id)} disabled={saving[a.id]}>
+                      <Btn size="sm" variant="danger" onClick={() => handleDelete(a.id)} disabled={saving[a.id] ?? false}>
                         Delete
                       </Btn>
                     </div>
