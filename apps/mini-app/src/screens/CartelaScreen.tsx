@@ -65,14 +65,14 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       disabled={disabled || taken}
       onClick={handleClick}
       style={{
-        padding: '4.4px 0', borderRadius: 7, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 600, fontSize: 13.5,
+        padding: '4.8px 0', borderRadius: 8, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 600, fontSize: 14.9,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'all 0.2s ease',
         transform: isPicked ? 'translateY(-1px) scale(1.02)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '27px',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '30px',
         boxShadow: shadow,
       }}
     >
@@ -655,7 +655,7 @@ export default function CartelaScreen() {
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
-        gap: 7, padding: '16px', alignContent: 'start',
+        gap: 8, padding: '18px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.76) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
@@ -675,54 +675,53 @@ export default function CartelaScreen() {
         <div style={{
           flexShrink: 0, background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)',
           borderTop: '1px solid rgba(255,255,255,0.08)',
-          padding: '16px', gap: 12,
+          padding: '6px 10px', gap: 6,
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
           boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
-          maxHeight: '45%',
+          maxHeight: '26%',
           overflowY: 'auto',
         }}>
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
-              <div key={cartelaNum} style={{ background: 'rgba(15,23,42,0.88)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 12, padding: 12, boxShadow: '0 6px 18px rgba(15,23,42,0.12)' }}>
-                <div style={{ textAlign: 'center', fontSize: 13, color: '#f8fafc', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, letterSpacing: '0.01em' }}>
+              <div key={cartelaNum} style={{ background: 'rgba(15,23,42,0.88)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 8, padding: '5px 5px 4px', boxShadow: '0 4px 10px rgba(15,23,42,0.12)' }}>
+                <div style={{ textAlign: 'center', fontSize: 10, color: '#f8fafc', fontWeight: 700, marginBottom: 3, letterSpacing: '0.01em' }}>
                   Cartela #{cartelaNum}
                 </div>
-                {/* BINGO header row with better visibility */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginBottom: 4 }}>
+                {/* BINGO header row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 2 }}>
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
                       background: 'linear-gradient(180deg, ' + COL_COLORS[ci] + ' 0%, rgba(15,23,42,0.82) 100%)', color: '#fff', fontWeight: 900,
-                      fontSize: 11, textAlign: 'center', borderRadius: 6, padding: '4px 2px',
-                      minHeight: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(15,23,42,0.2)',
+                      fontSize: 8, textAlign: 'center', borderRadius: 3, padding: '2px 0',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>{col}</div>
                   ))}
                 </div>
-                {/* 5×5 grid with improved readability */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3 }}>
+                {/* 5×5 grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
                   {grid ? grid.map((val, idx) => {
                     const isFree = idx === 12;
                     return (
                       <div key={idx} style={{
-                        background: isFree ? 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)' : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.88) 100%)',
+                        background: isFree ? 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)' : 'rgba(30,41,59,0.96)',
                         color: isFree ? '#fff' : '#e2e8f0',
-                        fontWeight: 900,
-                        fontSize: 11,
-                        textAlign: 'center', borderRadius: 6,
-                        padding: '4px 0', border: '1px solid ' + (isFree ? 'rgba(52,211,153,0.35)' : 'rgba(148,163,184,0.12)'),
-                        minWidth: 0, minHeight: '26px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isFree ? '0 0 8px rgba(52,211,153,0.3)' : 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                        fontWeight: 700, fontSize: 9,
+                        textAlign: 'center', borderRadius: 3,
+                        border: '1px solid ' + (isFree ? 'rgba(52,211,153,0.35)' : 'rgba(148,163,184,0.1)'),
+                        minHeight: '18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         {isFree ? '★' : val}
                       </div>
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: 'linear-gradient(180deg, rgba(30,41,59,0.92) 0%, rgba(15,23,42,0.82) 100%)', borderRadius: 6, padding: '4px 0',
-                      border: '1px solid rgba(148,163,184,0.12)', minWidth: 0, minHeight: '26px',
-                      fontSize: 11, textAlign: 'center', color: '#475569',
+                      background: 'rgba(30,41,59,0.9)', borderRadius: 3,
+                      border: '1px solid rgba(148,163,184,0.1)', minHeight: '18px',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, color: '#475569',
                     }}>·</div>
                   ))}
                 </div>
