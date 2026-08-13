@@ -126,6 +126,9 @@ export default function CartelaScreen() {
 
   // Cartelas being released — keep them out of taken until release API confirms
   const pendingReleaseRef = useRef<Set<number>>(new Set());
+  // Cartelas recently released may still be reported as taken by stale server responses
+  // for a short time; allow immediate re-selection until the server catches up.
+  const recentlyReleasedRef = useRef<Set<number>>(new Set());
 
   // Track cartelas reserved by OTHER users (optimistic, not yet committed to DB)
   const [reservedByOthers, setReservedByOthers] = useState<Set<number>>(new Set());
@@ -344,12 +347,13 @@ export default function CartelaScreen() {
           if (!prev) return fresh;
           const localPicks = picksRef.current;
           const pendingRelease = pendingReleaseRef.current;
-          // Exclude local picks AND cartelas being released from the taken set.
-          // Union prev.taken with server taken so socket-added entries aren't lost
-          // if the server response is slightly behind.
+          const recentlyReleased = recentlyReleasedRef.current;
+          // Exclude local picks, cartelas being released, and just-released cartelas from the
+          // server-taken set. These can be stale for a few hundred ms after unselect and must
+          // not block the user from re-selecting the same cartela immediately.
           const merged = new Set([...prev.taken, ...fresh.taken]);
-          const takenFromServer = [...merged].filter(n => !localPicks.has(n) && !pendingRelease.has(n));
-          const available = fresh.available.filter(n => !localPicks.has(n) && !merged.has(n));
+          const takenFromServer = [...merged].filter(n => !localPicks.has(n) && !pendingRelease.has(n) && !recentlyReleased.has(n));
+          const available = [...new Set([...fresh.available, ...Array.from(recentlyReleased)])].filter(n => !localPicks.has(n) && !takenFromServer.includes(n));
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
@@ -429,25 +433,28 @@ export default function CartelaScreen() {
   }, [manualTrigger, roundId, navigate]);
 
   function togglePick(num: number) {
-    // CRITICAL FIX: Block taken cartelas at the handler level
-    if (availability && availability.taken.includes(num)) {
+    const wasRecentlyReleased = recentlyReleasedRef.current.has(num);
+
+    // CRITICAL FIX: Block taken cartelas at the handler level unless it was just released
+    // by this user and the server is still reporting stale taken state.
+    if (availability && availability.taken.includes(num) && !wasRecentlyReleased) {
       // Provide user feedback
       setBalanceAlert(`Cartela ${num} is already taken by another player.`);
       return; // Cartela is taken - do nothing
     }
-    
+
     if (picksRef.current.has(num)) {
       const next = new Set(picksRef.current);
       next.delete(num);
       picksRef.current = next;
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-      
+
       // INSTANT FEEDBACK: Emit WebSocket event IMMEDIATELY for other players
       if (roundId && socket.connected) {
         socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
       }
-      
+
       // Update availability immediately - move cartela from taken to available
       setAvailability(prev => {
         if (!prev) return prev;
@@ -456,18 +463,25 @@ export default function CartelaScreen() {
           available: [...prev.available, num].sort((a, b) => a - b)
         };
       });
-      
-      // Release reservation via API — guard poll from marking it taken during flight
+
+      // Mark as recently released so stale server responses do not re-block the same cartela
+      // while the release request is in flight.
+      recentlyReleasedRef.current.add(num);
       if (roundId) {
         pendingReleaseRef.current.add(num);
         releaseCartela(roundId, num)
           .catch(err => console.warn('Failed to release cartela reservation:', err))
-          .finally(() => pendingReleaseRef.current.delete(num));
+          .finally(() => {
+            pendingReleaseRef.current.delete(num);
+            window.setTimeout(() => {
+              recentlyReleasedRef.current.delete(num);
+            }, 1500);
+          });
       }
       return;
     }
     if (picksRef.current.size >= MAX_SELECT) return;
-    
+
     // Check balance
     if (round && balances) {
       const stake = Number(round.stake);
@@ -478,9 +492,10 @@ export default function CartelaScreen() {
         return;
       }
     }
-    
-    // CRITICAL FIX: Double-check server-side availability before allowing selection
-    if (!availability?.available.includes(num)) {
+
+    // CRITICAL FIX: Double-check server-side availability before allowing selection,
+    // but never reject the cartela immediately after a user just released it.
+    if (!availability?.available.includes(num) && !wasRecentlyReleased) {
       // Cartela is not available - refresh and show message
       setBalanceAlert(`Cartela ${num} is not available. Refreshing...`);
       if (roundId) {
