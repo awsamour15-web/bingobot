@@ -93,6 +93,14 @@ export default function LiveGameScreen() {
     };
   }, []);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showSyncBanner, setShowSyncBanner] = useState(false);
+  const lastUpdateRef = useRef<number>(Date.now());
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    window.location.reload();
+  }, []);
 
   const [game, setGame] = useState<GameState>({
     phase: 'waiting',
@@ -503,7 +511,6 @@ export default function LiveGameScreen() {
   const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid as number[]));
   const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
   const isWatching = cartelasLoaded && myCartelas.length === 0;
-  const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
   // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
   const autoClaimed = useRef(false);
@@ -516,18 +523,59 @@ export default function LiveGameScreen() {
   }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending]);
 
   if (loading) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', flexDirection: 'column', gap: 16 }}>
       Loading game...
     </div>
   );
   if (error || !round) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center' }}>
-      {error ?? 'Could not load game'}
+    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
+        {error ?? 'Could not load game'}
+      </div>
+      <button
+        onClick={handleRefresh}
+        disabled={refreshing}
+        style={{
+          padding: '10px 24px',
+          fontSize: 14,
+          fontWeight: 700,
+          borderRadius: 8,
+          border: 'none',
+          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+          color: '#fff',
+          cursor: refreshing ? 'not-allowed' : 'pointer',
+          opacity: refreshing ? 0.7 : 1,
+          boxShadow: '0 4px 12px rgba(34,197,94,0.3)',
+          transition: 'all 0.3s ease',
+        }}
+      >
+        {refreshing ? '⟳ Refreshing...' : '↻ Refresh Page'}
+      </button>
     </div>
   );
 
   const lastCol = game.lastCalled ? getColLabel(game.lastCalled) : null;
   void lastCol; // kept for potential future use
+  const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
+
+  // Detect stuck game (no updates for 20 seconds)
+  useEffect(() => {
+    // Update lastUpdate whenever game state changes (called numbers, phase change, etc)
+    lastUpdateRef.current = Date.now();
+  }, [game.calledOrder.length, game.phase, game.playerCount]);
+
+  useEffect(() => {
+    const updateTimer = setInterval(() => {
+      const timeSinceUpdate = Date.now() - lastUpdateRef.current;
+      if (game.phase === 'active' && timeSinceUpdate > 20000 && !gameEnded) {
+        setShowSyncBanner(true);
+      } else {
+        setShowSyncBanner(false);
+      }
+    }, 1000);
+    return () => clearInterval(updateTimer);
+  }, [game.phase, gameEnded]);
 
   return (
     <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -540,6 +588,40 @@ export default function LiveGameScreen() {
           {soundOn ? '🔊' : '🔇'}
         </button>
       </div>
+
+      {/* ── Sync/Refresh banner — shows when game is stuck ────────────────── */}
+      {showSyncBanner && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(217,119,6,0.1) 100%)',
+          border: '1.5px solid rgba(245,158,11,0.3)',
+          padding: '10px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexShrink: 0,
+          gap: 12,
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', flex: 1 }}>
+            ⚠️ Connection may be unstable
+          </span>
+          <button
+            onClick={handleRefresh}
+            style={{
+              padding: '6px 14px',
+              fontSize: 12,
+              fontWeight: 700,
+              borderRadius: 6,
+              border: 'none',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              color: '#0f172a',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 8px rgba(251,191,36,0.3)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            ↻ Sync
+          </button>
+        </div>
+      )}
 
       {/* ── Stats row ───────────────────────────────────────────────────────── */}
       <div style={{ background: 'rgba(15,23,42,0.75)', display: 'flex', borderBottom: '1px solid rgba(148,163,184,0.08)', flexShrink: 0 }}>
