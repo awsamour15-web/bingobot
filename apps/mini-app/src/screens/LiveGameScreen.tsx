@@ -621,38 +621,66 @@ export default function LiveGameScreen() {
             )}
           </div>
 
-          {/* ── Called Numbers — scrollable history strip ── */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '4px 6px 4px' }}>
-            <div style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>
-              Called ({game.calledOrder.length}/75)
+          {/* ── Bingo Numbers Reference Grid ── */}
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.15)', flexShrink: 0, padding: '12px 8px', background: 'rgba(10,14,26,0.6)' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, fontWeight: 700 }}>
+              📊 Bingo Numbers Reference
             </div>
-            <div style={{
-              display: 'flex', gap: 3, overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              paddingBottom: 2,
-              scrollbarWidth: 'none',
-            }}>
-              {game.calledOrder.length === 0 ? (
-                <div style={{ color: '#334155', fontSize: 10, padding: '4px 0' }}>—</div>
-              ) : (
-                [...game.calledOrder].reverse().map((num, idx) => {
-                  const isNewest = idx === 0;
-                  const col = getColIndex(num);
-                  return (
-                    <div key={`h-${num}-${idx}`} style={{
-                      flexShrink: 0,
-                      width: 26, height: 26, borderRadius: '50%',
-                      background: isNewest ? COL_COLORS[col] : `${COL_COLORS[col]}55`,
-                      border: `1px solid ${isNewest ? COL_COLORS[col]! : 'rgba(255,255,255,0.08)'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 8, fontWeight: isNewest ? 900 : 600,
-                      color: isNewest ? '#fff' : '#94a3b8',
-                    }}>
-                      {num}
-                    </div>
-                  );
-                })
-              )}
+            
+            {/* BINGO columns header */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 8 }}>
+              {COLS.map((col, idx) => (
+                <div key={col} style={{
+                  background: COL_COLORS[idx],
+                  color: '#fff',
+                  padding: '4px 0',
+                  textAlign: 'center',
+                  fontWeight: 900,
+                  fontSize: 10,
+                  borderRadius: 4,
+                  boxShadow: `0 0 12px ${COL_COLORS[idx]}66`,
+                }}>
+                  {col}
+                </div>
+              ))}
+            </div>
+
+            {/* Numbers grid - 15 rows, 5 columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
+              {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
+                const called = game.calledNumbers.has(num);
+                const col = getColIndex(num);
+                const isNewest = num === game.lastCalled;
+                
+                return (
+                  <div key={num} style={{
+                    aspectRatio: '1',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: called 
+                      ? isNewest 
+                        ? `linear-gradient(135deg, ${COL_COLORS[col]}, ${COL_COLORS[col]}dd)` 
+                        : `${COL_COLORS[col]}44`
+                      : 'rgba(255,255,255,0.06)',
+                    color: called ? '#fff' : '#cbd5e1',
+                    border: isNewest ? `2px solid ${COL_COLORS[col]}` : called ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 5,
+                    fontSize: 8,
+                    fontWeight: called ? 800 : 500,
+                    cursor: 'default',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isNewest ? `0 0 10px ${COL_COLORS[col]}88` : called ? `inset 0 0 4px ${COL_COLORS[col]}44` : 'none',
+                  }}>
+                    {num}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Stats bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: '6px 0', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: 9, color: '#94a3b8' }}>
+              <span>Called: <span style={{ color: '#22c55e', fontWeight: 700 }}>{game.calledOrder.length}/75</span></span>
+              <span>Last: <span style={{ color: '#fbbf24', fontWeight: 700 }}>{game.lastCalled ?? '—'}</span></span>
+              <span>Remaining: <span style={{ color: '#64748b', fontWeight: 700 }}>{75 - game.calledOrder.length}</span></span>
             </div>
           </div>
 
