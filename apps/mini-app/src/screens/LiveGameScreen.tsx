@@ -621,68 +621,56 @@ export default function LiveGameScreen() {
             )}
           </div>
 
-          {/* ── Called Numbers by BINGO Column ── */}
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '10px 8px', background: 'rgba(10,14,26,0.5)' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, fontWeight: 700 }}>
-              📢 Called Numbers ({game.calledOrder.length}/75)
+          {/* ── All 75 Bingo Numbers Grid ── */}
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', flexShrink: 0, padding: '8px', background: 'rgba(10,14,26,0.5)', maxHeight: '340px', overflowY: 'auto' }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, fontWeight: 700 }}>
+              📊 Called: {game.calledOrder.length}/75
             </div>
             
-            {/* BINGO columns with called numbers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-              {COLS.map((col, colIdx) => {
-                const start = colIdx * 15 + 1;
-                const end = start + 14;
-                const numsInCol = Array.from({ length: 15 }, (_, i) => start + i);
-                const calledInCol = numsInCol.filter(n => game.calledNumbers.has(n));
+            {/* BINGO column headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 4 }}>
+              {COLS.map((col, idx) => (
+                <div key={col} style={{
+                  background: COL_COLORS[idx],
+                  color: '#fff',
+                  padding: '3px 0',
+                  textAlign: 'center',
+                  fontWeight: 900,
+                  fontSize: 9,
+                  borderRadius: 3,
+                  boxShadow: `0 0 8px ${COL_COLORS[idx]}66`,
+                }}>
+                  {col}
+                </div>
+              ))}
+            </div>
+
+            {/* 75 numbers in 5x15 grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
+              {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
+                const called = game.calledNumbers.has(num);
+                const col = getColIndex(num);
+                const isNewest = num === game.lastCalled;
                 
                 return (
-                  <div key={col} style={{
-                    background: `linear-gradient(135deg, ${COL_COLORS[colIdx]}22 0%, ${COL_COLORS[colIdx]}11 100%)`,
-                    border: `1px solid ${COL_COLORS[colIdx]}44`,
-                    borderRadius: 8,
-                    padding: '8px',
-                    minHeight: '100px',
+                  <div key={num} style={{
+                    aspectRatio: '1',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: called 
+                      ? isNewest 
+                        ? `linear-gradient(135deg, ${COL_COLORS[col]}, ${COL_COLORS[col]}dd)` 
+                        : `${COL_COLORS[col]}55`
+                      : 'rgba(255,255,255,0.07)',
+                    color: called ? '#fff' : '#cbd5e1',
+                    border: isNewest ? `2px solid #fff` : called ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 4,
+                    fontSize: 7.5,
+                    fontWeight: called ? 800 : 500,
+                    cursor: 'default',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isNewest ? `0 0 12px ${COL_COLORS[col]}88` : called ? `inset 0 0 4px rgba(0,0,0,0.3)` : 'none',
                   }}>
-                    {/* Column header */}
-                    <div style={{
-                      background: COL_COLORS[colIdx],
-                      color: '#fff',
-                      padding: '4px 0',
-                      textAlign: 'center',
-                      fontWeight: 900,
-                      fontSize: 11,
-                      borderRadius: 4,
-                      marginBottom: 6,
-                      boxShadow: `0 0 8px ${COL_COLORS[colIdx]}66`,
-                    }}>
-                      {col} ({start}-{end})
-                    </div>
-                    
-                    {/* Called numbers in this column */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {calledInCol.length === 0 ? (
-                        <div style={{ fontSize: 9, color: '#64748b', width: '100%', textAlign: 'center', padding: '4px 0' }}>—</div>
-                      ) : (
-                        calledInCol.map(num => (
-                          <div key={num} style={{
-                            width: '28px', height: '28px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: num === game.lastCalled 
-                              ? `linear-gradient(135deg, ${COL_COLORS[colIdx]}, ${COL_COLORS[colIdx]}dd)`
-                              : `${COL_COLORS[colIdx]}66`,
-                            color: '#fff',
-                            borderRadius: 4,
-                            fontSize: 9,
-                            fontWeight: num === game.lastCalled ? 900 : 700,
-                            border: num === game.lastCalled ? `2px solid #fff` : 'none',
-                            boxShadow: num === game.lastCalled ? `0 0 10px ${COL_COLORS[colIdx]}88` : 'none',
-                            transition: 'all 0.2s ease',
-                          }}>
-                            {num}
-                          </div>
-                        ))
-                      )}
-                    </div>
+                    {num}
                   </div>
                 );
               })}
