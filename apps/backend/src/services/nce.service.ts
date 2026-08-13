@@ -216,13 +216,13 @@ export class NumberCallingEngine {
       }
     };
 
-    // Set a sentinel timer handle so callNext()'s activeTimers guard passes on
-    // the very first invocation. The real handle is set inside callNext() after
-    // the first number is processed; clearTimeout(sentinel) is a no-op.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.activeTimers.set(roundId, null as any);
+    // Delay the first call by 1 second after round start, then let callNext()
+    // take over (it re-reads the configured interval for subsequent calls).
+    const initialHandle = setTimeout(() => {
+      void callNext();
+    }, 1_000);
+    this.activeTimers.set(roundId, initialHandle);
     this.startingRounds.delete(roundId);
-    void callNext();
     } catch (err) {
       this.startingRounds.delete(roundId);
       this.activeTimers.delete(roundId);

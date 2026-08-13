@@ -195,11 +195,17 @@ export function AgentsPage() {
                   </td>
                   <td style={{ padding: '10px 12px' }}>
                     <span style={{
-                      background: a.isActive ? '#14532d' : '#7f1d1d',
-                      color: a.isActive ? '#4ade80' : '#f87171',
+                      background: a.approvalStatus === 'approved' && a.isActive ? '#14532d'
+                        : a.approvalStatus === 'rejected' ? '#450a0a'
+                        : '#7f1d1d',
+                      color: a.approvalStatus === 'approved' && a.isActive ? '#4ade80'
+                        : a.approvalStatus === 'rejected' ? '#fca5a5'
+                        : '#fbbf24',
                       borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700,
                     }}>
-                      {a.isActive ? 'Active' : 'Suspended'}
+                      {a.approvalStatus === 'pending' ? 'Pending'
+                        : a.approvalStatus === 'rejected' ? 'Rejected'
+                        : a.isActive ? 'Active' : 'Suspended'}
                     </span>
                   </td>
                   <td style={{ padding: '10px 12px', color: C.muted, fontSize: 12 }}>
