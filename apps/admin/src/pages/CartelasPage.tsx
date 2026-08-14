@@ -3,30 +3,55 @@ import type { CartelaDefinition } from '../lib/api';
 import { getCartelas, getCartela, createCartela, updateCartela, deleteCartela } from '../lib/api';
 import {
   C, Btn, Card, CardHeader, Table, Th, Td,
-  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, StatCard,
 } from '../components/ui';
 
-// ─── Bingo grid column labels ─────────────────────────────────────────────────
 const COLS = ['B', 'I', 'N', 'G', 'O'];
 
-// ─── Grid display ─────────────────────────────────────────────────────────────
-function CartelaGrid({ grid }: { grid: number[] }) {
+function CartelaGrid({ grid, compact = false }: { grid: number[]; compact?: boolean }) {
+  const cellSize = compact ? 26 : 30;
+  const labelSize = compact ? 9 : 11;
+
   return (
-    <div style={{ display: 'inline-grid', gridTemplateColumns: 'repeat(5, 32px)', gap: 2 }}>
+    <div
+      style={{
+        display: 'inline-grid',
+        gridTemplateColumns: `repeat(5, ${cellSize}px)`,
+        gap: 3,
+        padding: compact ? 4 : 6,
+        background: 'var(--c-bg)',
+        border: '1px solid var(--c-border)',
+        borderRadius: 12,
+      }}
+    >
       {COLS.map((c) => (
         <div key={c} style={{
-          width: 32, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: C.primary, background: 'var(--c-bg)',
-          borderRadius: 4,
+          width: cellSize,
+          height: compact ? 18 : 22,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: labelSize,
+          fontWeight: 800,
+          color: C.primary,
+          borderRadius: 6,
+          background: 'rgba(99,102,241,0.08)',
         }}>{c}</div>
       ))}
       {grid.map((val, i) => (
         <div key={i} style={{
-          width: 32, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 500,
-          background: i === 12 ? C.primary : 'var(--c-bg-card)',
+          width: cellSize,
+          height: compact ? 24 : 28,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: compact ? 10 : 11,
+          fontWeight: 700,
+          background: i === 12 ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'var(--c-bg-card)',
           color: i === 12 ? '#fff' : 'var(--c-text)',
-          border: '1px solid var(--c-border)', borderRadius: 4,
+          border: i === 12 ? '1px solid rgba(99,102,241,0.4)' : '1px solid var(--c-border)',
+          borderRadius: 6,
+          boxShadow: i === 12 ? '0 6px 14px rgba(99,102,241,0.18)' : 'none',
         }}>
           {i === 12 ? '★' : val}
         </div>
@@ -35,7 +60,6 @@ function CartelaGrid({ grid }: { grid: number[] }) {
   );
 }
 
-// ─── Grid editor — 25 number inputs ──────────────────────────────────────────
 function GridEditor({ value, onChange }: { value: number[]; onChange: (g: number[]) => void }) {
   function set(i: number, v: string) {
     const n = parseInt(v, 10);
@@ -43,27 +67,36 @@ function GridEditor({ value, onChange }: { value: number[]; onChange: (g: number
     next[i] = isNaN(n) ? 0 : n;
     onChange(next);
   }
+
   return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 6 }}>
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
         {COLS.map((c) => (
-          <div key={c} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.primary }}>{c}</div>
+          <div key={c} style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, color: C.primary }}>{c}</div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
         {value.map((v, i) => (
           i === 12
             ? <div key={i} style={{
-                ...inputCss, textAlign: 'center', background: C.primary,
-                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16, borderRadius: 6,
+                minHeight: 42,
+                borderRadius: 10,
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                fontWeight: 800,
+                boxShadow: '0 8px 20px rgba(99,102,241,0.18)',
               }}>★</div>
             : <input
                 key={i}
                 type="number"
                 value={v || ''}
                 onChange={(e) => set(i, e.target.value)}
-                style={{ ...inputCss, textAlign: 'center', padding: '6px 2px' }}
+                style={{ ...inputCss, textAlign: 'center', padding: '8px 2px', minHeight: 42 }}
                 min={1}
                 max={99}
               />
@@ -73,21 +106,28 @@ function GridEditor({ value, onChange }: { value: number[]; onChange: (g: number
   );
 }
 
-// ─── Modal wrapper ─────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.62)', zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
+      backdropFilter: 'blur(2px)',
     }}>
       <div style={{
-        background: 'var(--c-bg-card)', border: '1px solid var(--c-border)', borderRadius: 12,
-        padding: 24, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
+        background: 'var(--c-bg-card)',
+        border: '1px solid var(--c-border)',
+        borderRadius: 18,
+        padding: 24,
+        width: '100%',
+        maxWidth: 560,
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--c-text)' }}>{title}</span>
+          <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--c-text)' }}>{title}</span>
           <button onClick={onClose} style={{
-            background: 'none', border: 'none', cursor: 'pointer', fontSize: 20,
+            background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 22,
             color: 'var(--c-muted)', lineHeight: 1,
           }}>×</button>
         </div>
@@ -97,14 +137,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-// ─── Create / Edit form ───────────────────────────────────────────────────────
-function CartelaForm({
-  initial, onSaved, onClose,
-}: {
-  initial?: CartelaDefinition;
-  onSaved: () => void;
-  onClose: () => void;
-}) {
+function CartelaForm({ initial, onSaved, onClose }: { initial?: CartelaDefinition; onSaved: () => void; onClose: () => void }) {
   const isEdit = !!initial;
   const emptyGrid = Array.from({ length: 25 }, (_, i) => (i === 12 ? 0 : 0));
   const [num, setNum] = useState(initial ? String(initial.cartela_number) : '');
@@ -115,11 +148,18 @@ function CartelaForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const n = parseInt(num, 10);
-    if (!isEdit && (isNaN(n) || n < 1)) { setError('Cartela number must be a positive integer'); return; }
-    if (grid.some((v, i) => i !== 12 && (isNaN(v) || v < 1))) {
-      setError('All cells (except free space) must have a number ≥ 1'); return;
+    if (!isEdit && (isNaN(n) || n < 1)) {
+      setError('Cartela number must be a positive integer');
+      return;
     }
-    setLoading(true); setError(null);
+    if (grid.some((v, i) => i !== 12 && (isNaN(v) || v < 1))) {
+      setError('All cells (except free space) must have a number ≥ 1');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
     try {
       if (isEdit) {
         await updateCartela(initial!.cartela_number, grid);
@@ -135,30 +175,34 @@ function CartelaForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 18 }}>
       {error && <Alert type="error">{error}</Alert>}
       {!isEdit && (
         <Field label="Cartela Number">
           <input
             style={inputCss}
-            type="number" min={1} max={9999}
-            value={num} onChange={(e) => setNum(e.target.value)}
+            type="number"
+            min={1}
+            max={9999}
+            value={num}
+            onChange={(e) => setNum(e.target.value)}
             required
           />
         </Field>
       )}
-      <Field label="Grid (25 cells, center = free space)">
+
+      <Field label="Grid layout (25 cells, center is free space)">
         <GridEditor value={grid} onChange={setGrid} />
       </Field>
-      <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-        <Btn type="submit" disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Update' : 'Create'}</Btn>
+        <Btn type="submit" disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Update Cartela' : 'Create Cartela'}</Btn>
       </div>
     </form>
   );
 }
 
-// ─── View modal ───────────────────────────────────────────────────────────────
 function ViewModal({ num, onClose }: { num: number; onClose: () => void }) {
   const [cartela, setCartela] = useState<CartelaDefinition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,14 +222,15 @@ function ViewModal({ num, onClose }: { num: number; onClose: () => void }) {
       {cartela && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <CartelaGrid grid={cartela.grid} />
-          <p style={{ fontSize: 12, color: 'var(--c-muted)' }}>Numbers: {cartela.grid.filter((_, i) => i !== 12).join(', ')}</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--c-muted)', textAlign: 'center' }}>
+            Numbers: {cartela.grid.filter((_, i) => i !== 12).join(', ')}
+          </p>
         </div>
       )}
     </Modal>
   );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
 export function CartelasPage() {
   const [cartelas, setCartelas] = useState<CartelaDefinition[]>([]);
   const [total, setTotal] = useState(0);
@@ -205,7 +250,8 @@ export function CartelasPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const load = useCallback(async (p: number, s: string) => {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const res = await getCartelas(p, s || undefined);
       setCartelas(res.items);
@@ -226,7 +272,8 @@ export function CartelasPage() {
 
   async function handleDelete() {
     if (deleteTarget === null) return;
-    setDeleteLoading(true); setDeleteError(null);
+    setDeleteLoading(true);
+    setDeleteError(null);
     try {
       await deleteCartela(deleteTarget);
       setDeleteTarget(null);
@@ -238,21 +285,48 @@ export function CartelasPage() {
     }
   }
 
+  const summaryCards = [
+    { label: 'Total cartelas', value: total, color: '#6366f1', icon: '🎴' },
+    { label: 'Page size', value: pageSize, color: '#22c55e', icon: '📦' },
+    { label: 'Visible rows', value: cartelas.length, color: '#3b82f6', icon: '📋' },
+    { label: 'Free center', value: '★', color: '#f59e0b', icon: '🎯' },
+  ];
+
   return (
-    <div>
+    <div className="fade-in">
       <PageHeader title="Cartelas" action={<Btn onClick={() => setShowCreate(true)}>+ New Cartela</Btn>} />
-      <p style={{ color: 'var(--c-muted)', fontSize: 13, marginBottom: 16, marginTop: -16 }}>{total} cartela definitions</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+        {summaryCards.map((card) => (
+          <StatCard key={card.label} icon={card.icon} label={card.label} value={card.value} color={card.color} />
+        ))}
+      </div>
 
       {error && <Alert type="error">{error}</Alert>}
 
       <Card>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border)' }}>
-          <input
-            style={{ ...inputCss, maxWidth: 260 }}
-            placeholder="Search by number…"
-            value={search}
-            onChange={handleSearch}
-          />
+        <CardHeader
+          title="Cartela library"
+          subtitle="Manage bingo templates and preview layouts before publishing"
+          action={<div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-muted)' }}>{total} total</div>}
+        />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+          <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 320 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14 }}>🔎</span>
+            <input
+              style={{ ...inputCss, paddingLeft: 36 }}
+              placeholder="Search by number…"
+              value={search}
+              onChange={handleSearch}
+            />
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 600 }}>
+              Page {page} of {totalPages}
+            </div>
+          )}
         </div>
 
         <Table>
@@ -260,7 +334,7 @@ export function CartelasPage() {
             <tr>
               <Th>#</Th>
               <Th>Preview</Th>
-              <Th>Numbers (first 10)</Th>
+              <Th>Numbers</Th>
               <Th right>Actions</Th>
             </tr>
           </thead>
@@ -269,13 +343,16 @@ export function CartelasPage() {
             {!loading && cartelas.length === 0 && <TrEmpty cols={4} message="No cartelas found" />}
             {!loading && cartelas.map((c) => (
               <tr key={c.cartela_number}>
-                <Td style={{ fontWeight: 600 }}>{c.cartela_number}</Td>
-                <Td><CartelaGrid grid={c.grid} /></Td>
-                <Td style={{ fontSize: 12, color: 'var(--c-muted)' }}>
-                  {c.grid.filter((_, i) => i !== 12).slice(0, 10).join(', ')}…
+                <Td style={{ fontWeight: 800, color: 'var(--c-text)' }}>{c.cartela_number}</Td>
+                <Td>
+                  <CartelaGrid grid={c.grid} compact />
+                </Td>
+                <Td style={{ fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.6 }}>
+                  {c.grid.filter((_, i) => i !== 12).slice(0, 10).join(', ')}
+                  {c.grid.filter((_, i) => i !== 12).length > 10 ? '…' : ''}
                 </Td>
                 <Td style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     <Btn size="sm" variant="ghost" onClick={() => setViewNum(c.cartela_number)}>View</Btn>
                     <Btn size="sm" variant="outline" onClick={() => setEditCartela(c)}>Edit</Btn>
                     <Btn size="sm" variant="danger" onClick={() => { setDeleteTarget(c.cartela_number); setDeleteError(null); }}>Delete</Btn>
@@ -286,22 +363,16 @@ export function CartelasPage() {
           </tbody>
         </Table>
 
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '18px 0 6px' }}>
             <Btn size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</Btn>
-            <span style={{ alignSelf: 'center', fontSize: 13, color: 'var(--c-muted)' }}>
-              Page {page} of {totalPages}
-            </span>
             <Btn size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</Btn>
           </div>
         )}
       </Card>
 
-      {/* View modal */}
       {viewNum !== null && <ViewModal num={viewNum} onClose={() => setViewNum(null)} />}
 
-      {/* Edit modal */}
       {editCartela && (
         <Modal title={`Edit Cartela #${editCartela.cartela_number}`} onClose={() => setEditCartela(null)}>
           <CartelaForm
@@ -312,7 +383,6 @@ export function CartelasPage() {
         </Modal>
       )}
 
-      {/* Create modal */}
       {showCreate && (
         <Modal title="New Cartela" onClose={() => setShowCreate(false)}>
           <CartelaForm
@@ -322,7 +392,6 @@ export function CartelasPage() {
         </Modal>
       )}
 
-      {/* Delete confirm modal */}
       {deleteTarget !== null && (
         <Modal title="Delete Cartela" onClose={() => setDeleteTarget(null)}>
           <p style={{ color: 'var(--c-text)', marginBottom: 16 }}>
