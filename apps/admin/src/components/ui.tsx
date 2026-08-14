@@ -114,10 +114,11 @@ export function Badge({ children, variant = 'neutral' }: { children: React.React
 export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: 'var(--c-bg-card)',
+      background: 'linear-gradient(180deg, var(--c-bg-card), rgba(148, 163, 184, 0.02))',
       border: '1px solid var(--c-border)',
-      borderRadius: 12,
+      borderRadius: 18,
       padding: 24,
+      boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
       ...style,
     }}>
       {children}
@@ -144,29 +145,32 @@ export function CardHeader({ title, subtitle, action }: { title: string; subtitl
 export function StatCard({ label, value, color, icon }: { label: string; value: string | number; color?: string; icon?: string }) {
   return (
     <div style={{
-      background: 'var(--c-bg-card)',
+      background: 'linear-gradient(180deg, var(--c-bg-card), rgba(148, 163, 184, 0.02))',
       border: '1px solid var(--c-border)',
-      borderRadius: 12,
-      padding: '20px 24px',
+      borderRadius: 18,
+      padding: '20px 22px',
       display: 'flex',
       alignItems: 'center',
       gap: 16,
+      boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+      minHeight: 110,
     }}>
       {icon && (
         <div style={{
-          width: 44, height: 44, borderRadius: 10,
+          width: 48, height: 48, borderRadius: 14,
           background: color ? `${color}22` : 'var(--c-bg)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 20, flexShrink: 0,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
         }}>
           {icon}
         </div>
       )}
       <div>
-        <div style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+        <div style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           {label}
         </div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: color ?? 'var(--c-text)', lineHeight: 1 }}>
+        <div style={{ fontSize: 28, fontWeight: 800, color: color ?? 'var(--c-text)', lineHeight: 1.1, letterSpacing: '-0.04em' }}>
           {value}
         </div>
       </div>
@@ -368,13 +372,13 @@ export function DarkToggle({ dark, onToggle }: { dark: boolean; onToggle: () => 
 
 export const GLOBAL_CSS = `
   :root {
-    --c-bg: #f8fafc;
-    --c-bg-card: #ffffff;
+    --c-bg: #f5f7fb;
+    --c-bg-card: rgba(255, 255, 255, 0.85);
     --c-border: #e2e8f0;
     --c-border-hover: #cbd5e1;
     --c-text: #0f172a;
     --c-text-secondary: #475569;
-    --c-muted: #94a3b8;
+    --c-muted: #64748b;
     --c-sidebar: #0f172a;
     --c-sidebar-hover: #1e293b;
     --c-header: #ffffff;
@@ -389,46 +393,55 @@ export const GLOBAL_CSS = `
     --c-tr-hover: #f8fafc;
   }
   [data-theme="dark"] {
-    --c-bg: #0f172a;
-    --c-bg-card: #1e293b;
-    --c-border: #334155;
-    --c-border-hover: #475569;
-    --c-text: #f1f5f9;
-    --c-text-secondary: #94a3b8;
-    --c-muted: #64748b;
+    --c-bg: #020817;
+    --c-bg-card: rgba(15, 23, 42, 0.9);
+    --c-border: #1e293b;
+    --c-border-hover: #334155;
+    --c-text: #e2e8f0;
+    --c-text-secondary: #cbd5e1;
+    --c-muted: #94a3b8;
     --c-sidebar: #020617;
-    --c-sidebar-hover: #1e293b;
-    --c-header: #1e293b;
-    --c-table-head: #0f172a;
+    --c-sidebar-hover: #111827;
+    --c-header: #0f172a;
+    --c-table-head: #0b1220;
     --c-input-bg: #0f172a;
-    --c-badge-neutral-bg: #334155;
+    --c-badge-neutral-bg: #1e293b;
     --c-primary-light: #312e81;
     --c-danger-light: #450a0a;
     --c-success-light: #052e16;
     --c-warning-light: #451a03;
     --c-info-light: #172554;
-    --c-tr-hover: #1e293b;
+    --c-tr-hover: #111827;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-    background: var(--c-bg);
+    background:
+      radial-gradient(circle at top left, rgba(99, 102, 241, 0.08), transparent 25%),
+      linear-gradient(180deg, var(--c-bg), var(--c-bg));
     color: var(--c-text);
     transition: background 0.2s, color 0.2s;
+  }
+  a, button, input, select, textarea {
+    font: inherit;
   }
   input, select, textarea {
     color: var(--c-text);
     background: var(--c-input-bg);
-    transition: background 0.2s, border-color 0.15s;
+    transition: background 0.2s, border-color 0.15s, box-shadow 0.15s;
   }
   input:focus, select:focus, textarea:focus {
-    outline: 2px solid #6366f1;
-    outline-offset: 1px;
+    outline: none;
     border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .fade-in { animation: fadeIn 0.2s ease; }
   tr:hover td { background: var(--c-tr-hover); }
+  @media (max-width: 768px) {
+    table { min-width: 700px; }
+  }
 `;

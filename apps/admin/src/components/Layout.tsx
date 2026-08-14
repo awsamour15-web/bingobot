@@ -27,9 +27,13 @@ export function Layout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'inherit' }}>
       <style>{GLOBAL_CSS}{`
+        :root {
+          --sidebar-width: 262px;
+          --topbar-height: 72px;
+        }
         .sidebar {
-          width: 240px;
-          background: var(--c-sidebar);
+          width: var(--sidebar-width);
+          background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
           display: flex;
           flex-direction: column;
           flex-shrink: 0;
@@ -38,129 +42,190 @@ export function Layout() {
           z-index: 200;
           transition: transform 0.25s ease;
           border-right: 1px solid var(--c-border);
+          box-shadow: 22px 0 45px rgba(15, 23, 42, 0.18);
         }
         .sidebar-logo {
-          padding: 20px 20px 16px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          padding: 22px 20px 18px;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+          background: rgba(148, 163, 184, 0.03);
+        }
+        .sidebar-logo-inner {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .sidebar-logo-mark {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(59, 130, 246, 0.9));
+          box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+          font-size: 18px;
         }
         .sidebar-logo-title {
-          font-size: 17px;
+          font-size: 18px;
           font-weight: 700;
-          color: #f1f5f9;
-          letter-spacing: -0.01em;
+          color: #f8fafc;
+          letter-spacing: -0.02em;
         }
         .sidebar-logo-sub {
           font-size: 11px;
-          color: #64748b;
-          margin-top: 2px;
+          color: #94a3b8;
+          margin-top: 3px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
         .sidebar-nav {
-          padding: 12px 10px;
+          padding: 18px 12px;
           flex: 1;
           overflow-y: auto;
         }
         .sidebar-nav::-webkit-scrollbar { width: 4px; }
         .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-nav::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 8px; }
         .sidebar-nav-label {
           font-size: 10px;
           font-weight: 700;
-          color: #475569;
+          color: #64748b;
           text-transform: uppercase;
-          letter-spacing: 0.08em;
-          padding: 8px 10px 4px;
+          letter-spacing: 0.12em;
+          padding: 8px 12px 10px;
         }
         .nav-item {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 9px 12px;
-          border-radius: 8px;
+          gap: 12px;
+          padding: 11px 12px;
+          border-radius: 12px;
           text-decoration: none;
-          color: #94a3b8;
+          color: #cbd5e1;
           font-size: 14px;
-          font-weight: 500;
-          transition: all 0.15s;
-          margin-bottom: 2px;
+          font-weight: 600;
+          transition: all 0.18s ease;
+          margin-bottom: 4px;
         }
-        .nav-item:hover { background: #1e293b; color: #e2e8f0; }
-        .nav-item.active { background: #312e81; color: #c7d2fe; }
-        .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+        .nav-item:hover {
+          background: rgba(148, 163, 184, 0.08);
+          color: #f8fafc;
+          transform: translateX(1px);
+        }
+        .nav-item.active {
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(59, 130, 246, 0.14));
+          color: #e0e7ff;
+          border: 1px solid rgba(129, 140, 248, 0.28);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .nav-item .nav-icon {
+          font-size: 16px;
+          width: 20px;
+          text-align: center;
+          flex-shrink: 0;
+        }
         .sidebar-footer {
-          padding: 12px 10px;
-          border-top: 1px solid rgba(255,255,255,0.06);
+          padding: 12px 12px 18px;
+          border-top: 1px solid rgba(148, 163, 184, 0.12);
+          background: rgba(15, 23, 42, 0.18);
         }
         .logout-btn {
           display: flex;
           align-items: center;
           gap: 10px;
           width: 100%;
-          padding: 9px 12px;
-          border-radius: 8px;
-          background: transparent;
-          border: none;
-          color: #94a3b8;
+          padding: 11px 12px;
+          border-radius: 12px;
+          background: rgba(15, 23, 42, 0.28);
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          color: #cbd5e1;
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.15s;
+          transition: all 0.18s ease;
         }
-        .logout-btn:hover { background: #1e293b; color: #fca5a5; }
+        .logout-btn:hover {
+          background: rgba(239, 68, 68, 0.08);
+          color: #fecaca;
+          border-color: rgba(239, 68, 68, 0.2);
+        }
         .topbar {
-          height: 56px;
-          background: var(--c-header);
+          height: var(--topbar-height);
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: blur(12px);
           border-bottom: 1px solid var(--c-border);
           display: flex;
           align-items: center;
-          padding: 0 20px 0 24px;
+          padding: 0 22px 0 24px;
           gap: 12px;
           position: fixed;
-          top: 0; right: 0; left: 240px;
+          top: 0; right: 0; left: var(--sidebar-width);
           z-index: 100;
-          transition: background 0.2s, border-color 0.2s;
+          transition: background 0.2s, border-color 0.2s, left 0.2s;
+        }
+        [data-theme="dark"] .topbar {
+          background: rgba(15, 23, 42, 0.72);
         }
         .topbar-title {
           font-size: 15px;
-          font-weight: 600;
+          font-weight: 700;
           color: var(--c-text);
           flex: 1;
+          letter-spacing: -0.01em;
         }
         .topbar-date {
           font-size: 12px;
           color: var(--c-muted);
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.08);
+          border: 1px solid var(--c-border);
         }
         .main-content {
-          margin-left: 240px;
-          margin-top: 56px;
-          padding: 28px;
-          min-height: calc(100vh - 56px);
+          margin-left: var(--sidebar-width);
+          margin-top: var(--topbar-height);
+          padding: 26px;
+          min-height: calc(100vh - var(--topbar-height));
           background: var(--c-bg);
-          transition: background 0.2s;
+          transition: background 0.2s, margin-left 0.2s, padding 0.2s;
+        }
+        .main-content > * {
+          max-width: 1500px;
+          margin: 0 auto;
         }
         .hamburger {
           display: none;
           background: transparent;
           border: 1px solid var(--c-border);
           color: var(--c-text);
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
           cursor: pointer;
-          font-size: 16px;
+          font-size: 18px;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
         }
         .overlay {
           display: none;
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.6);
+          background: rgba(15, 23, 42, 0.48);
           z-index: 150;
-          backdrop-filter: blur(2px);
+          backdrop-filter: blur(3px);
+        }
+        @media (max-width: 900px) {
+          .main-content {
+            padding: 18px;
+          }
         }
         @media (max-width: 768px) {
-          .sidebar { transform: translateX(-100%); }
+          .sidebar {
+            transform: translateX(-100%);
+            box-shadow: 18px 0 36px rgba(15, 23, 42, 0.22);
+          }
           .sidebar.open { transform: translateX(0); }
           .topbar { left: 0; padding: 0 16px; }
           .main-content { margin-left: 0; padding: 16px; }
@@ -170,11 +235,15 @@ export function Layout() {
         }
       `}</style>
 
-      {/* Sidebar */}
       <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-title">🎲 Fidel Bingo</div>
-          <div className="sidebar-logo-sub">Admin Dashboard</div>
+          <div className="sidebar-logo-inner">
+            <div className="sidebar-logo-mark">🎲</div>
+            <div>
+              <div className="sidebar-logo-title">Fidel Bingo</div>
+              <div className="sidebar-logo-sub">Admin Dashboard</div>
+            </div>
+          </div>
         </div>
         <nav className="sidebar-nav">
           <div className="sidebar-nav-label">Navigation</div>
@@ -198,10 +267,8 @@ export function Layout() {
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
       <div className={`overlay${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(false)} />
 
-      {/* Top bar */}
       <header className="topbar">
         <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Toggle menu">
           {menuOpen ? '✕' : '☰'}
@@ -213,7 +280,6 @@ export function Layout() {
         <DarkToggle dark={theme === 'dark'} onToggle={toggle} />
       </header>
 
-      {/* Main */}
       <main className="main-content">
         <Outlet />
       </main>
