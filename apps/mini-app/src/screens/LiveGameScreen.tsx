@@ -52,9 +52,19 @@ export default function LiveGameScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimPending, setClaimPending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   // Keep a ref in sync so socket handlers always read the latest value
   const soundOnRef = useRef(soundOn);
   useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
+
+  // Handle responsive resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Buffer NUMBER_CALLED events that arrive before the REST fetch completes
   // so they can be merged into the initial calledOrder without duplicates/gaps
@@ -570,7 +580,7 @@ export default function LiveGameScreen() {
       </div>
 
       {/* ── Stats row ───────────────────────────────────────────────────────── */}
-      <div style={{ background: 'rgba(15,23,42,0.75)', display: 'flex', borderBottom: '1px solid rgba(148,163,184,0.08)', flexShrink: 0 }}>
+      <div style={{ background: 'rgba(15,23,42,0.75)', display: 'flex', borderBottom: '1px solid rgba(148,163,184,0.08)', flexShrink: 0, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
         {[
           { label: 'Game ID', value: round.id.slice(-8).toUpperCase() },
           { label: 'Players', value: game.playerCount },
@@ -578,18 +588,18 @@ export default function LiveGameScreen() {
           { label: 'Derash', value: Math.round(game.derash) },
           { label: 'Called', value: game.calledNumbers.size },
         ].map(({ label, value }) => (
-          <div key={label} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(148,163,184,0.12)', background: 'rgba(255,255,255,0.02)' }}>
+          <div key={label} style={{ flex: 1, padding: '8px 4px', textAlign: 'center', borderRight: isMobile ? 'none' : '1px solid rgba(148,163,184,0.12)', borderBottom: isMobile ? '1px solid rgba(148,163,184,0.12)' : 'none', background: 'rgba(255,255,255,0.02)', minWidth: isMobile ? '50%' : 'auto' }}>
             <div style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>{label}</div>
             <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, color: '#f8fafc' }}>{value}</div>
           </div>
         ))}
       </div>
 
-      {/* ── Main split layout ───────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* ── Main split layout (responsive) ───────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: isMobile ? 'column' : 'row' }}>
 
         {/* LEFT: Full 1-75 bingo board */}
-        <div style={{ flexShrink: 0, width: '46%', borderRight: '1px solid rgba(148,163,184,0.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.7) 100%)' }}>
+        <div style={{ flexShrink: 0, width: isMobile ? '100%' : '46%', height: isMobile ? '50%' : '100%', borderRight: isMobile ? 'none' : '1px solid rgba(148,163,184,0.12)', borderBottom: isMobile ? '1px solid rgba(148,163,184,0.12)' : 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.7) 100%)' }}>
           {/* Column headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 1, padding: '4px 2px 3px' }}>
             {COLS.map((c, i) => (
@@ -625,7 +635,7 @@ export default function LiveGameScreen() {
         </div>
 
         {/* RIGHT: Called number + cartela or watching panel */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: isMobile ? '100%' : 'auto', height: isMobile ? '50%' : '100%' }}>
 
           {/* ── Last Called — big prominent display ── */}
           <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid rgba(148,163,184,0.12)', flexShrink: 0, textAlign: 'center', background: 'rgba(15,23,42,0.5)' }}>
