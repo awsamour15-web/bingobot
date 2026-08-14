@@ -94,9 +94,6 @@ export default function LiveGameScreen() {
   }, []);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [showSyncBanner, setShowSyncBanner] = useState(false);
-  const lastUpdateRef = useRef<number>(Date.now());
-  const bannerShownRef = useRef(false);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -560,41 +557,6 @@ export default function LiveGameScreen() {
   void lastCol; // kept for potential future use
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
-  // Detect stuck game (no updates for 20 seconds)
-  useEffect(() => {
-    // Update lastUpdate whenever game state changes (called numbers, phase change, etc)
-    lastUpdateRef.current = Date.now();
-    bannerShownRef.current = false;
-    setShowSyncBanner(false);
-  }, [game.calledOrder.length, game.phase, game.playerCount]);
-
-  useEffect(() => {
-    // Only run detection during active gameplay
-    if (game.phase !== 'active' || gameEnded) {
-      if (bannerShownRef.current) {
-        bannerShownRef.current = false;
-        setShowSyncBanner(false);
-      }
-      return;
-    }
-
-    const updateTimer = setInterval(() => {
-      const timeSinceUpdate = Date.now() - lastUpdateRef.current;
-      const shouldShow = timeSinceUpdate > 20000;
-      
-      // Only update state if visibility actually changes
-      if (shouldShow && !bannerShownRef.current) {
-        bannerShownRef.current = true;
-        setShowSyncBanner(true);
-      } else if (!shouldShow && bannerShownRef.current) {
-        bannerShownRef.current = false;
-        setShowSyncBanner(false);
-      }
-    }, 1000);
-
-    return () => clearInterval(updateTimer);
-  }, [game.phase, gameEnded]);
-
   return (
     <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
@@ -606,40 +568,6 @@ export default function LiveGameScreen() {
           {soundOn ? '🔊' : '🔇'}
         </button>
       </div>
-
-      {/* ── Sync/Refresh banner — shows when game is stuck ────────────────── */}
-      {showSyncBanner && (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(217,119,6,0.1) 100%)',
-          border: '1.5px solid rgba(245,158,11,0.3)',
-          padding: '10px 14px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexShrink: 0,
-          gap: 12,
-        }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', flex: 1 }}>
-            ⚠️ Connection may be unstable
-          </span>
-          <button
-            onClick={handleRefresh}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 700,
-              borderRadius: 6,
-              border: 'none',
-              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-              color: '#0f172a',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 8px rgba(251,191,36,0.3)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            ↻ Sync
-          </button>
-        </div>
-      )}
 
       {/* ── Stats row ───────────────────────────────────────────────────────── */}
       <div style={{ background: 'rgba(15,23,42,0.75)', display: 'flex', borderBottom: '1px solid rgba(148,163,184,0.08)', flexShrink: 0 }}>
