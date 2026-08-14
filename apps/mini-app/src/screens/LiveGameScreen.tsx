@@ -566,14 +566,17 @@ export default function LiveGameScreen() {
   }, [game.calledOrder.length, game.phase, game.playerCount]);
 
   useEffect(() => {
+    // Only run detection during active gameplay
+    if (game.phase !== 'active' || gameEnded) {
+      setShowSyncBanner(false);
+      return;
+    }
+
     const updateTimer = setInterval(() => {
       const timeSinceUpdate = Date.now() - lastUpdateRef.current;
-      if (game.phase === 'active' && timeSinceUpdate > 20000 && !gameEnded) {
-        setShowSyncBanner(true);
-      } else {
-        setShowSyncBanner(false);
-      }
+      setShowSyncBanner(timeSinceUpdate > 20000);
     }, 1000);
+
     return () => clearInterval(updateTimer);
   }, [game.phase, gameEnded]);
 
