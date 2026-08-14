@@ -96,6 +96,7 @@ export default function LiveGameScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showSyncBanner, setShowSyncBanner] = useState(false);
   const lastUpdateRef = useRef<number>(Date.now());
+  const bannerShownRef = useRef(false);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -563,18 +564,32 @@ export default function LiveGameScreen() {
   useEffect(() => {
     // Update lastUpdate whenever game state changes (called numbers, phase change, etc)
     lastUpdateRef.current = Date.now();
+    bannerShownRef.current = false;
+    setShowSyncBanner(false);
   }, [game.calledOrder.length, game.phase, game.playerCount]);
 
   useEffect(() => {
     // Only run detection during active gameplay
     if (game.phase !== 'active' || gameEnded) {
-      setShowSyncBanner(false);
+      if (bannerShownRef.current) {
+        bannerShownRef.current = false;
+        setShowSyncBanner(false);
+      }
       return;
     }
 
     const updateTimer = setInterval(() => {
       const timeSinceUpdate = Date.now() - lastUpdateRef.current;
-      setShowSyncBanner(timeSinceUpdate > 20000);
+      const shouldShow = timeSinceUpdate > 20000;
+      
+      // Only update state if visibility actually changes
+      if (shouldShow && !bannerShownRef.current) {
+        bannerShownRef.current = true;
+        setShowSyncBanner(true);
+      } else if (!shouldShow && bannerShownRef.current) {
+        bannerShownRef.current = false;
+        setShowSyncBanner(false);
+      }
     }, 1000);
 
     return () => clearInterval(updateTimer);
