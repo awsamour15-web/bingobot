@@ -16,11 +16,11 @@ import type {
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = [
-  '#60a5fa',
-  '#2dd4bf',
-  '#8b5cf6',
-  '#f4b942',
-  '#f87171',
+  '#3b82f6', // B — deep blue
+  '#8b5cf6', // I — purple
+  '#22c55e', // N — green
+  '#f59e0b', // G — amber
+  '#ef4444', // O — red
 ];
 
 type GamePhase = 'waiting' | 'active' | 'won' | 'void' | 'cancelled';
@@ -571,10 +571,10 @@ export default function LiveGameScreen() {
     <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(10,14,22,0.96) 0%, rgba(15,23,42,0.92) 100%)', padding: '8px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)', flexShrink: 0 }}>
-        <span style={{ cursor: 'pointer', fontSize: 20, color: '#f8fafc' }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
-        <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1, color: '#f8fafc' }}>Fidel Bingo</span>
-        <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#cbd5e1', fontSize: 18, cursor: 'pointer' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(13,27,46,0.95) 0%, rgba(13,27,46,0.8) 100%)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 16px', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+        <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}>✕</span>
+        <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: 1, color: '#f5d06b' }}>Fidel Bingo</span>
+        <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: 18, cursor: 'pointer' }}>
           {soundOn ? '🔊' : '🔇'}
         </button>
       </div>
@@ -599,11 +599,11 @@ export default function LiveGameScreen() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: isMobile ? 'column' : 'row' }}>
 
         {/* LEFT: Full 1-75 bingo board */}
-        <div style={{ flexShrink: 0, width: isMobile ? '100%' : '46%', height: isMobile ? '50%' : '100%', borderRight: isMobile ? 'none' : '1px solid rgba(148,163,184,0.12)', borderBottom: isMobile ? '1px solid rgba(148,163,184,0.12)' : 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.7) 100%)' }}>
+        <div style={{ flexShrink: 0, width: isMobile ? '100%' : '46%', height: isMobile ? '50%' : '100%', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.08)', borderBottom: isMobile ? '1px solid rgba(255,255,255,0.08)' : 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)' }}>
           {/* Column headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', flexShrink: 0, gap: 1, padding: '4px 2px 3px' }}>
             {COLS.map((c, i) => (
-              <div key={c} style={{ background: 'linear-gradient(180deg, ' + COL_COLORS[i] + ' 0%, rgba(15,23,42,0.82) 100%)', textAlign: 'center', padding: '5px 0', fontWeight: 900, fontSize: 12, borderRadius: 4, minWidth: 0 }}>{c}</div>
+              <div key={c} style={{ background: COL_COLORS[i], textAlign: 'center', padding: '5px 0', fontWeight: 900, fontSize: 12, borderRadius: 4, minWidth: 0, boxShadow: `0 0 8px ${COL_COLORS[i]}66` }}>{c}</div>
             ))}
           </div>
           {/* Numbers 1-75 in 5 columns (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75), row by row */}
@@ -617,14 +617,14 @@ export default function LiveGameScreen() {
                   <div key={num} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     minWidth: 0, minHeight: 0,
-                    background: isLast ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : called ? 'linear-gradient(135deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.22) 100%)' : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.84) 100%)',
-                    color: isLast || called ? '#f8fafc' : '#cbd5e1',
-                    border: isLast ? '2px solid rgba(255,255,255,0.9)' : called ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(148,163,184,0.12)',
+                    background: isLast ? 'linear-gradient(135deg, #f5d06b, #f59e0b)' : called ? `linear-gradient(135deg, ${COL_COLORS[colIdx]}, ${COL_COLORS[colIdx]}dd)` : 'rgba(255,255,255,0.06)',
+                    color: isLast || called ? '#fff' : '#94a3b8',
+                    border: isLast ? '2px solid #fff' : called ? 'none' : '1px solid rgba(255,255,255,0.08)',
                     borderRadius: 4,
-                    fontWeight: isLast ? 900 : called ? 800 : 600,
+                    fontWeight: isLast ? 900 : called ? 800 : 500,
                     fontSize: 10,
-                    transition: 'background 0.2s ease',
-                    boxShadow: isLast ? '0 0 20px rgba(251,191,36,0.45)' : 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isLast ? `0 0 16px ${COL_COLORS[colIdx]}88` : called ? `inset 0 0 4px rgba(0,0,0,0.3)` : 'none',
                   }}>
                     {num}
                   </div>
@@ -638,28 +638,28 @@ export default function LiveGameScreen() {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: isMobile ? '100%' : 'auto', height: isMobile ? '50%' : '100%' }}>
 
           {/* ── Last Called — big prominent display ── */}
-          <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid rgba(148,163,184,0.12)', flexShrink: 0, textAlign: 'center', background: 'rgba(15,23,42,0.5)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-              <span style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Last Called</span>
-              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#cbd5e1', fontSize: 13, cursor: 'pointer' }}>
+          <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, textAlign: 'center', background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Last Called</span>
+              <button onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#a5b4fc', fontSize: 13, cursor: 'pointer' }}>
                 {soundOn ? '🔊' : '🔇'}
               </button>
             </div>
             {game.lastCalled ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: 6,
-                  background: 'linear-gradient(180deg, ' + COL_COLORS[getColIndex(game.lastCalled)] + ' 0%, rgba(15,23,42,0.8) 100%)',
+                  width: 32, height: 32, borderRadius: 6,
+                  background: COL_COLORS[getColIndex(game.lastCalled)],
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: 900, fontSize: 14, color: '#fff', flexShrink: 0,
-                  boxShadow: '0 6px 12px rgba(15,23,42,0.2)',
+                  boxShadow: `0 0 12px ${COL_COLORS[getColIndex(game.lastCalled)]}88`,
                 }}>
                   {getColLabel(game.lastCalled)}
                 </div>
                 <div style={{
                   fontSize: 48, fontWeight: 900, lineHeight: 1,
-                  color: '#f8fafc',
-                  textShadow: '0 0 12px rgba(148,163,184,0.4)',
+                  color: '#f5d06b',
+                  textShadow: '0 0 16px rgba(245,208,107,0.5)',
                   fontVariantNumeric: 'tabular-nums',
                 }}>
                   {game.lastCalled}
@@ -673,8 +673,8 @@ export default function LiveGameScreen() {
           </div>
 
           {/* ── Called Numbers — scrollable history strip ── */}
-          <div style={{ borderBottom: '1px solid rgba(148,163,184,0.12)', flexShrink: 0, padding: '6px 6px 4px', background: 'rgba(15,23,42,0.4)' }}>
-            <div style={{ fontSize: 9, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3, fontWeight: 700 }}>
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0, padding: '8px 8px 6px', background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ fontSize: 9, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, fontWeight: 700 }}>
               Called ({game.calledOrder.length}/75)
             </div>
             <div style={{
@@ -692,13 +692,13 @@ export default function LiveGameScreen() {
                   return (
                     <div key={`h-${num}-${idx}`} style={{
                       flexShrink: 0,
-                      width: 26, height: 26, borderRadius: '50%',
-                      background: isNewest ? 'linear-gradient(135deg, ' + COL_COLORS[col] + ' 0%, rgba(15,23,42,0.9) 100%)' : 'rgba(148,163,184,0.16)',
-                      border: `1px solid ${isNewest ? 'rgba(255,255,255,0.18)' : 'rgba(148,163,184,0.12)'}`,
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: isNewest ? COL_COLORS[col] : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${isNewest ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 8, fontWeight: isNewest ? 900 : 600,
-                      color: isNewest ? '#fff' : '#cbd5e1',
-                      boxShadow: isNewest ? '0 0 12px rgba(251,191,36,0.2)' : 'none',
+                      fontSize: 9, fontWeight: isNewest ? 900 : 600,
+                      color: isNewest ? '#fff' : '#94a3b8',
+                      boxShadow: isNewest ? `0 0 12px ${COL_COLORS[col]}88` : 'none',
                     }}>
                       {num}
                     </div>
@@ -939,7 +939,7 @@ export default function LiveGameScreen() {
 
           {/* Next round countdown (non-won phases) */}
           {nextCountdown !== null && game.phase !== 'won' && (
-            <div style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.9) 100%)', borderTop: '1px solid rgba(148,163,184,0.08)', padding: '8px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, color: '#cbd5e1' }}>
+            <div style={{ background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '8px', textAlign: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, color: '#a5b4fc' }}>
               {nextCountdown > 0 ? `Next round in ${nextCountdown}s` : 'Finding next round...'}
             </div>
           )}
@@ -953,17 +953,17 @@ export default function LiveGameScreen() {
                   const cartelaWinCells = winCellsForGrid(cartelaGrid);
                   const cartelaHasWin = hasWinForGrid(cartelaGrid);
                   return (
-                    <div key={cartela.cartelaNumber} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(17,24,39,0.86) 100%)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: 10, padding: '6px 4px 4px', boxShadow: '0 8px 18px rgba(15,23,42,0.2)' }}>
-                      <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#fbbf24', marginBottom: 2, flexShrink: 0, letterSpacing: '0.04em' }}>
-                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#34d399' }}>✓ BINGO</span>}
+                    <div key={cartela.cartelaNumber} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, rgba(13,27,46,0.96) 0%, rgba(13,27,46,0.88) 100%)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10, padding: '6px 4px 4px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                      <div style={{ textAlign: 'center', fontSize: 8, fontWeight: 900, color: '#f59e0b', marginBottom: 2, flexShrink: 0, letterSpacing: '0.04em' }}>
+                        #{cartela.cartelaNumber}{cartelaHasWin && <span style={{ marginLeft: 4, color: '#22c55e' }}>✓ BINGO</span>}
                       </div>
                       <div style={{ height: 2, flexShrink: 0 }} />
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, marginBottom: 1, flexShrink: 0 }}>
                         {COLS.map((c, i) => (
                           <div key={c} style={{
-                            background: 'linear-gradient(180deg, ' + COL_COLORS[i] + ' 0%, rgba(15,23,42,0.82) 100%)', textAlign: 'center',
+                            background: COL_COLORS[i], textAlign: 'center',
                             borderRadius: 2, padding: '2px 0',
-                            fontWeight: 900, fontSize: 8, color: '#fff',
+                            fontWeight: 900, fontSize: 8, color: '#fff', boxShadow: `0 0 4px ${COL_COLORS[i]}66`,
                           }}>{c}</div>
                         ))}
                       </div>
@@ -978,17 +978,17 @@ export default function LiveGameScreen() {
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               aspectRatio: '1',
                               background: wl
-                                ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+                                ? 'linear-gradient(135deg, #f5d06b, #f59e0b)'
                                 : m
-                                ? 'linear-gradient(135deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.22) 100%)'
-                                : 'linear-gradient(180deg, rgba(30,41,59,0.96) 0%, rgba(15,23,42,0.84) 100%)',
-                              color: wl ? '#0f172a' : m ? '#f8fafc' : '#e2e8f0',
+                                ? `linear-gradient(135deg, ${COL_COLORS[colIdx]}, ${COL_COLORS[colIdx]}dd)`
+                                : 'rgba(255,255,255,0.06)',
+                              color: wl ? '#000' : m ? '#fff' : '#94a3b8',
                               borderRadius: 3,
                               fontSize: 11,
                               fontWeight: 900,
-                              border: wl ? '2px solid rgba(255,255,255,0.9)' : m ? '1px solid rgba(96,165,250,0.35)' : '1px solid rgba(148,163,184,0.12)',
-                              boxShadow: wl ? '0 0 10px rgba(251,191,36,0.5)' : m ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
-                              transition: 'background 0.2s',
+                              border: wl ? '2px solid rgba(255,255,255,0.9)' : m ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                              boxShadow: wl ? `0 0 10px ${COL_COLORS[colIdx]}88` : m ? `inset 0 0 4px rgba(0,0,0,0.3)` : 'none',
+                              transition: 'all 0.2s',
                             }}>
                               {isFree ? '★' : val}
                             </div>
