@@ -66,16 +66,18 @@ export function Btn({
       style={{
         ...styles[variant],
         ...sizes[size],
-        fontWeight: 500,
+        fontWeight: 700,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.55 : 1,
         display: 'inline-flex',
         alignItems: 'center',
+        justifyContent: fullWidth ? 'center' : undefined,
         gap: 6,
         whiteSpace: 'nowrap',
-        transition: 'opacity 0.15s, background 0.15s',
+        transition: 'all 0.18s ease',
         width: fullWidth ? '100%' : undefined,
-        justifyContent: fullWidth ? 'center' : undefined,
+        boxShadow: disabled ? 'none' : '0 8px 18px rgba(99, 102, 241, 0.15)',
+        transform: 'translateY(0)',
       }}
     >
       {icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>}
@@ -130,10 +132,17 @@ export function Card({ children, style }: { children: React.ReactNode; style?: R
 
 export function CardHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: 20,
+      gap: 12,
+      flexWrap: 'wrap',
+    }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--c-text)' }}>{title}</h2>
-        {subtitle && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--c-muted)' }}>{subtitle}</p>}
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.02em' }}>{title}</h2>
+        {subtitle && <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--c-muted)' }}>{subtitle}</p>}
       </div>
       {action && <div style={{ flexShrink: 0 }}>{action}</div>}
     </div>
@@ -182,8 +191,8 @@ export function StatCard({ label, value, color, icon }: { label: string; value: 
 
 export function Table({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--c-border)' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 500 }}>
+    <div style={{ overflowX: 'auto', borderRadius: 14, border: '1px solid var(--c-border)', background: 'rgba(15, 23, 42, 0.01)' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
         {children}
       </table>
     </div>
@@ -277,8 +286,8 @@ export function Alert({ type, children }: { type: 'error' | 'success' | 'warning
 
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         {label}
       </label>
       {children}
@@ -288,15 +297,17 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCss: React.CSSProperties = {
-  padding: '8px 12px',
+  padding: '10px 12px',
   border: '1px solid var(--c-border)',
-  borderRadius: 8,
+  borderRadius: 10,
   fontSize: 14,
   color: 'var(--c-text)',
   background: 'var(--c-input-bg)',
   width: '100%',
   boxSizing: 'border-box',
   outline: 'none',
+  minHeight: 42,
+  boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.03)',
 };
 
 export const selectCss: React.CSSProperties = { ...inputCss, cursor: 'pointer' };
@@ -305,8 +316,16 @@ export const selectCss: React.CSSProperties = { ...inputCss, cursor: 'pointer' }
 
 export function PageHeader({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--c-text)' }}>{title}</h1>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+      flexWrap: 'wrap',
+      gap: 12,
+      padding: '6px 0',
+    }}>
+      <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.04em' }}>{title}</h1>
       {action && <div>{action}</div>}
     </div>
   );
@@ -443,5 +462,13 @@ export const GLOBAL_CSS = `
   tr:hover td { background: var(--c-tr-hover); }
   @media (max-width: 768px) {
     table { min-width: 700px; }
+  }
+  @media (max-width: 520px) {
+    body {
+      background-attachment: fixed;
+    }
+    button, input, select {
+      font-size: 15px;
+    }
   }
 `;

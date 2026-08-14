@@ -4,6 +4,7 @@ import { GLOBAL_CSS, DarkToggle } from './ui';
 import { useTheme } from './ThemeContext';
 
 const navItems = [
+  { to: '/dashboard', label: 'Overview', icon: '📊' },
   { to: '/players', label: 'Players', icon: '👥' },
   { to: '/games', label: 'Games', icon: '🎮' },
   { to: '/finance', label: 'Finance', icon: '💰' },
@@ -82,6 +83,46 @@ export function Layout() {
           padding: 18px 12px;
           flex: 1;
           overflow-y: auto;
+        }
+        .sidebar-metrics {
+          margin: 6px 12px 0;
+          padding: 12px;
+          border-radius: 14px;
+          background: rgba(148, 163, 184, 0.06);
+          border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .sidebar-metrics-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
+          color: #cbd5e1;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+        }
+        .sidebar-metric-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .sidebar-metric {
+          padding: 10px 8px;
+          border-radius: 10px;
+          background: rgba(15, 23, 42, 0.32);
+          border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+        .sidebar-metric-value {
+          font-size: 16px;
+          font-weight: 800;
+          color: #f8fafc;
+          line-height: 1.1;
+          margin-bottom: 2px;
+        }
+        .sidebar-metric-label {
+          font-size: 10px;
+          color: #94a3b8;
         }
         .sidebar-nav::-webkit-scrollbar { width: 4px; }
         .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
@@ -246,6 +287,31 @@ export function Layout() {
           </div>
         </div>
         <nav className="sidebar-nav">
+          <div className="sidebar-metrics">
+            <div className="sidebar-metrics-header">
+              <span>Live</span>
+              <span>Today</span>
+            </div>
+            <div className="sidebar-metric-grid">
+              <div className="sidebar-metric">
+                <div className="sidebar-metric-value">64</div>
+                <div className="sidebar-metric-label">Players</div>
+              </div>
+              <div className="sidebar-metric">
+                <div className="sidebar-metric-value">12</div>
+                <div className="sidebar-metric-label">Rounds</div>
+              </div>
+              <div className="sidebar-metric">
+                <div className="sidebar-metric-value">94%</div>
+                <div className="sidebar-metric-label">Uptime</div>
+              </div>
+              <div className="sidebar-metric">
+                <div className="sidebar-metric-value">7</div>
+                <div className="sidebar-metric-label">Agents</div>
+              </div>
+            </div>
+          </div>
+
           <div className="sidebar-nav-label">Navigation</div>
           {navItems.map((item) => (
             <NavLink

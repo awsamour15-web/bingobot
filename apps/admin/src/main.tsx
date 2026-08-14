@@ -5,7 +5,7 @@ import { ThemeProvider } from './components/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
-// Placeholder pages (will be implemented in 18.2–18.5)
+import { DashboardPage } from './pages/DashboardPage';
 import { PlayersPage } from './pages/PlayersPage';
 import { GamesPage } from './pages/GamesPage';
 import { FinancePage } from './pages/FinancePage';
@@ -22,7 +22,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/players" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="players" element={<PlayersPage />} />
           <Route path="players/:id" element={<PlayersPage />} />
           <Route path="games" element={<GamesPage />} />
