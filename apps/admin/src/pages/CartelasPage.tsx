@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { CartelaDefinition } from '../lib/api';
 import { getCartelas, getCartela, createCartela, updateCartela, deleteCartela } from '../lib/api';
 import {
-  C, Btn, Card, CardHeader, Table, Th, Td,
-  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, StatCard,
+  C, Btn, Card, CardHeader, Alert, Field, PageHeader, inputCss, StatCard,
 } from '../components/ui';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
@@ -203,7 +202,7 @@ function CartelaForm({ initial, onSaved, onClose }: { initial?: CartelaDefinitio
   );
 }
 
-function ViewModal({ num, onClose }: { num: number; onClose: () => void }) {
+function PreviewModal({ num, onClose, onEdit, onDelete }: { num: number; onClose: () => void; onEdit: (c: CartelaDefinition) => void; onDelete: (n: number) => void }) {
   const [cartela, setCartela] = useState<CartelaDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -220,12 +219,44 @@ function ViewModal({ num, onClose }: { num: number; onClose: () => void }) {
       {loading && <p style={{ color: 'var(--c-muted)' }}>Loading…</p>}
       {error && <Alert type="error">{error}</Alert>}
       {cartela && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <CartelaGrid grid={cartela.grid} />
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--c-muted)', textAlign: 'center' }}>
-            Numbers: {cartela.grid.filter((_, i) => i !== 12).join(', ')}
-          </p>
-        </div>
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+            <CartelaGrid grid={cartela.grid} />
+            <div style={{ width: '100%', borderTop: '1px solid var(--c-border)', paddingTop: 12 }}>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--c-muted)' }}>
+                <strong>Numbers:</strong> {cartela.grid.filter((_, i) => i !== 12).join(', ')}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 100 }}>
+              <Btn 
+                onClick={() => { onEdit(cartela); onClose(); }} 
+                variant="outline"
+                fullWidth
+              >
+                ✏️ Edit
+              </Btn>
+            </div>
+            <div style={{ flex: 1, minWidth: 100 }}>
+              <Btn 
+                onClick={() => { onDelete(num); onClose(); }} 
+                variant="danger"
+                fullWidth
+              >
+                🗑️ Delete
+              </Btn>
+            </div>
+            <div style={{ flex: 1, minWidth: 100 }}>
+              <Btn 
+                onClick={onClose}
+                fullWidth
+              >
+                Close
+              </Btn>
+            </div>
+          </div>
+        </>
       )}
     </Modal>
   );
@@ -239,14 +270,14 @@ export function CartelasPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [viewNum, setViewNum] = useState<number | null>(null);
+  const [previewNum, setPreviewNum] = useState<number | null>(null);
   const [editCartela, setEditCartela] = useState<CartelaDefinition | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const pageSize = 50;
+  const pageSize = 100;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const load = useCallback(async (p: number, s: string) => {
@@ -288,7 +319,7 @@ export function CartelasPage() {
   const summaryCards = [
     { label: 'Total cartelas', value: total, color: '#6366f1', icon: '🎴' },
     { label: 'Page size', value: pageSize, color: '#22c55e', icon: '📦' },
-    { label: 'Visible rows', value: cartelas.length, color: '#3b82f6', icon: '📋' },
+    { label: 'Displayed', value: cartelas.length, color: '#3b82f6', icon: '👁️' },
     { label: 'Free center', value: '★', color: '#f59e0b', icon: '🎯' },
   ];
 
@@ -306,8 +337,8 @@ export function CartelasPage() {
 
       <Card>
         <CardHeader
-          title="Cartela library"
-          subtitle="Manage bingo templates and preview layouts before publishing"
+          title="Cartela Grid"
+          subtitle="Click on any cartela number to preview and manage (Edit/Delete)"
           action={<div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-muted)' }}>{total} total</div>}
         />
 
@@ -329,50 +360,76 @@ export function CartelasPage() {
           )}
         </div>
 
-        <Table>
-          <thead>
-            <tr>
-              <Th>#</Th>
-              <Th>Preview</Th>
-              <Th>Numbers</Th>
-              <Th right>Actions</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <TrLoading cols={4} />}
-            {!loading && cartelas.length === 0 && <TrEmpty cols={4} message="No cartelas found" />}
-            {!loading && cartelas.map((c) => (
-              <tr key={c.cartela_number}>
-                <Td style={{ fontWeight: 800, color: 'var(--c-text)' }}>{c.cartela_number}</Td>
-                <Td>
-                  <CartelaGrid grid={c.grid} compact />
-                </Td>
-                <Td style={{ fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.6 }}>
-                  {c.grid.filter((_, i) => i !== 12).slice(0, 10).join(', ')}
-                  {c.grid.filter((_, i) => i !== 12).length > 10 ? '…' : ''}
-                </Td>
-                <Td style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                    <Btn size="sm" variant="ghost" onClick={() => setViewNum(c.cartela_number)}>View</Btn>
-                    <Btn size="sm" variant="outline" onClick={() => setEditCartela(c)}>Edit</Btn>
-                    <Btn size="sm" variant="danger" onClick={() => { setDeleteTarget(c.cartela_number); setDeleteError(null); }}>Delete</Btn>
-                  </div>
-                </Td>
-              </tr>
+        {/* Flexible grid of cartela numbers */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--c-muted)' }}>Loading…</div>
+        ) : cartelas.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--c-muted)' }}>No cartelas found</div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+            gap: 12,
+            marginBottom: 20,
+          }}>
+            {cartelas.map((c) => (
+              <div
+                key={c.cartela_number}
+                onClick={() => setPreviewNum(c.cartela_number)}
+                style={{
+                  padding: 16,
+                  borderRadius: 12,
+                  border: '2px solid var(--c-border)',
+                  background: 'var(--c-bg-card)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: 'var(--c-text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center',
+                  minHeight: 70,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#6366f1';
+                  e.currentTarget.style.background = 'rgba(99,102,241,0.08)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(99,102,241,0.14)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--c-border)';
+                  e.currentTarget.style.background = 'var(--c-bg-card)';
+                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {c.cartela_number}
+              </div>
             ))}
-          </tbody>
-        </Table>
+          </div>
+        )}
 
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '18px 0 6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '18px 0 0' }}>
             <Btn size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</Btn>
             <Btn size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</Btn>
           </div>
         )}
       </Card>
 
-      {viewNum !== null && <ViewModal num={viewNum} onClose={() => setViewNum(null)} />}
+      {/* Preview modal with CRUD operations */}
+      {previewNum !== null && (
+        <PreviewModal
+          num={previewNum}
+          onClose={() => setPreviewNum(null)}
+          onEdit={(c) => setEditCartela(c)}
+          onDelete={(n) => { setDeleteTarget(n); setDeleteError(null); }}
+        />
+      )}
 
+      {/* Edit modal */}
       {editCartela && (
         <Modal title={`Edit Cartela #${editCartela.cartela_number}`} onClose={() => setEditCartela(null)}>
           <CartelaForm
@@ -383,6 +440,7 @@ export function CartelasPage() {
         </Modal>
       )}
 
+      {/* Create modal */}
       {showCreate && (
         <Modal title="New Cartela" onClose={() => setShowCreate(false)}>
           <CartelaForm
@@ -392,6 +450,7 @@ export function CartelasPage() {
         </Modal>
       )}
 
+      {/* Delete confirm modal */}
       {deleteTarget !== null && (
         <Modal title="Delete Cartela" onClose={() => setDeleteTarget(null)}>
           <p style={{ color: 'var(--c-text)', marginBottom: 16 }}>
