@@ -183,51 +183,65 @@ export function AgentsPage() {
       {/* Create Agent Modal */}
       {showCreate && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.62)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
           backdropFilter: 'blur(2px)',
         }}>
           <div style={{
-            background: 'var(--c-bg-card)', borderRadius: 12, padding: 28,
-            width: 400, maxWidth: '90vw',
-            border: '1px solid var(--c-border)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            background: 'var(--c-bg-card)', border: '1px solid var(--c-border)', borderRadius: 18,
+            padding: 28, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto',
+            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
           }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text)', marginBottom: 18, marginTop: 0 }}>
-              Create Agent
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--c-text)', margin: 0 }}>
+                Create Agent
+              </h2>
+              <button onClick={() => { setShowCreate(false); setCreatedLink(null); }} style={{
+                background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 22,
+                color: 'var(--c-muted)', lineHeight: 1,
+              }}>×</button>
+            </div>
             {createdLink ? (
               <>
-                <Alert type="success">Agent created! Share this activation link:</Alert>
+                <Alert type="success">✓ Agent created! Share this activation link:</Alert>
                 <div style={{
-                  background: 'var(--c-bg)', borderRadius: 8, padding: '10px 14px',
+                  background: 'var(--c-bg)', borderRadius: 12, padding: '12px 16px',
                   color: '#6366f1', fontSize: 12, wordBreak: 'break-all',
-                  border: '1px solid var(--c-border)', marginBottom: 16,
+                  border: '1px solid var(--c-border)', marginBottom: 18, fontWeight: 600,
                 }}>
                   {createdLink}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn onClick={() => navigator.clipboard.writeText(createdLink!)}>Copy Link</Btn>
-                  <Btn variant="outline" onClick={() => { setShowCreate(false); setCreatedLink(null); }}>Close</Btn>
+                  <div style={{ flex: 1 }}>
+                    <Btn onClick={() => navigator.clipboard.writeText(createdLink!)} fullWidth>📋 Copy Link</Btn>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Btn variant="outline" onClick={() => { setShowCreate(false); setCreatedLink(null); }} fullWidth>Done</Btn>
+                  </div>
                 </div>
               </>
             ) : (
-              <form onSubmit={handleCreate}>
+              <form onSubmit={handleCreate} style={{ display: 'grid', gap: 16 }}>
                 <Field label="Telegram Username">
                   <input
                     value={createUsername}
                     onChange={(e) => setCreateUsername(e.target.value)}
                     placeholder="e.g. johndoe (without @)"
                     style={inputCss}
+                    required
                   />
                 </Field>
-                <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-                  <Btn type="submit" disabled={createLoading} fullWidth>
-                    {createLoading ? 'Creating…' : 'Create'}
-                  </Btn>
-                  <Btn variant="outline" type="button" onClick={() => setShowCreate(false)} fullWidth>
-                    Cancel
-                  </Btn>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <Btn type="submit" disabled={createLoading} fullWidth>
+                      {createLoading ? 'Creating…' : '+ Create Agent'}
+                    </Btn>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Btn variant="outline" type="button" onClick={() => setShowCreate(false)} fullWidth>
+                      Cancel
+                    </Btn>
+                  </div>
                 </div>
               </form>
             )}
@@ -238,46 +252,45 @@ export function AgentsPage() {
       {/* Detail Modal */}
       {(detail || detailLoading) && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.62)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
           backdropFilter: 'blur(2px)',
         }}>
           <div style={{
-            background: 'var(--c-bg-card)', borderRadius: 12, padding: 28,
-            width: 560, maxWidth: '95vw', maxHeight: '85vh', overflowY: 'auto',
-            border: '1px solid var(--c-border)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            background: 'var(--c-bg-card)', border: '1px solid var(--c-border)', borderRadius: 18,
+            padding: 28, width: '100%', maxWidth: 600, maxHeight: '85vh', overflowY: 'auto',
+            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
           }}>
             {detailLoading && <p style={{ color: 'var(--c-muted)' }}>Loading…</p>}
             {detail && (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text)', margin: 0 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--c-text)', margin: 0 }}>
                     @{detail.telegramUsername}
                   </h2>
                   <button onClick={() => setDetail(null)} style={{
                     background: 'transparent', border: 'none',
-                    color: 'var(--c-muted)', fontSize: 18, cursor: 'pointer',
-                  }}>✕</button>
+                    color: 'var(--c-muted)', fontSize: 22, cursor: 'pointer',
+                  }}>×</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                   {[
-                    { label: 'Total Players', value: detail.totalPlayersInvited },
-                    { label: 'Total Commission', value: `ETB ${detail.totalCommission.toFixed(2)}` },
-                    { label: 'Status', value: detail.isActive ? 'Active' : 'Suspended' },
-                    { label: 'Created', value: new Date(detail.createdAt).toLocaleDateString() },
-                  ].map(({ label, value }) => (
+                    { label: 'Total Players', value: detail.totalPlayersInvited, icon: '👥' },
+                    { label: 'Total Commission', value: `ETB ${detail.totalCommission.toFixed(2)}`, icon: '💰' },
+                    { label: 'Status', value: detail.isActive ? 'Active' : 'Suspended', icon: detail.isActive ? '✅' : '🚫' },
+                    { label: 'Created', value: new Date(detail.createdAt).toLocaleDateString(), icon: '📅' },
+                  ].map(({ label, value, icon }) => (
                     <div key={label} style={{
-                      background: 'var(--c-bg)', borderRadius: 8, padding: '12px 14px',
+                      background: 'var(--c-bg)', borderRadius: 12, padding: '14px 16px',
                       border: '1px solid var(--c-border)',
                     }}>
-                      <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 4, fontWeight: 600 }}>{icon} {label}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)' }}>{value}</div>
                     </div>
                   ))}
                 </div>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-secondary)', marginBottom: 10 }}>
-                  Referred Players
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text)', marginBottom: 12, marginTop: 20 }}>
+                  👥 Referred Players ({detail.players.length})
                 </h3>
                 <Table>
                   <thead>

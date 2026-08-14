@@ -177,22 +177,38 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const suspendedCount = players.filter(p => p.is_suspended).length;
+  const activeCount = players.length - suspendedCount;
 
   return (
     <div className="fade-in">
       <PageHeader title="Players" />
+
+      {/* Summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <StatCard icon="👥" label="Total Players" value={total} color={C.primary} />
+        <StatCard icon="✅" label="Active" value={activeCount} color={C.success} />
+        <StatCard icon="🚫" label="Suspended" value={suspendedCount} color={C.danger} />
+        <StatCard icon="💰" label="Page Size" value={pageSize} color={C.info} />
+      </div>
+
       {error && <Alert type="error">{error}</Alert>}
 
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-          <span style={{ fontSize: 13, color: C.muted }}>{total} total players</span>
-          <input
-            type="search"
-            placeholder="Search username or Telegram ID…"
-            value={search}
-            onChange={handleSearch}
-            style={{ ...inputCss, width: 260 }}
-          />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>
+            Showing {players.length} of {total} players
+          </div>
+          <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 320 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14 }}>🔍</span>
+            <input
+              type="search"
+              placeholder="Search username or Telegram ID…"
+              value={search}
+              onChange={handleSearch}
+              style={{ ...inputCss, paddingLeft: 36, width: '100%' }}
+            />
+          </div>
         </div>
         <Table>
           <thead>
@@ -204,7 +220,7 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
               <Th>Play Wallet</Th>
               <Th>Status</Th>
               <Th>Joined</Th>
-              <Th>Actions</Th>
+              <Th right>Actions</Th>
             </tr>
           </thead>
           <tbody>
@@ -219,18 +235,22 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
                 <Td><span style={{ fontWeight: 600, color: C.primary }}>{p.play_wallet_balance.toFixed(2)}</span></Td>
                 <Td><Badge variant={p.is_suspended ? 'danger' : 'success'}>{p.is_suspended ? 'Suspended' : 'Active'}</Badge></Td>
                 <Td muted>{new Date(p.created_at).toLocaleDateString()}</Td>
-                <Td>
+                <Td style={{ textAlign: 'right' }}>
                   <Btn size="sm" variant="outline" onClick={() => onView(p.id)}>View →</Btn>
                 </Td>
               </tr>
             ))}
           </tbody>
         </Table>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-          <span style={{ fontSize: 13, color: C.muted }}>Page {page} of {totalPages}</span>
-          <Btn size="sm" variant="ghost" onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search); }} disabled={page <= 1 || loading}>← Prev</Btn>
-          <Btn size="sm" variant="ghost" onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search); }} disabled={page >= totalPages || loading}>Next →</Btn>
-        </div>
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0 0', flexWrap: 'wrap', gap: 12 }}>
+            <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>Page {page} of {totalPages}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn size="sm" variant="outline" onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search); }} disabled={page <= 1 || loading}>← Prev</Btn>
+              <Btn size="sm" variant="outline" onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search); }} disabled={page >= totalPages || loading}>Next →</Btn>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

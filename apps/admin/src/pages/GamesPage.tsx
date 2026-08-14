@@ -3,7 +3,7 @@ import type { AdminRound, CreateRoundRequest, GameStatus } from '@fidel/shared';
 import { getAdminRounds, createRound, startRound, cancelRound } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td,
-  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, StatCard,
 } from '../components/ui';
 
 function statusVariant(s: GameStatus): 'warning' | 'success' | 'danger' | 'info' | 'neutral' {
@@ -175,29 +175,50 @@ export function GamesPage() {
 
   const activeRounds = allRounds.filter((r) => r.status === 'pending' || r.status === 'active');
   const doneRounds = allRounds.filter((r) => ['completed', 'cancelled', 'void'].includes(r.status));
+  const liveCount = allRounds.filter(r => r.status === 'active').length;
 
   return (
     <div className="fade-in">
       <PageHeader title="Games" />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <StatCard icon="🎮" label="Active Games" value={liveCount} color={C.success} />
+        <StatCard icon="⏳" label="Pending" value={activeRounds.filter(r => r.status === 'pending').length} color={C.warning} />
+        <StatCard icon="✅" label="Completed" value={doneRounds.filter(r => r.status === 'completed').length} color={C.info} />
+        <StatCard icon="📊" label="Total Rounds" value={allRounds.length} color={C.primary} />
+      </div>
+
       <CreateRoundForm onCreated={fetchRounds} />
       {actionError && <Alert type="error">{actionError}</Alert>}
       {fetchError && <Alert type="error">{fetchError}</Alert>}
 
       <Card style={{ marginBottom: 24 }}>
         <CardHeader
-          title="Active & Pending"
-          subtitle="Auto-refreshes every 5s"
-          action={<span style={{ fontSize: 12, color: allRounds.some(r => r.status === 'active') ? C.success : C.muted, fontWeight: 600 }}>
-            {allRounds.filter(r => r.status === 'active').length} live
+          title="Active & Pending Games"
+          subtitle="Auto-refreshes every 5s for live updates"
+          action={<span style={{ fontSize: 12, color: liveCount > 0 ? C.success : C.muted, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {liveCount > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: C.success, animation: 'pulse 2s infinite' }} />}
+            {liveCount} live
           </span>}
         />
         <RoundsTable rounds={activeRounds} showActions onAction={handleAction} loading={fetchLoading && !allRounds.length} actioningId={actioningId} />
       </Card>
 
       <Card>
-        <CardHeader title="Completed & Cancelled" />
+        <CardHeader 
+          title="Completed & Cancelled" 
+          subtitle="Historical game records"
+          action={<div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-muted)' }}>{doneRounds.length} total</div>}
+        />
         <RoundsTable rounds={doneRounds} showActions={false} onAction={handleAction} loading={fetchLoading && !allRounds.length} actioningId={actioningId} />
       </Card>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }

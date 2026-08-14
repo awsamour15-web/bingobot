@@ -136,7 +136,7 @@ function PendingWithdrawals() {
 export function FinancePage() {
   return (
     <div className="fade-in">
-      <PageHeader title="Finance" />
+      <PageHeader title="Finance & Withdrawals" />
       <RevenueSummary />
       <PendingWithdrawals />
     </div>

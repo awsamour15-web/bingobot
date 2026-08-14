@@ -99,11 +99,12 @@ export function DepositsPage() {
         action={<Btn variant="ghost" size="sm" onClick={fetchDeposits} disabled={loading}>{loading ? 'Refreshing…' : '↻ Refresh'}</Btn>}
       />
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
+      {/* Summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
         <StatCard icon="⏳" label="Pending" value={summary?.pending ?? '—'} color={C.warning} />
         <StatCard icon="✅" label="Claimed" value={summary?.claimed ?? '—'} color={C.success} />
         <StatCard icon="✕" label="Cancelled" value={summary?.cancelled ?? '—'} color={C.muted} />
+        <StatCard icon="💾" label="Total Deposits" value={data?.items.length ?? '—'} color={C.primary} />
       </div>
 
       {actionMsg && <Alert type={actionMsg.type}>{actionMsg.text}</Alert>}
@@ -112,7 +113,11 @@ export function DepositsPage() {
       <AddDepositForm onCreated={fetchDeposits} />
 
       <Card>
-        <CardHeader title="All Deposits" />
+        <CardHeader 
+          title="Deposit History" 
+          subtitle="All Telebirr transactions and player claims"
+          action={<div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-muted)' }}>{data?.items.length ?? 0} total</div>}
+        />
         <Table>
           <thead>
             <tr>
@@ -122,7 +127,7 @@ export function DepositsPage() {
               <Th>Player</Th>
               <Th>Created</Th>
               <Th>Claimed At</Th>
-              <Th>Actions</Th>
+              <Th right>Actions</Th>
             </tr>
           </thead>
           <tbody>
@@ -130,13 +135,13 @@ export function DepositsPage() {
              !data?.items.length ? <TrEmpty cols={7} message="No deposits found." /> :
              data.items.map((d) => (
               <tr key={d.id}>
-                <Td mono>{d.tx_number}</Td>
+                <Td style={{ fontWeight: 800, color: 'var(--c-text)' }}>{d.tx_number}</Td>
                 <Td><span style={{ fontWeight: 700, color: C.text }}>{d.amount.toFixed(2)}</span></Td>
                 <Td><Badge variant={statusVariant(d.status)}>{d.status}</Badge></Td>
                 <Td muted={!d.player_username}>{d.player_username ? `@${d.player_username}` : '—'}</Td>
                 <Td muted>{new Date(d.created_at).toLocaleString()}</Td>
                 <Td muted>{d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}</Td>
-                <Td>
+                <Td style={{ textAlign: 'right' }}>
                   {d.status === 'pending' && (
                     <Btn size="sm" variant="danger" onClick={() => handleCancel(d.id)} disabled={cancellingId === d.id}>
                       {cancellingId === d.id ? '…' : 'Cancel'}
