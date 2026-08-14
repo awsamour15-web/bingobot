@@ -126,8 +126,8 @@ export function DashboardPage() {
 
   const revenueBase = Math.max(summary?.totalRevenue ?? 4200, 2200);
   const periodSeries = useMemo(() => buildTrendSeries(revenueBase, activePeriod), [revenueBase, activePeriod]);
-  const currentValue = periodSeries[periodSeries.length - 1];
-  const previousValue = periodSeries[0];
+  const currentValue = periodSeries[periodSeries.length - 1] ?? 0;
+  const previousValue = periodSeries[0] ?? 1;
   const delta = ((currentValue - previousValue) / Math.max(previousValue, 1)) * 100;
 
   const comparisonStats = useMemo(() => [

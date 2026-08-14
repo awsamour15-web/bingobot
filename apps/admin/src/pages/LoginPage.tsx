@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { C, Btn, Card, Alert, PageHeader, inputCss } from '../components/ui';
 
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -15,21 +17,21 @@ export function LoginPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/admin/auth/login', {
+      const res = await fetch(`${BASE_URL}/api/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
 
-      const data = (await res.json()) as { jwt?: string; error?: string };
+      const data = (await res.json()) as { token?: string; error?: string };
 
       if (!res.ok) {
         setError(data.error ?? 'Login failed');
         return;
       }
 
-      if (data.jwt) {
-        localStorage.setItem('adminJwt', data.jwt);
+      if (data.token) {
+        localStorage.setItem('adminJwt', data.token);
         navigate('/', { replace: true });
       } else {
         setError('No token received');
