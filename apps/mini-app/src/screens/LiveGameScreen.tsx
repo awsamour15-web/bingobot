@@ -640,7 +640,8 @@ export default function LiveGameScreen() {
         ))}
       </div>
 
-      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }`}</style>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes lastCalledPulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }`}</style>
 
       {/* ── MAIN: LEFT board + RIGHT panel ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
@@ -695,14 +696,15 @@ export default function LiveGameScreen() {
             {game.lastCalled != null ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  width: 44, height: 44, borderRadius: 8, flexShrink: 0,
                   background: HDR[getColIndex(game.lastCalled)],
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 900, fontSize: 16, color: '#fff',
+                  fontWeight: 900, fontSize: 18, color: '#fff',
+                  animation: 'lastCalledPulse 0.6s ease-in-out infinite',
                 }}>
                   {getColLabel(game.lastCalled)}
                 </div>
-                <div style={{ fontSize: 56, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ fontSize: 68, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: 'lastCalledPulse 0.6s ease-in-out infinite' }}>
                   {game.lastCalled}
                 </div>
               </div>
@@ -754,15 +756,15 @@ export default function LiveGameScreen() {
                   <div key={cartela.cartelaNumber} style={{ flexShrink: 0, background: '#132033', borderRadius: 8, overflow: 'hidden', border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)' }}>
                     {/* Card label */}
                     <div style={{ padding: '3px 6px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 8, fontWeight: 800, color: '#f5c518', letterSpacing: 0.5 }}>#{cartela.cartelaNumber}</span>
-                      {hasBingo && <span style={{ fontSize: 8, fontWeight: 700, color: '#22c55e' }}>✓ BINGO</span>}
-                      {game.phase === 'active' && claimPending && hasBingo && <span style={{ fontSize: 8, color: '#f59e0b' }}>⏳ Claiming…</span>}
+                      <span style={{ fontSize: 8.8, fontWeight: 800, color: '#f5c518', letterSpacing: 0.5 }}>#{cartela.cartelaNumber}</span>
+                      {hasBingo && <span style={{ fontSize: 8.8, fontWeight: 700, color: '#22c55e' }}>✓ BINGO</span>}
+                      {game.phase === 'active' && claimPending && hasBingo && <span style={{ fontSize: 8.8, color: '#f59e0b' }}>⏳ Claiming…</span>}
                     </div>
 
                     {/* BINGO column headers */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '2px 2px 1px' }}>
                       {COLS.map((c, ci) => (
-                        <div key={c} style={{ textAlign: 'center', padding: '1px 0', borderRadius: 2, fontWeight: 800, fontSize: 7, background: HDR[ci], color: '#fff' }}>{c}</div>
+                        <div key={c} style={{ textAlign: 'center', padding: '1px 0', borderRadius: 2, fontWeight: 800, fontSize: 8, background: HDR[ci], color: '#fff' }}>{c}</div>
                       ))}
                     </div>
 
@@ -774,15 +776,16 @@ export default function LiveGameScreen() {
                         const isW = winCells.has(idx);
                         return (
                           <div key={idx} style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             aspectRatio: '1', borderRadius: 3,
                             background: isW ? '#22c55e' : isM ? '#3b82f6cc' : 'rgba(255,255,255,0.05)',
                             color: isW || isM ? '#fff' : '#4a6080',
-                            fontSize: 8, fontWeight: isW ? 900 : isM ? 700 : 500,
+                            fontSize: 8.8, fontWeight: isW ? 900 : isM ? 700 : 500,
                             border: isFree && !isM ? '1.5px solid rgba(245,197,24,0.4)' : 'none',
                             transition: 'background 0.15s',
                           }}>
-                            {isFree ? '★' : val}
+                            {val ? <span style={{ fontSize: '8.8px' }}>{val}</span> : isFree ? <span style={{ fontSize: '10px' }}>★</span> : ''}
+                            {isFree && val ? <span style={{ fontSize: '6px', opacity: 0.7 }}>●</span> : ''}
                           </div>
                         );
                       })}
