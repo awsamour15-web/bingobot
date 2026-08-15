@@ -25,6 +25,7 @@ import { WalletType } from '@fidel/shared';
 import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
 
 const router: RouterType = Router();
+export const TOTAL_CARTELAS = 800;
 
 // All rounds routes require a valid JWT
 router.use(jwtAuthMiddleware);
@@ -151,8 +152,8 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
   // Get taken and reserved cartelas
   const { taken, reserved } = await CartelaReservationService.getTakenAndReserved(id);
 
-  // All cartela numbers 1–880
-  const ALL_CARTELAS = Array.from({ length: 880 }, (_, i) => i + 1);
+  // All cartela numbers 1–800
+  const ALL_CARTELAS = Array.from({ length: TOTAL_CARTELAS }, (_, i) => i + 1);
   const takenAndReservedSet = new Set([...taken, ...reserved]);
   const available = ALL_CARTELAS.filter((n) => !takenAndReservedSet.has(n));
 
@@ -169,7 +170,7 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
 
 router.get('/:id/cartelas/:num/grid', async (req: Request, res: Response): Promise<void> => {
   const num = parseInt(req.params['num'] as string, 10);
-  if (isNaN(num) || num < 1 || num > 880) {
+  if (isNaN(num) || num < 1 || num > TOTAL_CARTELAS) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
     return;
   }
@@ -194,11 +195,11 @@ router.post('/:id/reserve-cartela', async (req: Request, res: Response): Promise
     typeof body.cartelaNumber !== 'number' ||
     !Number.isInteger(body.cartelaNumber) ||
     body.cartelaNumber < 1 ||
-    body.cartelaNumber > 880
+    body.cartelaNumber > TOTAL_CARTELAS
   ) {
     res.status(400).json({
       error: 'BAD_REQUEST',
-      message: 'cartelaNumber must be an integer between 1 and 880',
+      message: `cartelaNumber must be an integer between 1 and ${TOTAL_CARTELAS}`,
     });
     return;
   }
@@ -233,7 +234,7 @@ router.delete('/:id/release-cartela/:cartelaNumber', async (req: Request, res: R
   const playerId = req.player!.playerId;
   const cartelaNumber = parseInt(req.params['cartelaNumber'] as string, 10);
 
-  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > 880) {
+  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > TOTAL_CARTELAS) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
     return;
   }
@@ -292,12 +293,12 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
     body.cartelaNumbers.length === 0 ||
     body.cartelaNumbers.length > 3 ||
     !body.cartelaNumbers.every(
-      (n) => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 880,
+      (n) => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= TOTAL_CARTELAS,
     )
   ) {
     res.status(400).json({
       error: 'BAD_REQUEST',
-      message: 'cartelaNumbers must be an array of 1–3 integers between 1 and 880',
+      message: `cartelaNumbers must be an array of 1–3 integers between 1 and ${TOTAL_CARTELAS}`,
     });
     return;
   }
@@ -359,11 +360,11 @@ router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {
     typeof body.cartelaNumber !== 'number' ||
     !Number.isInteger(body.cartelaNumber) ||
     body.cartelaNumber < 1 ||
-    body.cartelaNumber > 880
+    body.cartelaNumber > TOTAL_CARTELAS
   ) {
     res.status(400).json({
       error: 'BAD_REQUEST',
-      message: 'cartelaNumber must be an integer between 1 and 880',
+      message: `cartelaNumber must be an integer between 1 and ${TOTAL_CARTELAS}`,
     });
     return;
   }
@@ -425,7 +426,7 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
   const playerId = req.player!.playerId;
   const cartelaNumber = parseInt(req.params['cartelaNumber'] as string, 10);
 
-  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > 880) {
+  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > TOTAL_CARTELAS) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
     return;
   }

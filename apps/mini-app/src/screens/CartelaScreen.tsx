@@ -19,9 +19,9 @@ interface ProfileBalances {
   playWallet: { balance: number };
 }
 
-const TOTAL = 880;
+export const TOTAL_CARTELAS = 800;
 const MAX_SELECT = 2;
-const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
+const ALL_NUMBERS = Array.from({ length: TOTAL_CARTELAS }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171'];
 
