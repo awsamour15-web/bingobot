@@ -62,13 +62,13 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       onClick={handleClick}
       style={{
         padding: '6px 0', borderRadius: 10, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
+        fontWeight: isPicked || taken ? 800 : 700, fontSize: 18,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'all 0.2s ease',
         transform: isPicked ? 'translateY(-1px) scale(1.03)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '38px',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '42px',
         boxShadow: shadow,
       }}
     >
@@ -684,7 +684,7 @@ export default function CartelaScreen() {
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))',
-        gap: 10, padding: '20px 18px', alignContent: 'start',
+        gap: 11, padding: '20px 18px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.76) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
