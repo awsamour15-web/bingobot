@@ -150,12 +150,21 @@ export const RoundScheduler = {
         const stake = Number(round.stake);
 
         if (round._count.round_entries === 0) {
+          // Check for active reservations — players may have reserved cartelas
+          // but not yet committed their join. Give up to 30s grace period.
+          const activeReservations = await prisma.cartelaReservation.count({
+            where: { round_id: round.id, expires_at: { gt: new Date() } },
+          });
+          if (activeReservations > 0) {
+            console.log(`[Scheduler] Round ${round.id} has 0 entries but ${activeReservations} active reservation(s) — skipping void`);
+            continue;
+          }
           try {
             await prisma.gameRound.update({
               where: { id: round.id },
               data: { status: GameStatus.void, ended_at: new Date() },
             });
-            console.log(`[Scheduler] Voided empty round ${round.id} (0 players)`);
+            console.log(`[Scheduler] Voided empty round ${round.id} (0 players, 0 reservations)`);
           } catch (err) {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }
