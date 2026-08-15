@@ -15,9 +15,15 @@ import { isRoundStartBlocked } from '../lib/round-start-flow';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
 
 interface ProfileBalances {
-  mainWallet: { balance: number };
-  playWallet: { balance: number };
+  mainWallet?: { balance?: number | string | null } | null;
+  playWallet?: { balance?: number | string | null } | null;
 }
+
+const asSafeBalance = (wallet?: { balance?: number | string | null } | null) => {
+  const value = wallet?.balance ?? 0;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
 
 export const TOTAL_CARTELAS = 800;
 const MAX_SELECT = 2;
@@ -543,7 +549,7 @@ export default function CartelaScreen() {
     if (round && balances) {
       const stake = Number(round.stake);
       const total = (picksRef.current.size + 1) * stake;
-      const bal = Number(balances.playWallet.balance) + Number(balances.mainWallet.balance);
+      const bal = asSafeBalance(balances.playWallet) + asSafeBalance(balances.mainWallet);
       if (bal < total) {
         setBalanceAlert(`ቀሪ ሂሳብ አይበቃም!\nNeed ${total} Birr — you have ${bal.toFixed(0)} Birr.\nPlease deposit to continue.`);
         return;
@@ -681,8 +687,8 @@ export default function CartelaScreen() {
         {/* Header Bottom - Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
           {[
-            { label: '💰 Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0, color: '#3b82f6' },
-            { label: '🎮 Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0, color: '#10b981' },
+            { label: '💰 Main', value: balances ? Math.floor(asSafeBalance(balances.mainWallet)) : 0, color: '#3b82f6' },
+            { label: '🎮 Play', value: balances ? Math.floor(asSafeBalance(balances.playWallet)) : 0, color: '#10b981' },
             { label: '🎯 Stake', value: round ? Number(round.stake) : 0, color: '#f59e0b' },
             { label: '👥 Players', value: round?.player_count ?? 0, color: '#8b5cf6' },
           ].map(({ label, value, color }) => (
