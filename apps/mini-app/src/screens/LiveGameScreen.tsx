@@ -619,29 +619,30 @@ export default function LiveGameScreen() {
             ))}
           </div>
 
-          {/* Numbers 1–75, column-major, 15 rows × 5 cols */}
+          {/* Numbers 1–75: row-by-row under each column header */}
+          {/* Row 0: 1,16,31,46,61 | Row 1: 2,17,32,47,62 | ... | Row 14: 15,30,45,60,75 */}
           <div style={{ flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gridTemplateRows: 'repeat(15,1fr)', gap: 2, padding: '2px 3px 3px' }}>
-            {Array.from({ length: 75 }, (_, i) => {
-              const ci = Math.floor(i / 15);
-              const row = i % 15;
-              const num = ci * 15 + row + 1;
-              const called = game.calledNumbers.has(num);
-              const isLast = num === game.lastCalled;
-              return (
-                <div key={num} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  borderRadius: 4,
-                  background: isLast ? '#f5c518' : called ? `${HDR[ci]}cc` : 'rgba(255,255,255,0.055)',
-                  color: isLast ? '#0e1726' : called ? '#fff' : '#4a6080',
-                  fontSize: 10, fontWeight: isLast ? 900 : called ? 800 : 500,
-                  border: isLast ? '2px solid #fff' : called ? 'none' : '1px solid rgba(255,255,255,0.07)',
-                  aspectRatio: '1', transition: 'background 0.18s',
-                  boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : 'none',
-                } as React.CSSProperties}>
-                  {num}
-                </div>
-              );
-            })}
+            {Array.from({ length: 15 }, (_, row) =>
+              Array.from({ length: 5 }, (_, col) => {
+                const num = col * 15 + row + 1; // B:1-15, I:16-30, N:31-45, G:46-60, O:61-75
+                const called = game.calledNumbers.has(num);
+                const isLast = num === game.lastCalled;
+                return (
+                  <div key={num} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 4,
+                    background: isLast ? '#f5c518' : called ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.055)',
+                    color: isLast ? '#0e1726' : called ? '#fff' : '#4a6080',
+                    fontSize: 10, fontWeight: isLast ? 900 : called ? 800 : 500,
+                    border: isLast ? '2px solid #fff' : called ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.07)',
+                    aspectRatio: '1', transition: 'background 0.18s',
+                    boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : 'none',
+                  } as React.CSSProperties}>
+                    {num}
+                  </div>
+                );
+              })
+            ).flat()}
           </div>
         </div>
 
