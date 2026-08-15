@@ -749,14 +749,26 @@ export default function LiveGameScreen() {
           </div>
 
           {/* CARTELA CARDS — scrollable */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'none' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6, scrollbarWidth: 'none', alignItems: 'start' }}>
             {!isWatching && allCartelas.length > 0 ? (
               allCartelas.map((cartela, cardIdx) => {
                 const cGrid = cartela.cartelaGrid as number[];
                 const winCells = winCellsForGrid(cGrid);
                 const hasBingo = hasWinForGrid(cGrid);
                 return (
-                  <div key={cartela.cartelaNumber} style={{ flexShrink: 0, background: '#132033', borderRadius: 6, overflow: 'hidden', border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)' }}>
+                  <div key={cartela.cartelaNumber} style={{
+                    flexShrink: 0,
+                    width: '100%',
+                    maxWidth: 185,
+                    justifySelf: 'center',
+                    transform: 'scale(0.8)',
+                    transformOrigin: 'top center',
+                    marginBottom: -8,
+                    background: '#132033',
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)',
+                  }}>
                     {/* Card label */}
                     <div style={{ padding: '2px 4px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 7.5, fontWeight: 800, color: '#f5c518', letterSpacing: 0.4 }}>#{cartela.cartelaNumber}</span>
@@ -803,7 +815,7 @@ export default function LiveGameScreen() {
               </div>
             ) : (
               Array.from({ length: 2 }, (_, i) => (
-                <div key={i} style={{ background: '#132033', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '10px 8px', opacity: 0.4 }}>
+                <div key={i} style={{ width: '100%', maxWidth: 185, justifySelf: 'center', transform: 'scale(0.8)', transformOrigin: 'top center', marginBottom: -8, background: '#132033', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '10px 8px', opacity: 0.4 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 4 }}>
                     {COLS.map((c, ci) => <div key={c} style={{ height: 20, borderRadius: 3, background: HDR[ci], opacity: 0.5 }} />)}
                   </div>
