@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td, TrEmpty, TrLoading,
-  Alert, Field, PageHeader, inputCss, selectCss,
+  Alert, Field, KpiCard, PageHeader, inputCss, selectCss,
 } from '../components/ui';
 import type { Promotion, PromotionSchedule, PromotionLog, PromotionContentType, PromotionStatus } from '../lib/api';
 import {
@@ -257,8 +257,15 @@ export function PromotionsPage() {
 
   return (
     <div>
-      <PageHeader title="📢 Promotions" />
+      <PageHeader title="📢 Promotions" action={<span className="soft-label">Campaign control</span>} />
       {error && <Alert type="error">{error}</Alert>}
+
+      <div className="summary-grid" style={{ marginTop: 8 }}>
+        <KpiCard icon="promotions" label="Total promos" value={promotions.length} delta="Live" tone="indigo" trend={[8, 12, 15, 18, 20, 23, 25]} />
+        <KpiCard icon="trend" label="Active" value={promotions.filter(p => p.status === 'active').length} delta="+5.3%" tone="emerald" trend={[10, 12, 14, 16, 18, 21, 23]} />
+        <KpiCard icon="spark" label="Inactive" value={promotions.filter(p => p.status !== 'active').length} delta="Low" tone="amber" trend={[4, 5, 4, 3, 5, 4, 3]} />
+        <KpiCard icon="ticket" label="Sent logs" value={logs.length} delta="Last 24h" tone="cyan" trend={[18, 24, 21, 30, 26, 35, 42]} />
+      </div>
 
       <CreateForm onCreated={load} />
 

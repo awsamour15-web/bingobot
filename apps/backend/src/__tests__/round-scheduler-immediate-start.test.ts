@@ -23,7 +23,7 @@ vi.mock('../services/nce.service.js', () => ({
 
 import prisma from '../lib/prisma.js';
 import { nce } from '../services/nce.service.js';
-import { RoundScheduler } from '../services/round-scheduler.service';
+import { RoundScheduler } from '../services/round-scheduler.service.js';
 
 describe('RoundScheduler immediate start behavior', () => {
   beforeEach(() => {
@@ -47,11 +47,11 @@ describe('RoundScheduler immediate start behavior', () => {
 
   it('creates a pending round for a stake when the active DB row has no live NCE timer', async () => {
     vi.mocked(prisma.config.findUnique).mockResolvedValue(null);
-    vi.mocked(prisma.gameRound.findMany).mockImplementation(async ({ where }: any) => {
+    vi.mocked(prisma.gameRound.findMany).mockImplementation(((async ({ where }: any) => {
       if (where?.status === 'pending') return [];
       if (where?.status === 'active') return [{ id: 'active-round-1', stake: 10 }];
       return [];
-    });
+    }) as any));
     vi.mocked(prisma.gameRound.create).mockResolvedValue({
       id: 'pending-round-1',
       stake: 10,

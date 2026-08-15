@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { CartelaDefinition } from '../lib/api';
 import { getCartelas, getCartela, createCartela, updateCartela, deleteCartela } from '../lib/api';
 import {
-  C, Btn, Card, CardHeader, Alert, Field, PageHeader, inputCss, StatCard,
+  C, Btn, Card, CardHeader, Alert, Field, KpiCard, PageHeader, inputCss,
 } from '../components/ui';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
@@ -327,10 +327,11 @@ export function CartelasPage() {
     <div className="fade-in">
       <PageHeader title="Cartelas" action={<Btn onClick={() => setShowCreate(true)}>+ New Cartela</Btn>} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {summaryCards.map((card) => (
-          <StatCard key={card.label} icon={card.icon} label={card.label} value={card.value} color={card.color} />
-        ))}
+      <div className="summary-grid">
+        <KpiCard icon="cartelas" label="Total cartelas" value={total} delta="Catalog" tone="indigo" trend={[20, 30, 35, 42, 44, 48, 54]} />
+        <KpiCard icon="ticket" label="Page size" value={pageSize} delta="fixed" tone="emerald" trend={[18, 22, 28, 32, 36, 40, 42]} />
+        <KpiCard icon="dashboard" label="Displayed" value={cartelas.length} delta="Visible" tone="cyan" trend={[12, 18, 19, 24, 28, 29, 30]} />
+        <KpiCard icon="spark" label="Free center" value={"★"} delta="Always" tone="amber" trend={[10, 14, 15, 16, 18, 20, 24]} />
       </div>
 
       {error && <Alert type="error">{error}</Alert>}

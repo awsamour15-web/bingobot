@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
   Btn, Badge, Card, CardHeader, Table, Th, Td, TrEmpty, TrLoading,
-  Alert, Field, PageHeader, inputCss,
+  Alert, Field, KpiCard, PageHeader, inputCss,
 } from '../components/ui';
 import {
   listAgents, createAgent, suspendAgent, restoreAgent, getAgentDetail,
   getPendingAgents, approveAgent, rejectAgent,
   type AgentSummary, type AgentDetail, type PendingAgent,
 } from '../lib/api';
+
+const summaryCardStyle = { display: 'grid', gap: 12 };
 
 export function AgentsPage() {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
@@ -82,12 +84,25 @@ export function AgentsPage() {
         }
       />
 
-      {loading && <p style={{ color: 'var(--c-muted)' }}>Loading…</p>}
+      {loading && (
+        <Card>
+          <p style={{ margin: 0, color: 'var(--c-muted)' }}>Loading…</p>
+        </Card>
+      )}
       {error && <Alert type="error">{error}</Alert>}
+
+      {!loading && !error && (
+        <div className="summary-grid">
+          <KpiCard icon="agents" label="Active agents" value={agents.filter(a => a.isActive).length} delta="+4.2%" tone="indigo" trend={[30, 34, 42, 46, 58, 63, 72]} />
+          <KpiCard icon="spark" label="Pending" value={pendingAgents.length} delta="Review" tone="amber" trend={[14, 18, 19, 17, 21, 28, 26]} />
+          <KpiCard icon="finance" label="Commission" value={Number(agents.reduce((sum, a) => sum + a.totalCommission, 0).toFixed(2))} delta="ETB" tone="emerald" trend={[1200, 1500, 1700, 1900, 2100, 2350, 2480]} />
+          <KpiCard icon="players" label="Players" value={agents.reduce((sum, a) => sum + a.totalPlayersInvited, 0)} delta="+9.4%" tone="cyan" trend={[40, 44, 52, 60, 68, 77, 85]} />
+        </div>
+      )}
 
       {/* Pending Approvals */}
       {!loading && !error && pendingAgents.length > 0 && (
-        <Card style={{ marginBottom: 24, border: '1px solid #f59e0b' }}>
+        <Card style={{ marginBottom: 24, border: '1px solid rgba(245, 158, 11, 0.35)', boxShadow: '0 14px 30px rgba(245, 158, 11, 0.12)' }}>
           <CardHeader
             title={`⏳ Pending Approvals (${pendingAgents.length})`}
             subtitle="These agents are waiting for approval"

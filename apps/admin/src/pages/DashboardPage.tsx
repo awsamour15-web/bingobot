@@ -6,8 +6,8 @@ import {
   Btn,
   Card,
   CardHeader,
+  KpiCard,
   PageHeader,
-  StatCard,
   Table,
   Td,
   Th,
@@ -136,6 +136,13 @@ export function DashboardPage() {
     { label: 'Payout pipeline', value: formatMoney((summary?.pendingWithdrawals ?? 0) * 180), delta: 'Needs review', tone: 'warning' },
   ], [summary]);
 
+  const channelMix = useMemo(() => [
+    { name: 'Deposits', value: 68, color: '#6366f1' },
+    { name: 'Withdrawals', value: 46, color: '#8b5cf6' },
+    { name: 'Partners', value: 72, color: '#06b6d4' },
+    { name: 'Promotions', value: 54, color: '#22c55e' },
+  ], []);
+
   const chartLabels: Record<PeriodKey, string[]> = {
     '1h': ['00m', '15m', '30m', '45m', '60m', '75m', '90m', '105m'],
     today: ['6a', '8a', '10a', '12p', '2p', '4p', '6p', '8p'],
@@ -153,12 +160,12 @@ export function DashboardPage() {
 
       {error && <Alert type="error">{error}</Alert>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard icon="👥" label="Total Players" value={summary?.totalPlayers ?? '—'} color="#6366f1" />
-        <StatCard icon="💰" label="Commission" value={summary ? formatMoney(summary.totalRevenue) : '—'} color="#22c55e" />
-        <StatCard icon="📦" label="Gross Stakes" value={summary ? formatMoney(summary.totalStakes) : '—'} color="#3b82f6" />
-        <StatCard icon="📥" label="Pending Deposits" value={summary?.pendingDeposits ?? '—'} color="#f59e0b" />
-        <StatCard icon="💸" label="Pending Withdrawals" value={summary?.pendingWithdrawals ?? '—'} color="#ef4444" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <KpiCard label="Players" value={summary?.totalPlayers ?? 0} delta="+12.4%" icon="players" tone="indigo" trend={[40, 52, 58, 71, 64, 78, 92]} />
+        <KpiCard label="Commission" value={summary ? summary.totalRevenue : 0} delta="+8.1%" icon="finance" tone="emerald" trend={[34, 46, 51, 62, 60, 76, 88]} />
+        <KpiCard label="Gross stakes" value={summary ? summary.totalStakes : 0} delta="+14.2%" icon="ticket" tone="cyan" trend={[28, 38, 52, 48, 64, 68, 84]} />
+        <KpiCard label="Pending deposits" value={summary?.pendingDeposits ?? 0} delta="-2.1%" icon="deposits" tone="amber" trend={[60, 54, 60, 58, 62, 70, 74]} />
+        <KpiCard label="Withdrawals" value={summary?.pendingWithdrawals ?? 0} delta="+3.6%" icon="withdrawals" tone="rose" trend={[42, 38, 50, 44, 48, 52, 56]} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -293,6 +300,25 @@ export function DashboardPage() {
         </Card>
 
         <Card>
+          <CardHeader title="Channel velocity" subtitle="Activity mix across the platform" />
+          <div style={{ display: 'grid', gap: 14 }}>
+            {channelMix.map((channel) => (
+              <div key={channel.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: 'var(--c-muted)', fontWeight: 700 }}>
+                  <span>{channel.name}</span>
+                  <span>{channel.value}%</span>
+                </div>
+                <div style={{ height: 12, borderRadius: 999, background: 'rgba(148,163,184,0.08)', overflow: 'hidden', border: '1px solid var(--c-border)' }}>
+                  <div style={{ width: `${channel.value}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${channel.color}, rgba(255,255,255,0.85))` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <Card>
           <CardHeader title="Open withdrawals" subtitle="Most recent approvals pending" />
           {pendingWithdrawals.length === 0 ? (
             <TrEmpty cols={3} message="No pending withdrawals." />
@@ -316,6 +342,20 @@ export function DashboardPage() {
               </tbody>
             </Table>
           )}
+        </Card>
+
+        <Card>
+          <CardHeader title="Activity pulse" subtitle="Operational momentum" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 10, alignItems: 'end', height: 180 }}>
+            {[44, 58, 68, 51, 76, 88, 94].map((value, idx) => (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <div style={{ width: '100%', maxWidth: 30, height: `${value}%`, borderRadius: '10px 10px 6px 6px', background: idx % 2 === 0 ? 'linear-gradient(180deg, #8b5cf6, #6366f1)' : 'linear-gradient(180deg, #06b6d4, #3b82f6)' }} />
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--c-muted)', fontWeight: 700 }}>{['M','T','W','T','F','S','S'][idx]}</div>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
 

@@ -34,7 +34,7 @@ export function Layout() {
         }
         .sidebar {
           width: var(--sidebar-width);
-          background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
+          background: linear-gradient(180deg, rgba(9, 13, 24, 0.96), rgba(15, 23, 42, 0.9));
           display: flex;
           flex-direction: column;
           flex-shrink: 0;
@@ -43,7 +43,8 @@ export function Layout() {
           z-index: 200;
           transition: transform 0.25s ease;
           border-right: 1px solid var(--c-border);
-          box-shadow: 22px 0 45px rgba(15, 23, 42, 0.18);
+          box-shadow: 22px 0 45px rgba(15, 23, 42, 0.28);
+          backdrop-filter: blur(18px);
         }
         .sidebar-logo {
           padding: 22px 20px 18px;
@@ -56,15 +57,16 @@ export function Layout() {
           gap: 12px;
         }
         .sidebar-logo-mark {
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(59, 130, 246, 0.9));
-          box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 35%, #06b6d4 100%);
+          box-shadow: 0 12px 28px rgba(99, 102, 241, 0.38);
           font-size: 18px;
+          border: 1px solid rgba(255,255,255,0.15);
         }
         .sidebar-logo-title {
           font-size: 18px;
@@ -147,17 +149,19 @@ export function Layout() {
           font-weight: 600;
           transition: all 0.18s ease;
           margin-bottom: 4px;
+          border: 1px solid transparent;
         }
         .nav-item:hover {
           background: rgba(148, 163, 184, 0.08);
           color: #f8fafc;
-          transform: translateX(1px);
+          transform: translateX(2px);
+          border-color: rgba(148, 163, 184, 0.16);
         }
         .nav-item.active {
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(59, 130, 246, 0.14));
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(59, 130, 246, 0.16));
           color: #e0e7ff;
-          border: 1px solid rgba(129, 140, 248, 0.28);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+          border: 1px solid rgba(129, 140, 248, 0.3);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 24px rgba(99, 102, 241, 0.12);
         }
         .nav-item .nav-icon {
           font-size: 16px;
@@ -192,8 +196,8 @@ export function Layout() {
         }
         .topbar {
           height: var(--topbar-height);
-          background: rgba(255, 255, 255, 0.72);
-          backdrop-filter: blur(12px);
+          background: rgba(11, 17, 32, 0.72);
+          backdrop-filter: blur(18px);
           border-bottom: 1px solid var(--c-border);
           display: flex;
           align-items: center;
@@ -204,8 +208,29 @@ export function Layout() {
           z-index: 100;
           transition: background 0.2s, border-color 0.2s, left 0.2s;
         }
-        [data-theme="dark"] .topbar {
-          background: rgba(15, 23, 42, 0.72);
+        [data-theme="light"] .topbar {
+          background: rgba(255, 255, 255, 0.72);
+        }
+        .topbar-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(34, 197, 94, 0.28);
+          background: rgba(34, 197, 94, 0.12);
+          color: #86efac;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .topbar-status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #22c55e;
+          box-shadow: 0 0 12px rgba(34,197,94,0.9);
         }
         .topbar-title {
           font-size: 15px;
@@ -339,6 +364,7 @@ export function Layout() {
         <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Toggle menu">
           {menuOpen ? '✕' : '☰'}
         </button>
+        <span className="topbar-status"><span className="topbar-status-dot" /> Live ops</span>
         <span className="topbar-title">Admin Panel</span>
         <span className="topbar-date">
           {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
