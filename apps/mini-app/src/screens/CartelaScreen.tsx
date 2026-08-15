@@ -18,7 +18,7 @@ interface ProfileBalances {
   playWallet: { balance: number };
 }
 
-const TOTAL = 880;
+const TOTAL = 800;
 const MAX_SELECT = 2;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
