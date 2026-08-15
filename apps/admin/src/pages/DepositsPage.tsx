@@ -33,26 +33,28 @@ function AddDepositForm({ onCreated }: { onCreated: () => void }) {
       onCreated();
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
-      setError(e.code === 'DUPLICATE_TX_NUMBER' ? 'That transaction number already exists.' : (e.message ?? 'Failed to create deposit.'));
-    } finally {
-      setSubmitting(false);
-    }
+      setError(e.code === 'DUPLICATE_TX_NUMBER'
+        ? 'That transaction number already exists.'
+        : (e.message ?? 'Failed to create deposit.'));
+    } finally { setSubmitting(false); }
   }
 
   return (
-    <Card style={{ marginBottom: 24 }}>
-      <CardHeader title="Add Deposit" subtitle="Manually register a Telebirr transaction for player claim" />
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader title="Add Deposit" subtitle="Manually register a Telebirr transaction" />
       {error && <Alert type="error">{error}</Alert>}
       {success && <Alert type="success">{success}</Alert>}
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr)) auto', gap: 12, alignItems: 'flex-end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, alignItems: 'flex-end' }}>
           <Field label="Transaction Number">
-            <input style={inputCss} type="text" placeholder="e.g. DH87MNVFCT" value={txNumber} onChange={(e) => setTxNumber(e.target.value)} disabled={submitting} />
+            <input style={inputCss} type="text" placeholder="e.g. DH87MNVFCT" value={txNumber}
+              onChange={(e) => setTxNumber(e.target.value)} disabled={submitting} />
           </Field>
           <Field label="Amount (ETB)">
-            <input style={inputCss} type="number" min="1" step="0.01" placeholder="e.g. 150" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={submitting} />
+            <input style={inputCss} type="number" min="1" step="0.01" placeholder="e.g. 150" value={amount}
+              onChange={(e) => setAmount(e.target.value)} disabled={submitting} />
           </Field>
-          <div style={{ paddingBottom: 0 }}>
+          <div>
             <Btn type="submit" disabled={submitting}>{submitting ? 'Adding…' : 'Add Deposit'}</Btn>
           </div>
         </div>
@@ -79,7 +81,7 @@ export function DepositsPage() {
 
   async function handleCancel(id: string) {
     const d = data?.items.find((x) => x.id === id);
-    if (!window.confirm(`Cancel deposit ${d?.tx_number ?? id}? This cannot be undone.`)) return;
+    if (!window.confirm(`Cancel deposit ${d?.tx_number ?? id}?`)) return;
     setCancellingId(id); setActionMsg(null);
     try {
       await cancelDeposit(id);
@@ -90,21 +92,24 @@ export function DepositsPage() {
     } finally { setCancellingId(null); }
   }
 
-  const summary = data?.summary;
+  const s = data?.summary;
 
   return (
     <div className="fade-in">
       <PageHeader
         title="Deposits"
-        action={<Btn variant="ghost" size="sm" onClick={fetchDeposits} disabled={loading}>{loading ? 'Refreshing…' : '↻ Refresh'}</Btn>}
+        action={
+          <Btn variant="ghost" size="sm" onClick={fetchDeposits} disabled={loading}>
+            ↻ Refresh
+          </Btn>
+        }
       />
 
-      {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard icon="⏳" label="Pending" value={summary?.pending ?? '—'} color={C.warning} />
-        <StatCard icon="✅" label="Claimed" value={summary?.claimed ?? '—'} color={C.success} />
-        <StatCard icon="✕" label="Cancelled" value={summary?.cancelled ?? '—'} color={C.muted} />
-        <StatCard icon="💾" label="Total Deposits" value={data?.items.length ?? '—'} color={C.primary} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+        <StatCard icon="⏳" label="Pending"   value={s?.pending ?? '—'}  color={C.warning} />
+        <StatCard icon="✅" label="Claimed"   value={s?.claimed ?? '—'}  color={C.success} />
+        <StatCard icon="✕"  label="Cancelled" value={s?.cancelled ?? '—'} color={C.muted}  />
+        <StatCard icon="💾" label="Total"     value={data?.items.length ?? '—'} color={C.primary} />
       </div>
 
       {actionMsg && <Alert type={actionMsg.type}>{actionMsg.text}</Alert>}
@@ -113,21 +118,16 @@ export function DepositsPage() {
       <AddDepositForm onCreated={fetchDeposits} />
 
       <Card>
-        <CardHeader 
-          title="Deposit History" 
+        <CardHeader
+          title="Deposit History"
           subtitle="All Telebirr transactions and player claims"
-          action={<div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-muted)' }}>{data?.items.length ?? 0} total</div>}
+          action={<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-muted)' }}>{data?.items.length ?? 0} total</span>}
         />
         <Table>
           <thead>
             <tr>
-              <Th>Tx Number</Th>
-              <Th>Amount (ETB)</Th>
-              <Th>Status</Th>
-              <Th>Player</Th>
-              <Th>Created</Th>
-              <Th>Claimed At</Th>
-              <Th right>Actions</Th>
+              <Th>Tx Number</Th><Th>Amount (ETB)</Th><Th>Status</Th><Th>Player</Th>
+              <Th>Created</Th><Th>Claimed At</Th><Th right>Actions</Th>
             </tr>
           </thead>
           <tbody>
@@ -135,8 +135,8 @@ export function DepositsPage() {
              !data?.items.length ? <TrEmpty cols={7} message="No deposits found." /> :
              data.items.map((d) => (
               <tr key={d.id}>
-                <Td style={{ fontWeight: 800, color: 'var(--c-text)' }}>{d.tx_number}</Td>
-                <Td><span style={{ fontWeight: 700, color: C.text }}>{d.amount.toFixed(2)}</span></Td>
+                <Td style={{ fontWeight: 700 }}>{d.tx_number}</Td>
+                <Td><span style={{ fontWeight: 700 }}>{d.amount.toFixed(2)}</span></Td>
                 <Td><Badge variant={statusVariant(d.status)}>{d.status}</Badge></Td>
                 <Td muted={!d.player_username}>{d.player_username ? `@${d.player_username}` : '—'}</Td>
                 <Td muted>{new Date(d.created_at).toLocaleString()}</Td>

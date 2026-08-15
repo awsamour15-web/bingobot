@@ -1,17 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getDeposits, getPlayers, getRevenue, getWithdrawals, listAgents } from '../lib/api';
 import {
-  Alert,
-  Badge,
-  Btn,
-  Card,
-  CardHeader,
-  KpiCard,
-  PageHeader,
-  Table,
-  Td,
-  Th,
-  TrEmpty,
+  Alert, Badge, Btn, Card, CardHeader,
+  KpiCard, PageHeader, Table, Td, Th, TrEmpty,
 } from '../components/ui';
 
 interface DashboardSummary {
@@ -26,46 +17,29 @@ interface DashboardSummary {
 type PeriodKey = '1h' | 'today' | 'week' | '15d' | 'month';
 
 const periodLabels: Record<PeriodKey, string> = {
-  '1h': '1 Hour',
-  today: 'Today',
-  week: 'Weekly',
-  '15d': '15 Days',
-  month: 'Monthly',
+  '1h': '1H', today: 'Today', week: '7D', '15d': '15D', month: '30D',
 };
 
-function formatMoney(value: number) {
-  return `${value.toFixed(2)} ETB`;
-}
-
 function buildTrendSeries(base: number, period: PeriodKey): number[] {
-  const baseValue = Math.max(base, 1800);
-  const modifiers: Record<PeriodKey, number[]> = {
-    '1h': [0.18, 0.26, 0.22, 0.38, 0.45, 0.57, 0.52, 0.64],
-    today: [0.22, 0.34, 0.4, 0.54, 0.66, 0.82, 0.94, 1.06],
-    week: [0.32, 0.58, 0.48, 0.76, 0.86, 1.1, 1.24, 1.48],
-    '15d': [0.42, 0.56, 0.7, 0.84, 0.9, 1.18, 1.3, 1.72],
-    month: [0.54, 0.68, 0.72, 0.96, 1.2, 1.42, 1.62, 1.96],
+  const b = Math.max(base, 1800);
+  const mods: Record<PeriodKey, number[]> = {
+    '1h':   [0.18, 0.26, 0.22, 0.38, 0.45, 0.57, 0.52, 0.64],
+    today:  [0.22, 0.34, 0.4,  0.54, 0.66, 0.82, 0.94, 1.06],
+    week:   [0.32, 0.58, 0.48, 0.76, 0.86, 1.1,  1.24, 1.48],
+    '15d':  [0.42, 0.56, 0.7,  0.84, 0.9,  1.18, 1.3,  1.72],
+    month:  [0.54, 0.68, 0.72, 0.96, 1.2,  1.42, 1.62, 1.96],
   };
-
-  return modifiers[period].map((multiplier, index) => {
-    const drift = (index - 3.5) * 0.08;
-    return Number((baseValue * multiplier * (1 + drift)).toFixed(2));
-  });
+  return mods[period].map((m, i) => Number((b * m * (1 + (i - 3.5) * 0.08)).toFixed(2)));
 }
 
 function buildPath(values: number[]) {
   if (!values.length) return '';
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = Math.max(max - min, 1);
-
-  return values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * 100;
-      const y = 100 - ((value - min) / range) * 75 - 10;
-      return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
-    })
-    .join(' ');
+  const max = Math.max(...values), min = Math.min(...values), range = Math.max(max - min, 1);
+  return values.map((v, i) => {
+    const x = (i / (values.length - 1)) * 100;
+    const y = 100 - ((v - min) / range) * 75 - 10;
+    return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
+  }).join(' ');
 }
 
 export function DashboardPage() {
@@ -77,266 +51,179 @@ export function DashboardPage() {
   const [activePeriod, setActivePeriod] = useState<PeriodKey>('today');
 
   const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
+    setLoading(true); setError(null);
     try {
       const [playersRes, revenueStats, depositsRes, withdrawalsRes, agentsRes] = await Promise.all([
-        getPlayers(1),
-        getRevenue(),
-        getDeposits(),
-        getWithdrawals(),
-        listAgents(),
+        getPlayers(1), getRevenue(), getDeposits(), getWithdrawals(), listAgents(),
       ]);
-
-      const pendingDeposits = depositsRes.items.filter((item) => item.status === 'pending').length;
-      const pending = withdrawalsRes.filter((item) => item.status === 'pending');
-      const activeAgents = agentsRes.agents.filter((agent) => agent.isActive).length;
-
-      const totalRevenue = Number(revenueStats.platformCommissionEarned ?? 0);
-      const totalStakes = Number(revenueStats.totalStakesCollected ?? 0);
-
+      const pendingDeposits = depositsRes.items.filter(i => i.status === 'pending').length;
+      const pending = withdrawalsRes.filter(i => i.status === 'pending');
       setSummary({
         totalPlayers: playersRes.total ?? 0,
-        totalRevenue,
-        totalStakes,
+        totalRevenue: Number(revenueStats.platformCommissionEarned ?? 0),
+        totalStakes: Number(revenueStats.totalStakesCollected ?? 0),
         pendingWithdrawals: pending.length,
         pendingDeposits,
-        activeAgents,
+        activeAgents: agentsRes.agents.filter(a => a.isActive).length,
       });
-
-      setRecentDeposits((depositsRes.items ?? []).slice(0, 5));
+      setRecentDeposits(depositsRes.items.slice(0, 5));
       setPendingWithdrawals(pending.slice(0, 5));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard summary');
-    } finally {
-      setLoading(false);
-    }
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+    } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
-
-  const topAlerts = useMemo(() => [
-    { label: 'Pending withdrawals', value: summary?.pendingWithdrawals ?? 0, tone: 'danger', icon: '💸' },
-    { label: 'Pending deposits', value: summary?.pendingDeposits ?? 0, tone: 'warning', icon: '📥' },
-    { label: 'Active agents', value: summary?.activeAgents ?? 0, tone: 'success', icon: '🤝' },
-  ], [summary]);
+  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
 
   const revenueBase = Math.max(summary?.totalRevenue ?? 4200, 2200);
   const periodSeries = useMemo(() => buildTrendSeries(revenueBase, activePeriod), [revenueBase, activePeriod]);
   const currentValue = periodSeries[periodSeries.length - 1] ?? 0;
-  const previousValue = periodSeries[0] ?? 1;
-  const delta = ((currentValue - previousValue) / Math.max(previousValue, 1)) * 100;
-
-  const comparisonStats = useMemo(() => [
-    { label: 'Gross volume', value: formatMoney(summary?.totalStakes ?? 0), delta: '+14.2% vs last week', tone: 'success' },
-    { label: 'Platform profit', value: formatMoney(summary?.totalRevenue ?? 0), delta: '+8.6% vs last week', tone: 'primary' },
-    { label: 'Payout pipeline', value: formatMoney((summary?.pendingWithdrawals ?? 0) * 180), delta: 'Needs review', tone: 'warning' },
-  ], [summary]);
-
-  const channelMix = useMemo(() => [
-    { name: 'Deposits', value: 68, color: '#6366f1' },
-    { name: 'Withdrawals', value: 46, color: '#8b5cf6' },
-    { name: 'Partners', value: 72, color: '#06b6d4' },
-    { name: 'Promotions', value: 54, color: '#22c55e' },
-  ], []);
+  const delta = ((currentValue - periodSeries[0]) / Math.max(periodSeries[0], 1)) * 100;
 
   const chartLabels: Record<PeriodKey, string[]> = {
-    '1h': ['00m', '15m', '30m', '45m', '60m', '75m', '90m', '105m'],
-    today: ['6a', '8a', '10a', '12p', '2p', '4p', '6p', '8p'],
-    week: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Now'],
-    '15d': ['D1', 'D3', 'D5', 'D7', 'D9', 'D11', 'D13', 'Now'],
-    month: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'Now'],
+    '1h':   ['00', '15', '30', '45', '60', '75', '90', '105'],
+    today:  ['6a', '8a', '10a', '12p', '2p', '4p', '6p', '8p'],
+    week:   ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Now'],
+    '15d':  ['D1', 'D3', 'D5', 'D7', 'D9', 'D11', 'D13', 'Now'],
+    month:  ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'Now'],
   };
 
   return (
     <div className="fade-in">
       <PageHeader
-        title="Dashboard"
-        action={<Btn variant="ghost" size="sm" onClick={() => void loadDashboard()} disabled={loading}>↻ Refresh</Btn>}
+        title="Overview"
+        action={
+          <Btn variant="ghost" size="sm" onClick={() => void loadDashboard()} disabled={loading}>
+            ↻ Refresh
+          </Btn>
+        }
       />
 
       {error && <Alert type="error">{error}</Alert>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="Players" value={summary?.totalPlayers ?? 0} delta="+12.4%" icon="players" tone="indigo" trend={[40, 52, 58, 71, 64, 78, 92]} />
-        <KpiCard label="Commission" value={summary ? summary.totalRevenue : 0} delta="+8.1%" icon="finance" tone="emerald" trend={[34, 46, 51, 62, 60, 76, 88]} />
-        <KpiCard label="Gross stakes" value={summary ? summary.totalStakes : 0} delta="+14.2%" icon="ticket" tone="cyan" trend={[28, 38, 52, 48, 64, 68, 84]} />
-        <KpiCard label="Pending deposits" value={summary?.pendingDeposits ?? 0} delta="-2.1%" icon="deposits" tone="amber" trend={[60, 54, 60, 58, 62, 70, 74]} />
-        <KpiCard label="Withdrawals" value={summary?.pendingWithdrawals ?? 0} delta="+3.6%" icon="withdrawals" tone="rose" trend={[42, 38, 50, 44, 48, 52, 56]} />
+      {/* KPI row */}
+      <div className="summary-grid">
+        <KpiCard label="Players"          value={summary?.totalPlayers ?? 0}         delta="+12.4%" icon="players"     tone="indigo" trend={[40,52,58,71,64,78,92]} />
+        <KpiCard label="Commission (ETB)" value={summary?.totalRevenue ?? 0}          delta="+8.1%"  icon="finance"     tone="emerald" trend={[34,46,51,62,60,76,88]} />
+        <KpiCard label="Gross Stakes"     value={summary?.totalStakes ?? 0}           delta="+14.2%" icon="ticket"      tone="cyan"   trend={[28,38,52,48,64,68,84]} />
+        <KpiCard label="Pending Deposits" value={summary?.pendingDeposits ?? 0}       delta="-2.1%"  icon="deposits"    tone="amber"  trend={[60,54,60,58,62,70,74]} />
+        <KpiCard label="Withdrawals"      value={summary?.pendingWithdrawals ?? 0}    delta="+3.6%"  icon="withdrawals" tone="rose"   trend={[42,38,50,44,48,52,56]} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 20 }}>
+        {/* Revenue chart */}
         <Card>
-          <CardHeader title="Profit performance" subtitle="Choose a period to review revenue movement" />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-            {(Object.keys(periodLabels) as PeriodKey[]).map((period) => (
-              <button
-                key={period}
-                type="button"
-                onClick={() => setActivePeriod(period)}
-                style={{
-                  border: activePeriod === period ? '1px solid rgba(99,102,241,0.5)' : '1px solid var(--c-border)',
-                  background: activePeriod === period ? 'rgba(99,102,241,0.12)' : 'transparent',
-                  color: 'var(--c-text)',
-                  borderRadius: 999,
-                  padding: '7px 12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: 12,
-                }}
-              >
-                {periodLabels[period]}
-              </button>
-            ))}
-          </div>
+          <CardHeader
+            title="Revenue Performance"
+            subtitle="Platform commission over time"
+            action={
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(Object.keys(periodLabels) as PeriodKey[]).map((p) => (
+                  <button key={p} onClick={() => setActivePeriod(p)} style={{
+                    border: activePeriod === p ? '1px solid rgba(99,102,241,0.5)' : '1px solid var(--c-border)',
+                    background: activePeriod === p ? 'rgba(99,102,241,0.12)' : 'transparent',
+                    color: activePeriod === p ? '#a5b4fc' : 'var(--c-muted)',
+                    borderRadius: 6, padding: '4px 8px',
+                    fontWeight: 600, cursor: 'pointer', fontSize: 11,
+                    transition: 'all 0.15s',
+                  }}>
+                    {periodLabels[p]}
+                  </button>
+                ))}
+              </div>
+            }
+          />
 
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--c-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Current profit</div>
-              <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.05em', color: 'var(--c-text)' }}>{formatMoney(currentValue)}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--c-text)' }}>
+              {currentValue.toFixed(0)} ETB
             </div>
-            <div style={{
-              padding: '6px 10px',
-              borderRadius: 999,
-              background: delta >= 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-              color: delta >= 0 ? '#16a34a' : '#dc2626',
-              fontSize: 12,
-              fontWeight: 700,
+            <span style={{
+              fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
+              background: delta >= 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              color: delta >= 0 ? '#4ade80' : '#f87171',
             }}>
-              {delta >= 0 ? '+' : ''}{delta.toFixed(1)}% vs start
-            </div>
+              {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
+            </span>
           </div>
 
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: 170, display: 'block', background: 'rgba(148,163,184,0.02)', borderRadius: 14, border: '1px solid var(--c-border)' }}>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{
+            width: '100%', height: 140, display: 'block',
+            borderRadius: 10, background: 'rgba(148,163,184,0.03)',
+          }}>
             <defs>
-              <linearGradient id="profitFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="rgba(99, 102, 241, 0.7)" />
-                <stop offset="100%" stopColor="rgba(99, 102, 241, 0.08)" />
+              <linearGradient id="revFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="rgba(99,102,241,0.5)" />
+                <stop offset="100%" stopColor="rgba(99,102,241,0.03)" />
               </linearGradient>
             </defs>
-            <path d={`${buildPath(periodSeries)} L 100,100 L 0,100 Z`} fill="url(#profitFill)" opacity={0.2} />
-            <path d={buildPath(periodSeries)} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={`${buildPath(periodSeries)} L 100,100 L 0,100 Z`} fill="url(#revFill)" />
+            <path d={buildPath(periodSeries)} fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))', gap: 8, marginTop: 12 }}>
-            {periodSeries.map((value, index) => (
-              <div key={`${activePeriod}-${index}`} style={{ textAlign: 'center' }}>
-                <div style={{ height: 42, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 8 }}>
-                  <div style={{ width: '100%', maxWidth: 18, height: `${Math.max((value / Math.max(...periodSeries, 1)) * 100, 18)}%`, borderRadius: '8px 8px 4px 4px', background: 'linear-gradient(180deg, #8b5cf6, #6366f1)' }} />
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--c-muted)', fontWeight: 700 }}>{chartLabels[activePeriod][index]}</div>
+          <div style={{ display: 'flex', gap: 0, marginTop: 10 }}>
+            {periodSeries.map((_, idx) => (
+              <div key={idx} style={{ flex: 1, textAlign: 'center', fontSize: 10, color: 'var(--c-muted)', fontWeight: 600 }}>
+                {chartLabels[activePeriod][idx]}
               </div>
             ))}
           </div>
         </Card>
 
+        {/* Operations at a glance */}
         <Card>
-          <CardHeader title="Today vs last week" subtitle="Revenue comparison snapshot" />
-          <div style={{ display: 'grid', gap: 12 }}>
-            {comparisonStats.map((stat) => (
-              <div key={stat.label} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                border: '1px solid var(--c-border)',
-                borderRadius: 12,
-                padding: '14px 16px',
-                background: 'var(--c-bg)',
-              }}>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--c-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>{stat.label}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.04em' }}>{stat.value}</div>
-                </div>
-                <div style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: stat.tone === 'success' ? '#16a34a' : stat.tone === 'primary' ? '#4f46e5' : '#f59e0b',
-                  background: stat.tone === 'success' ? 'rgba(34,197,94,0.12)' : stat.tone === 'primary' ? 'rgba(99,102,241,0.12)' : 'rgba(245,158,11,0.12)',
-                  borderRadius: 999,
-                  padding: '6px 10px',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {stat.delta}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <Card>
-          <CardHeader title="Operations at a glance" subtitle="Quick action items requiring attention" />
-          <div style={{ display: 'grid', gap: 12 }}>
-            {topAlerts.map((item) => (
+          <CardHeader title="Operations" subtitle="Items requiring attention" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { label: 'Pending withdrawals', value: summary?.pendingWithdrawals ?? 0, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', icon: '💸', badge: 'danger' as const },
+              { label: 'Pending deposits',    value: summary?.pendingDeposits ?? 0,    color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', icon: '📥', badge: 'warning' as const },
+              { label: 'Active agents',       value: summary?.activeAgents ?? 0,       color: '#22c55e', bg: 'rgba(34,197,94,0.08)', icon: '🤝', badge: 'success' as const },
+              { label: 'Total players',       value: summary?.totalPlayers ?? 0,       color: '#6366f1', bg: 'rgba(99,102,241,0.08)', icon: '👥', badge: 'primary' as const },
+            ].map((item) => (
               <div key={item.label} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                border: '1px solid var(--c-border)',
-                borderRadius: 12,
-                padding: '12px 14px',
-                background: 'var(--c-bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 14px', borderRadius: 10,
+                background: item.bg,
+                border: `1px solid ${item.color}28`,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.tone === 'danger' ? 'rgba(239,68,68,0.12)' : item.tone === 'warning' ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)', fontSize: 18 }}>
-                    {item.icon}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>{item.icon}</span>
                   <div>
-                    <div style={{ fontSize: 12, color: 'var(--c-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>{item.label}</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.03em' }}>{item.value}</div>
+                    <div style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', lineHeight: 1.2, letterSpacing: '-0.03em' }}>
+                      {item.value}
+                    </div>
                   </div>
                 </div>
-                <Badge variant={item.tone === 'danger' ? 'danger' : item.tone === 'warning' ? 'warning' : 'success'}>
-                  {item.tone === 'danger' ? 'Critical' : item.tone === 'warning' ? 'Review' : 'Healthy'}
+                <Badge variant={item.badge}>
+                  {item.badge === 'danger' ? 'Review' : item.badge === 'warning' ? 'Pending' : item.badge === 'success' ? 'OK' : 'Total'}
                 </Badge>
               </div>
             ))}
           </div>
         </Card>
-
-        <Card>
-          <CardHeader title="Channel velocity" subtitle="Activity mix across the platform" />
-          <div style={{ display: 'grid', gap: 14 }}>
-            {channelMix.map((channel) => (
-              <div key={channel.name}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: 'var(--c-muted)', fontWeight: 700 }}>
-                  <span>{channel.name}</span>
-                  <span>{channel.value}%</span>
-                </div>
-                <div style={{ height: 12, borderRadius: 999, background: 'rgba(148,163,184,0.08)', overflow: 'hidden', border: '1px solid var(--c-border)' }}>
-                  <div style={{ width: `${channel.value}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${channel.color}, rgba(255,255,255,0.85))` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 24 }}>
+      {/* Tables row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
         <Card>
-          <CardHeader title="Open withdrawals" subtitle="Most recent approvals pending" />
+          <CardHeader title="Pending Withdrawals" subtitle="Awaiting approval" />
           {pendingWithdrawals.length === 0 ? (
-            <TrEmpty cols={3} message="No pending withdrawals." />
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--c-muted)', fontSize: 13 }}>
+              No pending withdrawals
+            </div>
           ) : (
             <Table>
-              <thead>
-                <tr>
-                  <Th>Player</Th>
-                  <Th>Amount</Th>
-                  <Th>Time</Th>
-                </tr>
-              </thead>
+              <thead><tr><Th>Player</Th><Th>Amount</Th><Th>Date</Th></tr></thead>
               <tbody>
-                {pendingWithdrawals.map((withdrawal) => (
-                  <tr key={withdrawal.id}>
-                    <Td><span style={{ fontWeight: 700 }}>@{withdrawal.username}</span></Td>
-                    <Td><span style={{ fontWeight: 700, color: '#ef4444' }}>{Number(withdrawal.amount).toFixed(2)} ETB</span></Td>
-                    <Td muted>{new Date(withdrawal.created_at).toLocaleDateString()}</Td>
+                {pendingWithdrawals.map((w) => (
+                  <tr key={w.id}>
+                    <Td><span style={{ fontWeight: 600 }}>@{w.username}</span></Td>
+                    <Td><span style={{ fontWeight: 700, color: '#f87171' }}>{Number(w.amount).toFixed(2)} ETB</span></Td>
+                    <Td muted>{new Date(w.created_at).toLocaleDateString()}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -345,49 +232,31 @@ export function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Activity pulse" subtitle="Operational momentum" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 10, alignItems: 'end', height: 180 }}>
-            {[44, 58, 68, 51, 76, 88, 94].map((value, idx) => (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                  <div style={{ width: '100%', maxWidth: 30, height: `${value}%`, borderRadius: '10px 10px 6px 6px', background: idx % 2 === 0 ? 'linear-gradient(180deg, #8b5cf6, #6366f1)' : 'linear-gradient(180deg, #06b6d4, #3b82f6)' }} />
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--c-muted)', fontWeight: 700 }}>{['M','T','W','T','F','S','S'][idx]}</div>
-              </div>
-            ))}
-          </div>
+          <CardHeader title="Recent Deposits" subtitle="Latest Telebirr transactions" />
+          {recentDeposits.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--c-muted)', fontSize: 13 }}>
+              No recent deposits
+            </div>
+          ) : (
+            <Table>
+              <thead><tr><Th>Tx Number</Th><Th>Amount</Th><Th>Status</Th></tr></thead>
+              <tbody>
+                {recentDeposits.map((d) => (
+                  <tr key={d.id}>
+                    <Td mono>{d.tx_number}</Td>
+                    <Td><span style={{ fontWeight: 700 }}>{Number(d.amount).toFixed(2)} ETB</span></Td>
+                    <Td>
+                      <Badge variant={d.status === 'pending' ? 'warning' : d.status === 'claimed' ? 'success' : 'neutral'}>
+                        {d.status}
+                      </Badge>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
         </Card>
       </div>
-
-      <Card>
-        <CardHeader title="Recent deposit queue" subtitle="Latest transactions requiring attention" />
-        {recentDeposits.length === 0 ? (
-          <TrEmpty cols={5} message="No recent deposits." />
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Tx Number</Th>
-                <Th>Amount</Th>
-                <Th>Status</Th>
-                <Th>Player</Th>
-                <Th>Created</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentDeposits.map((deposit) => (
-                <tr key={deposit.id}>
-                  <Td mono>{deposit.tx_number}</Td>
-                  <Td><span style={{ fontWeight: 700 }}>{Number(deposit.amount).toFixed(2)} ETB</span></Td>
-                  <Td><Badge variant={deposit.status === 'pending' ? 'warning' : deposit.status === 'claimed' ? 'success' : 'neutral'}>{deposit.status}</Badge></Td>
-                  <Td muted>{deposit.player_username ? `@${deposit.player_username}` : '—'}</Td>
-                  <Td muted>{new Date(deposit.created_at).toLocaleString()}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </Card>
     </div>
   );
 }

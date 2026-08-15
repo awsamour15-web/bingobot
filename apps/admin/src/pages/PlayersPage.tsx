@@ -29,7 +29,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
   async function handleSuspendToggle() {
     if (!player) return;
     const action = player.is_suspended ? 'restore' : 'suspend';
-    if (!window.confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} player "${player.username}"?`)) return;
+    if (!window.confirm(`${action === 'restore' ? 'Restore' : 'Suspend'} player "${player.username}"?`)) return;
     setSuspending(true); setSuspendMsg(null);
     try {
       player.is_suspended ? await restorePlayer(player.id) : await suspendPlayer(player.id);
@@ -44,7 +44,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
     e.preventDefault();
     if (!player) return;
     const parsed = parseFloat(amount);
-    if (isNaN(parsed)) { setCreditMsg({ type: 'error', text: 'Amount must be a valid number.' }); return; }
+    if (isNaN(parsed)) { setCreditMsg({ type: 'error', text: 'Invalid amount.' }); return; }
     if (!note.trim()) { setCreditMsg({ type: 'error', text: 'Note is required.' }); return; }
     setCreditLoading(true); setCreditMsg(null);
     try {
@@ -59,31 +59,47 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
   if (loading) return (
     <div>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 20 }}>← Back</button>
-      <p style={{ color: C.muted }}>Loading…</p>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 20 }}>
+        ← Back to Players
+      </button>
+      <p style={{ color: 'var(--c-muted)' }}>Loading…</p>
     </div>
   );
 
   if (error || !player) return (
     <div>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 20 }}>← Back</button>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 20 }}>
+        ← Back to Players
+      </button>
       <Alert type="error">{error ?? 'Player not found'}</Alert>
     </div>
   );
 
   return (
     <div className="fade-in">
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.primary, cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4 }}>
+      <button onClick={onBack} style={{
+        background: 'none', border: 'none', color: 'var(--c-muted)',
+        cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 20,
+        display: 'flex', alignItems: 'center', gap: 6,
+        transition: 'color 0.15s',
+      }}>
         ← Back to Players
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: C.primaryLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 14,
+          background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+        }}>
           👤
         </div>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text }}>{player.username}</h1>
-          <p style={{ margin: 0, fontSize: 13, color: C.muted }}>Telegram ID: {player.telegram_id}</p>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.02em' }}>
+            @{player.username}
+          </h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--c-muted)' }}>Telegram ID: {player.telegram_id}</p>
         </div>
         <div style={{ marginLeft: 'auto' }}>
           <Badge variant={player.is_suspended ? 'danger' : 'success'}>
@@ -92,26 +108,28 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
         </div>
       </div>
 
-      {/* Wallet stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard icon="🏆" label="Main Wallet" value={`${player.main_wallet_balance.toFixed(2)} ETB`} color={C.success} />
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+        <StatCard icon="💰" label="Main Wallet" value={`${player.main_wallet_balance.toFixed(2)} ETB`} color={C.success} />
         <StatCard icon="🎮" label="Play Wallet" value={`${player.play_wallet_balance.toFixed(2)} ETB`} color={C.primary} />
         <StatCard icon="🎯" label="Total Games" value={player.total_games} color={C.info} />
-        <StatCard icon="👥" label="Referrals" value={player.total_referrals} color={C.warning} />
+        <StatCard icon="👥" label="Referrals"   value={player.total_referrals} color={C.warning} />
       </div>
 
-      {/* Profile + suspend */}
-      <Card style={{ marginBottom: 20 }}>
+      {/* Info + suspend */}
+      <Card style={{ marginBottom: 16 }}>
         <CardHeader title="Player Info" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
           {[
-            { label: 'Phone', value: player.phone ?? '—' },
+            { label: 'Phone',    value: player.phone ?? '—' },
             { label: 'Verified', value: player.phone_verified ? '✓ Yes' : '✗ No' },
-            { label: 'Joined', value: new Date(player.created_at).toLocaleDateString() },
+            { label: 'Joined',   value: new Date(player.created_at).toLocaleDateString() },
           ].map(({ label, value }) => (
             <div key={label}>
-              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 15, color: C.text, fontWeight: 500 }}>{value}</div>
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--c-text)', fontWeight: 500 }}>{value}</div>
             </div>
           ))}
         </div>
@@ -123,9 +141,9 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
       {/* Credit / Debit */}
       <Card>
-        <CardHeader title="Manual Credit / Debit" subtitle="Use positive to credit, negative to debit" />
+        <CardHeader title="Manual Credit / Debit" subtitle="Positive to credit, negative to debit" />
         {creditMsg && <Alert type={creditMsg.type}>{creditMsg.text}</Alert>}
-        <form onSubmit={handleCredit} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 400 }}>
+        <form onSubmit={handleCredit} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 380 }}>
           <Field label="Wallet">
             <select style={selectCss} value={walletType} onChange={(e) => setWalletType(e.target.value as 'main' | 'play')}>
               <option value="main">Main Wallet (winnings)</option>
@@ -133,10 +151,12 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
             </select>
           </Field>
           <Field label="Amount (ETB)" hint="Positive = credit, negative = debit">
-            <input style={inputCss} type="number" step="any" placeholder="e.g. 50 or -25" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            <input style={inputCss} type="number" step="any" placeholder="e.g. 50 or -25" value={amount}
+              onChange={(e) => setAmount(e.target.value)} required />
           </Field>
           <Field label="Reason">
-            <input style={inputCss} type="text" placeholder="Reason for adjustment" value={note} onChange={(e) => setNote(e.target.value)} required />
+            <input style={inputCss} type="text" placeholder="Reason for adjustment" value={note}
+              onChange={(e) => setNote(e.target.value)} required />
           </Field>
           <Btn type="submit" disabled={creditLoading}>{creditLoading ? 'Submitting…' : 'Apply Adjustment'}</Btn>
         </form>
@@ -173,54 +193,47 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
     const val = e.target.value;
     setSearch(val); setPage(1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchPlayers(1, val), 400);
+    debounceRef.current = setTimeout(() => fetchPlayers(1, val), 380);
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const suspendedCount = players.filter(p => p.is_suspended).length;
-  const activeCount = players.length - suspendedCount;
 
   return (
     <div className="fade-in">
       <PageHeader title="Players" />
 
-      {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard icon="👥" label="Total Players" value={total} color={C.primary} />
-        <StatCard icon="✅" label="Active" value={activeCount} color={C.success} />
-        <StatCard icon="🚫" label="Suspended" value={suspendedCount} color={C.danger} />
-        <StatCard icon="💰" label="Page Size" value={pageSize} color={C.info} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+        <StatCard icon="👥" label="Total Players" value={total}                       color={C.primary} />
+        <StatCard icon="✅" label="Active"         value={players.length - suspendedCount} color={C.success} />
+        <StatCard icon="🚫" label="Suspended"      value={suspendedCount}              color={C.danger}  />
+        <StatCard icon="📄" label="Page Size"      value={pageSize}                    color={C.info}    />
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
 
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>
-            Showing {players.length} of {total} players
-          </div>
-          <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 320 }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14 }}>🔍</span>
-            <input
-              type="search"
-              placeholder="Search username or Telegram ID…"
-              value={search}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 600 }}>
+            {players.length} of {total} players
+          </span>
+          <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 300 }}>
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 13, pointerEvents: 'none', color: 'var(--c-muted)' }}>
+              🔍
+            </span>
+            <input type="search" placeholder="Search username or Telegram ID…" value={search}
               onChange={handleSearch}
-              style={{ ...inputCss, paddingLeft: 36, width: '100%' }}
+              style={{ ...inputCss, paddingLeft: 34 }}
             />
           </div>
         </div>
+
         <Table>
           <thead>
             <tr>
-              <Th>Player</Th>
-              <Th>Telegram ID</Th>
-              <Th>Phone</Th>
-              <Th>Main Wallet</Th>
-              <Th>Play Wallet</Th>
-              <Th>Status</Th>
-              <Th>Joined</Th>
-              <Th right>Actions</Th>
+              <Th>Player</Th><Th>Telegram ID</Th><Th>Phone</Th>
+              <Th>Main Wallet</Th><Th>Play Wallet</Th>
+              <Th>Status</Th><Th>Joined</Th><Th right>Actions</Th>
             </tr>
           </thead>
           <tbody>
@@ -231,23 +244,30 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
                 <Td><span style={{ fontWeight: 600 }}>@{p.username}</span></Td>
                 <Td mono>{p.telegram_id}</Td>
                 <Td muted={!p.phone}>{p.phone ?? '—'}</Td>
-                <Td><span style={{ fontWeight: 600, color: C.success }}>{p.main_wallet_balance.toFixed(2)}</span></Td>
-                <Td><span style={{ fontWeight: 600, color: C.primary }}>{p.play_wallet_balance.toFixed(2)}</span></Td>
+                <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>{p.main_wallet_balance.toFixed(2)}</span></Td>
+                <Td><span style={{ fontWeight: 600, color: '#818cf8' }}>{p.play_wallet_balance.toFixed(2)}</span></Td>
                 <Td><Badge variant={p.is_suspended ? 'danger' : 'success'}>{p.is_suspended ? 'Suspended' : 'Active'}</Badge></Td>
                 <Td muted>{new Date(p.created_at).toLocaleDateString()}</Td>
                 <Td style={{ textAlign: 'right' }}>
-                  <Btn size="sm" variant="outline" onClick={() => onView(p.id)}>View →</Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => onView(p.id)}>View →</Btn>
                 </Td>
               </tr>
             ))}
           </tbody>
         </Table>
+
         {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0 0', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>Page {page} of {totalPages}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14, flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 600 }}>Page {page} of {totalPages}</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn size="sm" variant="outline" onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search); }} disabled={page <= 1 || loading}>← Prev</Btn>
-              <Btn size="sm" variant="outline" onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search); }} disabled={page >= totalPages || loading}>Next →</Btn>
+              <Btn size="sm" variant="outline" disabled={page <= 1 || loading}
+                onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search); }}>
+                ← Prev
+              </Btn>
+              <Btn size="sm" variant="outline" disabled={page >= totalPages || loading}
+                onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search); }}>
+                Next →
+              </Btn>
             </div>
           </div>
         )}

@@ -40,8 +40,30 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
+  componentDidCatch(error: Error) {
+    // Chunk load failures happen when a new deploy invalidates old hashed assets.
+    // Force a hard reload so the browser fetches the fresh index.html and new chunks.
+    const isChunkError =
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed') ||
+      error.message.includes('Unable to preload CSS') ||
+      error.name === 'ChunkLoadError';
+
+    if (isChunkError) {
+      window.location.reload();
+    }
+  }
   override render() {
     if (this.state.error) {
+      const isChunkError =
+        this.state.error.message.includes('Failed to fetch dynamically imported module') ||
+        this.state.error.message.includes('Importing a module script failed') ||
+        this.state.error.name === 'ChunkLoadError';
+
+      if (isChunkError) {
+        return <LoadingScreen />;
+      }
+
       return (
         <div style={{
           minHeight: '100dvh', background: '#0a0e1a', color: '#f87171',

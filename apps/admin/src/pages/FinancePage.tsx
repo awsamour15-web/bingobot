@@ -3,7 +3,7 @@ import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
 import { getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue } from '../lib/api';
 import {
   C, Btn, Card, CardHeader, StatCard, Table, Th, Td,
-  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
+  TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, KpiCard,
 } from '../components/ui';
 
 function RevenueSummary() {
@@ -23,24 +23,30 @@ function RevenueSummary() {
   useEffect(() => { void fetchStats(); }, [fetchStats]);
 
   return (
-    <Card style={{ marginBottom: 24 }}>
+    <Card style={{ marginBottom: 20 }}>
       <CardHeader title="Revenue Summary" subtitle="Platform earnings overview" />
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20 }}>
-        <Field label="From"><input style={{ ...inputCss, width: 160 }} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></Field>
-        <Field label="To"><input style={{ ...inputCss, width: 160 }} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></Field>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 18 }}>
+        <Field label="From">
+          <input style={{ ...inputCss, width: 150 }} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </Field>
+        <Field label="To">
+          <input style={{ ...inputCss, width: 150 }} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </Field>
         <Btn onClick={() => fetchStats(startDate || undefined, endDate || undefined)} disabled={loading}>
           {loading ? 'Loading…' : 'Apply Filter'}
         </Btn>
         {(startDate || endDate) && (
-          <Btn variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); fetchStats(); }}>Clear</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => { setStartDate(''); setEndDate(''); fetchStats(); }}>
+            Clear
+          </Btn>
         )}
       </div>
       {error && <Alert type="error">{error}</Alert>}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
-          <StatCard icon="💵" label="Total Stakes" value={`${stats.totalStakesCollected.toFixed(2)} ETB`} color={C.primary} />
-          <StatCard icon="🏆" label="Prizes Paid" value={`${stats.totalPrizesPaid.toFixed(2)} ETB`} color={C.danger} />
-          <StatCard icon="📈" label="Commission" value={`${stats.platformCommissionEarned.toFixed(2)} ETB`} color={C.success} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
+          <StatCard icon="💵" label="Total Stakes"  value={`${stats.totalStakesCollected.toFixed(2)} ETB`}        color={C.primary} />
+          <StatCard icon="🏆" label="Prizes Paid"   value={`${stats.totalPrizesPaid.toFixed(2)} ETB`}             color={C.danger}  />
+          <StatCard icon="📈" label="Commission"    value={`${stats.platformCommissionEarned.toFixed(2)} ETB`}    color={C.success} />
         </div>
       )}
     </Card>
@@ -64,7 +70,7 @@ function PendingWithdrawals() {
   useEffect(() => { void fetchWithdrawals(); }, [fetchWithdrawals]);
 
   async function handleApprove(w: WithdrawalRequest) {
-    if (!window.confirm(`Approve ${w.amount.toFixed(2)} ETB withdrawal for @${w.username}?`)) return;
+    if (!window.confirm(`Approve ${w.amount.toFixed(2)} ETB for @${w.username}?`)) return;
     setActioningId(w.id); setActionMsg(null);
     try {
       await approveWithdrawal(w.id);
@@ -75,11 +81,11 @@ function PendingWithdrawals() {
   }
 
   async function handleReject(w: WithdrawalRequest) {
-    if (!window.confirm(`Reject ${w.amount.toFixed(2)} ETB withdrawal for @${w.username}?`)) return;
+    if (!window.confirm(`Reject ${w.amount.toFixed(2)} ETB for @${w.username}?`)) return;
     setActioningId(w.id); setActionMsg(null);
     try {
       await rejectWithdrawal(w.id);
-      setActionMsg({ type: 'success', text: `Withdrawal for @${w.username} rejected. Funds returned.` });
+      setActionMsg({ type: 'success', text: `Rejected. Funds returned to @${w.username}.` });
       await fetchWithdrawals();
     } catch (e: unknown) { setActionMsg({ type: 'error', text: (e as Error).message ?? 'Failed' }); }
     finally { setActioningId(null); }
@@ -92,18 +98,18 @@ function PendingWithdrawals() {
       <CardHeader
         title="Pending Withdrawals"
         subtitle={`${pending.length} awaiting review`}
-        action={<Btn variant="ghost" size="sm" onClick={fetchWithdrawals} disabled={loading}>{loading ? '…' : '↻ Refresh'}</Btn>}
+        action={
+          <Btn variant="ghost" size="sm" onClick={fetchWithdrawals} disabled={loading}>
+            ↻ Refresh
+          </Btn>
+        }
       />
       {actionMsg && <Alert type={actionMsg.type}>{actionMsg.text}</Alert>}
       {error && <Alert type="error">{error}</Alert>}
       <Table>
         <thead>
           <tr>
-            <Th>Player</Th>
-            <Th>Phone</Th>
-            <Th>Amount (ETB)</Th>
-            <Th>Requested</Th>
-            <Th>Actions</Th>
+            <Th>Player</Th><Th>Phone</Th><Th>Amount (ETB)</Th><Th>Requested</Th><Th>Actions</Th>
           </tr>
         </thead>
         <tbody>
@@ -113,10 +119,10 @@ function PendingWithdrawals() {
             <tr key={w.id}>
               <Td><span style={{ fontWeight: 600 }}>@{w.username}</span></Td>
               <Td muted>{w.phone || '—'}</Td>
-              <Td><span style={{ fontWeight: 700, color: C.danger }}>{w.amount.toFixed(2)}</span></Td>
+              <Td><span style={{ fontWeight: 700, color: '#f87171' }}>{w.amount.toFixed(2)}</span></Td>
               <Td muted>{new Date(w.created_at).toLocaleString()}</Td>
               <Td>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
                   <Btn size="sm" variant="success" onClick={() => handleApprove(w)} disabled={actioningId === w.id}>
                     {actioningId === w.id ? '…' : '✓ Approve'}
                   </Btn>
