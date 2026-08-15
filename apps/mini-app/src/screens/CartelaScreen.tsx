@@ -683,7 +683,7 @@ export default function CartelaScreen() {
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))',
+        display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
         gap: 11, padding: '20px 18px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.76) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
