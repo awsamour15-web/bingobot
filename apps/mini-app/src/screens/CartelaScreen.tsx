@@ -61,14 +61,14 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       disabled={disabled || taken}
       onClick={handleClick}
       style={{
-        padding: '4.8px 0', borderRadius: 8, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 600, fontSize: 14.9,
+        padding: '6px 0', borderRadius: 10, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: 1,
         transition: 'all 0.2s ease',
-        transform: isPicked ? 'translateY(-1px) scale(1.02)' : 'translateY(0) scale(1)',
+        transform: isPicked ? 'translateY(-1px) scale(1.03)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '30px',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '38px',
         boxShadow: shadow,
       }}
     >
@@ -683,8 +683,8 @@ export default function CartelaScreen() {
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
-        gap: 8, padding: '18px', alignContent: 'start',
+        display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))',
+        gap: 10, padding: '20px 18px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.76) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
@@ -704,42 +704,42 @@ export default function CartelaScreen() {
         <div style={{
           flexShrink: 0, background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)',
           borderTop: '1px solid rgba(255,255,255,0.08)',
-          padding: '6px 10px', gap: 6,
+          padding: '10px 12px', gap: 8,
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
           boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
-          maxHeight: '26%',
+          maxHeight: '34%',
           overflowY: 'auto',
         }}>
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
-              <div key={cartelaNum} style={{ background: 'rgba(15,23,42,0.88)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 8, padding: '5px 5px 4px', boxShadow: '0 4px 10px rgba(15,23,42,0.12)' }}>
-                <div style={{ textAlign: 'center', fontSize: 16, color: '#f8fafc', fontWeight: 700, marginBottom: 3, letterSpacing: '0.01em' }}>
+              <div key={cartelaNum} style={{ background: 'rgba(15,23,42,0.88)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 10, padding: '8px 8px 6px', boxShadow: '0 6px 14px rgba(15,23,42,0.2)' }}>
+                <div style={{ textAlign: 'center', fontSize: 17, color: '#f8fafc', fontWeight: 800, marginBottom: 5, letterSpacing: '0.01em' }}>
                   Cartela #{cartelaNum}
                 </div>
                 {/* BINGO header row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 2 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginBottom: 3 }}>
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
                       background: 'linear-gradient(180deg, ' + COL_COLORS[ci] + ' 0%, rgba(15,23,42,0.82) 100%)', color: '#fff', fontWeight: 900,
-                      fontSize: 8, textAlign: 'center', borderRadius: 3, padding: '2px 0',
+                      fontSize: 10, textAlign: 'center', borderRadius: 4, padding: '3px 0',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>{col}</div>
                   ))}
                 </div>
                 {/* 5×5 grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3 }}>
                   {grid ? grid.map((val, idx) => {
                     const isFree = idx === 12;
                     return (
                       <div key={idx} style={{
                         background: isFree ? 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)' : 'rgba(30,41,59,0.96)',
                         color: isFree ? '#fff' : '#e2e8f0',
-                        fontWeight: 700, fontSize: 9,
-                        textAlign: 'center', borderRadius: 3,
+                        fontWeight: 700, fontSize: 11,
+                        textAlign: 'center', borderRadius: 4,
                         border: '1px solid ' + (isFree ? 'rgba(52,211,153,0.35)' : 'rgba(148,163,184,0.1)'),
-                        minHeight: '18px',
+                        minHeight: '24px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         {isFree ? '★' : val}
@@ -747,10 +747,10 @@ export default function CartelaScreen() {
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: 'rgba(30,41,59,0.9)', borderRadius: 3,
-                      border: '1px solid rgba(148,163,184,0.1)', minHeight: '18px',
+                      background: 'rgba(30,41,59,0.9)', borderRadius: 4,
+                      border: '1px solid rgba(148,163,184,0.1)', minHeight: '24px',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, color: '#475569',
+                      fontSize: 11, color: '#475569',
                     }}>·</div>
                   ))}
                 </div>
