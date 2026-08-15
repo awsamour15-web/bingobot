@@ -40,7 +40,7 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
-  componentDidCatch(error: Error) {
+  override componentDidCatch(error: Error) {
     // Chunk load failures happen when a new deploy invalidates old hashed assets.
     // Force a hard reload so the browser fetches the fresh index.html and new chunks.
     const isChunkError =

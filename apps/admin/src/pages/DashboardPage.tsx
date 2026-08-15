@@ -78,7 +78,8 @@ export function DashboardPage() {
   const revenueBase = Math.max(summary?.totalRevenue ?? 4200, 2200);
   const periodSeries = useMemo(() => buildTrendSeries(revenueBase, activePeriod), [revenueBase, activePeriod]);
   const currentValue = periodSeries[periodSeries.length - 1] ?? 0;
-  const delta = ((currentValue - periodSeries[0]) / Math.max(periodSeries[0], 1)) * 100;
+  const firstValue = periodSeries[0] ?? 0;
+  const delta = ((currentValue - firstValue) / Math.max(firstValue, 1)) * 100;
 
   const chartLabels: Record<PeriodKey, string[]> = {
     '1h':   ['00', '15', '30', '45', '60', '75', '90', '105'],
