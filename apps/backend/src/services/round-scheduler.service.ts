@@ -8,7 +8,7 @@ import { GameStatus } from '@fidel/shared';
 
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 60_000;
-const DEFAULT_MAX_PLAYERS = 800;
+const DEFAULT_MAX_PLAYERS = 880;
 const CHECK_INTERVAL_MS = 1_000; // Check every second so rounds start calling immediately once due
 
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
