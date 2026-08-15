@@ -15,12 +15,23 @@ export interface AgentPlayerRow {
   joinedAt: string; // ISO date string
 }
 
+export interface AgentCommissionWithdrawal {
+  id: string;
+  amount: number;
+  phone: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  txNumber?: string | null;
+}
+
 export interface AgentDashboardStats {
   totalPlayersInvited: number;
   totalCommission: number;
   weeklyCommission: number; // UTC+3 current week Mon–Sun
   dailyCommission: number;  // UTC+3 today
+  commissionBalance: number;
   players: AgentPlayerRow[];
+  withdrawalRequests: AgentCommissionWithdrawal[];
 }
 
 export interface AgentSummary {
@@ -208,18 +219,20 @@ export const AgentService = {
     const { weekStart, weekEnd } = getUtc3WeekRange();
     const { dayStart, dayEnd } = getUtc3DayRange();
 
-    // Count of players invited by this agent
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+      select: { commission_balance: true },
+    });
+
     const totalPlayersInvited = await prisma.player.count({
       where: { agent_id: agentId },
     });
 
-    // Sum of all commission amounts for this agent
     const totalCommissionAgg = await prisma.agentCommission.aggregate({
       where: { agent_id: agentId },
       _sum: { commission_amount: true },
     });
 
-    // Weekly commission (UTC+3 Mon–Sun)
     const weeklyAgg = await prisma.agentCommission.aggregate({
       where: {
         agent_id: agentId,
@@ -228,7 +241,6 @@ export const AgentService = {
       _sum: { commission_amount: true },
     });
 
-    // Daily commission (UTC+3 today)
     const dailyAgg = await prisma.agentCommission.aggregate({
       where: {
         agent_id: agentId,
@@ -237,7 +249,6 @@ export const AgentService = {
       _sum: { commission_amount: true },
     });
 
-    // Per-player rows: player info + their play wallet balance + commission earned
     const players = await prisma.player.findMany({
       where: { agent_id: agentId },
       include: {
@@ -250,6 +261,11 @@ export const AgentService = {
           select: { commission_amount: true },
         },
       },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const withdrawalRequests = await prisma.agentCommissionWithdrawal.findMany({
+      where: { agent_id: agentId },
       orderBy: { created_at: 'desc' },
     });
 
@@ -273,8 +289,172 @@ export const AgentService = {
       totalCommission: Number(totalCommissionAgg._sum.commission_amount ?? 0),
       weeklyCommission: Number(weeklyAgg._sum.commission_amount ?? 0),
       dailyCommission: Number(dailyAgg._sum.commission_amount ?? 0),
+      commissionBalance: Number(agent?.commission_balance ?? 0),
       players: playerRows,
+      withdrawalRequests: withdrawalRequests.map((w) => ({
+        id: w.id,
+        amount: Number(w.amount),
+        phone: w.phone,
+        status: w.status,
+        createdAt: w.created_at.toISOString(),
+        txNumber: w.tx_number,
+      })),
     };
+  },
+
+  async requestCommissionWithdrawal(agentId: string, amount: number, phone: string): Promise<AgentCommissionWithdrawal> {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Withdrawal amount must be positive');
+    }
+    if (amount < 100) {
+      throw new Error('Minimum withdrawal amount is ETB 100');
+    }
+
+    const normalizedPhone = phone.trim();
+    if (!normalizedPhone) {
+      throw new Error('Phone number is required');
+    }
+
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+      select: { is_active: true, commission_balance: true },
+    });
+
+    if (!agent) {
+      throw new Error('Agent not found');
+    }
+    if (!agent.is_active) {
+      throw new Error('Agent account is suspended');
+    }
+    if (Number(agent.commission_balance) < amount) {
+      throw new Error('Insufficient commission balance');
+    }
+
+    const updated = await prisma.agent.update({
+      where: { id: agentId },
+      data: {
+        commission_balance: { decrement: new Decimal(amount.toFixed(2)) },
+      },
+    });
+
+    const withdrawal = await prisma.agentCommissionWithdrawal.create({
+      data: {
+        agent_id: agentId,
+        amount: new Decimal(amount.toFixed(2)),
+        phone: normalizedPhone,
+        status: 'pending',
+      },
+    });
+
+    if (Number(updated.commission_balance) < 0) {
+      await prisma.agent.update({
+        where: { id: agentId },
+        data: { commission_balance: { increment: new Decimal(amount.toFixed(2)) } },
+      });
+      throw new Error('Withdrawal amount exceeds available commission balance');
+    }
+
+    return {
+      id: withdrawal.id,
+      amount: Number(withdrawal.amount),
+      phone: withdrawal.phone,
+      status: withdrawal.status,
+      createdAt: withdrawal.created_at.toISOString(),
+      txNumber: withdrawal.tx_number,
+    };
+  },
+
+  async listCommissionWithdrawals(agentId: string): Promise<AgentCommissionWithdrawal[]> {
+    const withdrawals = await prisma.agentCommissionWithdrawal.findMany({
+      where: { agent_id: agentId },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return withdrawals.map((w) => ({
+      id: w.id,
+      amount: Number(w.amount),
+      phone: w.phone,
+      status: w.status,
+      createdAt: w.created_at.toISOString(),
+      txNumber: w.tx_number,
+    }));
+  },
+
+  async listPendingCommissionWithdrawals() {
+    const rows = await prisma.agentCommissionWithdrawal.findMany({
+      where: { status: 'pending' },
+      include: {
+        agent: {
+          select: {
+            id: true,
+            telegram_username: true,
+            telegram_id: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return rows.map((w) => ({
+      id: w.id,
+      agentId: w.agent.id,
+      telegramUsername: w.agent.telegram_username,
+      telegramId: w.agent.telegram_id?.toString() ?? null,
+      amount: Number(w.amount),
+      phone: w.phone,
+      status: w.status,
+      createdAt: w.created_at.toISOString(),
+      txNumber: w.tx_number,
+    }));
+  },
+
+  async approveAgentCommissionWithdrawal(id: string, txNumber: string) {
+    const normalizedTx = txNumber.trim();
+    if (!normalizedTx) {
+      throw new Error('Transaction number is required');
+    }
+    const withdrawal = await prisma.agentCommissionWithdrawal.findUnique({
+      where: { id },
+    });
+    if (!withdrawal || withdrawal.status !== 'pending') {
+      throw new Error('Pending withdrawal not found');
+    }
+    const approved = await prisma.agentCommissionWithdrawal.update({
+      where: { id },
+      data: { status: 'approved', tx_number: normalizedTx.toUpperCase() },
+    });
+    return {
+      id: approved.id,
+      amount: Number(approved.amount),
+      phone: approved.phone,
+      status: approved.status,
+      txNumber: approved.tx_number,
+      createdAt: approved.created_at.toISOString(),
+    };
+  },
+
+  async rejectAgentCommissionWithdrawal(id: string) {
+    const withdrawal = await prisma.agentCommissionWithdrawal.findUnique({
+      where: { id },
+    });
+    if (!withdrawal || withdrawal.status !== 'pending') {
+      throw new Error('Pending withdrawal not found');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.agentCommissionWithdrawal.update({
+        where: { id },
+        data: { status: 'rejected' },
+      });
+      await tx.agent.update({
+        where: { id: withdrawal.agent_id },
+        data: {
+          commission_balance: { increment: withdrawal.amount },
+        },
+      });
+    });
+
+    return { success: true };
   },
 
   /**

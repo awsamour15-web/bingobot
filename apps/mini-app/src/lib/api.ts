@@ -31,12 +31,23 @@ export type {
 };
 
 // Agent dashboard types
+export interface AgentCommissionWithdrawal {
+  id: string;
+  amount: number;
+  phone: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  txNumber?: string | null;
+}
+
 export interface AgentDashboardStats {
   totalPlayersInvited: number;
   totalCommission: number;
   weeklyCommission: number;   // UTC+3 current week Mon–Sun
   dailyCommission: number;    // UTC+3 today
+  commissionBalance: number;
   players: AgentPlayerRow[];
+  withdrawalRequests: AgentCommissionWithdrawal[];
 }
 
 export interface AgentPlayerRow {
@@ -427,4 +438,20 @@ export function getAgentDashboard(): Promise<AgentDashboardStats> {
 
 export function getAgentInviteLink(): Promise<{ playerInviteLink: string }> {
   return agentApiRequest<{ playerInviteLink: string }>('GET', '/api/agent/invite-link');
+}
+
+export function getAgentWithdrawals(): Promise<AgentCommissionWithdrawal[]> {
+  return agentApiRequest<AgentCommissionWithdrawal[]>('GET', '/api/agent/withdrawals');
+}
+
+export function requestAgentWithdrawal(amount: number, phone: string): Promise<{
+  success: boolean;
+  message: string;
+  withdrawal: AgentCommissionWithdrawal;
+}> {
+  return agentApiRequest<{ success: boolean; message: string; withdrawal: AgentCommissionWithdrawal }>(
+    'POST',
+    '/api/agent/withdrawals',
+    { amount, phone },
+  );
 }

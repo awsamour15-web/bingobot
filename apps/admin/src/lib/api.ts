@@ -305,6 +305,30 @@ export function rejectAgent(id: string): Promise<{ ok: boolean }> {
   return adminApiRequest('POST', `/api/admin/agents/${id}/reject`);
 }
 
+export interface AgentWithdrawalRequest {
+  id: string;
+  agentId: string;
+  telegramUsername: string;
+  telegramId: string | null;
+  amount: number;
+  phone: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  txNumber?: string | null;
+}
+
+export function getPendingAgentWithdrawals(): Promise<{ withdrawals: AgentWithdrawalRequest[] }> {
+  return adminApiRequest<{ withdrawals: AgentWithdrawalRequest[] }>('GET', '/api/admin/agents/withdrawals');
+}
+
+export function approveAgentCommissionWithdrawal(id: string, txNumber: string): Promise<{ success: boolean; withdrawal: AgentWithdrawalRequest }> {
+  return adminApiRequest<{ success: boolean; withdrawal: AgentWithdrawalRequest }>('POST', `/api/admin/agents/withdrawals/${id}/approve`, { txNumber });
+}
+
+export function rejectAgentCommissionWithdrawal(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest<{ success: boolean }>('POST', `/api/admin/agents/withdrawals/${id}/reject`);
+}
+
 // ---------------------------------------------------------------------------
 // Promotions
 // ---------------------------------------------------------------------------

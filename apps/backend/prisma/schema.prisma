@@ -183,11 +183,12 @@ model Agent {
   agent_invite_code  String            @unique
   is_active          Boolean           @default(true)
   approval_status    AgentApprovalStatus @default(pending)
-  commission_balance Decimal           @default(0) @db.Decimal(14, 2)
-  created_at         DateTime          @default(now())
+  commission_balance Decimal                      @default(0) @db.Decimal(14, 2)
+  created_at         DateTime                     @default(now())
   approved_at        DateTime?
   approved_by        String?
-  referred_players   AgentCommission[] @relation("AgentCommissions")
+  referred_players   AgentCommission[]            @relation("AgentCommissions")
+  withdrawals        AgentCommissionWithdrawal[]
   players            Player[]
 
   @@index([approval_status])
@@ -214,6 +215,22 @@ model AgentCommission {
   @@index([agent_id])
   @@index([player_id])
   @@map("agent_commissions")
+}
+
+model AgentCommissionWithdrawal {
+  id         String             @id @default(uuid())
+  agent_id   String
+  amount     Decimal            @db.Decimal(14, 2)
+  phone      String
+  status     WithdrawalStatus   @default(pending)
+  tx_number  String?
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
+  agent      Agent              @relation(fields: [agent_id], references: [id])
+
+  @@index([agent_id])
+  @@index([status])
+  @@map("agent_commission_withdrawals")
 }
 
 model CartelaReservation {

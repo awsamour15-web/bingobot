@@ -29,6 +29,58 @@ router.get('/pending', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// GET /withdrawals — list pending agent commission withdrawals
+router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const withdrawals = await AgentService.listPendingCommissionWithdrawals();
+    res.status(200).json({ withdrawals });
+  } catch (err) {
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+  }
+});
+
+// POST /withdrawals/:id/approve — approve an agent commission withdrawal request
+router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Promise<void> => {
+  const id = req.params['id'];
+  const { txNumber } = req.body as { txNumber?: string };
+
+  if (!id || typeof id !== 'string') {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Withdrawal ID is required' });
+    return;
+  }
+
+  if (!txNumber || typeof txNumber !== 'string' || !txNumber.trim()) {
+    res.status(400).json({ error: 'TX_NUMBER_REQUIRED', message: 'Transaction number is required' });
+    return;
+  }
+
+  try {
+    const withdrawal = await AgentService.approveAgentCommissionWithdrawal(id, txNumber);
+    res.status(200).json({ success: true, withdrawal });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Approval failed';
+    res.status(404).json({ error: 'WITHDRAWAL_NOT_FOUND', message });
+  }
+});
+
+// POST /withdrawals/:id/reject — reject an agent commission withdrawal request
+router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Promise<void> => {
+  const id = req.params['id'];
+
+  if (!id || typeof id !== 'string') {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Withdrawal ID is required' });
+    return;
+  }
+
+  try {
+    const result = await AgentService.rejectAgentCommissionWithdrawal(id);
+    res.status(200).json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Rejection failed';
+    res.status(404).json({ error: 'WITHDRAWAL_NOT_FOUND', message });
+  }
+});
+
 // GET /:id — get agent detail
 // Protected by adminAuthMiddleware (applied in index.ts)
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {

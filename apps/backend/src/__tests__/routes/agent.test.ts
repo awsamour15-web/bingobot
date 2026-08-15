@@ -11,6 +11,8 @@ vi.mock('../../services/agent.service.js', async () => {
     ...actual,
     AgentService: {
       getDashboardStats: vi.fn(),
+      requestCommissionWithdrawal: vi.fn(),
+      listCommissionWithdrawals: vi.fn(),
     },
     playerInviteLink: vi.fn(),
   };
@@ -53,6 +55,27 @@ describe('Agent Self-Service Router', () => {
       const result = playerInviteLink('test-agent-id');
       expect(result).toBe('https://t.me/testbot?start=ref_agent_123');
       expect(playerInviteLink).toHaveBeenCalledWith('test-agent-id');
+    });
+
+    it('should expose commission withdrawal request methods', async () => {
+      const mockRequest = {
+        id: 'wd_123',
+        amount: 500,
+        phone: '+251912345678',
+        status: 'pending',
+        createdAt: '2026-08-15T00:00:00.000Z',
+      };
+
+      (AgentService.requestCommissionWithdrawal as Mock).mockResolvedValue(mockRequest);
+      (AgentService.listCommissionWithdrawals as Mock).mockResolvedValue([mockRequest]);
+
+      const request = await AgentService.requestCommissionWithdrawal('agent-1', 500, '+251912345678');
+      const list = await AgentService.listCommissionWithdrawals('agent-1');
+
+      expect(request).toEqual(mockRequest);
+      expect(list).toEqual([mockRequest]);
+      expect(AgentService.requestCommissionWithdrawal).toHaveBeenCalledWith('agent-1', 500, '+251912345678');
+      expect(AgentService.listCommissionWithdrawals).toHaveBeenCalledWith('agent-1');
     });
   });
 });

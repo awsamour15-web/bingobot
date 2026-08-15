@@ -6,7 +6,8 @@ import {
 import {
   listAgents, createAgent, suspendAgent, restoreAgent, getAgentDetail,
   getPendingAgents, approveAgent, rejectAgent,
-  type AgentSummary, type AgentDetail, type PendingAgent,
+  getPendingAgentWithdrawals, approveAgentCommissionWithdrawal, rejectAgentCommissionWithdrawal,
+  type AgentSummary, type AgentDetail, type PendingAgent, type AgentWithdrawalRequest,
 } from '../lib/api';
 
 // ── Modal shell ───────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ function Modal({ title, onClose, children, maxWidth = 480 }: {
 export function AgentsPage() {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [pendingAgents, setPendingAgents] = useState<PendingAgent[]>([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<AgentWithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,9 +60,14 @@ export function AgentsPage() {
   async function load() {
     try {
       setLoading(true);
-      const [agentsRes, pendingRes] = await Promise.all([listAgents(), getPendingAgents()]);
+      const [agentsRes, pendingRes, withdrawalsRes] = await Promise.all([
+        listAgents(),
+        getPendingAgents(),
+        getPendingAgentWithdrawals(),
+      ]);
       setAgents(agentsRes.agents);
       setPendingAgents(pendingRes.agents);
+      setPendingWithdrawals(withdrawalsRes.withdrawals);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load agents');
     } finally { setLoading(false); }
@@ -98,6 +105,30 @@ export function AgentsPage() {
     finally { setDetailLoading(false); }
   }
 
+  async function handleWithdrawalApprove(item: AgentWithdrawalRequest) {
+    const txNumber = window.prompt(`Enter Telegram/Telebirr transaction number for ${item.telegramUsername} (${item.amount.toFixed(2)} ETB)`, '');
+    if (!txNumber || !txNumber.trim()) return;
+
+    try {
+      await approveAgentCommissionWithdrawal(item.id, txNumber.trim());
+      await load();
+      alert('Withdrawal approved');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Approval failed');
+    }
+  }
+
+  async function handleWithdrawalReject(item: AgentWithdrawalRequest) {
+    if (!window.confirm(`Reject withdrawal for @${item.telegramUsername} (${item.amount.toFixed(2)} ETB)?`)) return;
+    try {
+      await rejectAgentCommissionWithdrawal(item.id);
+      await load();
+      alert('Withdrawal rejected and balance restored');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Rejection failed');
+    }
+  }
+
   return (
     <div className="fade-in">
       <PageHeader
@@ -114,6 +145,31 @@ export function AgentsPage() {
           <KpiCard icon="finance"    label="Commission"     value={Number(agents.reduce((s,a)=>s+a.totalCommission,0).toFixed(2))} delta="ETB"    tone="emerald" trend={[1200,1500,1700,1900,2100,2350,2480]} />
           <KpiCard icon="players"    label="Players invited"value={agents.reduce((s,a)=>s+a.totalPlayersInvited,0)}                delta="+9.4%" tone="cyan"    trend={[40,44,52,60,68,77,85]} />
         </div>
+      )}
+
+      {!loading && !error && pendingWithdrawals.length > 0 && (
+        <Card style={{ marginBottom: 20, borderColor: 'rgba(250,204,21,0.35)' }}>
+          <CardHeader title={`Commission withdrawals (${pendingWithdrawals.length})`} subtitle="Admin review for partner commission payouts" />
+          <Table>
+            <thead><tr><Th>Agent</Th><Th>Phone</Th><Th>Amount</Th><Th>Requested</Th><Th>Actions</Th></tr></thead>
+            <tbody>
+              {pendingWithdrawals.map((w) => (
+                <tr key={w.id}>
+                  <Td><span style={{ fontWeight: 700 }}>@{w.telegramUsername}</span></Td>
+                  <Td muted>{w.phone || '—'}</Td>
+                  <Td><span style={{ color: '#4ade80', fontWeight: 700 }}>ETB {w.amount.toFixed(2)}</span></Td>
+                  <Td muted>{new Date(w.createdAt).toLocaleString()}</Td>
+                  <Td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <Btn size="sm" variant="success" onClick={() => handleWithdrawalApprove(w)}>Approve</Btn>
+                      <Btn size="sm" variant="danger" onClick={() => handleWithdrawalReject(w)}>Reject</Btn>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
       )}
 
       {/* Pending approvals */}

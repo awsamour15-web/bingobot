@@ -703,25 +703,7 @@ export default function CartelaScreen() {
       )}
 
       {/* ── Legend/Info Bar ── */}
-      <div style={{ padding: '8px 14px', background: 'linear-gradient(180deg, rgba(30,41,59,0.08) 0%, rgba(15,23,42,0.04) 100%)', borderBottom: '1px solid rgba(148,163,184,0.08)', display: 'flex', gap: 16, fontSize: 11, color: '#94a3b8', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(20,29,39,0.9) 100%)', border: '1.5px solid rgba(148,163,184,0.25)', borderRadius: 4, display: 'inline-block' }} />
-          <span style={{ fontWeight: 600 }}>Available</span>
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: 4, display: 'inline-block', boxShadow: '0 0 10px rgba(16,185,129,0.5)' }} />
-          <span style={{ fontWeight: 600 }}>Selected</span>
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', borderRadius: 4, display: 'inline-block', boxShadow: '0 0 10px rgba(239,68,68,0.5)' }} />
-          <span style={{ fontWeight: 600 }}>Taken</span>
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 14, height: 14, background: 'rgba(245,158,11,0.3)', border: '1.5px solid rgba(245,158,11,0.6)', borderRadius: 4, display: 'inline-block' }} />
-          <span style={{ fontWeight: 600 }}>Reserved</span>
-        </span>
-        {!canPick && <div style={{ marginLeft: 'auto', fontWeight: 800, color: '#10b981', fontSize: 12 }}>✓ {MAX_SELECT} cartelas selected</div>}
-      </div>
+
 
       {/* ── Number grid (scrollable) ── */}
       <div style={{
