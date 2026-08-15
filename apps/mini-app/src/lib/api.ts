@@ -136,6 +136,19 @@ async function fetchOnce(method: string, path: string, body?: unknown): Promise<
   }
 }
 
+function shouldReAuthOnNotFound(path: string, errorData: { error?: string; message?: string }): boolean {
+  if (errorData.error !== 'NOT_FOUND') return false;
+
+  const normalizedPath = path.toLowerCase();
+  const message = typeof errorData.message === 'string' ? errorData.message.toLowerCase() : '';
+
+  // Only re-auth when the backend says the player record itself is missing.
+  // Other not found cases like missing rounds, cartelas, or history items should
+  // surface normally without resetting the session.
+  return normalizedPath.startsWith('/api/players') ||
+    (message.includes('player') && message.includes('not found'));
+}
+
 export async function apiRequest<T>(
   method: string,
   path: string,
@@ -159,8 +172,9 @@ export async function apiRequest<T>(
       url: `${BASE_URL}${path}`,
     });
 
-    // Stale JWT pointing at a deleted/reset player — re-auth and retry once
-    if (response.status === 404 && errorData.error === 'NOT_FOUND') {
+    // Stale JWT pointing at a deleted/reset player — re-auth and retry once.
+    // Avoid retrying for unrelated 404s such as missing rounds or cartelas.
+    if (response.status === 404 && shouldReAuthOnNotFound(path, errorData)) {
       await deduplicatedReAuth();
       response = await fetchOnce(method, path, body);
 
