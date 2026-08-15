@@ -236,8 +236,13 @@ export const RoundScheduler = {
       const maxPlayers = maxPlayersRow ? parseInt(maxPlayersRow.value, 10) : DEFAULT_MAX_PLAYERS;
 
       const pendingStakes = new Set<number>([...byStake.keys()]);
-      // Check DB for active rounds — don't rely solely on NCE timer which may not be set yet
-      const activeStakes = new Set<number>(activeRounds.map((r) => Number(r.stake)));
+      // Only treat a stake as blocked when a live NCE timer is active for an active round.
+      // A DB row without a running timer is stale and must not block creation of a replacement pending round.
+      const activeStakes = new Set<number>(
+        activeRounds
+          .filter((r) => nce.activeTimers.has(r.id) || nce.startingRounds.has(r.id))
+          .map((r) => Number(r.stake)),
+      );
 
       // Create missing rounds sequentially to avoid parallel inserts racing into the same stake slot
       const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });

@@ -9,6 +9,7 @@ vi.mock('../lib/prisma.js', () => ({
     },
     config: {
       findUnique: vi.fn(),
+      upsert: vi.fn(),
     },
   },
 }));

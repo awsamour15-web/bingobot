@@ -10,6 +10,7 @@ function getLocalGrid(num: number): number[] | null {
 }
 import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
+import { shouldHandleCurrentRoundEvent } from '../lib/round-event-guards';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
 
 interface ProfileBalances {
@@ -309,6 +310,7 @@ export default function CartelaScreen() {
     };
 
     const onStarted = async (_p: RoundStartedPayload) => {
+      if (_p.roundId && !shouldHandleCurrentRoundEvent(roundId, _p.roundId)) return;
       if (joinedRef.current) return;
       joinedRef.current = true;
       sessionStorage.setItem('selectedRoundId', roundId!);
@@ -321,7 +323,8 @@ export default function CartelaScreen() {
       navigate(`/rounds/${roundId}/game`, { replace: true });
     };
 
-    const onEnded = () => {
+    const onEnded = (p?: RoundVoidPayload | RoundCancelledPayload) => {
+      if (p && !shouldHandleCurrentRoundEvent(roundId, p.roundId)) return;
       sessionStorage.removeItem('stakeSelectedForRound');
       navigate('/', { replace: true });
     };
