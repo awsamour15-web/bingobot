@@ -1,7 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getProfile, getWalletTransactions, depositFunds, withdrawFunds } from '../lib/api';
+import {
+  getProfile,
+  getWalletTransactions,
+  getDepositAccounts,
+  verifyManualDeposit,
+  withdrawFunds,
+} from '../lib/api';
 import { initAuth } from '../lib/auth';
-import type { PlayerProfile, TransactionListItem, PaginatedResponse } from '../lib/api';
+import type { PlayerProfile, TransactionListItem, PaginatedResponse, DepositAccountOption } from '../lib/api';
 
 const C = {
   bg: '#0a0e1a',
@@ -41,6 +47,11 @@ export default function WalletScreen() {
   const [depositAmount, setDepositAmount] = useState('');
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositError, setDepositError] = useState<string | null>(null);
+  const [depositStep, setDepositStep] = useState<'amount' | 'instruction' | 'receipt'>('amount');
+  const [depositAccounts, setDepositAccounts] = useState<DepositAccountOption[]>([]);
+  const [depositReceipt, setDepositReceipt] = useState('');
+  const [depositTargetAmount, setDepositTargetAmount] = useState(0);
+  const [depositSuccess, setDepositSuccess] = useState<string | null>(null);
 
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawPhone, setWithdrawPhone] = useState('');
@@ -69,13 +80,40 @@ export default function WalletScreen() {
   const handleDeposit = useCallback(async () => {
     const amount = parseFloat(depositAmount);
     if (!amount || amount <= 0) { setDepositError('Enter a valid amount'); return; }
+    setDepositLoading(true); setDepositError(null); setDepositSuccess(null);
+    try {
+      const res = await getDepositAccounts();
+      setDepositAccounts(res.accounts.length ? res.accounts : [{ phone: 'N/A', name: 'Support' }]);
+      setDepositTargetAmount(amount);
+      setDepositStep('instruction');
+    } catch (err) {
+      setDepositError((err as { message?: string }).message ?? 'Unable to load deposit account');
+    } finally {
+      setDepositLoading(false);
+    }
+  }, [depositAmount]);
+
+  const handleManualDepositSubmit = useCallback(async () => {
+    if (!depositReceipt.trim()) {
+      setDepositError('Please paste the full Telebirr SMS receipt.');
+      return;
+    }
+
     setDepositLoading(true); setDepositError(null);
     try {
-      const res = await depositFunds(amount);
-      window.open(res.checkoutUrl, '_blank');
-    } catch (err) { setDepositError((err as { message?: string }).message ?? 'Deposit failed'); }
-    finally { setDepositLoading(false); }
-  }, [depositAmount]);
+      const res = await verifyManualDeposit(depositTargetAmount, depositReceipt.trim());
+      setDepositSuccess(res.message);
+      setDepositStep('amount');
+      setDepositAmount('');
+      setDepositReceipt('');
+      const freshProfile = await getProfile();
+      setProfile(freshProfile);
+    } catch (err) {
+      setDepositError((err as { message?: string }).message ?? 'Deposit verification failed');
+    } finally {
+      setDepositLoading(false);
+    }
+  }, [depositReceipt, depositTargetAmount]);
 
   const handleWithdraw = useCallback(async () => {
     const amount = parseFloat(withdrawAmount);
@@ -160,9 +198,41 @@ export default function WalletScreen() {
           {/* Deposit */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 14 }}>
             <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 14 }}>⬇ Deposit</div>
-            {input({ type: 'number', placeholder: 'Amount in Birr', value: depositAmount, min: 1, onChange: e => { setDepositAmount(e.target.value); setDepositError(null); } })}
-            {depositError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{depositError}</div>}
-            {btn('Deposit Now', handleDeposit, depositLoading)}
+
+            {depositStep === 'amount' && (
+              <>
+                {input({ type: 'number', placeholder: 'Amount in Birr', value: depositAmount, min: 1, onChange: e => { setDepositAmount(e.target.value); setDepositError(null); setDepositSuccess(null); } })}
+                {depositError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{depositError}</div>}
+                {depositSuccess && <div style={{ color: C.green, fontSize: 13, marginTop: 6 }}>{depositSuccess}</div>}
+                {btn('Continue', handleDeposit, depositLoading)}
+              </>
+            )}
+
+            {depositStep === 'instruction' && (
+              <>
+                <div style={{ fontSize: 13, color: C.muted, marginBottom: 10 }}>
+                  Send exactly {depositTargetAmount} ETB to any active Telebirr account below, then paste the full SMS receipt.
+                </div>
+                {depositAccounts.map((account, idx) => (
+                  <div key={`${account.phone}-${idx}`} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                    <div style={{ color: C.text, fontWeight: 700 }}>Phone: {account.phone}</div>
+                    <div style={{ color: C.muted, fontSize: 12 }}>Name: {account.name}</div>
+                  </div>
+                ))}
+                <textarea
+                  value={depositReceipt}
+                  onChange={e => { setDepositReceipt(e.target.value); setDepositError(null); }}
+                  placeholder="Paste the full Telebirr SMS here..."
+                  rows={6}
+                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: 12, border: `1px solid ${C.border}`, background: 'rgba(255,255,255,0.04)', color: C.text, padding: 12, fontSize: 14, marginTop: 12 }}
+                />
+                {depositError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{depositError}</div>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                  <button onClick={() => { setDepositStep('amount'); setDepositReceipt(''); setDepositError(null); }} style={{ flex: 1, padding: '12px', borderRadius: 12, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontWeight: 700 }}>Back</button>
+                  <button onClick={handleManualDepositSubmit} disabled={depositLoading} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: depositLoading ? 'rgba(255,255,255,0.1)' : C.amber, color: depositLoading ? C.muted : '#0a0e1a', fontWeight: 800 }}>Confirm</button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Withdraw */}

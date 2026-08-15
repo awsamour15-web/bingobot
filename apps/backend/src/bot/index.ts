@@ -425,13 +425,52 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
   return { txNumber, receiverPhone, receiverName, amount };
 }
 
+export function validateDepositReceipt({
+  receipt,
+  expectedAmount,
+  accountPhone,
+  accountName,
+}: {
+  receipt: string;
+  expectedAmount: number;
+  accountPhone?: string | null;
+  accountName?: string | null;
+}): { ok: true; txNumber: string; amount: number; } | { ok: false; reason: 'NO_RECEIPT' | 'PHONE_MISMATCH' | 'NAME_MISMATCH' | 'AMOUNT_MISMATCH'; txNumber?: string; amount?: number; } {
+  const parsed = parseTelebirrReceipt(receipt);
+  if (!parsed) {
+    return { ok: false, reason: 'NO_RECEIPT' };
+  }
+
+  if (accountPhone && parsed.receiverPhone && !phoneMatches(parsed.receiverPhone, accountPhone)) {
+    return { ok: false, reason: 'PHONE_MISMATCH', txNumber: parsed.txNumber };
+  }
+
+  if (accountName && parsed.receiverName) {
+    const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+    const smsName = normalize(parsed.receiverName);
+    const configName = normalize(accountName);
+    if (!smsName.includes(configName) && !configName.includes(smsName)) {
+      return { ok: false, reason: 'NAME_MISMATCH', txNumber: parsed.txNumber };
+    }
+  }
+
+  if (parsed.amount !== null) {
+    const tolerance = 1;
+    if (Math.abs(parsed.amount - expectedAmount) > tolerance) {
+      return { ok: false, reason: 'AMOUNT_MISMATCH', txNumber: parsed.txNumber, amount: parsed.amount };
+    }
+  }
+
+  return { ok: true, txNumber: parsed.txNumber, amount: parsed.amount ?? expectedAmount };
+}
+
 /**
  * Normalizes a phone number to digits only for comparison.
  * Strips leading +, spaces, dashes. Handles masked digits (*).
  * Compares only the non-masked suffix digits.
  * e.g. "2519****5324" vs "0915855324" → compares last 4 digits: "5324" == "5324"
  */
-function phoneMatches(receiptPhone: string, configPhone: string): boolean {
+export function phoneMatches(receiptPhone: string, configPhone: string): boolean {
   const clean = (p: string) => p.replace(/\D/g, '');
   const rDigits = clean(receiptPhone);
   const cDigits = clean(configPhone);
@@ -487,7 +526,7 @@ async function ocrImage(imageBuffer: Buffer): Promise<string | null> {
  * Shared deposit claim logic — used by both text receipt and photo OCR handlers.
  * Returns the credited amount on success, or throws/returns null for specific error cases.
  */
-async function processDepositClaim(
+export async function processDepositClaim(
   playerId: string,
   txNumber: string,
 ): Promise<{ success: true; amount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {

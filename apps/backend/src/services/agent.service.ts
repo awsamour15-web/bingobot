@@ -44,8 +44,9 @@ export interface AgentDetail extends AgentSummary {
  * Build the agent self-activation deep-link (for linking telegram_id).
  * Format: https://t.me/<BOT_USERNAME>?start=agent_<agentId>
  */
-function agentInviteLink(agentId: string): string {
-  return `https://t.me/${process.env.BOT_USERNAME}?start=ref_agent_${agentId}`;
+export function agentInviteLink(agentId: string): string {
+  const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
+  return `https://t.me/${botUsername}?start=agent_${agentId}`;
 }
 
 /**

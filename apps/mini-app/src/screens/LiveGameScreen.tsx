@@ -610,7 +610,7 @@ export default function LiveGameScreen() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
         {/* ══ LEFT: 1–75 bingo board ══ */}
-        <div style={{ width: '44%', flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#0d1a2d' }}>
+        <div style={{ width: '44%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#0d1a2d' }}>
 
           {/* B I N G O headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '4px 3px 2px', flexShrink: 0 }}>
@@ -621,7 +621,7 @@ export default function LiveGameScreen() {
 
           {/* Numbers 1–75: row-by-row under each column header */}
           {/* Row 0: 1,16,31,46,61 | Row 1: 2,17,32,47,62 | ... | Row 14: 15,30,45,60,75 */}
-          <div style={{ flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gridTemplateRows: 'repeat(15,1fr)', gap: 2, padding: '2px 3px 3px' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gridTemplateRows: 'repeat(15, minmax(22px, 1fr))', gap: 2, padding: '2px 3px 3px' }}>
             {Array.from({ length: 15 }, (_, row) =>
               Array.from({ length: 5 }, (_, col) => {
                 const num = col * 15 + row + 1; // B:1-15, I:16-30, N:31-45, G:46-60, O:61-75
@@ -635,6 +635,7 @@ export default function LiveGameScreen() {
                     color: isLast ? '#0e1726' : called ? '#fff' : '#4a6080',
                     fontSize: 10, fontWeight: isLast ? 900 : called ? 800 : 500,
                     border: isLast ? '2px solid #fff' : called ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.07)',
+                    minHeight: 22,
                     aspectRatio: '1', transition: 'background 0.18s',
                     boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : 'none',
                   } as React.CSSProperties}>
@@ -807,7 +808,7 @@ export default function LiveGameScreen() {
               )}
             </div>
             {winGrid.length > 0 && (
-              <div style={{ background: '#132033', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 12, overflow: 'hidden', width: '100%', maxWidth: 300, marginBottom: 20 }}>
+              <div style={{ background: '#132033', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 12, overflow: 'hidden', width: '100%', maxWidth: 'min(92vw, 380px)', marginBottom: 20 }}>
                 <div style={{ padding: '8px 12px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 11, fontWeight: 700, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
                   🏆 Winning Cartela : {winCartelaNum}
                 </div>
@@ -823,7 +824,7 @@ export default function LiveGameScreen() {
                     const isM = isFree || (val !== 0 && marked.has(val));
                     const isW = winCells.has(idx);
                     return (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 38, borderRadius: 5, fontSize: 12, fontWeight: isW ? 900 : isM ? 800 : 500, background: isW ? '#22c55e' : isM ? `${HDR[ci]}cc` : 'rgba(255,255,255,0.05)', color: isW || isM ? '#fff' : '#4a6080', boxShadow: isW ? '0 0 8px rgba(34,197,94,0.5)' : 'none' }}>
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', minHeight: 30, borderRadius: 5, fontSize: 12, fontWeight: isW ? 900 : isM ? 800 : 500, background: isW ? '#22c55e' : isM ? `${HDR[ci]}cc` : 'rgba(255,255,255,0.05)', color: isW || isM ? '#fff' : '#4a6080', boxShadow: isW ? '0 0 8px rgba(34,197,94,0.5)' : 'none' }}>
                         {isFree ? '★' : val}
                       </div>
                     );

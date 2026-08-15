@@ -373,8 +373,28 @@ export function getWalletTransactions(page = 1): Promise<PaginatedResponse<Trans
   return apiRequest<PaginatedResponse<TransactionListItem>>('GET', `/api/wallet/transactions?page=${page}`);
 }
 
+export interface DepositAccountOption {
+  phone: string;
+  name: string;
+}
+
+export interface ManualDepositResponse {
+  success: boolean;
+  amount: number;
+  txNumber: string;
+  message: string;
+}
+
 export function depositFunds(amount: number): Promise<DepositResponse> {
   return apiRequest<DepositResponse>('POST', '/api/wallet/deposit', { amount });
+}
+
+export function getDepositAccounts(): Promise<{ accounts: DepositAccountOption[] }> {
+  return apiRequest<{ accounts: DepositAccountOption[] }>('GET', '/api/wallet/deposit/accounts');
+}
+
+export function verifyManualDeposit(amount: number, receipt: string): Promise<ManualDepositResponse> {
+  return apiRequest<ManualDepositResponse>('POST', '/api/wallet/deposit/manual', { amount, receipt });
 }
 
 export function withdrawFunds(amount: number, phone: string): Promise<void> {

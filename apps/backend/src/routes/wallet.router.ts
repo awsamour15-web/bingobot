@@ -8,6 +8,7 @@ import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { getPaymentGateway } from '../services/payment.service.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
+import { processDepositClaim, validateDepositReceipt } from '../bot/index.js';
 import type { TransactionListItem, PaginatedResponse } from '@fidel/shared';
 
 const router: RouterType = Router();
@@ -108,6 +109,114 @@ router.post(
     }
   },
 );
+
+router.get('/deposit/accounts', async (_req: Request, res: Response): Promise<void> => {
+  const accounts = await prisma.depositAccount.findMany({
+    where: { is_active: true },
+    orderBy: { created_at: 'desc' },
+  });
+
+  if (accounts.length > 0) {
+    res.json({
+      accounts: accounts.map((a) => ({ phone: a.phone, name: a.name })),
+    });
+    return;
+  }
+
+  const [phoneConfig, nameConfig] = await Promise.all([
+    prisma.config.findUnique({ where: { key: 'deposit_telebirr_number' } }),
+    prisma.config.findUnique({ where: { key: 'deposit_receiver_name' } }),
+  ]);
+
+  res.json({
+    accounts: phoneConfig ? [{ phone: phoneConfig.value, name: nameConfig?.value ?? 'Telebirr' }] : [],
+  });
+});
+
+router.post('/deposit/manual', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player!.playerId;
+  const { amount, receipt } = req.body as { amount?: number; receipt?: string };
+
+  if (typeof amount !== 'number' || amount <= 0) {
+    res.status(400).json({ error: 'INVALID_AMOUNT', message: 'amount must be a positive number' });
+    return;
+  }
+
+  if (typeof receipt !== 'string' || receipt.trim() === '') {
+    res.status(400).json({ error: 'RECEIPT_REQUIRED', message: 'receipt message is required' });
+    return;
+  }
+
+  const accounts = await prisma.depositAccount.findMany({
+    where: { is_active: true },
+    orderBy: { created_at: 'desc' },
+  });
+
+  const selectedAccount = accounts.length > 0
+    ? accounts[Math.floor(Math.random() * accounts.length)]
+    : null;
+
+  const validation = validateDepositReceipt({
+    receipt,
+    expectedAmount: amount,
+    accountPhone: selectedAccount?.phone ?? null,
+    accountName: selectedAccount?.name ?? null,
+  });
+
+  if (!validation.ok) {
+    const messageMap = {
+      NO_RECEIPT: 'We could not read a valid Telebirr transaction from your message. Please paste the full SMS receipt.',
+      PHONE_MISMATCH: 'The receipt does not match the configured Telebirr account. Please paste the correct transfer SMS.',
+      NAME_MISMATCH: 'The receiver name does not match the configured account. Please paste the correct transfer SMS.',
+      AMOUNT_MISMATCH: `The receipt amount does not match your entered amount (${amount} ETB).`,
+    } as const;
+
+    res.status(422).json({
+      error: validation.reason,
+      message: messageMap[validation.reason],
+    });
+    return;
+  }
+
+  let result = await processDepositClaim(playerId, validation.txNumber);
+
+  if (!result.success && result.reason === 'NOT_FOUND') {
+    try {
+      await prisma.pendingDeposit.create({
+        data: {
+          tx_number: validation.txNumber,
+          amount,
+          status: 'pending',
+        },
+      });
+    } catch {
+      // Ignore duplicate tx_number race conditions and retry claim.
+    }
+
+    result = await processDepositClaim(playerId, validation.txNumber);
+  }
+
+  if (!result.success) {
+    const messageMap = {
+      NOT_FOUND: 'This transaction was not found. Please contact support.',
+      CLAIMED: 'This transaction has already been claimed. Please contact support.',
+      CANCELLED: 'This transaction was cancelled. Please contact support.',
+    } as const;
+
+    res.status(409).json({
+      error: result.reason,
+      message: messageMap[result.reason],
+    });
+    return;
+  }
+
+  res.status(200).json({
+    success: true,
+    amount: result.amount,
+    txNumber: validation.txNumber,
+    message: `✅ Your deposit of ${result.amount} ETB is approved.`,
+  });
+});
 
 // ─── POST /api/wallet/deposit/webhook ────────────────────────────────────────
 // Placeholder webhook — called by the payment gateway after a successful deposit.
