@@ -751,35 +751,34 @@ export default function LiveGameScreen() {
                 const winCells = winCellsForGrid(cGrid);
                 const hasBingo = hasWinForGrid(cGrid);
                 return (
-                  <div key={cartela.cartelaNumber} style={{ flexShrink: 0, background: '#132033', borderRadius: 10, overflow: 'hidden', border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)' }}>
+                  <div key={cartela.cartelaNumber} style={{ flexShrink: 0, background: '#132033', borderRadius: 8, overflow: 'hidden', border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)' }}>
                     {/* Card label */}
-                    <div style={{ padding: '5px 10px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#f5c518', letterSpacing: 0.5 }}>#{cartela.cartelaNumber}</span>
-                      {hasBingo && <span style={{ fontSize: 9, fontWeight: 700, color: '#22c55e' }}>✓ BINGO</span>}
-                      {game.phase === 'active' && claimPending && hasBingo && <span style={{ fontSize: 9, color: '#f59e0b' }}>⏳ Claiming…</span>}
+                    <div style={{ padding: '3px 6px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: '#f5c518', letterSpacing: 0.5 }}>#{cartela.cartelaNumber}</span>
+                      {hasBingo && <span style={{ fontSize: 8, fontWeight: 700, color: '#22c55e' }}>✓ BINGO</span>}
+                      {game.phase === 'active' && claimPending && hasBingo && <span style={{ fontSize: 8, color: '#f59e0b' }}>⏳ Claiming…</span>}
                     </div>
 
                     {/* BINGO column headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '3px 4px 1px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '2px 2px 1px' }}>
                       {COLS.map((c, ci) => (
-                        <div key={c} style={{ textAlign: 'center', padding: '2px 0', borderRadius: 3, fontWeight: 900, fontSize: 9, background: HDR[ci], color: '#fff' }}>{c}</div>
+                        <div key={c} style={{ textAlign: 'center', padding: '1px 0', borderRadius: 2, fontWeight: 800, fontSize: 7, background: HDR[ci], color: '#fff' }}>{c}</div>
                       ))}
                     </div>
 
                     {/* 5×5 grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '1px 4px 4px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '1px 2px 2px' }}>
                       {cGrid.map((val, idx) => {
                         const isFree = idx === 12;
-                        const ci = idx % 5;
                         const isM = isFree || (val !== 0 && marked.has(val));
                         const isW = winCells.has(idx);
                         return (
                           <div key={idx} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            aspectRatio: '1', borderRadius: 4,
-                            background: isW ? '#22c55e' : isM ? `${HDR[ci]}cc` : 'rgba(255,255,255,0.05)',
+                            aspectRatio: '1', borderRadius: 3,
+                            background: isW ? '#22c55e' : isM ? '#3b82f6cc' : 'rgba(255,255,255,0.05)',
                             color: isW || isM ? '#fff' : '#4a6080',
-                            fontSize: 10, fontWeight: isW ? 900 : isM ? 800 : 500,
+                            fontSize: 8, fontWeight: isW ? 900 : isM ? 700 : 500,
                             border: isFree && !isM ? '1.5px solid rgba(245,197,24,0.4)' : 'none',
                             transition: 'background 0.15s',
                           }}>
@@ -857,11 +856,10 @@ export default function LiveGameScreen() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '2px 5px 6px' }}>
                   {winGrid.map((val, idx) => {
                     const isFree = idx === 12;
-                    const ci = idx % 5;
                     const isM = isFree || (val !== 0 && marked.has(val));
                     const isW = winCells.has(idx);
                     return (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', minHeight: 30, borderRadius: 5, fontSize: 12, fontWeight: isW ? 900 : isM ? 800 : 500, background: isW ? '#22c55e' : isM ? `${HDR[ci]}cc` : 'rgba(255,255,255,0.05)', color: isW || isM ? '#fff' : '#4a6080', boxShadow: isW ? '0 0 8px rgba(34,197,94,0.5)' : 'none' }}>
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', minHeight: 30, borderRadius: 5, fontSize: 12, fontWeight: isW ? 900 : isM ? 800 : 500, background: isW ? '#22c55e' : isM ? '#3b82f6cc' : 'rgba(255,255,255,0.05)', color: isW || isM ? '#fff' : '#4a6080', boxShadow: isW ? '0 0 8px rgba(34,197,94,0.5)' : 'none' }}>
                         {isFree ? '★' : val}
                       </div>
                     );
