@@ -844,10 +844,6 @@ export default function LiveGameScreen() {
               </div>
             )}
             {nextCountdown === 0 && <div style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>Finding next round…</div>}
-            <button type="button" onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}
-              style={{ background: '#f59e0b', border: 'none', borderRadius: 10, padding: '12px 32px', color: '#000', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-              Back to Home
-            </button>
           </div>
         );
       })()}
