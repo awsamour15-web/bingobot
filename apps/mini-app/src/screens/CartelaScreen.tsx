@@ -33,22 +33,28 @@ interface CartelaCellProps {
 }
 const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, disabled, onClick }: CartelaCellProps) {
   const bg = isPicked
-    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
     : taken
-      ? 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)'
+      ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
       : reserved
-        ? 'linear-gradient(135deg, rgba(251,191,36,0.24) 0%, rgba(245,158,11,0.18) 100%)'
-        : 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(15,23,42,0.8) 100%)';
-  const color = isPicked ? '#f8fafc' : taken ? '#fff1f2' : reserved ? '#fbbf24' : '#e2e8f0';
+        ? 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)'
+        : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
+  const color = isPicked ? '#ecfdf5' : taken ? '#fef2f2' : reserved ? '#d97706' : '#cbd5e1';
   const border = isPicked
-    ? '1px solid rgba(34,197,94,0.6)'
+    ? '2px solid #6ee7b7'
     : taken
-      ? '1px solid rgba(239,68,68,0.4)'
+      ? '1px solid rgba(239,68,68,0.5)'
       : reserved
-        ? '1px solid rgba(251,191,36,0.55)'
-        : '1px solid rgba(148,163,184,0.12)';
+        ? '1.5px solid rgba(245,158,11,0.4)'
+        : '1px solid rgba(148,163,184,0.15)';
 
-  const shadow = isPicked ? '0 0 0 1px rgba(34,197,94,0.35), 0 8px 18px rgba(34,197,94,0.18)' : reserved ? '0 0 0 1px rgba(251,191,36,0.2), 0 5px 12px rgba(251,191,36,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.04)';
+  const shadow = isPicked 
+    ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)' 
+    : reserved 
+      ? '0 0 12px rgba(245,158,11,0.2)' 
+      : taken
+        ? '0 0 12px rgba(239,68,68,0.15)'
+        : '0 2px 8px rgba(0,0,0,0.2)';
 
   // CRITICAL FIX: Prevent clicks on taken cartelas
   const handleClick = () => {
@@ -61,15 +67,17 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
       disabled={disabled || taken}
       onClick={handleClick}
       style={{
-        padding: '6px 0', borderRadius: 10, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 700, fontSize: 18,
+        padding: '8px 0', borderRadius: 12, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
-        opacity: 1,
-        transition: 'all 0.2s ease',
-        transform: isPicked ? 'translateY(-1px) scale(1.03)' : 'translateY(0) scale(1)',
+        opacity: disabled && !taken ? 0.5 : 1,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: isPicked ? 'translateY(-2px) scale(1.08)' : taken ? 'scale(0.98)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '42px',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '48px',
         boxShadow: shadow,
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
       {num}
@@ -585,17 +593,17 @@ export default function CartelaScreen() {
   const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances, availability]);
 
   if (loading) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
-      <div style={{ width: 48, height: 48, background: 'rgba(245, 158, 11, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, animation: 'spin 1s linear infinite' }}>⏳</div>
-      <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 500 }}>Loading cartelas…</div>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+      <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.15) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, animation: 'spin 1.5s linear infinite', border: '2px solid rgba(16,185,129,0.3)', boxShadow: '0 0 20px rgba(16,185,129,0.2)' }}>🎲</div>
+      <div style={{ color: '#cbd5e1', fontSize: 15, fontWeight: 600 }}>Loading cartelas…</div>
       <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
   if (!round || !availability) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 12 }}>
-      <div style={{ fontSize: 48 }}>🚫</div>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>{error ? 'Failed to Load' : 'Round Not Found'}</div>
-      <div style={{ fontSize: 13, color: '#94a3b8' }}>{error ?? 'Could not load round data'}</div>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }}>
+      <div style={{ fontSize: 56 }}>🚫</div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{error ? 'Failed to Load' : 'Round Not Found'}</div>
+      <div style={{ fontSize: 13, color: '#94a3b8' }}>{error || 'Could not load round data'}</div>
     </div>
   );
 
@@ -607,45 +615,45 @@ export default function CartelaScreen() {
   const previewCount = picksArr.length;
 
   return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Professional Header ── */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(11,17,27,0.98) 0%, rgba(13,27,46,0.8) 100%)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '12px 16px', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.1)', padding: '16px 18px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
         {/* Header Top - Title & Timer */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate(-1)} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transition: 'all 0.2s' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={() => navigate(-1)} style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.1) 100%)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa', width: 36, height: 36, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, transition: 'all 0.3s', fontWeight: 700 }}>
               ←
             </button>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>Select Cartelas</div>
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>Choose up to 2 cartelas</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9' }}>Select Cartelas</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Choose up to 2 cartelas</div>
             </div>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'), borderRadius: 8, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 18 }}>⏱️</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, backdropFilter: 'blur(8px)' }}>
+              <span style={{ fontSize: 16 }}>⏱️</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
                 {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '●' : '⏳'}
               </span>
             </div>
-            <button onClick={() => window.location.reload()} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0', padding: '6px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+            <button onClick={() => window.location.reload()} style={{ background: 'linear-gradient(135deg, rgba(100,116,139,0.15) 0%, rgba(71,85,105,0.1) 100%)', border: '1px solid rgba(148,163,184,0.25)', color: '#cbd5e1', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' }}>
               ↻
             </button>
           </div>
         </div>
 
         {/* Header Bottom - Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
           {[
-            { label: '💰 Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0 },
-            { label: '🎮 Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0 },
-            { label: '🎯 Stake', value: round ? Number(round.stake) : 0 },
-            { label: '👥 Players', value: round?.player_count ?? 0 },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ background: 'linear-gradient(180deg, rgba(30,41,59,0.82) 0%, rgba(15,23,42,0.9) 100%)', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 3 }}>{label}</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#f1f5f9' }}>{value.toLocaleString()}</div>
+            { label: '💰 Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0, color: '#3b82f6' },
+            { label: '🎮 Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0, color: '#10b981' },
+            { label: '🎯 Stake', value: round ? Number(round.stake) : 0, color: '#f59e0b' },
+            { label: '👥 Players', value: round?.player_count ?? 0, color: '#8b5cf6' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`, border: `1px solid ${color}30`, borderRadius: 12, padding: '12px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#f1f5f9' }}>{value.toLocaleString()}</div>
             </div>
           ))}
         </div>
@@ -653,39 +661,39 @@ export default function CartelaScreen() {
 
       {/* ── Error Banner ── */}
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.2)', color: '#f87171', padding: '10px 16px', fontSize: 13, flexShrink: 0, display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
+        <div style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.08) 100%)', borderBottom: '1.5px solid rgba(239,68,68,0.25)', color: '#fca5a5', padding: '12px 18px', fontSize: 13, flexShrink: 0, display: 'flex', gap: 12, alignItems: 'center', fontWeight: 500 }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
           <span>{error}</span>
         </div>
       )}
 
       {/* ── Legend/Info Bar ── */}
-      <div style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 16, fontSize: 11, color: '#64748b', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 3, display: 'inline-block' }} />
-          <span>Available</span>
+      <div style={{ padding: '12px 18px', background: 'linear-gradient(180deg, rgba(30,41,59,0.08) 0%, rgba(15,23,42,0.04) 100%)', borderBottom: '1px solid rgba(148,163,184,0.08)', display: 'flex', gap: 20, fontSize: 12, color: '#94a3b8', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(20,29,39,0.9) 100%)', border: '1.5px solid rgba(148,163,184,0.25)', borderRadius: 4, display: 'inline-block' }} />
+          <span style={{ fontWeight: 600 }}>Available</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, background: '#22c55e', borderRadius: 3, display: 'inline-block', boxShadow: '0 0 8px rgba(34,197,94,0.4)' }} />
-          <span>Selected</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: 4, display: 'inline-block', boxShadow: '0 0 10px rgba(16,185,129,0.5)' }} />
+          <span style={{ fontWeight: 600 }}>Selected</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, background: '#e53e3e', borderRadius: 3, display: 'inline-block', boxShadow: '0 0 8px rgba(229,62,62,0.4)' }} />
-          <span>Taken</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', borderRadius: 4, display: 'inline-block', boxShadow: '0 0 10px rgba(239,68,68,0.5)' }} />
+          <span style={{ fontWeight: 600 }}>Taken</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 12, height: 12, background: 'rgba(251,191,36,0.3)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: 3, display: 'inline-block' }} />
-          <span>Reserved</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 14, height: 14, background: 'rgba(245,158,11,0.3)', border: '1.5px solid rgba(245,158,11,0.6)', borderRadius: 4, display: 'inline-block' }} />
+          <span style={{ fontWeight: 600 }}>Reserved</span>
         </span>
-        {!canPick && <div style={{ marginLeft: 'auto', fontWeight: 700, color: '#f59e0b' }}>✓ {MAX_SELECT} cartelas selected</div>}
+        {!canPick && <div style={{ marginLeft: 'auto', fontWeight: 800, color: '#10b981', fontSize: 13 }}>✓ {MAX_SELECT} cartelas selected</div>}
       </div>
 
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
-        gap: 11, padding: '20px 18px', alignContent: 'start',
-        background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.76) 100%)',
+        gap: 12, padding: '24px 20px', alignContent: 'start',
+        background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
         {ALL_NUMBERS.map(num => {
@@ -702,55 +710,57 @@ export default function CartelaScreen() {
       {/* ── Selected cartela BINGO preview ── */}
       {previewCount > 0 && (
         <div style={{
-          flexShrink: 0, background: 'linear-gradient(180deg, rgba(13,27,46,0.9) 0%, rgba(13,27,46,0.7) 100%)',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          padding: '10px 12px', gap: 8,
+          flexShrink: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,14,26,0.9) 100%)',
+          borderTop: '1.5px solid rgba(148,163,184,0.1)',
+          padding: '16px 14px', gap: 12,
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
-          maxHeight: '34%',
+          boxShadow: '0 -8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+          maxHeight: '36%',
           overflowY: 'auto',
         }}>
           {picksArr.map(cartelaNum => {
             const grid = pickedGrids.get(cartelaNum);
             return (
-              <div key={cartelaNum} style={{ background: 'rgba(15,23,42,0.88)', border: '1px solid rgba(148,163,184,0.08)', borderRadius: 10, padding: '8px 8px 6px', boxShadow: '0 6px 14px rgba(15,23,42,0.2)' }}>
-                <div style={{ textAlign: 'center', fontSize: 17, color: '#f8fafc', fontWeight: 800, marginBottom: 5, letterSpacing: '0.01em' }}>
-                  Cartela #{cartelaNum}
+              <div key={cartelaNum} style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.04) 100%)', border: '1.5px solid rgba(16,185,129,0.25)', borderRadius: 14, padding: '12px 10px 10px', boxShadow: '0 8px 16px rgba(16,185,129,0.12)', backdropFilter: 'blur(8px)' }}>
+                <div style={{ textAlign: 'center', fontSize: 17, color: '#10b981', fontWeight: 900, marginBottom: 8 }}>
+                  Card #{cartelaNum}
                 </div>
                 {/* BINGO header row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginBottom: 3 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, marginBottom: 4 }}>
                   {BINGO_COLS.map((col, ci) => (
                     <div key={col} style={{
-                      background: 'linear-gradient(180deg, ' + COL_COLORS[ci] + ' 0%, rgba(15,23,42,0.82) 100%)', color: '#fff', fontWeight: 900,
-                      fontSize: 10, textAlign: 'center', borderRadius: 4, padding: '3px 0',
+                      background: `linear-gradient(180deg, ${COL_COLORS[ci]} 0%, rgba(15,23,42,0.9) 100%)`, color: '#fff', fontWeight: 900,
+                      fontSize: 9, textAlign: 'center', borderRadius: 5, padding: '4px 0',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: `0 2px 6px ${COL_COLORS[ci]}40`
                     }}>{col}</div>
                   ))}
                 </div>
                 {/* 5×5 grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
                   {grid ? grid.map((val, idx) => {
                     const isFree = idx === 12;
                     return (
                       <div key={idx} style={{
-                        background: isFree ? 'linear-gradient(135deg, #34d399 0%, #16a34a 100%)' : 'rgba(30,41,59,0.96)',
-                        color: isFree ? '#fff' : '#e2e8f0',
-                        fontWeight: 700, fontSize: 11,
-                        textAlign: 'center', borderRadius: 4,
-                        border: '1px solid ' + (isFree ? 'rgba(52,211,153,0.35)' : 'rgba(148,163,184,0.1)'),
-                        minHeight: '24px',
+                        background: isFree ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(20,29,39,0.95) 100%)',
+                        color: isFree ? '#ecfdf5' : '#cbd5e1',
+                        fontWeight: 700, fontSize: 10,
+                        textAlign: 'center', borderRadius: 5,
+                        border: isFree ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(148,163,184,0.15)',
+                        minHeight: '28px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: isFree ? '0 0 12px rgba(16,185,129,0.25)' : 'none'
                       }}>
                         {isFree ? '★' : val}
                       </div>
                     );
                   }) : Array.from({ length: 25 }, (_, i) => (
                     <div key={i} style={{
-                      background: 'rgba(30,41,59,0.9)', borderRadius: 4,
-                      border: '1px solid rgba(148,163,184,0.1)', minHeight: '24px',
+                      background: 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(20,29,39,0.95) 100%)', borderRadius: 5,
+                      border: '1px solid rgba(148,163,184,0.15)', minHeight: '28px',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, color: '#475569',
+                      fontSize: 10, color: '#475569',
                     }}>·</div>
                   ))}
                 </div>
@@ -762,15 +772,15 @@ export default function CartelaScreen() {
 
       {/* ── Starting overlay ── */}
       {(starting || committing) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.95)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, zIndex: 50 }}>
-          <div style={{ width: 60, height: 60, background: 'rgba(245,158,11,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, animation: 'pulse 2s ease-in-out infinite' }}>🎮</div>
+        <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(135deg, rgba(10,14,26,0.98) 0%, rgba(10,14,26,0.95) 100%)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 18, zIndex: 50 }}>
+          <div style={{ width: 72, height: 72, background: 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(59,130,246,0.15) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, animation: 'pulse 2s ease-in-out infinite', border: '2px solid rgba(16,185,129,0.4)', boxShadow: '0 0 24px rgba(16,185,129,0.2)' }}>🎮</div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Starting game…</div>
-            <div style={{ color: '#64748b', fontSize: 13 }}>
+            <div style={{ color: '#10b981', fontWeight: 900, fontSize: 20, marginBottom: 10 }}>Starting Game…</div>
+            <div style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>
               {picks.size > 0 ? `Joining with cartela ${picksArr.join(' & ')}` : 'Joining as watcher'}
             </div>
           </div>
-          <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }`}</style>
+          <style>{`@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } }`}</style>
         </div>
       )}
 
