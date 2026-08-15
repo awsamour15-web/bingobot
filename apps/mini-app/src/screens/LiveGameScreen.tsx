@@ -722,14 +722,14 @@ export default function LiveGameScreen() {
                     </div>
 
                     {/* BINGO column headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '5px 5px 2px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '3px 4px 1px' }}>
                       {COLS.map((c, ci) => (
-                        <div key={c} style={{ textAlign: 'center', padding: '3px 0', borderRadius: 4, fontWeight: 900, fontSize: 10, background: HDR[ci], color: '#fff' }}>{c}</div>
+                        <div key={c} style={{ textAlign: 'center', padding: '2px 0', borderRadius: 3, fontWeight: 900, fontSize: 9, background: HDR[ci], color: '#fff' }}>{c}</div>
                       ))}
                     </div>
 
                     {/* 5×5 grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '2px 5px 5px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '1px 4px 4px' }}>
                       {cGrid.map((val, idx) => {
                         const isFree = idx === 12;
                         const ci = idx % 5;
@@ -738,10 +738,10 @@ export default function LiveGameScreen() {
                         return (
                           <div key={idx} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            height: 34, borderRadius: 5,
+                            aspectRatio: '1', borderRadius: 4,
                             background: isW ? '#22c55e' : isM ? `${HDR[ci]}cc` : 'rgba(255,255,255,0.05)',
                             color: isW || isM ? '#fff' : '#4a6080',
-                            fontSize: 11, fontWeight: isW ? 900 : isM ? 800 : 500,
+                            fontSize: 10, fontWeight: isW ? 900 : isM ? 800 : 500,
                             border: isFree && !isM ? '1.5px solid rgba(245,197,24,0.4)' : 'none',
                             transition: 'background 0.15s',
                           }}>
