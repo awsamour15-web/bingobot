@@ -104,6 +104,7 @@ export default function LiveGameScreen() {
   }, []);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -402,33 +403,66 @@ export default function LiveGameScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId]);
 
-  // ─── Fallback poll while waiting — catches rounds that started before we connected ──
+  // ─── Re-sync the round from the server while it is active or still waiting ──
+  // This prevents the board from freezing if socket events are delayed or missed.
   useEffect(() => {
-    if (game.phase !== 'waiting' || !roundId) return;
+    if (!roundId || !['waiting', 'active'].includes(game.phase)) return;
     const iv = setInterval(async () => {
+      setSyncing(true);
       try {
-        const r = await getRound(roundId);
-        if (r.status === 'active') {
-          const nums = await getCalledNumbers(roundId);
-          const calledSet = new Set(nums);
-          const last = nums[nums.length - 1] ?? null;
-          setGame((g) => ({
-            ...g,
-            phase: 'active',
-            derash: r.derash,
-            playerCount: r.player_count,
-            calledNumbers: calledSet,
-            calledOrder: nums,
-            lastCalled: last ?? g.lastCalled,
-          }));
-        } else if (r.status === 'void' || r.status === 'cancelled' || r.status === 'completed') {
-          setGame((g) => ({
-            ...g,
-            phase: r.status === 'completed' ? 'won' : r.status as 'void' | 'cancelled',
-            endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled.',
-          }));
-        }
+        const [r, nums] = await Promise.all([
+          getRound(roundId),
+          getCalledNumbers(roundId).catch(() => [] as number[]),
+        ]);
+
+        const mergedSet = new Set(nums);
+        setGame((g) => {
+          if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
+
+          const last = nums[nums.length - 1] ?? g.lastCalled;
+          if (r.status === 'active') {
+            return {
+              ...g,
+              phase: 'active',
+              derash: r.derash,
+              playerCount: r.player_count,
+              calledNumbers: mergedSet,
+              calledOrder: nums,
+              lastCalled: last ?? g.lastCalled,
+            };
+          }
+
+          if (r.status === 'completed') {
+            return {
+              ...g,
+              phase: 'won',
+              derash: r.derash,
+              playerCount: r.player_count,
+              calledNumbers: mergedSet,
+              calledOrder: nums,
+              lastCalled: last ?? g.lastCalled,
+            };
+          }
+
+          if (r.status === 'void' || r.status === 'cancelled') {
+            return {
+              ...g,
+              phase: r.status === 'void' ? 'void' : 'cancelled',
+              endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled — stake refunded.',
+              derash: r.derash,
+              playerCount: r.player_count,
+              calledNumbers: mergedSet,
+              calledOrder: nums,
+              lastCalled: last ?? g.lastCalled,
+            };
+          }
+
+          return g;
+        });
       } catch {}
+      finally {
+        setSyncing(false);
+      }
     }, 3000);
     return () => clearInterval(iv);
   }, [game.phase, roundId]);
@@ -606,6 +640,8 @@ export default function LiveGameScreen() {
         ))}
       </div>
 
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }`}</style>
+
       {/* ── MAIN: LEFT board + RIGHT panel ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
@@ -673,6 +709,12 @@ export default function LiveGameScreen() {
             ) : (
               <div style={{ fontSize: 14, color: '#4a6080', padding: '8px 0' }}>
                 {game.phase === 'waiting' ? 'Starting…' : '—'}
+              </div>
+            )}
+            {syncing && (
+              <div style={{ marginTop: 8, fontSize: 10, color: '#94a3b8', letterSpacing: 0.8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse 1.1s infinite ease-in-out' }} />
+                syncing
               </div>
             )}
           </div>
