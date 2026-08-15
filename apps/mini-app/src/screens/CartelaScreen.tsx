@@ -11,6 +11,7 @@ function getLocalGrid(num: number): number[] | null {
 import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
 import { shouldHandleCurrentRoundEvent } from '../lib/round-event-guards';
+import { isRoundStartBlocked } from '../lib/round-start-flow';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
 
 interface ProfileBalances {
@@ -18,7 +19,7 @@ interface ProfileBalances {
   playWallet: { balance: number };
 }
 
-const TOTAL = 800;
+const TOTAL = 880;
 const MAX_SELECT = 2;
 const ALL_NUMBERS = Array.from({ length: TOTAL }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
@@ -158,6 +159,7 @@ export default function CartelaScreen() {
   const [starting, setStarting] = useState(false);
   const joinedRef = useRef(false);
   const countdownStartedRef = useRef(false);
+  const startRequestLockRef = useRef(false);
   const [manualTrigger, setManualTrigger] = useState(false);
 
   // Grids for picked cartelas — fetched on pick
@@ -311,16 +313,24 @@ export default function CartelaScreen() {
 
     const onStarted = async (_p: RoundStartedPayload) => {
       if (_p.roundId && !shouldHandleCurrentRoundEvent(roundId, _p.roundId)) return;
-      if (joinedRef.current) return;
+      if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
+
       joinedRef.current = true;
+      startRequestLockRef.current = true;
+      setStarting(true);
       sessionStorage.setItem('selectedRoundId', roundId!);
-      if (picksRef.current.size > 0) {
-        await commitPicks(picksRef.current);
-        // commitPicks always sets myCartelaNumbers (player or watcher) — just navigate
-      } else {
-        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+      try {
+        if (picksRef.current.size > 0) {
+          await commitPicks(picksRef.current);
+        } else {
+          sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+        }
+        navigate(`/rounds/${roundId}/game`, { replace: true });
+      } catch {
+        joinedRef.current = false;
+        startRequestLockRef.current = false;
+        setStarting(false);
       }
-      navigate(`/rounds/${roundId}/game`, { replace: true });
     };
 
     const onEnded = (p?: RoundVoidPayload | RoundCancelledPayload) => {
@@ -346,12 +356,19 @@ export default function CartelaScreen() {
       ]).then(([fresh, latestRound]) => {
         // If round went active and we haven't joined yet, trigger join flow
         if (latestRound.status === 'active' && !joinedRef.current) {
+          if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
           joinedRef.current = true;
+          startRequestLockRef.current = true;
+          setStarting(true);
           clearInterval(poll);
           sessionStorage.setItem('selectedRoundId', roundId!);
           if (picksRef.current.size > 0) {
             commitPicks(picksRef.current).then(() => {
               navigate(`/rounds/${roundId}/game`, { replace: true });
+            }).catch(() => {
+              joinedRef.current = false;
+              startRequestLockRef.current = false;
+              setStarting(false);
             });
           } else {
             sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
@@ -404,34 +421,49 @@ export default function CartelaScreen() {
   useEffect(() => {
     if (loading || !round || joinedRef.current) return;
     if (round.status !== 'active') return;
-    if (joinedRef.current) return;
+    if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
+
     joinedRef.current = true;
+    startRequestLockRef.current = true;
+    setStarting(true);
     sessionStorage.setItem('selectedRoundId', roundId ?? '');
     sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
     navigate(`/rounds/${roundId}/game`, { replace: true });
-  }, [loading, round, roundId, navigate]);
+  }, [loading, round, roundId, navigate, starting]);
 
   // Countdown hit 0 — commit picks and navigate
   useEffect(() => {
     if (msLeft !== 0 || !countdownStartedRef.current || joinedRef.current) return;
+    if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
+
     (async () => {
-      if (joinedRef.current) return;
       joinedRef.current = true;
+      startRequestLockRef.current = true;
+      setStarting(true);
       sessionStorage.setItem('selectedRoundId', roundId ?? '');
-      if (picksRef.current.size > 0) {
-        await commitPicks(picksRef.current);
-      } else {
-        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+      try {
+        if (picksRef.current.size > 0) {
+          await commitPicks(picksRef.current);
+        } else {
+          sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+        }
+        navigate(`/rounds/${roundId}/game`, { replace: true });
+      } catch {
+        joinedRef.current = false;
+        startRequestLockRef.current = false;
+        setStarting(false);
       }
-      navigate(`/rounds/${roundId}/game`, { replace: true });
     })();
-  }, [msLeft, roundId, navigate]);
+  }, [msLeft, roundId, navigate, starting]);
 
   // Manual "Go to Game" trigger (edge case when countdown already passed)
   useEffect(() => {
     if (!manualTrigger || joinedRef.current || starting) return;
-    joinedRef.current = true;
+    if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
+
     async function startGame() {
+      joinedRef.current = true;
+      startRequestLockRef.current = true;
       setStarting(true);
       setError(null);
       try {
@@ -444,7 +476,6 @@ export default function CartelaScreen() {
         sessionStorage.setItem('selectedRoundId', roundId!);
         if (picksRef.current.size > 0 && currentRound.status === 'pending') {
           await commitPicks(picksRef.current);
-          // commitPicks always sets myCartelaNumbers (player or watcher) — just navigate
         } else {
           sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
         }
@@ -452,10 +483,11 @@ export default function CartelaScreen() {
       } catch {
         setStarting(false);
         joinedRef.current = false;
+        startRequestLockRef.current = false;
       }
     }
     void startGame();
-  }, [manualTrigger, roundId, navigate]);
+  }, [manualTrigger, roundId, navigate, starting]);
 
   function togglePick(num: number) {
     const wasRecentlyReleased = recentlyReleasedRef.current.has(num);
