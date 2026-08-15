@@ -611,7 +611,7 @@ export default function LiveGameScreen() {
   void colBg; // used below
 
   return (
-    <div style={{ height: '100dvh', background: '#0e1726', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
+    <div style={{ height: '100dvh', background: '#D203DD', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
       {/* ── HEADER ── */}
       <div style={{ background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', padding: '11px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -646,7 +646,7 @@ export default function LiveGameScreen() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
         {/* ══ LEFT: 1–75 bingo board ══ */}
-        <div style={{ width: '44%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#0d1a2d' }}>
+        <div style={{ width: '44%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#D203DD' }}>
 
           {/* B I N G O headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '4px 3px 2px', flexShrink: 0 }}>
@@ -684,7 +684,7 @@ export default function LiveGameScreen() {
         </div>
 
         {/* ══ RIGHT PANEL ══ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0e1726' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#D203DD' }}>
 
           {/* LAST CALLED */}
           <div style={{ padding: '10px 12px 8px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
