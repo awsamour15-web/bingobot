@@ -343,6 +343,7 @@ export interface Promotion {
   content_type: PromotionContentType;
   text_content: string | null;
   media_file_id: string | null;
+  caption: string | null;
   status: PromotionStatus;
   created_at: string;
   updated_at: string;
@@ -369,6 +370,19 @@ export interface PromotionLog {
   sent_at: string;
 }
 
+export interface PromotionStats {
+  total_sent: number;
+  total_failed: number;
+  unique_channels: number;
+  last_sent_at: string | null;
+}
+
+export interface GlobalPromotionStats {
+  totalSent: number;
+  totalFailed: number;
+  activeSchedules: number;
+}
+
 export function listPromotions(): Promise<Promotion[]> {
   return adminApiRequest('GET', '/api/admin/promotions');
 }
@@ -378,21 +392,42 @@ export function createPromotion(data: {
   content_type: PromotionContentType;
   text_content?: string;
   media_file_id?: string;
+  caption?: string;
 }): Promise<Promotion> {
   return adminApiRequest('POST', '/api/admin/promotions', data);
 }
 
 export function updatePromotion(id: string, data: Partial<{
   title: string;
-  content_type: PromotionContentType;
   text_content: string;
   media_file_id: string;
+  caption: string;
 }>): Promise<Promotion> {
   return adminApiRequest('PATCH', `/api/admin/promotions/${id}`, data);
 }
 
 export function setPromotionStatus(id: string, status: PromotionStatus): Promise<Promotion> {
   return adminApiRequest('PATCH', `/api/admin/promotions/${id}/status`, { status });
+}
+
+export function duplicatePromotion(id: string): Promise<Promotion> {
+  return adminApiRequest('POST', `/api/admin/promotions/${id}/duplicate`);
+}
+
+export function sendPromotionNow(id: string, channel_ids: string[]): Promise<{ sent: number; failed: number }> {
+  return adminApiRequest('POST', `/api/admin/promotions/${id}/send-now`, { channel_ids });
+}
+
+export function retryFailedDeliveries(id: string): Promise<{ sent: number; failed: number }> {
+  return adminApiRequest('POST', `/api/admin/promotions/${id}/retry-failed`);
+}
+
+export function getPromotionStats(id: string): Promise<PromotionStats> {
+  return adminApiRequest('GET', `/api/admin/promotions/${id}/stats`);
+}
+
+export function getGlobalPromotionStats(): Promise<GlobalPromotionStats> {
+  return adminApiRequest('GET', '/api/admin/promotions/stats/global');
 }
 
 export function listSchedules(promotionId: string): Promise<PromotionSchedule[]> {
@@ -411,9 +446,10 @@ export function cancelSchedule(scheduleId: string): Promise<{ success: boolean }
   return adminApiRequest('DELETE', `/api/admin/promotions/schedules/${scheduleId}`);
 }
 
-export function getPromotionLogs(promotionId?: string): Promise<PromotionLog[]> {
-  const query = promotionId ? `?promotionId=${promotionId}` : '';
-  return adminApiRequest('GET', `/api/admin/promotions/logs${query}`);
+export function getPromotionLogs(promotionId?: string, limit = 200): Promise<PromotionLog[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (promotionId) params.set('promotionId', promotionId);
+  return adminApiRequest('GET', `/api/admin/promotions/logs?${params}`);
 }
 
 // ---------------------------------------------------------------------------

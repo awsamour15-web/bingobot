@@ -1,14 +1,37 @@
 // Admin promotion management endpoints
-// Requirements: 1.1, 1.3, 1.4, 1.5, 3.1, 3.4, 3.6, 4.1, 6.2, 6.6
-
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import { PromotionService } from '../../services/promotion.service.js';
+import { sendPromotionNow, retryFailedDeliveries } from '../../services/promotion-scheduler.service.js';
 
 type PromotionContentType = 'text' | 'image' | 'video' | 'gif';
 type PromotionStatus = 'active' | 'inactive';
 type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 
 const router: RouterType = Router();
+
+// ── Static routes MUST come before /:id ───────────────────────────────────────
+
+// GET /logs — delivery logs (supports ?promotionId= filter, ?limit=)
+router.get('/logs', async (req: Request, res: Response): Promise<void> => {
+  const promotionId = req.query['promotionId'] as string | undefined;
+  const limit = parseInt(req.query['limit'] as string) || 200;
+  const logs = await PromotionService.getLogs(promotionId, limit);
+  res.json(logs);
+});
+
+// GET /stats/global — aggregate KPI stats across all promotions
+router.get('/stats/global', async (_req: Request, res: Response): Promise<void> => {
+  const stats = await PromotionService.getGlobalStats();
+  res.json(stats);
+});
+
+// DELETE /schedules/:scheduleId — cancel schedule
+router.delete('/schedules/:scheduleId', async (req: Request, res: Response): Promise<void> => {
+  await PromotionService.cancelSchedule(req.params['scheduleId'] as string);
+  res.json({ success: true });
+});
+
+// ── Collection routes ──────────────────────────────────────────────────────────
 
 // GET / — list all promotions
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
@@ -24,6 +47,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       content_type: PromotionContentType;
       text_content?: string;
       media_file_id?: string;
+      caption?: string;
     });
     res.status(201).json(promotion);
   } catch (err) {
@@ -31,7 +55,16 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// PATCH /:id — update promotion content/status
+// ── Per-promotion routes (:id) ────────────────────────────────────────────────
+
+// GET /:id — get single promotion
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  const promotion = await PromotionService.getById(req.params['id'] as string);
+  if (!promotion) { res.status(404).json({ error: 'NOT_FOUND' }); return; }
+  res.json(promotion);
+});
+
+// PATCH /:id — update promotion content
 router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const promotion = await PromotionService.update(req.params['id'] as string, req.body);
@@ -47,6 +80,47 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
   if (!status) { res.status(400).json({ error: 'STATUS_REQUIRED' }); return; }
   const promotion = await PromotionService.setStatus(req.params['id'] as string, status);
   res.json(promotion);
+});
+
+// POST /:id/duplicate — clone a promotion
+router.post('/:id/duplicate', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const copy = await PromotionService.duplicate(req.params['id'] as string);
+    res.status(201).json(copy);
+  } catch (err) {
+    res.status(400).json({ error: 'DUPLICATE_FAILED', message: (err as Error).message });
+  }
+});
+
+// POST /:id/send-now — immediately send to given channel IDs
+router.post('/:id/send-now', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { channel_ids } = req.body as { channel_ids: string[] };
+    if (!Array.isArray(channel_ids) || channel_ids.length === 0) {
+      res.status(400).json({ error: 'CHANNEL_IDS_REQUIRED', message: 'Provide at least one channel_id' });
+      return;
+    }
+    const result = await sendPromotionNow(req.params['id'] as string, channel_ids);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: 'SEND_FAILED', message: (err as Error).message });
+  }
+});
+
+// POST /:id/retry-failed — retry all failed deliveries
+router.post('/:id/retry-failed', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await retryFailedDeliveries(req.params['id'] as string);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: 'RETRY_FAILED', message: (err as Error).message });
+  }
+});
+
+// GET /:id/stats — per-promotion delivery stats
+router.get('/:id/stats', async (req: Request, res: Response): Promise<void> => {
+  const stats = await PromotionService.getStats(req.params['id'] as string);
+  res.json(stats);
 });
 
 // GET /:id/schedules — list schedules
@@ -68,19 +142,6 @@ router.post('/:id/schedules', async (req: Request, res: Response): Promise<void>
   } catch (err) {
     res.status(400).json({ error: 'SCHEDULE_FAILED', message: (err as Error).message });
   }
-});
-
-// DELETE /schedules/:scheduleId — cancel schedule
-router.delete('/schedules/:scheduleId', async (req: Request, res: Response): Promise<void> => {
-  await PromotionService.cancelSchedule(req.params['scheduleId'] as string);
-  res.json({ success: true });
-});
-
-// GET /logs — get delivery logs (supports ?promotionId= filter)
-router.get('/logs', async (req: Request, res: Response): Promise<void> => {
-  const promotionId = req.query['promotionId'] as string | undefined;
-  const logs = await PromotionService.getLogs(promotionId);
-  res.json(logs);
 });
 
 export default router;

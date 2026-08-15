@@ -319,6 +319,7 @@ model Promotion {
   content_type    PromotionContentType
   text_content    String?
   media_file_id   String?
+  caption         String?               // optional caption for media promotions
   status          PromotionStatus       @default(active)
   created_at      DateTime              @default(now())
   updated_at      DateTime              @updatedAt
