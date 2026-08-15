@@ -618,42 +618,42 @@ export default function CartelaScreen() {
     <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Professional Header ── */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.1)', padding: '16px 18px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.1)', padding: '10px 14px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
         {/* Header Top - Title & Timer */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => navigate(-1)} style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.1) 100%)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa', width: 36, height: 36, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, transition: 'all 0.3s', fontWeight: 700 }}>
+            <button onClick={() => navigate(-1)} style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.1) 100%)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transition: 'all 0.3s', fontWeight: 700 }}>
               ←
             </button>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9' }}>Select Cartelas</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Choose up to 2 cartelas</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9' }}>Select Cartelas</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Up to 2 cartelas</div>
             </div>
           </div>
-          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, backdropFilter: 'blur(8px)' }}>
-              <span style={{ fontSize: 16 }}>⏱️</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(8px)' }}>
+              <span style={{ fontSize: 14 }}>⏱️</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
                 {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '●' : '⏳'}
               </span>
             </div>
-            <button onClick={() => window.location.reload()} style={{ background: 'linear-gradient(135deg, rgba(100,116,139,0.15) 0%, rgba(71,85,105,0.1) 100%)', border: '1px solid rgba(148,163,184,0.25)', color: '#cbd5e1', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' }}>
+            <button onClick={() => window.location.reload()} style={{ background: 'linear-gradient(135deg, rgba(100,116,139,0.15) 0%, rgba(71,85,105,0.1) 100%)', border: '1px solid rgba(148,163,184,0.25)', color: '#cbd5e1', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' }}>
               ↻
             </button>
           </div>
         </div>
 
         {/* Header Bottom - Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
           {[
             { label: '💰 Main', value: balances ? Math.floor(Number(balances.mainWallet.balance)) : 0, color: '#3b82f6' },
             { label: '🎮 Play', value: balances ? Math.floor(Number(balances.playWallet.balance)) : 0, color: '#10b981' },
             { label: '🎯 Stake', value: round ? Number(round.stake) : 0, color: '#f59e0b' },
             { label: '👥 Players', value: round?.player_count ?? 0, color: '#8b5cf6' },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`, border: `1px solid ${color}30`, borderRadius: 12, padding: '12px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: '#f1f5f9' }}>{value.toLocaleString()}</div>
+            <div key={label} style={{ background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`, border: `1px solid ${color}30`, borderRadius: 10, padding: '8px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
+              <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#f1f5f9' }}>{value.toLocaleString()}</div>
             </div>
           ))}
         </div>
@@ -661,14 +661,14 @@ export default function CartelaScreen() {
 
       {/* ── Error Banner ── */}
       {error && (
-        <div style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.08) 100%)', borderBottom: '1.5px solid rgba(239,68,68,0.25)', color: '#fca5a5', padding: '12px 18px', fontSize: 13, flexShrink: 0, display: 'flex', gap: 12, alignItems: 'center', fontWeight: 500 }}>
-          <span style={{ fontSize: 18 }}>⚠️</span>
+        <div style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.08) 100%)', borderBottom: '1.5px solid rgba(239,68,68,0.25)', color: '#fca5a5', padding: '8px 14px', fontSize: 12, flexShrink: 0, display: 'flex', gap: 10, alignItems: 'center', fontWeight: 500 }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
           <span>{error}</span>
         </div>
       )}
 
       {/* ── Legend/Info Bar ── */}
-      <div style={{ padding: '12px 18px', background: 'linear-gradient(180deg, rgba(30,41,59,0.08) 0%, rgba(15,23,42,0.04) 100%)', borderBottom: '1px solid rgba(148,163,184,0.08)', display: 'flex', gap: 20, fontSize: 12, color: '#94a3b8', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ padding: '8px 14px', background: 'linear-gradient(180deg, rgba(30,41,59,0.08) 0%, rgba(15,23,42,0.04) 100%)', borderBottom: '1px solid rgba(148,163,184,0.08)', display: 'flex', gap: 16, fontSize: 11, color: '#94a3b8', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 14, height: 14, background: 'linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(20,29,39,0.9) 100%)', border: '1.5px solid rgba(148,163,184,0.25)', borderRadius: 4, display: 'inline-block' }} />
           <span style={{ fontWeight: 600 }}>Available</span>
@@ -685,7 +685,7 @@ export default function CartelaScreen() {
           <span style={{ width: 14, height: 14, background: 'rgba(245,158,11,0.3)', border: '1.5px solid rgba(245,158,11,0.6)', borderRadius: 4, display: 'inline-block' }} />
           <span style={{ fontWeight: 600 }}>Reserved</span>
         </span>
-        {!canPick && <div style={{ marginLeft: 'auto', fontWeight: 800, color: '#10b981', fontSize: 13 }}>✓ {MAX_SELECT} cartelas selected</div>}
+        {!canPick && <div style={{ marginLeft: 'auto', fontWeight: 800, color: '#10b981', fontSize: 12 }}>✓ {MAX_SELECT} cartelas selected</div>}
       </div>
 
       {/* ── Number grid (scrollable) ── */}
