@@ -101,6 +101,7 @@ app.use('/api/agent', agentRouter);
 app.use('/api/admin/promotions', jwtAdminMiddleware, promotionsAdminRouter);
 app.use('/api/admin/cartelas', jwtAdminMiddleware, adminCartelasRouter);
 app.use('/api/admin/broadcast-targets', jwtAdminMiddleware, broadcastTargetsRouter);
+// broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
