@@ -110,8 +110,8 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
-        <StatCard icon="💰" label="Main Wallet" value={`${player.main_wallet_balance.toFixed(2)} ETB`} color={C.success} />
-        <StatCard icon="🎮" label="Play Wallet" value={`${player.play_wallet_balance.toFixed(2)} ETB`} color={C.primary} />
+        <StatCard icon="💰" label="Main Wallet" value={`${Number(player.main_wallet_balance).toFixed(2)} ETB`} color={C.success} />
+        <StatCard icon="🎮" label="Play Wallet" value={`${Number(player.play_wallet_balance).toFixed(2)} ETB`} color={C.primary} />
         <StatCard icon="🎯" label="Total Games" value={player.total_games} color={C.info} />
         <StatCard icon="👥" label="Referrals"   value={player.total_referrals} color={C.warning} />
       </div>
@@ -244,8 +244,8 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
                 <Td><span style={{ fontWeight: 600 }}>@{p.username}</span></Td>
                 <Td mono>{p.telegram_id}</Td>
                 <Td muted={!p.phone}>{p.phone ?? '—'}</Td>
-                <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>{p.main_wallet_balance.toFixed(2)}</span></Td>
-                <Td><span style={{ fontWeight: 600, color: '#818cf8' }}>{p.play_wallet_balance.toFixed(2)}</span></Td>
+                <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>{Number(p.main_wallet_balance).toFixed(2)}</span></Td>
+                <Td><span style={{ fontWeight: 600, color: '#818cf8' }}>{Number(p.play_wallet_balance).toFixed(2)}</span></Td>
                 <Td><Badge variant={p.is_suspended ? 'danger' : 'success'}>{p.is_suspended ? 'Suspended' : 'Active'}</Badge></Td>
                 <Td muted>{new Date(p.created_at).toLocaleDateString()}</Td>
                 <Td style={{ textAlign: 'right' }}>

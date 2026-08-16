@@ -28,7 +28,7 @@ function AddDepositForm({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     try {
       const d = await createDeposit(txNumber.trim(), parsed);
-      setSuccess(`Created: ${d.tx_number} — ${d.amount.toFixed(2)} ETB`);
+      setSuccess(`Created: ${d.tx_number} — ${Number(d.amount).toFixed(2)} ETB`);
       setTxNumber(''); setAmount('');
       onCreated();
     } catch (err: unknown) {
@@ -136,7 +136,7 @@ export function DepositsPage() {
              data.items.map((d) => (
               <tr key={d.id}>
                 <Td style={{ fontWeight: 700 }}>{d.tx_number}</Td>
-                <Td><span style={{ fontWeight: 700 }}>{d.amount.toFixed(2)}</span></Td>
+                <Td><span style={{ fontWeight: 700 }}>{Number(d.amount).toFixed(2)}</span></Td>
                 <Td><Badge variant={statusVariant(d.status)}>{d.status}</Badge></Td>
                 <Td muted={!d.player_username}>{d.player_username ? `@${d.player_username}` : '—'}</Td>
                 <Td muted>{new Date(d.created_at).toLocaleString()}</Td>

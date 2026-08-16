@@ -7,6 +7,7 @@ import {
   withdrawFunds,
 } from '../lib/api';
 import { initAuth } from '../lib/auth';
+import { formatMoney } from '../lib/format';
 import type { PlayerProfile, TransactionListItem, PaginatedResponse, DepositAccountOption } from '../lib/api';
 
 const C = {
@@ -166,13 +167,13 @@ export default function WalletScreen() {
           <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
             <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Winning Balance</div>
             <div style={{ fontSize: 9, color: C.dim, marginBottom: 6 }}>Withdrawable</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: C.green }}>{mainBal.toFixed(2)}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: C.green }}>{formatMoney(mainBal)}</div>
             <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
           </div>
           <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
             <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Play Balance</div>
             <div style={{ fontSize: 9, color: C.dim, marginBottom: 6 }}>Deposit & Bonus</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#60a5fa' }}>{playBal.toFixed(2)}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#60a5fa' }}>{formatMoney(playBal)}</div>
             <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
           </div>
         </div>
@@ -251,7 +252,7 @@ export default function WalletScreen() {
                 ✅ Request submitted — pending admin approval.
               </div>
             )}
-            {input({ type: 'number', placeholder: `Max ${mainBal.toFixed(2)} Birr (winnings only)`, value: withdrawAmount, min: 100, max: mainBal, disabled: mainBal <= 0, onChange: e => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }, style: { marginBottom: 10 } })}
+            {input({ type: 'number', placeholder: `Max ${formatMoney(mainBal)} Birr (winnings only)`, value: withdrawAmount, min: 100, max: mainBal, disabled: mainBal <= 0, onChange: e => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }, style: { marginBottom: 10 } })}
             {input({ type: 'tel', placeholder: 'Phone (e.g. 09XXXXXXXX)', value: withdrawPhone, disabled: mainBal <= 0, onChange: e => { setWithdrawPhone(e.target.value); setWithdrawError(null); } })}
             {withdrawError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{withdrawError}</div>}
             {btn('Request Withdrawal', handleWithdraw, withdrawLoading || mainBal <= 0, '#0f9b8e')}
@@ -284,7 +285,7 @@ export default function WalletScreen() {
                   {tx.note && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{tx.note}</div>}
                 </div>
                 <div style={{ fontWeight: 900, fontSize: 16, color: meta.color }}>
-                  {meta.sign}{Number(tx.amount ?? 0).toFixed(2)} Birr
+                  {meta.sign}{formatMoney(tx.amount ?? 0)} Birr
                 </div>
               </div>
             );

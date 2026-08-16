@@ -106,7 +106,7 @@ export function AgentsPage() {
   }
 
   async function handleWithdrawalApprove(item: AgentWithdrawalRequest) {
-    const txNumber = window.prompt(`Enter Telegram/Telebirr transaction number for ${item.telegramUsername} (${item.amount.toFixed(2)} ETB)`, '');
+    const txNumber = window.prompt(`Enter Telegram/Telebirr transaction number for ${item.telegramUsername} (${Number(item.amount).toFixed(2)} ETB)`, '');
     if (!txNumber || !txNumber.trim()) return;
 
     try {
@@ -119,7 +119,7 @@ export function AgentsPage() {
   }
 
   async function handleWithdrawalReject(item: AgentWithdrawalRequest) {
-    if (!window.confirm(`Reject withdrawal for @${item.telegramUsername} (${item.amount.toFixed(2)} ETB)?`)) return;
+    if (!window.confirm(`Reject withdrawal for @${item.telegramUsername} (${Number(item.amount).toFixed(2)} ETB)?`)) return;
     try {
       await rejectAgentCommissionWithdrawal(item.id);
       await load();
@@ -157,7 +157,7 @@ export function AgentsPage() {
                 <tr key={w.id}>
                   <Td><span style={{ fontWeight: 700 }}>@{w.telegramUsername}</span></Td>
                   <Td muted>{w.phone || '—'}</Td>
-                  <Td><span style={{ color: '#4ade80', fontWeight: 700 }}>ETB {w.amount.toFixed(2)}</span></Td>
+                  <Td><span style={{ color: '#4ade80', fontWeight: 700 }}>ETB {Number(w.amount).toFixed(2)}</span></Td>
                   <Td muted>{new Date(w.createdAt).toLocaleString()}</Td>
                   <Td>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -224,7 +224,7 @@ export function AgentsPage() {
                       </a>
                     </Td>
                     <Td>{a.totalPlayersInvited}</Td>
-                    <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>ETB {a.totalCommission.toFixed(2)}</span></Td>
+                    <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>ETB {Number(a.totalCommission).toFixed(2)}</span></Td>
                     <Td>
                       <Badge variant={
                         a.approvalStatus === 'approved' && a.isActive ? 'success'
@@ -302,7 +302,7 @@ export function AgentsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
                 {[
                   { label: 'Players',    value: String(detail.totalPlayersInvited) },
-                  { label: 'Commission', value: `ETB ${detail.totalCommission.toFixed(2)}` },
+                  { label: 'Commission', value: `ETB ${Number(detail.totalCommission).toFixed(2)}` },
                   { label: 'Status',     value: detail.isActive ? 'Active' : 'Suspended' },
                   { label: 'Created',    value: new Date(detail.createdAt).toLocaleDateString() },
                 ].map(({ label, value }) => (

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getProfile, getReferralLink } from '../lib/api';
 import { initAuth } from '../lib/auth';
+import { formatMoney } from '../lib/format';
 import type { PlayerProfile, ReferralStats } from '@fidel/shared';
 
 const C = {
@@ -98,7 +99,7 @@ export default function ProfileScreen() {
         ].map(({ label, value, color, icon }) => (
           <div key={label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 14px' }}>
             <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color }}>{value.toFixed(2)}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color }}>{formatMoney(value)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Birr · {label}</div>
           </div>
         ))}
@@ -130,7 +131,7 @@ export default function ProfileScreen() {
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Friends Invited</div>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#34d399' }}>{Number(referral.totalEarnings ?? 0).toFixed(2)}</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#34d399' }}>{formatMoney(referral.totalEarnings ?? 0)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Birr Earned</div>
             </div>
           </div>

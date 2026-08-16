@@ -7,6 +7,7 @@ import {
   type AgentDashboardStats,
 } from '../lib/api';
 import { getAgentJwt, initAuth } from '../lib/auth';
+import { formatMoney } from '../lib/format';
 
 const C = {
   bg: '#07111f',
@@ -100,7 +101,7 @@ export default function AgentDashboardScreen() {
       const response = await requestAgentWithdrawal(amount, withdrawPhone.trim());
       setDashboard((prev) => prev ? {
         ...prev,
-        commissionBalance: Number((prev.commissionBalance - amount).toFixed(2)),
+        commissionBalance: Number(formatMoney((prev.commissionBalance ?? 0) - amount)),
         withdrawalRequests: [response.withdrawal, ...prev.withdrawalRequests],
       } : prev);
       setWithdrawAmount('');
@@ -158,10 +159,10 @@ export default function AgentDashboardScreen() {
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '18px 16px 48px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
           {[
-            { label: 'Available', value: dashboard.commissionBalance.toFixed(2), tone: C.green },
-            { label: 'Total Earned', value: dashboard.totalCommission.toFixed(2), tone: C.blue },
-            { label: 'This Week', value: dashboard.weeklyCommission.toFixed(2), tone: C.accent },
-            { label: 'Today', value: dashboard.dailyCommission.toFixed(2), tone: C.purple },
+            { label: 'Available', value: formatMoney(dashboard.commissionBalance ?? 0), tone: C.green },
+            { label: 'Total Earned', value: formatMoney(dashboard.totalCommission ?? 0), tone: C.blue },
+            { label: 'This Week', value: formatMoney(dashboard.weeklyCommission ?? 0), tone: C.accent },
+            { label: 'Today', value: formatMoney(dashboard.dailyCommission ?? 0), tone: C.purple },
           ].map((card) => (
             <div key={card.label} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 18, padding: '16px 14px', boxShadow: C.shadow }}>
               <div style={{ color: C.muted, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>{card.label}</div>
@@ -234,8 +235,8 @@ export default function AgentDashboardScreen() {
               {dashboard.players.map((player, index) => (
                 <div key={player.playerId} style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 1fr', gap: 12, padding: '14px 18px', borderTop: index === 0 ? 'none' : `1px solid ${C.border}` }}>
                   <div style={{ fontWeight: 700, color: C.text }}>@{player.username}</div>
-                  <div style={{ textAlign: 'right', color: C.blue, fontWeight: 700 }}>{player.depositBalance.toFixed(2)}</div>
-                  <div style={{ textAlign: 'right', color: C.green, fontWeight: 800 }}>{player.totalCommissionFromPlayer.toFixed(2)}</div>
+                  <div style={{ textAlign: 'right', color: C.blue, fontWeight: 700 }}>{formatMoney(player.depositBalance ?? 0)}</div>
+                  <div style={{ textAlign: 'right', color: C.green, fontWeight: 800 }}>{formatMoney(player.totalCommissionFromPlayer ?? 0)}</div>
                   <div style={{ textAlign: 'right', color: C.muted, fontSize: 12 }}>{new Date(player.joinedAt).toLocaleDateString()}</div>
                 </div>
               ))}
@@ -252,7 +253,7 @@ export default function AgentDashboardScreen() {
               {dashboard.withdrawalRequests.map((request) => (
                 <div key={request.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, padding: '14px 18px', borderBottom: `1px solid ${C.border}`, alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontWeight: 700, color: C.text }}>ETB {request.amount.toFixed(2)}</div>
+                    <div style={{ fontWeight: 700, color: C.text }}>ETB {formatMoney(request.amount ?? 0)}</div>
                     <div style={{ fontSize: 12, color: C.muted }}>{request.phone}</div>
                   </div>
                   <div style={{ fontSize: 12, color: C.muted }}>{new Date(request.createdAt).toLocaleDateString()}</div>

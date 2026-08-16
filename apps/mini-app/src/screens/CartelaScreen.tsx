@@ -12,6 +12,7 @@ import { initAuth } from '../lib/auth';
 import { socket } from '../lib/socket';
 import { shouldHandleCurrentRoundEvent } from '../lib/round-event-guards';
 import { isRoundStartBlocked } from '../lib/round-start-flow';
+import { formatWholeMoney } from '../lib/format';
 import type { RoundDetail, CartelaAvailability, PlayerJoinedPayload, RoundStartedPayload, RoundVoidPayload, RoundCancelledPayload } from '../lib/api';
 
 interface ProfileBalances {
@@ -551,7 +552,7 @@ export default function CartelaScreen() {
       const total = (picksRef.current.size + 1) * stake;
       const bal = asSafeBalance(balances.playWallet) + asSafeBalance(balances.mainWallet);
       if (bal < total) {
-        setBalanceAlert(`ቀሪ ሂሳብ አይበቃም!\nNeed ${total} Birr — you have ${bal.toFixed(0)} Birr.\nPlease deposit to continue.`);
+        setBalanceAlert(`ቀሪ ሂሳብ አይበቃም!\nNeed ${total} Birr — you have ${formatWholeMoney(bal)} Birr.\nPlease deposit to continue.`);
         return;
       }
     }

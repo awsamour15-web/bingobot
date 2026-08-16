@@ -90,9 +90,9 @@ function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: {
           <tr key={r.id}>
             <Td mono>#{r.id.slice(-6).toUpperCase()}</Td>
             <Td><Badge variant={statusVariant(r.status)}>{r.status}</Badge></Td>
-            <Td><span style={{ fontWeight: 600 }}>{r.stake.toFixed(2)} ETB</span></Td>
+            <Td><span style={{ fontWeight: 600 }}>{Number(r.stake).toFixed(2)} ETB</span></Td>
             <Td>{r.player_count}</Td>
-            <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>{r.derash.toFixed(2)}</span></Td>
+            <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>{Number(r.derash).toFixed(2)}</span></Td>
             <Td>{r.called_numbers_count}</Td>
             <Td muted>{new Date(r.start_time).toLocaleString()}</Td>
             {showActions ? (
@@ -116,12 +116,12 @@ function RoundsTable({ rounds, showActions, onAction, loading, actioningId }: {
                 <Td>
                   {!r.winners?.length ? <span style={{ color: C.muted }}>—</span> :
                    r.winners.length === 1
-                    ? <span>{r.winners[0]?.username} · <span style={{ fontWeight: 600 }}>{r.winners[0]?.splitAmount.toFixed(2)} ETB</span></span>
+                    ? <span>{r.winners[0]?.username} · <span style={{ fontWeight: 600 }}>{Number(r.winners[0]?.splitAmount).toFixed(2)} ETB</span></span>
                     : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         <Badge variant="primary">Split {r.winners.length}×</Badge>
                         {r.winners.map((w) => (
-                          <span key={w.playerId} style={{ fontSize: 12 }}>{w.username} · {w.splitAmount.toFixed(2)}</span>
+                          <span key={w.playerId} style={{ fontSize: 12 }}>{w.username} · {Number(w.splitAmount).toFixed(2)}</span>
                         ))}
                       </div>
                     )

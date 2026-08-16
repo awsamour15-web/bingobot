@@ -44,9 +44,9 @@ function RevenueSummary() {
       {error && <Alert type="error">{error}</Alert>}
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
-          <StatCard icon="💵" label="Total Stakes"  value={`${stats.totalStakesCollected.toFixed(2)} ETB`}        color={C.primary} />
-          <StatCard icon="🏆" label="Prizes Paid"   value={`${stats.totalPrizesPaid.toFixed(2)} ETB`}             color={C.danger}  />
-          <StatCard icon="📈" label="Commission"    value={`${stats.platformCommissionEarned.toFixed(2)} ETB`}    color={C.success} />
+          <StatCard icon="💵" label="Total Stakes"  value={`${Number(stats.totalStakesCollected).toFixed(2)} ETB`}        color={C.primary} />
+          <StatCard icon="🏆" label="Prizes Paid"   value={`${Number(stats.totalPrizesPaid).toFixed(2)} ETB`}             color={C.danger}  />
+          <StatCard icon="📈" label="Commission"    value={`${Number(stats.platformCommissionEarned).toFixed(2)} ETB`}    color={C.success} />
         </div>
       )}
     </Card>
@@ -70,7 +70,7 @@ function PendingWithdrawals() {
   useEffect(() => { void fetchWithdrawals(); }, [fetchWithdrawals]);
 
   async function handleApprove(w: WithdrawalRequest) {
-    if (!window.confirm(`Approve ${w.amount.toFixed(2)} ETB for @${w.username}?`)) return;
+    if (!window.confirm(`Approve ${Number(w.amount).toFixed(2)} ETB for @${w.username}?`)) return;
     setActioningId(w.id); setActionMsg(null);
     try {
       await approveWithdrawal(w.id);
@@ -81,7 +81,7 @@ function PendingWithdrawals() {
   }
 
   async function handleReject(w: WithdrawalRequest) {
-    if (!window.confirm(`Reject ${w.amount.toFixed(2)} ETB for @${w.username}?`)) return;
+    if (!window.confirm(`Reject ${Number(w.amount).toFixed(2)} ETB for @${w.username}?`)) return;
     setActioningId(w.id); setActionMsg(null);
     try {
       await rejectWithdrawal(w.id);
@@ -119,7 +119,7 @@ function PendingWithdrawals() {
             <tr key={w.id}>
               <Td><span style={{ fontWeight: 600 }}>@{w.username}</span></Td>
               <Td muted>{w.phone || '—'}</Td>
-              <Td><span style={{ fontWeight: 700, color: '#f87171' }}>{w.amount.toFixed(2)}</span></Td>
+              <Td><span style={{ fontWeight: 700, color: '#f87171' }}>{Number(w.amount).toFixed(2)}</span></Td>
               <Td muted>{new Date(w.created_at).toLocaleString()}</Td>
               <Td>
                 <div style={{ display: 'flex', gap: 6 }}>
