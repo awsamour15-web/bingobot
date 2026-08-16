@@ -129,8 +129,10 @@ export const PromotionService = {
   },
 
   async getLogs(promotionId?: string, limit = 200) {
+    const where = promotionId ? { promotion_id: promotionId } : undefined;
+
     return prisma.promotionLog.findMany({
-      where: promotionId ? { promotion_id: promotionId } : undefined,
+      ...(where ? { where } : {}),
       orderBy: { sent_at: 'desc' },
       take: limit,
     });

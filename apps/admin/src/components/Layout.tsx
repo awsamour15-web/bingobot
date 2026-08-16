@@ -9,6 +9,7 @@ interface NavItem { to: string; label: string; icon: IconName }
 const navItems: NavItem[] = [
   { to: '/dashboard', label: 'Overview',    icon: 'dashboard'   },
   { to: '/players',   label: 'Players',     icon: 'players'     },
+  { to: '/bonus',     label: 'Bonus',       icon: 'bonus'       },
   { to: '/games',     label: 'Games',       icon: 'ticket'      },
   { to: '/finance',   label: 'Finance',     icon: 'finance'     },
   { to: '/deposits',  label: 'Deposits',    icon: 'deposits'    },

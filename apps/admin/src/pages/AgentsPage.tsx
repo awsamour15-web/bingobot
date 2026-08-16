@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Btn, Badge, Card, CardHeader, Table, Th, Td, TrEmpty, TrLoading,
-  Alert, Field, KpiCard, PageHeader, inputCss,
+  Alert, Field, KpiCard, PageHeader, inputCss, CustomIcon,
 } from '../components/ui';
 import {
   listAgents, createAgent, suspendAgent, restoreAgent, getAgentDetail,
@@ -19,26 +19,83 @@ function Modal({ title, onClose, children, maxWidth = 480 }: {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+      padding: '16px', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
     }}>
       <div style={{
         background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
-        borderRadius: 18, padding: 28,
+        borderRadius: 18, padding: '24px',
         width: '100%', maxWidth, maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--c-text)' }}>{title}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, gap: 12 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--c-text)', minWidth: 0 }}>{title}</h2>
           <button onClick={onClose} style={{
             background: 'rgba(148,163,184,0.1)', border: '1px solid var(--c-border)',
             borderRadius: 8, width: 32, height: 32, cursor: 'pointer',
-            color: 'var(--c-muted)', fontSize: 16, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
+            color: 'var(--c-muted)', fontSize: 18, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            transition: 'all 0.15s',
+          }} onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.2)';
+          }} onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(148,163,184,0.1)';
           }}>×</button>
         </div>
         {children}
       </div>
     </div>
+  );
+}
+
+// ── Agent Card (Mobile view) ───────────────────────────────────────────────────
+function AgentCard({ agent, onDetail, onSuspend, onRestore }: {
+  agent: AgentSummary;
+  onDetail: (id: string) => void;
+  onSuspend: (id: string) => void;
+  onRestore: (id: string) => void;
+}) {
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 12 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--c-text)' }}>@{agent.telegramUsername}</span>
+            <Badge variant={
+              agent.approvalStatus === 'approved' && agent.isActive ? 'success'
+                : agent.approvalStatus === 'rejected' ? 'danger'
+                : agent.approvalStatus === 'pending' ? 'warning'
+                : 'neutral'
+            }>
+              {agent.approvalStatus === 'pending' ? 'Pending'
+                : agent.approvalStatus === 'rejected' ? 'Rejected'
+                : agent.isActive ? 'Active' : 'Suspended'}
+            </Badge>
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--c-muted)' }}>
+            {new Date(agent.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 14 }}>
+        <div style={{ background: 'rgba(99,102,241,0.06)', borderRadius: 10, padding: 10 }}>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--c-muted)', marginBottom: 4 }}>Players</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--c-text)' }}>{agent.totalPlayersInvited}</p>
+        </div>
+        <div style={{ background: 'rgba(34,197,94,0.06)', borderRadius: 10, padding: 10 }}>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--c-muted)', marginBottom: 4 }}>Commission</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#4ade80' }}>ETB {Number(agent.totalCommission).toFixed(2)}</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <Btn size="sm" variant="outline" onClick={() => onDetail(agent.id)} fullWidth>Details</Btn>
+        {agent.isActive
+          ? <Btn size="sm" variant="danger" onClick={() => onSuspend(agent.id)} fullWidth>Suspend</Btn>
+          : <Btn size="sm" variant="success" onClick={() => onRestore(agent.id)} fullWidth>Restore</Btn>
+        }
+      </div>
+    </Card>
   );
 }
 
@@ -56,6 +113,23 @@ export function AgentsPage() {
 
   const [detail, setDetail] = useState<AgentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Filter agents based on search term
+  const filteredAgents = useMemo(() => {
+    return agents.filter(a => 
+      a.telegramUsername.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [agents, searchTerm]);
+
+  // Handle responsive resize
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   async function load() {
     try {
@@ -148,109 +222,177 @@ export function AgentsPage() {
       )}
 
       {!loading && !error && pendingWithdrawals.length > 0 && (
-        <Card style={{ marginBottom: 20, borderColor: 'rgba(250,204,21,0.35)' }}>
-          <CardHeader title={`Commission withdrawals (${pendingWithdrawals.length})`} subtitle="Admin review for partner commission payouts" />
-          <Table>
-            <thead><tr><Th>Agent</Th><Th>Phone</Th><Th>Amount</Th><Th>Requested</Th><Th>Actions</Th></tr></thead>
-            <tbody>
-              {pendingWithdrawals.map((w) => (
-                <tr key={w.id}>
-                  <Td><span style={{ fontWeight: 700 }}>@{w.telegramUsername}</span></Td>
-                  <Td muted>{w.phone || '—'}</Td>
-                  <Td><span style={{ color: '#4ade80', fontWeight: 700 }}>ETB {Number(w.amount).toFixed(2)}</span></Td>
-                  <Td muted>{new Date(w.createdAt).toLocaleString()}</Td>
-                  <Td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <Btn size="sm" variant="success" onClick={() => handleWithdrawalApprove(w)}>Approve</Btn>
-                      <Btn size="sm" variant="danger" onClick={() => handleWithdrawalReject(w)}>Reject</Btn>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
-
-      {/* Pending approvals */}
-      {!loading && !error && pendingAgents.length > 0 && (
-        <Card style={{ marginBottom: 20, borderColor: 'rgba(245,158,11,0.3)' }}>
-          <CardHeader
-            title={`Pending Approvals (${pendingAgents.length})`}
-            subtitle="These agents are awaiting approval"
+        <Card style={{ 
+          marginBottom: 20, 
+          borderLeft: '4px solid #fbbf24',
+          background: 'linear-gradient(to right, rgba(250,204,21,0.05), transparent)',
+        }}>
+          <CardHeader 
+            title={`🏦 Commission Withdrawals (${pendingWithdrawals.length})`} 
+            subtitle="Pending admin review for partner commission payouts" 
           />
-          <Table>
-            <thead><tr><Th>Username</Th><Th>Telegram ID</Th><Th>Applied</Th><Th>Actions</Th></tr></thead>
-            <tbody>
-              {pendingAgents.map((a) => (
-                <tr key={a.id}>
-                  <Td><span style={{ fontWeight: 600 }}>@{a.telegramUsername}</span></Td>
-                  <Td mono>{a.telegramId || '—'}</Td>
-                  <Td muted>{new Date(a.createdAt).toLocaleDateString()}</Td>
-                  <Td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <Btn size="sm" variant="success" onClick={() => handleApprove(a.id)}>✓ Approve</Btn>
-                      <Btn size="sm" variant="danger"  onClick={() => handleReject(a.id)}>✕ Reject</Btn>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
-
-      {/* All agents */}
-      {!loading && !error && (
-        <Card>
-          <CardHeader title="All Agents" />
-          {loading ? <p style={{ color: 'var(--c-muted)', margin: 0 }}>Loading…</p> : (
+          <div style={{ overflowX: 'auto' }}>
             <Table>
-              <thead>
-                <tr>
-                  <Th>Username</Th><Th>Invite Link</Th><Th>Players</Th>
-                  <Th>Commission</Th><Th>Status</Th><Th>Created</Th><Th>Actions</Th>
-                </tr>
-              </thead>
+              <thead><tr><Th>Agent</Th><Th>Phone</Th><Th>Amount</Th><Th>Requested</Th><Th>Actions</Th></tr></thead>
               <tbody>
-                {agents.length === 0 ? <TrEmpty cols={7} message="No agents yet." /> :
-                 agents.map((a) => (
-                  <tr key={a.id}>
-                    <Td><span style={{ fontWeight: 600 }}>@{a.telegramUsername}</span></Td>
+                {pendingWithdrawals.map((w) => (
+                  <tr key={w.id}>
+                    <Td><span style={{ fontWeight: 700 }}>@{w.telegramUsername}</span></Td>
+                    <Td muted>{w.phone || '—'}</Td>
+                    <Td><span style={{ color: '#4ade80', fontWeight: 700 }}>ETB {Number(w.amount).toFixed(2)}</span></Td>
+                    <Td muted>{new Date(w.createdAt).toLocaleString()}</Td>
                     <Td>
-                      <a href={a.agentInviteLink} target="_blank" rel="noopener noreferrer"
-                        style={{ color: '#818cf8', fontSize: 12, wordBreak: 'break-all' }}>
-                        {a.agentInviteLink}
-                      </a>
-                    </Td>
-                    <Td>{a.totalPlayersInvited}</Td>
-                    <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>ETB {Number(a.totalCommission).toFixed(2)}</span></Td>
-                    <Td>
-                      <Badge variant={
-                        a.approvalStatus === 'approved' && a.isActive ? 'success'
-                          : a.approvalStatus === 'rejected' ? 'danger'
-                          : a.approvalStatus === 'pending' ? 'warning'
-                          : 'neutral'
-                      }>
-                        {a.approvalStatus === 'pending' ? 'Pending'
-                          : a.approvalStatus === 'rejected' ? 'Rejected'
-                          : a.isActive ? 'Active' : 'Suspended'}
-                      </Badge>
-                    </Td>
-                    <Td muted>{new Date(a.createdAt).toLocaleDateString()}</Td>
-                    <Td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <Btn size="sm" variant="outline" onClick={() => handleDetail(a.id)}>Details</Btn>
-                        {a.isActive
-                          ? <Btn size="sm" variant="danger"  onClick={() => suspendAgent(a.id).then(load)}>Suspend</Btn>
-                          : <Btn size="sm" variant="success" onClick={() => restoreAgent(a.id).then(load)}>Restore</Btn>
-                        }
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <Btn size="sm" variant="success" onClick={() => handleWithdrawalApprove(w)}>Approve</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => handleWithdrawalReject(w)}>Reject</Btn>
                       </div>
                     </Td>
                   </tr>
                 ))}
               </tbody>
             </Table>
+          </div>
+        </Card>
+      )}
+
+      {/* Pending approvals */}
+      {!loading && !error && pendingAgents.length > 0 && (
+        <Card style={{ 
+          marginBottom: 20, 
+          borderLeft: '4px solid #fbbf24',
+          background: 'linear-gradient(to right, rgba(245,158,11,0.05), transparent)',
+        }}>
+          <CardHeader
+            title={`⭐ Pending Approvals (${pendingAgents.length})`}
+            subtitle="These agents are awaiting approval to join"
+          />
+          <div style={{ overflowX: 'auto' }}>
+            <Table>
+              <thead><tr><Th>Username</Th><Th>Telegram ID</Th><Th>Applied</Th><Th>Actions</Th></tr></thead>
+              <tbody>
+                {pendingAgents.map((a) => (
+                  <tr key={a.id}>
+                    <Td><span style={{ fontWeight: 600 }}>@{a.telegramUsername}</span></Td>
+                    <Td mono>{a.telegramId || '—'}</Td>
+                    <Td muted>{new Date(a.createdAt).toLocaleDateString()}</Td>
+                    <Td>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <Btn size="sm" variant="success" onClick={() => handleApprove(a.id)}>✓ Approve</Btn>
+                        <Btn size="sm" variant="danger"  onClick={() => handleReject(a.id)}>✕ Reject</Btn>
+                      </div>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {/* All agents */}
+      {!loading && !error && (
+        <Card>
+          <div style={{ marginBottom: 16 }}>
+            <CardHeader title={`All Agents (${filteredAgents.length})`} />
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Search by username..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  ...inputCss,
+                  paddingLeft: 36,
+                  marginBottom: 16,
+                  width: '100%',
+                }}
+              />
+              <span style={{
+                position: 'absolute',
+                left: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--c-muted)',
+                fontSize: 16,
+                pointerEvents: 'none',
+              }}>🔍</span>
+            </div>
+          </div>
+
+          {/* Mobile: Card View */}
+          {isMobile ? (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {filteredAgents.length === 0 ? (
+                <div style={{
+                  padding: '32px 16px',
+                  textAlign: 'center',
+                  color: 'var(--c-muted)',
+                }}>
+                  <div style={{ fontSize: 28, opacity: 0.4, marginBottom: 8 }}>○</div>
+                  {searchTerm ? 'No agents found' : 'No agents yet.'}
+                </div>
+              ) : (
+                filteredAgents.map((a) => (
+                  <AgentCard
+                    key={a.id}
+                    agent={a}
+                    onDetail={handleDetail}
+                    onSuspend={(id) => suspendAgent(id).then(load)}
+                    onRestore={(id) => restoreAgent(id).then(load)}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            /* Desktop: Table View */
+            <div style={{ overflowX: 'auto' }}>
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Username</Th><Th>Invite Link</Th><Th>Players</Th>
+                    <Th>Commission</Th><Th>Status</Th><Th>Created</Th><Th>Actions</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAgents.length === 0 ? <TrEmpty cols={7} message={searchTerm ? "No agents found" : "No agents yet."} /> :
+                   filteredAgents.map((a) => (
+                    <tr key={a.id}>
+                      <Td><span style={{ fontWeight: 600 }}>@{a.telegramUsername}</span></Td>
+                      <Td>
+                        <a href={a.agentInviteLink} target="_blank" rel="noopener noreferrer"
+                          style={{ color: '#818cf8', fontSize: 12, wordBreak: 'break-all' }}>
+                          Link →
+                        </a>
+                      </Td>
+                      <Td>{a.totalPlayersInvited}</Td>
+                      <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>ETB {Number(a.totalCommission).toFixed(2)}</span></Td>
+                      <Td>
+                        <Badge variant={
+                          a.approvalStatus === 'approved' && a.isActive ? 'success'
+                            : a.approvalStatus === 'rejected' ? 'danger'
+                            : a.approvalStatus === 'pending' ? 'warning'
+                            : 'neutral'
+                        }>
+                          {a.approvalStatus === 'pending' ? 'Pending'
+                            : a.approvalStatus === 'rejected' ? 'Rejected'
+                            : a.isActive ? 'Active' : 'Suspended'}
+                        </Badge>
+                      </Td>
+                      <Td muted>{new Date(a.createdAt).toLocaleDateString()}</Td>
+                      <Td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <Btn size="sm" variant="outline" onClick={() => handleDetail(a.id)}>Details</Btn>
+                          {a.isActive
+                            ? <Btn size="sm" variant="danger"  onClick={() => suspendAgent(a.id).then(load)}>Suspend</Btn>
+                            : <Btn size="sm" variant="success" onClick={() => restoreAgent(a.id).then(load)}>Restore</Btn>
+                          }
+                        </div>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
           )}
         </Card>
       )}

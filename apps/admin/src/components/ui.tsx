@@ -53,7 +53,7 @@ export function Btn({
     justifyContent: 'center',
     gap: 6,
     whiteSpace: 'nowrap',
-    transition: 'all 0.15s ease',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     width: fullWidth ? '100%' : undefined,
     letterSpacing: '0.01em',
     position: 'relative',
@@ -156,6 +156,7 @@ export function Card({ children, style, accent }: {
       padding: '24px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08)',
       overflow: 'hidden',
+      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       ...style,
     }}>
       {accent !== false && (
@@ -223,6 +224,7 @@ export function StatCard({ label, value, color, icon }: {
       boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
       position: 'relative',
       overflow: 'hidden',
+      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
     }}>
       <div style={{
         position: 'absolute', right: -8, top: -8,
@@ -262,7 +264,7 @@ export function StatCard({ label, value, color, icon }: {
 
 export type IconName =
   | 'dashboard' | 'players' | 'finance' | 'deposits' | 'withdrawals'
-  | 'agents' | 'promotions' | 'cartelas' | 'settings' | 'spark' | 'trend' | 'ticket';
+  | 'agents' | 'promotions' | 'cartelas' | 'settings' | 'spark' | 'trend' | 'ticket' | 'bonus';
 
 export function CustomIcon({ name, size = 18, color = 'currentColor' }: {
   name: IconName; size?: number; color?: string;
@@ -276,6 +278,7 @@ export function CustomIcon({ name, size = 18, color = 'currentColor' }: {
     withdrawals: <svg {...p}><path d="M16 4h4v4" /><path d="M8 16 20 4" /><path d="M4 8h12v12H4z" /></svg>,
     agents: <svg {...p}><path d="M6 18a6 6 0 0 1 12 0" /><circle cx="12" cy="8" r="3.5" /><path d="M18 18a6 6 0 0 0-1.5-3.8" /></svg>,
     promotions: <svg {...p}><path d="M4 12V7.5A1.5 1.5 0 0 1 5.5 6H7l2-3h6l2 3h1.5A1.5 1.5 0 0 1 20 7.5V12" /><path d="M7 12h10v6a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-6Z" /><path d="M10 15h4" /></svg>,
+    bonus: <svg {...p}><path d="M12 2v20M17 6.5A3.5 3.5 0 0 0 12 4a3.5 3.5 0 0 0-5 3.5A3.5 3.5 0 0 0 12 11a3.5 3.5 0 0 1 5 3.5A3.5 3.5 0 0 1 12 18a3.5 3.5 0 0 1-5-3.5" /><path d="M7 7h.01M17 17h.01" /></svg>,
     cartelas: <svg {...p}><path d="M7 4h10l3 3v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /><path d="M9 9h6M9 12h6M9 15h4" /></svg>,
     settings: <svg {...p}><circle cx="12" cy="12" r="3.1" /><path d="M19.4 15a7.8 7.8 0 0 0 .1-1l1.9-1.5-1.8-3.1-2.3.7a7 7 0 0 0-1.7-1l-.4-2.4H9.8l-.4 2.4a7 7 0 0 0-1.7 1l-2.3-.7-1.8 3.1L4.5 14a7.8 7.8 0 0 0 .1 1l-1.9 1.5 1.8 3.1 2.3-.7c.5.4 1.1.8 1.7 1l.4 2.4h4.4l.4-2.4c.6-.2 1.2-.6 1.7-1l2.3.7 1.8-3.1L19.4 15Z" /></svg>,
     spark: <svg {...p}><path d="M12 2v6M12 16v6M4.9 4.9l4.2 4.2M14.9 14.9l4.2 4.2M2 12h6M16 12h6M4.9 19.1l4.2-4.2M14.9 9.1l4.2-4.2" /></svg>,
@@ -354,6 +357,7 @@ export function KpiCard({
       boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.06)',
       minHeight: 160,
       cursor: 'default',
+      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
     }}>
       <div style={{
         position: 'absolute', inset: 0,
@@ -367,6 +371,7 @@ export function KpiCard({
               width: 38, height: 38, borderRadius: 10,
               background: t.soft, color: t.glow,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             }}>
               <CustomIcon name={icon} size={17} color={t.glow} />
             </div>
@@ -679,9 +684,12 @@ export const GLOBAL_CSS = `
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes shimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.7); } 50% { box-shadow: 0 0 0 10px rgba(99,102,241,0); } }
   .fade-in { animation: fadeIn 0.22s ease; }
+  .slide-in { animation: slideIn 0.22s ease; }
   .summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -696,6 +704,34 @@ export const GLOBAL_CSS = `
     letter-spacing: 0.06em; text-transform: uppercase;
   }
   tr:hover td { background: var(--c-tr-hover); transition: background 0.12s; }
-  @media (max-width: 768px) { table { min-width: 600px; } }
-  @media (max-width: 520px) { button, input, select { font-size: 15px; } }
+  
+  /* ── Responsive Design ── */
+  @media (max-width: 1200px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    table { font-size: 12px; }
+  }
+  @media (max-width: 768px) {
+    table { min-width: 600px; }
+    .summary-grid { grid-template-columns: 1fr; gap: 12px; }
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    button, input, select { font-size: 15px; }
+  }
+  @media (max-width: 640px) {
+    .summary-grid { gap: 10px; }
+    button { padding: 8px 16px; font-size: 13px; }
+    input, select { font-size: 15px; padding: 10px; }
+    table { min-width: 520px; font-size: 11px; }
+    td, th { padding: 10px 12px; }
+    .agent-actions { flex-direction: column; gap: 4px; }
+  }
+  @media (max-width: 520px) {
+    body { font-size: 13px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 15px; }
+    button, input, select { font-size: 15px; }
+    .main-content { padding: 12px; }
+  }
 `;

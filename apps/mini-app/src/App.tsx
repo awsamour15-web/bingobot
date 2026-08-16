@@ -94,80 +94,140 @@ function BottomNav() {
   if (location.pathname.includes('/cartela') || location.pathname.includes('/game')) return null;
 
   const tabs = [
-    { to: '/', icon: '�', label: 'Play' },
+    { to: '/', icon: '🎯', label: 'Play' },
     { to: '/history', icon: '🧾', label: 'History' },
-    { to: '/wallet', icon: '💼', label: 'Wallet' },
+    { to: '/wallet', icon: '💳', label: 'Wallet' },
     { to: '/profile', icon: '◎', label: 'Profile' },
   ];
 
   return (
-    <nav style={{
-      position: 'fixed',
-      left: 12,
-      right: 12,
-      bottom: 10,
-      zIndex: 100,
-      paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
-      pointerEvents: 'none',
-    }}>
-      <div style={{
-        display: 'flex',
-        gap: 8,
-        padding: 8,
-        borderRadius: 24,
-        background: 'linear-gradient(180deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 100%)',
-        border: '1px solid rgba(148,163,184,0.12)',
-        boxShadow: '0 18px 38px rgba(2,6,23,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
-        pointerEvents: 'auto',
-      }}>
-        {tabs.map((tab) => {
-          const isActive = tab.to === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.to);
-          return (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5,
-                padding: '8px 10px 7px',
-                borderRadius: 16,
-                textDecoration: 'none',
-                color: isActive ? '#f8fafc' : '#94a3b8',
-                background: isActive ? 'linear-gradient(135deg, rgba(245,158,11,0.22) 0%, rgba(251,191,36,0.09) 100%)' : 'transparent',
-                border: isActive ? '1px solid rgba(245,158,11,0.34)' : '1px solid transparent',
-                boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 18px rgba(245,158,11,0.12)' : 'none',
-                fontSize: 10,
-                fontWeight: isActive ? 800 : 600,
-                letterSpacing: '0.01em',
-                transition: 'all 0.2s ease',
-                minHeight: 64,
-              }}
-            >
-              <span style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 28,
-                height: 28,
-                borderRadius: 10,
-                background: isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
-                boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.02)',
-                fontSize: 18,
-                lineHeight: 1,
-                filter: isActive ? 'drop-shadow(0 6px 8px rgba(245,158,11,0.2))' : 'none',
-              }}>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </NavLink>
-          );
-        })}
-      </div>
-    </nav>
+    <>
+      <style>{`
+        .mini-app-bottom-nav {
+          position: fixed;
+          left: 50%;
+          bottom: 10px;
+          transform: translateX(-50%);
+          width: min(92vw, 420px);
+          z-index: 100;
+          padding-bottom: max(12px, env(safe-area-inset-bottom));
+          pointer-events: none;
+        }
+
+        .mini-app-bottom-nav-inner {
+          display: flex;
+          align-items: stretch;
+          gap: 6px;
+          padding: 7px 8px;
+          border-radius: 22px;
+          background: rgba(15, 23, 42, 0.82);
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          box-shadow: 0 18px 40px rgba(2, 6, 23, 0.52), inset 0 1px 0 rgba(255,255,255,0.04);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          pointer-events: auto;
+          overflow: hidden;
+        }
+
+        .mini-app-bottom-tab {
+          position: relative;
+          flex: 1;
+          min-height: 58px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          padding: 8px 8px 7px;
+          border-radius: 15px;
+          text-decoration: none;
+          color: #94a3b8;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          line-height: 1;
+          transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+          will-change: transform;
+        }
+
+        .mini-app-bottom-tab:hover {
+          transform: translateY(-1px);
+        }
+
+        .mini-app-bottom-tab.active {
+          color: #f8fafc;
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.08));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 20px rgba(245, 158, 11, 0.18);
+          transform: translateY(-2px);
+          animation: miniNavPulse 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .mini-app-bottom-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 9px;
+          background: rgba(255,255,255,0.02);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+          font-size: 15px;
+          line-height: 1;
+          transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease, box-shadow 0.2s ease;
+          transform-origin: center;
+        }
+
+        .mini-app-bottom-tab.active .mini-app-bottom-icon {
+          background: rgba(255,255,255,0.06);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 12px rgba(245, 158, 11, 0.18);
+          transform: scale(1.08) translateY(-1px);
+        }
+
+        .mini-app-bottom-label {
+          opacity: 0.9;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .mini-app-bottom-tab.active .mini-app-bottom-label {
+          opacity: 1;
+          transform: translateY(-1px);
+        }
+
+        @keyframes miniNavPulse {
+          0% {
+            transform: translateY(0) scale(0.96);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 rgba(245, 158, 11, 0);
+          }
+          50% {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 24px rgba(245, 158, 11, 0.18);
+          }
+          100% {
+            transform: translateY(-2px) scale(1);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 20px rgba(245, 158, 11, 0.16);
+          }
+        }
+      `}</style>
+
+      <nav className="mini-app-bottom-nav" aria-label="Main navigation">
+        <div className="mini-app-bottom-nav-inner">
+          {tabs.map((tab) => {
+            const isActive = tab.to === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.to);
+
+            return (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                className={`mini-app-bottom-tab${isActive ? ' active' : ''}`}
+              >
+                <span className="mini-app-bottom-icon" aria-hidden="true">{tab.icon}</span>
+                <span className="mini-app-bottom-label">{tab.label}</span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 }
 
