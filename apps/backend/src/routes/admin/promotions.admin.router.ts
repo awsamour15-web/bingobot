@@ -144,4 +144,34 @@ router.post('/:id/schedules', async (req: Request, res: Response): Promise<void>
   }
 });
 
+// GET /:id/bonus/eligible — preview eligible players (dry run)
+router.get('/:id/bonus/eligible', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await PromotionService.getEligiblePlayers(req.params['id'] as string);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: 'ELIGIBILITY_CHECK_FAILED', message: (err as Error).message });
+  }
+});
+
+// POST /:id/bonus/apply — apply bonus to all eligible players
+router.post('/:id/bonus/apply', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await PromotionService.applyBonusToEligiblePlayers(req.params['id'] as string);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: 'BONUS_APPLY_FAILED', message: (err as Error).message });
+  }
+});
+
+// GET /:id/bonus/distributions — list who received this bonus
+router.get('/:id/bonus/distributions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await PromotionService.getBonusDistributions(req.params['id'] as string);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: 'FETCH_FAILED', message: (err as Error).message });
+  }
+});
+
 export default router;

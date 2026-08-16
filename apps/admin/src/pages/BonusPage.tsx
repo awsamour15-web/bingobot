@@ -1,277 +1,552 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
-import { getPlayers, creditPlayer } from '../lib/api';
+import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution } from '../lib/api';
 import {
-  C,
-  Btn,
-  Card,
-  CardHeader,
-  Field,
-  PageHeader,
-  StatCard,
-  Table,
-  Th,
-  Td,
-  TrEmpty,
-  TrLoading,
-  Alert,
-  Badge,
-  inputCss,
-  selectCss,
+  getPlayers, creditPlayer, listPromotions,
+  getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
+  createPromotion,
+} from '../lib/api';
+import {
+  C, Btn, Card, CardHeader, Field, PageHeader, StatCard,
+  Table, Th, Td, TrEmpty, TrLoading, Alert, Badge,
+  inputCss, selectCss,
 } from '../components/ui';
 
 type WalletType = 'main' | 'play';
+type Tab = 'single' | 'bulk';
 
-type BonusPreset = {
-  id: string;
-  label: string;
-  amount: number;
-  wallet: WalletType;
-  note: string;
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// Single-player bonus (unchanged feature, kept intact)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type BonusPreset = { id: string; label: string; amount: number; wallet: WalletType; note: string };
 
 const BONUS_PRESETS: BonusPreset[] = [
-  { id: 'welcome', label: 'Welcome Bonus', amount: 20, wallet: 'play', note: 'Welcome bonus for new player registration' },
-  { id: 'deposit', label: 'Deposit Boost', amount: 50, wallet: 'play', note: 'Deposit bonus awarded by admin' },
-  { id: 'referral', label: 'Referral Bonus', amount: 30, wallet: 'main', note: 'Referral commission payout' },
-  { id: 'vip', label: 'VIP Reward', amount: 100, wallet: 'main', note: 'VIP loyalty reward' },
-  { id: 'custom', label: 'Custom Bonus', amount: 0, wallet: 'play', note: 'Custom bonus' },
+  { id: 'welcome',  label: 'Welcome Bonus',  amount: 20,  wallet: 'play', note: 'Welcome bonus for new player registration' },
+  { id: 'deposit',  label: 'Deposit Boost',  amount: 50,  wallet: 'play', note: 'Deposit bonus awarded by admin' },
+  { id: 'referral', label: 'Referral Bonus', amount: 30,  wallet: 'main', note: 'Referral commission payout' },
+  { id: 'vip',      label: 'VIP Reward',     amount: 100, wallet: 'main', note: 'VIP loyalty reward' },
+  { id: 'custom',   label: 'Custom Bonus',   amount: 0,   wallet: 'play', note: 'Custom bonus' },
 ];
-const DEFAULT_BONUS_PRESET = BONUS_PRESETS[0]!;
+const DEFAULT_PRESET = BONUS_PRESETS[0]!;
 
-export function BonusPage() {
-  const [players, setPlayers] = useState<AdminPlayer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string>('');
+function SingleBonusPanel() {
+  const [players, setPlayers]     = useState<AdminPlayer[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [selectedId, setSelectedId] = useState('');
   const [walletType, setWalletType] = useState<WalletType>('play');
-  const [presetId, setPresetId] = useState<string>(DEFAULT_BONUS_PRESET.id);
+  const [presetId, setPresetId]   = useState(DEFAULT_PRESET.id);
   const [customAmount, setCustomAmount] = useState('20');
-  const [reason, setReason] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [reason, setReason]       = useState('');
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [success, setSuccess]     = useState<string | null>(null);
 
   const fetchPlayers = useCallback((query: string) => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     getPlayers(1, query || undefined)
-      .then((res) => {
+      .then(res => {
         const items = res.items ?? [];
         setPlayers(items);
-        const firstPlayer = items[0];
-
-        if (!selectedId && firstPlayer) {
-          setSelectedId(firstPlayer.id);
-        }
-        if (selectedId && !items.some((p) => p.id === selectedId)) {
-          setSelectedId(firstPlayer?.id ?? '');
-        }
+        if (!selectedId && items[0]) setSelectedId(items[0].id);
+        if (selectedId && !items.some(p => p.id === selectedId)) setSelectedId(items[0]?.id ?? '');
         setLoading(false);
       })
-      .catch((e: Error) => {
-        setError(e.message ?? 'Failed to load players');
-        setLoading(false);
-      });
+      .catch((e: Error) => { setError(e.message ?? 'Failed to load players'); setLoading(false); });
   }, [selectedId]);
 
-  useEffect(() => {
-    fetchPlayers(search);
-  }, [fetchPlayers, search]);
+  useEffect(() => { fetchPlayers(search); }, [fetchPlayers, search]);
 
-  const selectedPlayer = players.find((p) => p.id === selectedId) ?? null;
-
-  const preset = useMemo(() => {
-    return BONUS_PRESETS.find((item) => item.id === presetId) ?? DEFAULT_BONUS_PRESET;
-  }, [presetId]);
-
+  const selectedPlayer = players.find(p => p.id === selectedId) ?? null;
+  const preset = useMemo(() => BONUS_PRESETS.find(i => i.id === presetId) ?? DEFAULT_PRESET, [presetId]);
   const effectiveWallet = presetId === 'custom' ? walletType : preset.wallet;
-  const effectiveAmount = presetId === 'custom'
-    ? Number(customAmount || 0)
-    : preset.amount;
+  const effectiveAmount = presetId === 'custom' ? Number(customAmount || 0) : preset.amount;
   const effectiveReason = reason.trim() || preset.note;
 
-  async function handleApplyBonus() {
-    if (!selectedPlayer) {
-      setError('Select a player before applying a bonus.');
-      return;
-    }
-    if (!Number.isFinite(effectiveAmount) || effectiveAmount <= 0) {
-      setError('Bonus amount must be greater than zero.');
-      return;
-    }
-    if (!effectiveReason) {
-      setError('Please enter a valid bonus reason.');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
+  async function handleApply() {
+    if (!selectedPlayer) { setError('Select a player first.'); return; }
+    if (!Number.isFinite(effectiveAmount) || effectiveAmount <= 0) { setError('Amount must be > 0.'); return; }
+    if (!effectiveReason) { setError('Enter a reason.'); return; }
+    setSaving(true); setError(null); setSuccess(null);
     try {
-      await creditPlayer(selectedPlayer.id, {
-        walletType: effectiveWallet,
-        amount: effectiveAmount,
-        note: effectiveReason,
-      } as AdminCreditRequest);
-
-      setSuccess(`Bonus applied: ${selectedPlayer.username} received ${effectiveAmount} ETB to ${effectiveWallet} wallet.`);
-      setReason('');
-      setCustomAmount('20');
+      await creditPlayer(selectedPlayer.id, { walletType: effectiveWallet, amount: effectiveAmount, note: effectiveReason } as AdminCreditRequest);
+      setSuccess(`${selectedPlayer.username} received ${effectiveAmount} ETB to ${effectiveWallet} wallet.`);
+      setReason(''); setCustomAmount('20');
       const refreshed = await getPlayers(1, search || undefined);
       setPlayers(refreshed.items ?? []);
-    } catch (e: unknown) {
-      setError((e as Error).message ?? 'Failed to apply bonus');
-    } finally {
-      setSaving(false);
-    }
+    } catch (e: unknown) { setError((e as Error).message ?? 'Failed'); }
+    finally { setSaving(false); }
   }
 
   return (
-    <div className="fade-in">
-      <PageHeader title="Bonus Manager" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
-        <StatCard icon="🎁" label="Players" value={players.length} color={C.primary} />
-        <StatCard icon="✅" label="Active" value={players.filter((p) => !p.is_suspended).length} color={C.success} />
-        <StatCard icon="🚫" label="Suspended" value={players.filter((p) => p.is_suspended).length} color={C.danger} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 18, alignItems: 'start' }}>
-        <Card>
-          <CardHeader title="Players" subtitle="Select a player and assign a bonus" />
-
-          <div style={{ marginBottom: 16 }}>
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search username or Telegram ID"
-              style={{ ...inputCss, paddingLeft: 12 }}
-            />
-          </div>
-
-          <Table>
-            <thead>
-              <tr>
-                <Th>Player</Th>
-                <Th>Main</Th>
-                <Th>Play</Th>
-                <Th>Status</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? <TrLoading cols={4} /> : !players.length ? <TrEmpty cols={4} message="No players found." /> : players.map((player) => (
-                <tr
-                  key={player.id}
-                  onClick={() => setSelectedId(player.id)}
-                  style={{
-                    cursor: 'pointer',
-                    background: selectedId === player.id ? 'rgba(99,102,241,0.08)' : undefined,
-                  }}
-                >
+    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 18, alignItems: 'start' }}>
+      <Card>
+        <CardHeader title="Players" subtitle="Select a player and assign a bonus" />
+        <div style={{ marginBottom: 16 }}>
+          <input type="search" name="player-search" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search username or Telegram ID" style={{ ...inputCss, paddingLeft: 12 }} />
+        </div>
+        <Table>
+          <thead><tr><Th>Player</Th><Th>Main</Th><Th>Play</Th><Th>Status</Th></tr></thead>
+          <tbody>
+            {loading ? <TrLoading cols={4} /> : !players.length ? <TrEmpty cols={4} message="No players found." /> :
+              players.map(player => (
+                <tr key={player.id} onClick={() => setSelectedId(player.id)}
+                  style={{ cursor: 'pointer', background: selectedId === player.id ? 'rgba(99,102,241,0.08)' : undefined }}>
                   <Td>
                     <div style={{ fontWeight: 700 }}>@{player.username}</div>
                     <div style={{ fontSize: 11, color: C.muted }}>{player.telegram_id}</div>
                   </Td>
                   <Td>{Number(player.main_wallet_balance).toFixed(2)}</Td>
                   <Td>{Number(player.play_wallet_balance).toFixed(2)}</Td>
-                  <Td>
-                    <Badge variant={player.is_suspended ? 'danger' : 'success'}>
-                      {player.is_suspended ? 'Suspended' : 'Active'}
-                    </Badge>
-                  </Td>
+                  <Td><Badge variant={player.is_suspended ? 'danger' : 'success'}>{player.is_suspended ? 'Suspended' : 'Active'}</Badge></Td>
                 </tr>
               ))}
-            </tbody>
-          </Table>
-        </Card>
+          </tbody>
+        </Table>
+      </Card>
 
-        <Card>
-          <CardHeader title="Assign Bonus" subtitle={selectedPlayer ? `Selected player: @${selectedPlayer.username}` : 'Choose a player'} />
+      <Card>
+        <CardHeader title="Assign Bonus" subtitle={selectedPlayer ? `@${selectedPlayer.username}` : 'Choose a player'} />
+        {error && <Alert type="error">{error}</Alert>}
+        {success && <Alert type="success">{success}</Alert>}
+        {!selectedPlayer ? (
+          <div style={{ color: C.muted, fontSize: 13 }}>Select a player to continue.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {BONUS_PRESETS.map(item => (
+                <button key={item.id} type="button" onClick={() => setPresetId(item.id)} style={{
+                  border: presetId === item.id ? '1px solid rgba(99,102,241,0.5)' : '1px solid var(--c-border)',
+                  background: presetId === item.id ? 'rgba(99,102,241,0.08)' : 'transparent',
+                  borderRadius: 10, padding: '10px 12px', textAlign: 'left',
+                  color: 'var(--c-text)', cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span>{item.label}</span>
+                  <strong>{item.id === 'custom' ? 'Custom' : `${item.amount} ETB`}</strong>
+                </button>
+              ))}
+            </div>
+            {presetId === 'custom' && (
+              <Field label="Custom Amount (ETB)">
+                <input type="number" name="custom-amount" min="1" step="1" value={customAmount}
+                  onChange={e => setCustomAmount(e.target.value)} style={inputCss} placeholder="e.g. 75" />
+              </Field>
+            )}
+            <Field label="Wallet">
+              <select name="wallet-type" value={effectiveWallet} onChange={e => setWalletType(e.target.value as WalletType)}
+                style={selectCss} disabled={presetId !== 'custom'}>
+                <option value="play">Play Wallet</option>
+                <option value="main">Main Wallet</option>
+              </select>
+            </Field>
+            <Field label="Reason">
+              <input type="text" name="reason" value={reason} onChange={e => setReason(e.target.value)}
+                style={inputCss} placeholder={preset.note} />
+            </Field>
+            <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, padding: '12px 14px', fontSize: 13 }}>
+              <div style={{ color: C.muted, marginBottom: 6 }}>Summary</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{effectiveAmount} ETB</div>
+              <div style={{ color: C.muted }}>{effectiveWallet === 'main' ? 'Main Wallet' : 'Play Wallet'}</div>
+            </div>
+            <Btn type="button" onClick={handleApply} disabled={saving}>
+              {saving ? 'Applying…' : `Apply ${effectiveAmount} ETB Bonus`}
+            </Btn>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
 
-          {error && <Alert type="error">{error}</Alert>}
-          {success && <Alert type="success">{success}</Alert>}
+// ─────────────────────────────────────────────────────────────────────────────
+// Bulk bonus panel — create or pick a promotion, preview eligible, apply
+// ─────────────────────────────────────────────────────────────────────────────
 
-          {!selectedPlayer ? (
-            <div style={{ color: C.muted, fontSize: 13 }}>Select a player to continue.</div>
+const EMPTY_CRITERIA: BonusCriteria = {};
+
+function CriteriaBuilder({
+  criteria, onChange,
+}: { criteria: BonusCriteria; onChange: (c: BonusCriteria) => void }) {
+  const set = (key: keyof BonusCriteria, val: string | boolean | undefined) => {
+    const next = { ...criteria };
+    if (val === '' || val === undefined) {
+      delete next[key];
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (next as any)[key] = typeof val === 'boolean' ? val : Number(val);
+    }
+    onChange(next);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, background: 'rgba(99,102,241,0.05)', borderRadius: 10, padding: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>
+        Eligibility Criteria — leave blank = all active players
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Min Balance (ETB)" hint="Main + Play ≥">
+          <input type="number" name="min-balance" min="0" step="0.01"
+            value={criteria.minBalance ?? ''} onChange={e => set('minBalance', e.target.value)}
+            style={inputCss} placeholder="no minimum" />
+        </Field>
+        <Field label="Max Balance (ETB)" hint="Main + Play ≤">
+          <input type="number" name="max-balance" min="0" step="0.01"
+            value={criteria.maxBalance ?? ''} onChange={e => set('maxBalance', e.target.value)}
+            style={inputCss} placeholder="no maximum" />
+        </Field>
+        <Field label="Min Total Deposits (ETB)" hint="Sum of deposits ≥">
+          <input type="number" name="min-deposits" min="0" step="0.01"
+            value={criteria.minDeposits ?? ''} onChange={e => set('minDeposits', e.target.value)}
+            style={inputCss} placeholder="no minimum" />
+        </Field>
+        <Field label="Account Age (days)" hint="Registered ≥ X days ago">
+          <input type="number" name="days-registered" min="0" step="1"
+            value={criteria.daysRegistered ?? ''} onChange={e => set('daysRegistered', e.target.value)}
+            style={inputCss} placeholder="any age" />
+        </Field>
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+        <input type="checkbox" name="has-played-rounds" checked={criteria.hasPlayedRounds ?? false}
+          onChange={e => set('hasPlayedRounds', e.target.checked || undefined)} />
+        <span style={{ color: 'var(--c-text)' }}>Must have played at least one game round</span>
+      </label>
+    </div>
+  );
+}
+
+function BulkBonusPanel() {
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promoLoading, setPromoLoading] = useState(true);
+
+  // "create new" form fields
+  const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const [selectedPromoId, setSelectedPromoId] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newAmount, setNewAmount] = useState('');
+  const [newWallet, setNewWallet] = useState<WalletType>('play');
+  const [newCriteria, setNewCriteria] = useState<BonusCriteria>(EMPTY_CRITERIA);
+  const [newMessage, setNewMessage] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  // eligibility preview
+  const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
+  const [eligLoading, setEligLoading] = useState(false);
+
+  // apply
+  const [applying, setApplying]     = useState(false);
+  const [applyResult, setApplyResult] = useState<BonusApplyResult | null>(null);
+
+  // history
+  const [histPromoId, setHistPromoId]     = useState('');
+  const [distributions, setDistributions] = useState<BonusDistribution[]>([]);
+  const [histLoading, setHistLoading]     = useState(false);
+
+  const [error, setError]   = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // bonus-only promotions (ones with a bonus amount set)
+  const bonusPromos = useMemo(() => promotions.filter(p => p.bonus_amount), [promotions]);
+
+  async function loadPromotions() {
+    setPromoLoading(true);
+    setPromotions(await listPromotions().catch(() => []));
+    setPromoLoading(false);
+  }
+
+  useEffect(() => { void loadPromotions(); }, []);
+
+  // auto-select first bonus promo
+  useEffect(() => {
+    if (!selectedPromoId && bonusPromos.length > 0) setSelectedPromoId(bonusPromos[0]!.id);
+  }, [bonusPromos, selectedPromoId]);
+
+  // ── Create new bonus promotion ──────────────────────────────────────────────
+  async function handleCreatePromo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTitle || !newAmount) { setError('Title and amount are required.'); return; }
+    setCreating(true); setError(null);
+    try {
+      const p = await createPromotion({
+        title: newTitle,
+        content_type: 'text',
+        text_content: newMessage || `🎁 ${newTitle} — you have received a bonus of ${newAmount} ETB!`,
+        bonus_amount: Number(newAmount),
+        bonus_wallet: newWallet,
+        ...(Object.keys(newCriteria).length > 0 ? { bonus_criteria: newCriteria } : {}),
+      });
+      setSuccess(`Promotion "${p.title}" created.`);
+      setNewTitle(''); setNewAmount(''); setNewMessage('');
+      setNewCriteria(EMPTY_CRITERIA); setMode('existing');
+      await loadPromotions();
+      setSelectedPromoId(p.id);
+    } catch (err) { setError((err as Error).message); }
+    finally { setCreating(false); }
+  }
+
+  // ── Preview eligible ────────────────────────────────────────────────────────
+  async function handlePreview() {
+    if (!selectedPromoId) { setError('Select a promotion first.'); return; }
+    setEligLoading(true); setError(null); setEligibility(null);
+    try {
+      setEligibility(await getEligiblePlayers(selectedPromoId));
+    } catch (err) { setError((err as Error).message); }
+    finally { setEligLoading(false); }
+  }
+
+  // ── Apply bonus ─────────────────────────────────────────────────────────────
+  async function handleApply() {
+    if (!eligibility || eligibility.total === 0) return;
+    if (!confirm(`Apply ${eligibility.bonus_amount} ETB to ${eligibility.total} players? This cannot be undone.`)) return;
+    setApplying(true); setError(null); setApplyResult(null);
+    try {
+      const r = await applyPromotionBonus(selectedPromoId);
+      setApplyResult(r);
+      setSuccess(`Done: ${r.applied} players credited${r.failed > 0 ? `, ${r.failed} failed` : ''}.`);
+      setEligibility(null);
+    } catch (err) { setError((err as Error).message); }
+    finally { setApplying(false); }
+  }
+
+  // ── Load history ────────────────────────────────────────────────────────────
+  async function loadHistory(id: string) {
+    if (!id) return;
+    setHistLoading(true);
+    setDistributions(await getBonusDistributions(id).catch(() => []));
+    setHistLoading(false);
+  }
+
+  useEffect(() => { if (histPromoId) void loadHistory(histPromoId); }, [histPromoId]);
+
+  const selectedPromo = promotions.find(p => p.id === selectedPromoId);
+  const criteriaLabels: string[] = [];
+  if (selectedPromo?.bonus_criteria) {
+    const c = selectedPromo.bonus_criteria as BonusCriteria;
+    if (c.minBalance != null) criteriaLabels.push(`Balance ≥ ${c.minBalance} ETB`);
+    if (c.maxBalance != null) criteriaLabels.push(`Balance ≤ ${c.maxBalance} ETB`);
+    if (c.minDeposits != null) criteriaLabels.push(`Deposits ≥ ${c.minDeposits} ETB`);
+    if (c.daysRegistered != null) criteriaLabels.push(`Registered ≥ ${c.daysRegistered}d ago`);
+    if (c.hasPlayedRounds) criteriaLabels.push('Has played rounds');
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      {error && <Alert type="error">{error}</Alert>}
+      {success && <Alert type="success">{success}</Alert>}
+
+      {/* ── Step 1: Pick or create ── */}
+      <Card>
+        <CardHeader title="Step 1 — Select Bonus Promotion"
+          subtitle="Pick an existing promotion with a bonus, or create a new one"
+          action={
+            <Btn size="sm" variant={mode === 'new' ? 'warning' : 'outline'}
+              onClick={() => { setMode(mode === 'new' ? 'existing' : 'new'); setError(null); }}>
+              {mode === 'new' ? '← Back to list' : '+ New Bulk Bonus'}
+            </Btn>
+          }
+        />
+
+        {mode === 'existing' ? (
+          promoLoading ? <div style={{ color: C.muted, fontSize: 13 }}>Loading…</div> :
+          bonusPromos.length === 0 ? (
+            <Alert type="info">No bonus promotions yet. Create one using the button above or from the Promotions page.</Alert>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {BONUS_PRESETS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setPresetId(item.id)}
-                    style={{
-                      border: presetId === item.id ? '1px solid rgba(99,102,241,0.5)' : '1px solid var(--c-border)',
-                      background: presetId === item.id ? 'rgba(99,102,241,0.08)' : 'transparent',
-                      borderRadius: 10,
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      color: 'var(--c-text)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
-                  >
-                    <span>{item.label}</span>
-                    <strong>{item.id === 'custom' ? 'Custom' : `${item.amount} ETB`}</strong>
-                  </button>
-                ))}
-              </div>
-
-              {presetId === 'custom' && (
-                <Field label="Custom Amount (ETB)">
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={customAmount}
-                    onChange={(e) => setCustomAmount(e.target.value)}
-                    style={inputCss}
-                    placeholder="e.g. 75"
-                  />
-                </Field>
-              )}
-
-              <Field label="Wallet">
-                <select
-                  value={effectiveWallet}
-                  onChange={(e) => setWalletType(e.target.value as WalletType)}
-                  style={selectCss}
-                  disabled={presetId !== 'custom'}
-                >
-                  <option value="play">Play Wallet</option>
-                  <option value="main">Main Wallet</option>
-                </select>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {bonusPromos.map(p => (
+                <button key={p.id} type="button" onClick={() => { setSelectedPromoId(p.id); setEligibility(null); setApplyResult(null); }}
+                  style={{
+                    border: selectedPromoId === p.id ? '2px solid rgba(99,102,241,0.6)' : '1px solid var(--c-border)',
+                    background: selectedPromoId === p.id ? 'rgba(99,102,241,0.08)' : 'transparent',
+                    borderRadius: 10, padding: '12px 14px', textAlign: 'left',
+                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                  }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--c-text)', marginBottom: 4 }}>{p.title}</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Badge variant="warning">🎁 {Number(p.bonus_amount)} ETB</Badge>
+                      <Badge variant="neutral">{p.bonus_wallet} wallet</Badge>
+                      <Badge variant={p.status === 'active' ? 'success' : 'neutral'}>{p.status}</Badge>
+                    </div>
+                  </div>
+                  {selectedPromoId === p.id && (
+                    <span style={{ fontSize: 18, color: 'rgba(99,102,241,0.8)' }}>✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )
+        ) : (
+          <form onSubmit={handleCreatePromo} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Promotion Title">
+                <input value={newTitle} onChange={e => setNewTitle(e.target.value)} required
+                  name="promo-title" style={inputCss} placeholder="e.g. Ramadan Bonus" />
               </Field>
-
-              <Field label="Reason">
-                <input
-                  type="text"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  style={inputCss}
-                  placeholder={preset.note}
-                />
+              <Field label="Bonus Amount (ETB)">
+                <input type="number" name="bonus-amount" min="1" step="1" value={newAmount} onChange={e => setNewAmount(e.target.value)}
+                  required style={inputCss} placeholder="e.g. 50" />
               </Field>
+            </div>
+            <Field label="Wallet">
+              <select name="bonus-wallet" value={newWallet} onChange={e => setNewWallet(e.target.value as WalletType)} style={{ ...selectCss, width: 180 }}>
+                <option value="play">Play Wallet</option>
+                <option value="main">Main Wallet</option>
+              </select>
+            </Field>
+            <Field label="Notification Message (optional)" hint="Sent to users via bot">
+              <textarea name="promo-message" value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                rows={3} style={{ ...inputCss, resize: 'vertical' }}
+                placeholder="🎁 Congratulations! You received a special bonus…" />
+            </Field>
+            <CriteriaBuilder criteria={newCriteria} onChange={setNewCriteria} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Btn type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create Bonus Promotion'}</Btn>
+            </div>
+          </form>
+        )}
+      </Card>
 
-              <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, padding: '12px 14px', fontSize: 13 }}>
-                <div style={{ color: C.muted, marginBottom: 6 }}>Bonus summary</div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{effectiveAmount} ETB</div>
-                <div style={{ color: C.muted }}>{effectiveWallet === 'main' ? 'Main Wallet' : 'Play Wallet'}</div>
-              </div>
+      {/* ── Step 2: Preview eligible ── */}
+      {selectedPromoId && mode === 'existing' && (
+        <Card>
+          <CardHeader title="Step 2 — Preview Eligible Players"
+            subtitle={selectedPromo ? `${Number(selectedPromo.bonus_amount)} ETB → ${selectedPromo.bonus_wallet} wallet` : ''}
+          />
 
-              <Btn type="button" onClick={handleApplyBonus} disabled={saving}>
-                {saving ? 'Applying…' : `Apply ${effectiveAmount} ETB Bonus`}
-              </Btn>
+          {criteriaLabels.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+              {criteriaLabels.map(l => <Badge key={l} variant="neutral">{l}</Badge>)}
             </div>
           )}
+          {criteriaLabels.length === 0 && (
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>No criteria — all active players qualify.</div>
+          )}
+
+          <div style={{ marginBottom: 12 }}>
+            <Btn size="sm" onClick={handlePreview} disabled={eligLoading}>
+              {eligLoading ? 'Checking…' : '🔍 Check Eligibility'}
+            </Btn>
+          </div>
+
+          {eligibility && (
+            <>
+              <div style={{ marginBottom: 10 }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>{eligibility.total} players</span>
+                <span style={{ color: C.muted, fontSize: 13, marginLeft: 6 }}>will receive {eligibility.bonus_amount} ETB (not yet distributed)</span>
+              </div>
+
+              {applyResult && (
+                <Alert type={applyResult.failed === 0 ? 'success' : 'info'}>
+                  Applied: {applyResult.applied} credited{applyResult.failed > 0 ? `, ${applyResult.failed} failed` : ''}.
+                </Alert>
+              )}
+
+              <Table>
+                <thead><tr><Th>Player</Th><Th>Telegram ID</Th></tr></thead>
+                <tbody>
+                  {eligibility.eligible.length === 0
+                    ? <TrEmpty cols={2} message="All eligible players have already received this bonus." />
+                    : eligibility.eligible.slice(0, 30).map(p => (
+                        <tr key={p.id}>
+                          <Td>@{p.username}</Td>
+                          <Td muted style={{ fontSize: 12 }}>{p.telegram_id}</Td>
+                        </tr>
+                      ))
+                  }
+                  {eligibility.eligible.length > 30 && (
+                    <tr><td colSpan={2} style={{ padding: '8px 12px', color: C.muted, fontSize: 12, textAlign: 'center' }}>
+                      +{eligibility.eligible.length - 30} more not shown…
+                    </td></tr>
+                  )}
+                </tbody>
+              </Table>
+
+              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                <Btn size="sm" variant="ghost" onClick={handlePreview}>↻ Refresh</Btn>
+                <Btn onClick={handleApply} disabled={applying || eligibility.total === 0}>
+                  {applying ? 'Applying…' : `🎁 Apply Bonus to ${eligibility.total} Players`}
+                </Btn>
+              </div>
+            </>
+          )}
         </Card>
+      )}
+
+      {/* ── Distribution History ── */}
+      <Card>
+        <CardHeader title="Distribution History"
+          subtitle="Who already received which bonus"
+          action={
+            <select name="hist-promo" value={histPromoId} onChange={e => setHistPromoId(e.target.value)}
+              style={{ ...selectCss, width: 200, fontSize: 12 }}>
+              <option value="">Select promotion…</option>
+              {bonusPromos.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select>
+          }
+        />
+        {!histPromoId ? (
+          <div style={{ color: C.muted, fontSize: 13 }}>Select a promotion above to see its distribution history.</div>
+        ) : histLoading ? <TrLoading cols={4} /> : (
+          <Table>
+            <thead><tr><Th>Player</Th><Th>Amount</Th><Th>Wallet</Th><Th>Date</Th></tr></thead>
+            <tbody>
+              {distributions.length === 0
+                ? <TrEmpty cols={4} message="No distributions yet." />
+                : distributions.map(d => (
+                    <tr key={d.id}>
+                      <Td>@{d.player.username}</Td>
+                      <Td><strong>{Number(d.amount).toFixed(2)} ETB</strong></Td>
+                      <Td><Badge variant="neutral">{d.wallet}</Badge></Td>
+                      <Td muted>{new Date(d.distributed_at).toLocaleString()}</Td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </Table>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main export
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function BonusPage() {
+  const [tab, setTab] = useState<Tab>('single');
+  const [players, setPlayers] = useState<AdminPlayer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getPlayers(1).then(r => { setPlayers(r.items ?? []); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const active = players.filter(p => !p.is_suspended).length;
+
+  return (
+    <div className="fade-in">
+      <PageHeader title="Bonus Manager" />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+        <StatCard icon="🎁" label="Players"   value={loading ? '…' : players.length} color={C.primary} />
+        <StatCard icon="✅" label="Active"    value={loading ? '…' : active}          color={C.success} />
+        <StatCard icon="🚫" label="Suspended" value={loading ? '…' : players.length - active} color={C.danger} />
       </div>
+
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <Btn variant={tab === 'single' ? 'primary' : 'outline'} onClick={() => setTab('single')}>
+          👤 Single Player
+        </Btn>
+        <Btn variant={tab === 'bulk' ? 'primary' : 'outline'} onClick={() => setTab('bulk')}>
+          🎯 Bulk Bonus (Promotion)
+        </Btn>
+      </div>
+
+      {tab === 'single' ? <SingleBonusPanel /> : <BulkBonusPanel />}
     </div>
   );
 }

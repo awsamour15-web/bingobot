@@ -576,6 +576,44 @@ export async function processDepositClaim(
   return { success: true, amount };
 }
 
+// ─── Channel membership gate helpers ─────────────────────────────────────────
+
+/**
+ * Returns the required channel username/id from config (key: required_channel).
+ * e.g. "@MyChannel" or "-1001234567890"
+ * Returns null if not configured — gate is disabled.
+ */
+async function getRequiredChannel(): Promise<string | null> {
+  const config = await prisma.config.findUnique({ where: { key: 'required_channel' } });
+  return config?.value?.trim() || null;
+}
+
+/**
+ * Checks if a Telegram user is a member (or admin/owner) of the required channel.
+ * Returns true if no channel is configured (gate disabled).
+ */
+async function isChannelMember(bot: Bot, telegramUserId: number, channelId: string): Promise<boolean> {
+  try {
+    const member = await bot.api.getChatMember(channelId, telegramUserId);
+    return ['member', 'administrator', 'creator'].includes(member.status);
+  } catch {
+    // If we can't check (bot not in channel, etc.), allow through
+    return true;
+  }
+}
+
+/**
+ * Builds an inline keyboard with a "Join Channel" button.
+ */
+function buildJoinChannelMarkup(channelId: string): InlineKeyboard {
+  // If channelId is a username like @MyChannel use it directly as a t.me link;
+  // numeric IDs can't be used in t.me links, so fall back to a deep link.
+  const url = channelId.startsWith('@')
+    ? `https://t.me/${channelId.slice(1)}`
+    : `https://t.me/${channelId.replace(/^-100/, '')}`;
+  return new InlineKeyboard().url('📢 Join Channel', url);
+}
+
 // ─── Bot instance (null if BOT_TOKEN is not set) ──────────────────────────────
 
 let bot: Bot | null = null;
@@ -584,6 +622,32 @@ if (BOT_TOKEN) {
   console.log('[Bot] ✅ BOT_TOKEN found, initializing bot...');
   bot = new Bot(BOT_TOKEN);
   console.log('[Bot] ✅ Bot instance created successfully');
+
+  /**
+   * ─── Channel membership gate middleware ─────────────────────────────────────
+   * If `required_channel` is set in Config, any guarded menu button or command
+   * (other than /start and Register) will be blocked until the user joins.
+   */
+  bot.use(async (ctx, next) => {
+    if (!ctx.from) return next();
+
+    // Only gate text messages that match guarded buttons
+    const text = ctx.message?.text?.trim() ?? '';
+    const isGuarded = text ? isGuardedButton(text) && !text.startsWith('/') : false;
+    if (!isGuarded) return next();
+
+    const channelId = await getRequiredChannel();
+    if (!channelId) return next(); // gate disabled
+
+    const isMember = await isChannelMember(bot!, ctx.from.id, channelId);
+    if (isMember) return next();
+
+    // Block and prompt
+    await ctx.reply(
+      `⚠️ To use this bot you must first join our channel.\n\nJoin and then try again.`,
+      { reply_markup: buildJoinChannelMarkup(channelId) },
+    );
+  });
 
   /**
    * /start command handler
@@ -985,6 +1049,13 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   bot.hears('Deposit 💰', handleDepositStart);
 
+  // ─── Copy phone callback — sends phone number as a separate message ─────────
+  bot.callbackQuery(/^copy_phone:(.+)$/, async (ctx) => {
+    const phone = ctx.match[1];
+    await ctx.answerCallbackQuery();
+    await ctx.reply(`📋 ${phone}`);
+  });
+
   // ─── /menu command — refresh the keyboard for existing users ──────────────
   bot.command('menu', async (ctx) => {
     if (!ctx.from) return;
@@ -1066,7 +1137,12 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
         const { text: instructionText, telebirrNumber, receiverName } = await buildDepositInstructionText(amount);
         depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber, receiverName });
-        await ctx.reply(instructionText);
+        await ctx.reply(instructionText, {
+          reply_markup: new InlineKeyboard().text(
+            `📋 Copy Phone: ${telebirrNumber}`,
+            `copy_phone:${telebirrNumber}`,
+          ),
+        });
         return;
       }
 

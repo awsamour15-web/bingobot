@@ -374,6 +374,9 @@ export interface Promotion {
   media_file_id: string | null;
   caption: string | null;
   status: PromotionStatus;
+  bonus_amount: number | null;
+  bonus_wallet: 'main' | 'play' | null;
+  bonus_criteria: BonusCriteria | null;
   created_at: string;
   updated_at: string;
 }
@@ -422,6 +425,9 @@ export function createPromotion(data: {
   text_content?: string;
   media_file_id?: string;
   caption?: string;
+  bonus_amount?: number;
+  bonus_wallet?: 'main' | 'play';
+  bonus_criteria?: BonusCriteria;
 }): Promise<Promotion> {
   return adminApiRequest('POST', '/api/admin/promotions', data);
 }
@@ -431,6 +437,9 @@ export function updatePromotion(id: string, data: Partial<{
   text_content: string;
   media_file_id: string;
   caption: string;
+  bonus_amount: number;
+  bonus_wallet: 'main' | 'play';
+  bonus_criteria: BonusCriteria;
 }>): Promise<Promotion> {
   return adminApiRequest('PATCH', `/api/admin/promotions/${id}`, data);
 }
@@ -479,6 +488,54 @@ export function getPromotionLogs(promotionId?: string, limit = 200): Promise<Pro
   const params = new URLSearchParams({ limit: String(limit) });
   if (promotionId) params.set('promotionId', promotionId);
   return adminApiRequest('GET', `/api/admin/promotions/logs?${params}`);
+}
+
+// ---------------------------------------------------------------------------
+// Promotion Bonus
+// ---------------------------------------------------------------------------
+
+export interface BonusCriteria {
+  minBalance?: number;
+  maxBalance?: number;
+  minDeposits?: number;
+  hasPlayedRounds?: boolean;
+  daysRegistered?: number;
+  agentId?: string;
+}
+
+export interface EligibilityResult {
+  eligible: { id: string; telegram_id: string; username: string }[];
+  total: number;
+  bonus_amount: number;
+  bonus_wallet: 'main' | 'play';
+}
+
+export interface BonusApplyResult {
+  applied: number;
+  failed: number;
+  errors: { player_id: string; error: string }[];
+}
+
+export interface BonusDistribution {
+  id: string;
+  promotion_id: string;
+  player_id: string;
+  amount: number;
+  wallet: 'main' | 'play';
+  distributed_at: string;
+  player: { username: string; telegram_id: string };
+}
+
+export function getEligiblePlayers(promotionId: string): Promise<EligibilityResult> {
+  return adminApiRequest('GET', `/api/admin/promotions/${promotionId}/bonus/eligible`);
+}
+
+export function applyPromotionBonus(promotionId: string): Promise<BonusApplyResult> {
+  return adminApiRequest('POST', `/api/admin/promotions/${promotionId}/bonus/apply`);
+}
+
+export function getBonusDistributions(promotionId: string): Promise<BonusDistribution[]> {
+  return adminApiRequest('GET', `/api/admin/promotions/${promotionId}/bonus/distributions`);
 }
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ import {
 import type {
   Promotion, PromotionSchedule, PromotionLog, PromotionContentType,
   PromotionStatus, PromotionStats, GlobalPromotionStats, BroadcastTarget,
+  BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution,
 } from '../lib/api';
 import {
   listPromotions, createPromotion, updatePromotion, setPromotionStatus,
@@ -13,6 +14,7 @@ import {
   duplicatePromotion, sendPromotionNow, retryFailedDeliveries,
   getPromotionStats, getGlobalPromotionStats,
   listBroadcastTargets, createBroadcastTarget, updateBroadcastTarget, deleteBroadcastTarget,
+  getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
 } from '../lib/api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -100,17 +102,17 @@ function TargetsManager({ targets, onChanged }: { targets: BroadcastTarget[]; on
         <form onSubmit={handleAdd} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16, padding: '14px', background: 'var(--c-bg)', borderRadius: 10 }}>
           {error && <div style={{ width: '100%' }}><Alert type="error">{error}</Alert></div>}
           <Field label="Name">
-            <input value={name} onChange={e => setName(e.target.value)} required style={inputCss} placeholder="e.g. Main Channel" />
+            <input value={name} onChange={e => setName(e.target.value)} required name="target-name" style={inputCss} placeholder="e.g. Main Channel" />
           </Field>
           <Field label="Type">
-            <select value={type} onChange={e => setType(e.target.value as typeof type)} style={{ ...selectCss, width: 160 }}>
+            <select name="target-type" value={type} onChange={e => setType(e.target.value as typeof type)} style={{ ...selectCss, width: 160 }}>
               <option value="channel">📢 Channel / Group</option>
               <option value="bot_broadcast">🤖 Bot — All Users</option>
             </select>
           </Field>
           {type === 'channel' && (
             <Field label="Channel ID" hint="e.g. -1001234567890">
-              <input value={channelId} onChange={e => setChannelId(e.target.value)} required style={{ ...inputCss, width: 180 }} placeholder="-1003959006748" />
+              <input value={channelId} onChange={e => setChannelId(e.target.value)} required name="channel-id" style={{ ...inputCss, width: 180 }} placeholder="-1003959006748" />
             </Field>
           )}
           <Btn type="submit" size="sm" disabled={saving}>{saving ? '…' : 'Save'}</Btn>
@@ -229,24 +231,51 @@ function PromotionForm({
   const [textContent, setTextContent] = useState(initial?.text_content ?? '');
   const [mediaFileId, setMediaFileId] = useState(initial?.media_file_id ?? '');
   const [caption, setCaption] = useState(initial?.caption ?? '');
+  // Bonus fields
+  const [hasBonus, setHasBonus] = useState(!!(initial?.bonus_amount));
+  const [bonusAmount, setBonusAmount] = useState(String(initial?.bonus_amount ?? ''));
+  const [bonusWallet, setBonusWallet] = useState<'main' | 'play'>(initial?.bonus_wallet ?? 'play');
+  const [minBalance, setMinBalance] = useState(String(initial?.bonus_criteria?.minBalance ?? ''));
+  const [maxBalance, setMaxBalance] = useState(String(initial?.bonus_criteria?.maxBalance ?? ''));
+  const [minDeposits, setMinDeposits] = useState(String(initial?.bonus_criteria?.minDeposits ?? ''));
+  const [daysRegistered, setDaysRegistered] = useState(String(initial?.bonus_criteria?.daysRegistered ?? ''));
+  const [hasPlayedRounds, setHasPlayedRounds] = useState(initial?.bonus_criteria?.hasPlayedRounds ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function buildCriteria(): BonusCriteria | undefined {
+    const c: BonusCriteria = {};
+    if (minBalance) c.minBalance = Number(minBalance);
+    if (maxBalance) c.maxBalance = Number(maxBalance);
+    if (minDeposits) c.minDeposits = Number(minDeposits);
+    if (daysRegistered) c.daysRegistered = Number(daysRegistered);
+    if (hasPlayedRounds) c.hasPlayedRounds = true;
+    return Object.keys(c).length > 0 ? c : undefined;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true); setError(null);
     try {
+      const bonusFields = hasBonus && bonusAmount ? {
+        bonus_amount: Number(bonusAmount),
+        bonus_wallet: bonusWallet,
+        ...( buildCriteria() ? { bonus_criteria: buildCriteria()! } : {}),
+      } : {};
       if (editing) {
         await updatePromotion(initial!.id, {
           title,
           ...(contentType === 'text' ? { text_content: textContent } : { media_file_id: mediaFileId, caption }),
+          ...bonusFields,
         });
       } else {
         await createPromotion({
           title, content_type: contentType,
           ...(contentType === 'text' ? { text_content: textContent } : { media_file_id: mediaFileId, ...(caption ? { caption } : {}) }),
+          ...bonusFields,
         });
         setTitle(''); setTextContent(''); setMediaFileId(''); setCaption('');
+        setBonusAmount(''); setHasBonus(false);
       }
       onSaved();
     } catch (err) { setError((err as Error).message); }
@@ -258,10 +287,10 @@ function PromotionForm({
       {error && <Alert type="error">{error}</Alert>}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
         <Field label="Title">
-          <input value={title} onChange={e => setTitle(e.target.value)} required style={inputCss} placeholder="e.g. Weekend Bonus Announcement" />
+          <input value={title} onChange={e => setTitle(e.target.value)} required name="promo-title" style={inputCss} placeholder="e.g. Weekend Bonus Announcement" />
         </Field>
         <Field label="Type">
-          <select value={contentType} onChange={e => setContentType(e.target.value as PromotionContentType)} style={{ ...selectCss, width: 120 }} disabled={editing}>
+          <select name="content-type" value={contentType} onChange={e => setContentType(e.target.value as PromotionContentType)} style={{ ...selectCss, width: 120 }} disabled={editing}>
             <option value="text">📝 Text</option>
             <option value="image">🖼 Image</option>
             <option value="video">🎬 Video</option>
@@ -272,7 +301,7 @@ function PromotionForm({
 
       {contentType === 'text' ? (
         <Field label="Message" hint={`${textContent.length}/4096`}>
-          <textarea value={textContent} onChange={e => setTextContent(e.target.value)}
+          <textarea name="text-content" value={textContent} onChange={e => setTextContent(e.target.value)}
             required maxLength={4096} rows={5}
             style={{ ...inputCss, resize: 'vertical' }}
             placeholder="Write your promotion message here…" />
@@ -280,20 +309,211 @@ function PromotionForm({
       ) : (
         <>
           <Field label="Telegram File ID" hint="Send the file to the bot first to get its file_id">
-            <input value={mediaFileId} onChange={e => setMediaFileId(e.target.value)} required style={inputCss} placeholder="AgACAgIAAxk…" />
+            <input value={mediaFileId} onChange={e => setMediaFileId(e.target.value)} required name="media-file-id" style={inputCss} placeholder="AgACAgIAAxk…" />
           </Field>
           <Field label="Caption (optional)" hint={`${caption.length}/1024`}>
-            <textarea value={caption} onChange={e => setCaption(e.target.value)}
+            <textarea name="caption" value={caption} onChange={e => setCaption(e.target.value)}
               maxLength={1024} rows={2} style={{ ...inputCss, resize: 'vertical' }}
               placeholder="Text shown below the media…" />
           </Field>
         </>
       )}
+
+      {/* ── Bonus Config ── */}
+      <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: hasBonus ? 12 : 0 }}>
+          <input type="checkbox" name="has-bonus" checked={hasBonus} onChange={e => setHasBonus(e.target.checked)} />
+          <span style={{ fontWeight: 600, color: 'var(--c-text)', fontSize: 13 }}>🎁 Attach Bonus to this Promotion</span>
+        </label>
+
+        {hasBonus && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, background: 'rgba(99,102,241,0.06)', borderRadius: 10, padding: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Bonus Amount (ETB)">
+                <input type="number" name="bonus-amount" min="1" step="1" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)}
+                  required={hasBonus} style={inputCss} placeholder="e.g. 50" />
+              </Field>
+              <Field label="Wallet">
+                <select name="bonus-wallet" value={bonusWallet} onChange={e => setBonusWallet(e.target.value as 'main' | 'play')} style={selectCss}>
+                  <option value="play">Play Wallet</option>
+                  <option value="main">Main Wallet</option>
+                </select>
+              </Field>
+            </div>
+
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>
+              Eligibility Criteria (leave blank = all players)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Min Balance (ETB)" hint="Total wallet balance ≥">
+                <input type="number" name="min-balance" min="0" step="0.01" value={minBalance} onChange={e => setMinBalance(e.target.value)} style={inputCss} placeholder="0" />
+              </Field>
+              <Field label="Max Balance (ETB)" hint="Total wallet balance ≤">
+                <input type="number" name="max-balance" min="0" step="0.01" value={maxBalance} onChange={e => setMaxBalance(e.target.value)} style={inputCss} placeholder="unlimited" />
+              </Field>
+              <Field label="Min Total Deposits (ETB)" hint="Sum of all deposits ≥">
+                <input type="number" name="min-deposits" min="0" step="0.01" value={minDeposits} onChange={e => setMinDeposits(e.target.value)} style={inputCss} placeholder="0" />
+              </Field>
+              <Field label="Account Age (days)" hint="Registered ≥ X days ago">
+                <input type="number" name="days-registered" min="0" step="1" value={daysRegistered} onChange={e => setDaysRegistered(e.target.value)} style={inputCss} placeholder="0" />
+              </Field>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" name="has-played-rounds" checked={hasPlayedRounds} onChange={e => setHasPlayedRounds(e.target.checked)} />
+              <span style={{ color: 'var(--c-text)' }}>Must have played at least one game round</span>
+            </label>
+          </div>
+        )}
+      </div>
+
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         {onCancel && <Btn variant="outline" type="button" onClick={onCancel}>Cancel</Btn>}
         <Btn type="submit" disabled={saving}>{saving ? (editing ? 'Saving…' : 'Creating…') : (editing ? 'Save Changes' : 'Create Promotion')}</Btn>
       </div>
     </form>
+  );
+}
+
+// ── Bonus Apply Section ───────────────────────────────────────────────────────
+function BonusApplySection({ promotion }: { promotion: Promotion }) {
+  const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
+  const [distributions, setDistributions] = useState<BonusDistribution[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [result, setResult] = useState<BonusApplyResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<'preview' | 'history'>('preview');
+
+  async function loadEligibility() {
+    setLoading(true); setError(null);
+    try {
+      const r = await getEligiblePlayers(promotion.id);
+      setEligibility(r);
+    } catch (err) { setError((err as Error).message); }
+    finally { setLoading(false); }
+  }
+
+  async function loadHistory() {
+    setLoading(true);
+    setDistributions(await getBonusDistributions(promotion.id).catch(() => []));
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (tab === 'preview') void loadEligibility();
+    else void loadHistory();
+  }, [tab, promotion.id]);
+
+  async function handleApply() {
+    if (!eligibility || eligibility.total === 0) return;
+    if (!confirm(`Apply ${eligibility.bonus_amount} ETB to ${eligibility.total} eligible players?`)) return;
+    setApplying(true); setError(null); setResult(null);
+    try {
+      const r = await applyPromotionBonus(promotion.id);
+      setResult(r);
+      void loadEligibility();
+      void loadHistory();
+    } catch (err) { setError((err as Error).message); }
+    finally { setApplying(false); }
+  }
+
+  const criteriaLabels: string[] = [];
+  const c = promotion.bonus_criteria;
+  if (c) {
+    if (c.minBalance != null) criteriaLabels.push(`Balance ≥ ${c.minBalance} ETB`);
+    if (c.maxBalance != null) criteriaLabels.push(`Balance ≤ ${c.maxBalance} ETB`);
+    if (c.minDeposits != null) criteriaLabels.push(`Deposits ≥ ${c.minDeposits} ETB`);
+    if (c.daysRegistered != null) criteriaLabels.push(`Registered ≥ ${c.daysRegistered}d ago`);
+    if (c.hasPlayedRounds) criteriaLabels.push('Has played rounds');
+  }
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div>
+          <SectionTitle>Bonus Distribution</SectionTitle>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            <Badge variant="info">{promotion.bonus_amount} ETB</Badge>
+            <Badge variant="neutral">{promotion.bonus_wallet} wallet</Badge>
+            {criteriaLabels.length === 0
+              ? <Badge variant="neutral">All active players</Badge>
+              : criteriaLabels.map(l => <Badge key={l} variant="neutral">{l}</Badge>)
+            }
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn size="sm" variant={tab === 'preview' ? 'primary' : 'outline'} onClick={() => setTab('preview')}>Preview</Btn>
+          <Btn size="sm" variant={tab === 'history' ? 'primary' : 'outline'} onClick={() => setTab('history')}>History</Btn>
+        </div>
+      </div>
+
+      {error && <Alert type="error">{error}</Alert>}
+      {result && (
+        <Alert type={result.failed === 0 ? 'success' : 'info'}>
+          Applied to {result.applied} players.{result.failed > 0 ? ` ${result.failed} failed.` : ''}
+        </Alert>
+      )}
+
+      {tab === 'preview' && (
+        <>
+          {loading ? <div style={{ color: C.muted, fontSize: 13 }}>Checking eligibility…</div> : eligibility && (
+            <>
+              <div style={{ marginBottom: 10, fontSize: 13, color: 'var(--c-text)' }}>
+                <strong>{eligibility.total}</strong> players are eligible (not yet received this bonus)
+              </div>
+              <Table>
+                <thead><tr><Th>Player</Th><Th>Telegram ID</Th></tr></thead>
+                <tbody>
+                  {eligibility.eligible.length === 0
+                    ? <TrEmpty cols={2} message="No eligible players." />
+                    : eligibility.eligible.slice(0, 20).map(p => (
+                        <tr key={p.id}>
+                          <Td>@{p.username}</Td>
+                          <Td muted>{p.telegram_id}</Td>
+                        </tr>
+                      ))
+                  }
+                  {eligibility.eligible.length > 20 && (
+                    <tr><td colSpan={2} style={{ padding: '8px 12px', color: C.muted, fontSize: 12, textAlign: 'center' }}>
+                      +{eligibility.eligible.length - 20} more…
+                    </td></tr>
+                  )}
+                </tbody>
+              </Table>
+              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                <Btn size="sm" variant="ghost" onClick={loadEligibility}>↻ Refresh</Btn>
+                <Btn size="sm" onClick={handleApply} disabled={applying || eligibility.total === 0}>
+                  {applying ? 'Applying…' : `🎁 Apply to ${eligibility.total} players`}
+                </Btn>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {tab === 'history' && (
+        <>
+          {loading ? <div style={{ color: C.muted, fontSize: 13 }}>Loading…</div> : (
+            <Table>
+              <thead><tr><Th>Player</Th><Th>Amount</Th><Th>Wallet</Th><Th>Date</Th></tr></thead>
+              <tbody>
+                {distributions.length === 0
+                  ? <TrEmpty cols={4} message="No bonuses distributed yet." />
+                  : distributions.map(d => (
+                      <tr key={d.id}>
+                        <Td>@{d.player.username}</Td>
+                        <Td><strong>{Number(d.amount).toFixed(2)} ETB</strong></Td>
+                        <Td><Badge variant="neutral">{d.wallet}</Badge></Td>
+                        <Td muted>{new Date(d.distributed_at).toLocaleString()}</Td>
+                      </tr>
+                    ))
+                }
+              </tbody>
+            </Table>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -368,7 +588,7 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <Field label="Frequency">
-            <select value={frequency} onChange={e => setFrequency(e.target.value as typeof frequency)} style={{ ...selectCss, width: 110 }}>
+            <select name="schedule-frequency" value={frequency} onChange={e => setFrequency(e.target.value as typeof frequency)} style={{ ...selectCss, width: 110 }}>
               <option value="once">Once</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -376,7 +596,7 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
             </select>
           </Field>
           <Field label="Send At">
-            <input type="datetime-local" value={sendAt} onChange={e => setSendAt(e.target.value)} required style={{ ...inputCss, width: 190 }} />
+            <input type="datetime-local" name="send-at" value={sendAt} onChange={e => setSendAt(e.target.value)} required style={{ ...inputCss, width: 190 }} />
           </Field>
           <Btn type="submit" size="sm" disabled={saving || selectedTargets.size === 0}>{saving ? '…' : 'Add Schedule'}</Btn>
         </div>
@@ -404,6 +624,7 @@ export function PromotionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedBonus, setExpandedBonus] = useState<string | null>(null);
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [sendNow, setSendNow] = useState<Promotion | null>(null);
   const [creating, setCreating] = useState(false);
@@ -527,6 +748,9 @@ export function PromotionsPage() {
                   <tr>
                     <Td>
                       <span style={{ fontWeight: 600, color: 'var(--c-text)' }}>{p.title}</span>
+                      {p.bonus_amount && (
+                        <span style={{ marginLeft: 6 }}><Badge variant="warning">🎁 {Number(p.bonus_amount)} ETB</Badge></span>
+                      )}
                       {statsMap[p.id] && <StatsInline stats={statsMap[p.id]!} />}
                     </Td>
                     <Td><Badge variant="info">{p.content_type}</Badge></Td>
@@ -550,6 +774,11 @@ export function PromotionsPage() {
                         <Btn size="sm" variant="ghost" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
                           {expanded === p.id ? '▲' : '▼'} Schedule
                         </Btn>
+                        {p.bonus_amount && (
+                          <Btn size="sm" variant="ghost" onClick={() => setExpandedBonus(expandedBonus === p.id ? null : p.id)}>
+                            {expandedBonus === p.id ? '▲' : '▼'} Bonus
+                          </Btn>
+                        )}
                       </div>
                     </Td>
                   </tr>
@@ -557,6 +786,13 @@ export function PromotionsPage() {
                     <tr>
                       <td colSpan={5} style={{ padding: '16px 20px', background: 'var(--c-bg)', borderBottom: '1px solid var(--c-border)' }}>
                         <ScheduleSection promotionId={p.id} targets={targets} />
+                      </td>
+                    </tr>
+                  )}
+                  {expandedBonus === p.id && p.bonus_amount && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '16px 20px', background: 'rgba(99,102,241,0.04)', borderBottom: '1px solid var(--c-border)' }}>
+                        <BonusApplySection promotion={p} />
                       </td>
                     </tr>
                   )}
@@ -573,7 +809,7 @@ export function PromotionsPage() {
           subtitle="Recent promotion send attempts"
           action={
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select value={selectedLogPromo}
+              <select name="log-promo-filter" value={selectedLogPromo}
                 onChange={e => { setSelectedLogPromo(e.target.value); void loadLogs(e.target.value || undefined); }}
                 style={{ ...selectCss, width: 180, fontSize: 12 }}>
                 <option value="">All Promotions</option>

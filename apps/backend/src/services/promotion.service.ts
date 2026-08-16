@@ -1,5 +1,6 @@
 // Promotion service — CRUD, scheduling, delivery, stats, and utilities
 import prisma from '../lib/prisma.js';
+import { Decimal } from '@prisma/client/runtime/library.js';
 
 const MAX_TEXT_LENGTH = 4096;
 const MAX_CAPTION_LENGTH = 1024;
@@ -8,12 +9,30 @@ type PromotionContentType = typeof VALID_CONTENT_TYPES[number];
 type PromotionStatus = 'active' | 'inactive';
 type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 
+export interface BonusCriteria {
+  /** Minimum main-wallet balance required (ETB) */
+  minBalance?: number;
+  /** Maximum main-wallet balance allowed (ETB) */
+  maxBalance?: number;
+  /** Minimum total deposited amount (ETB) */
+  minDeposits?: number;
+  /** Player must have played at least one round */
+  hasPlayedRounds?: boolean;
+  /** Player account must be at least X days old */
+  daysRegistered?: number;
+  /** Only players belonging to this agent */
+  agentId?: string;
+}
+
 export interface CreatePromotionInput {
   title: string;
   content_type: PromotionContentType;
   text_content?: string;
   media_file_id?: string;
   caption?: string;
+  bonus_amount?: number;
+  bonus_wallet?: 'main' | 'play';
+  bonus_criteria?: BonusCriteria;
 }
 
 export interface CreateScheduleInput {
@@ -53,7 +72,18 @@ export const PromotionService = {
         throw new Error(`caption exceeds ${MAX_CAPTION_LENGTH} characters`);
       }
     }
-    return prisma.promotion.create({ data });
+    return prisma.promotion.create({
+      data: {
+        title: data.title,
+        content_type: data.content_type,
+        text_content: data.text_content,
+        media_file_id: data.media_file_id,
+        caption: data.caption,
+        bonus_amount: data.bonus_amount != null ? new Decimal(data.bonus_amount) : undefined,
+        bonus_wallet: data.bonus_wallet ?? undefined,
+        bonus_criteria: data.bonus_criteria ?? undefined,
+      },
+    });
   },
 
   async list() {
@@ -71,7 +101,16 @@ export const PromotionService = {
     if (data.caption && data.caption.length > MAX_CAPTION_LENGTH) {
       throw new Error(`caption exceeds ${MAX_CAPTION_LENGTH} characters`);
     }
-    return prisma.promotion.update({ where: { id }, data });
+    const { bonus_amount, bonus_wallet, bonus_criteria, ...rest } = data;
+    return prisma.promotion.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(bonus_amount != null ? { bonus_amount: new Decimal(bonus_amount) } : {}),
+        ...(bonus_wallet !== undefined ? { bonus_wallet } : {}),
+        ...(bonus_criteria !== undefined ? { bonus_criteria } : {}),
+      },
+    });
   },
 
   async setStatus(id: string, status: PromotionStatus) {
@@ -88,6 +127,9 @@ export const PromotionService = {
         text_content: source.text_content,
         media_file_id: source.media_file_id,
         caption: source.caption,
+        bonus_amount: source.bonus_amount ?? undefined,
+        bonus_wallet: source.bonus_wallet ?? undefined,
+        bonus_criteria: source.bonus_criteria ?? undefined,
         status: 'inactive', // start copies as inactive
       },
     });
@@ -185,5 +227,142 @@ export const PromotionService = {
       prisma.promotionSchedule.count({ where: { is_active: true } }),
     ]);
     return { totalSent, totalFailed, activeSchedules };
+  },
+
+  // ── Bonus Distribution ─────────────────────────────────────────────────────
+
+  /**
+   * Find all players who meet the bonus criteria for a promotion.
+   * Returns player IDs + telegram IDs (for notification).
+   */
+  async getEligiblePlayers(promotionId: string) {
+    const promotion = await prisma.promotion.findUniqueOrThrow({ where: { id: promotionId } });
+    if (!promotion.bonus_amount || !promotion.bonus_wallet) {
+      throw new Error('This promotion has no bonus configured');
+    }
+
+    const criteria = (promotion.bonus_criteria ?? {}) as BonusCriteria;
+
+    // IDs already distributed — skip them
+    const alreadyDone = await prisma.promotionBonusDistribution.findMany({
+      where: { promotion_id: promotionId },
+      select: { player_id: true },
+    });
+    const skipIds = new Set(alreadyDone.map((d) => d.player_id));
+
+    const players = await prisma.player.findMany({
+      where: {
+        is_suspended: false,
+        ...(criteria.agentId ? { agent_id: criteria.agentId } : {}),
+        ...(criteria.daysRegistered != null
+          ? { created_at: { lte: new Date(Date.now() - criteria.daysRegistered * 86400_000) } }
+          : {}),
+      },
+      include: {
+        wallets: true,
+        round_entries: criteria.hasPlayedRounds ? { take: 1 } : false,
+      },
+    });
+
+    const eligible: { id: string; telegram_id: string; username: string }[] = [];
+
+    for (const player of players) {
+      if (skipIds.has(player.id)) continue;
+
+      const mainWallet = player.wallets.find((w) => w.type === 'main');
+      const playWallet = player.wallets.find((w) => w.type === 'play');
+      const mainBalance = Number(mainWallet?.balance ?? 0);
+      const playBalance = Number(playWallet?.balance ?? 0);
+      const totalBalance = mainBalance + playBalance;
+
+      if (criteria.minBalance != null && totalBalance < criteria.minBalance) continue;
+      if (criteria.maxBalance != null && totalBalance > criteria.maxBalance) continue;
+
+      if (criteria.minDeposits != null) {
+        const deposits = await prisma.transaction.aggregate({
+          where: { wallet: { player_id: player.id }, type: 'deposit' },
+          _sum: { amount: true },
+        });
+        if (Number(deposits._sum.amount ?? 0) < criteria.minDeposits) continue;
+      }
+
+      if (criteria.hasPlayedRounds && (!('round_entries' in player) || (player.round_entries as unknown[]).length === 0)) continue;
+
+      eligible.push({ id: player.id, telegram_id: String(player.telegram_id), username: player.username });
+    }
+
+    return {
+      eligible,
+      total: eligible.length,
+      bonus_amount: Number(promotion.bonus_amount),
+      bonus_wallet: promotion.bonus_wallet as 'main' | 'play',
+    };
+  },
+
+  /**
+   * Apply the promotion bonus to all eligible players (idempotent).
+   * Returns counts of applied/skipped/failed.
+   */
+  async applyBonusToEligiblePlayers(promotionId: string) {
+    const promotion = await prisma.promotion.findUniqueOrThrow({ where: { id: promotionId } });
+    if (!promotion.bonus_amount || !promotion.bonus_wallet) {
+      throw new Error('This promotion has no bonus configured');
+    }
+
+    const { eligible, bonus_amount, bonus_wallet } = await PromotionService.getEligiblePlayers(promotionId);
+
+    let applied = 0;
+    let failed = 0;
+    const errors: { player_id: string; error: string }[] = [];
+
+    for (const player of eligible) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          const wallet = await tx.wallet.findFirst({
+            where: { player_id: player.id, type: bonus_wallet },
+          });
+          if (!wallet) throw new Error(`Wallet not found for player ${player.id}`);
+
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: { increment: new Decimal(bonus_amount) } },
+          });
+
+          await tx.transaction.create({
+            data: {
+              wallet_id: wallet.id,
+              type: 'admin_credit',
+              amount: new Decimal(bonus_amount),
+              note: `Promotion bonus: ${promotion.title}`,
+              reference_id: promotionId,
+            },
+          });
+
+          await tx.promotionBonusDistribution.create({
+            data: {
+              promotion_id: promotionId,
+              player_id: player.id,
+              amount: new Decimal(bonus_amount),
+              wallet: bonus_wallet,
+            },
+          });
+        });
+        applied++;
+      } catch (err) {
+        failed++;
+        errors.push({ player_id: player.id, error: (err as Error).message });
+      }
+    }
+
+    return { applied, failed, errors };
+  },
+
+  /** List all bonus distributions for a promotion */
+  async getBonusDistributions(promotionId: string) {
+    return prisma.promotionBonusDistribution.findMany({
+      where: { promotion_id: promotionId },
+      include: { player: { select: { username: true, telegram_id: true } } },
+      orderBy: { distributed_at: 'desc' },
+    });
   },
 };

@@ -18,17 +18,18 @@ model Player {
   referrer_id          String?
   created_at           DateTime             @default(now())
   agent_id             String?
-  agent_commissions    AgentCommission[]
-  cartela_reservations CartelaReservation[]
-  won_rounds           GameRound[]          @relation("RoundWinner")
-  pending_deposits     PendingDeposit[]
-  pending_withdrawals  PendingWithdrawal[]
-  agent                Agent?               @relation(fields: [agent_id], references: [id])
-  referrer             Player?              @relation("PlayerReferrals", fields: [referrer_id], references: [id])
-  referrals            Player[]             @relation("PlayerReferrals")
-  round_entries        RoundEntry[]
-  round_wins           RoundWinner[]
-  wallets              Wallet[]
+  agent_commissions       AgentCommission[]
+  cartela_reservations    CartelaReservation[]
+  won_rounds              GameRound[]          @relation("RoundWinner")
+  pending_deposits        PendingDeposit[]
+  pending_withdrawals     PendingWithdrawal[]
+  agent                   Agent?               @relation(fields: [agent_id], references: [id])
+  referrer                Player?              @relation("PlayerReferrals", fields: [referrer_id], references: [id])
+  referrals               Player[]             @relation("PlayerReferrals")
+  round_entries           RoundEntry[]
+  round_wins              RoundWinner[]
+  wallets                 Wallet[]
+  bonus_distributions     PromotionBonusDistribution[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -333,13 +334,34 @@ model Promotion {
   media_file_id   String?
   caption         String?               // optional caption for media promotions
   status          PromotionStatus       @default(active)
+  // Bonus fields — null means this promotion has no bonus
+  bonus_amount    Decimal?              @db.Decimal(14, 2)
+  bonus_wallet    WalletType?
+  bonus_criteria  Json?                 // { minBalance?, maxBalance?, minDeposits?, hasPlayedRounds?, daysRegistered?, agentId? }
   created_at      DateTime              @default(now())
   updated_at      DateTime              @updatedAt
   schedules       PromotionSchedule[]
   logs            PromotionLog[]
+  bonus_distributions PromotionBonusDistribution[]
 
   @@index([status])
   @@map("promotions")
+}
+
+model PromotionBonusDistribution {
+  id             String    @id @default(uuid())
+  promotion_id   String
+  player_id      String
+  amount         Decimal   @db.Decimal(14, 2)
+  wallet         WalletType
+  distributed_at DateTime  @default(now())
+  promotion      Promotion @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
+  player         Player    @relation(fields: [player_id], references: [id], onDelete: Cascade)
+
+  @@unique([promotion_id, player_id])
+  @@index([promotion_id])
+  @@index([player_id])
+  @@map("promotion_bonus_distributions")
 }
 
 model PromotionSchedule {
