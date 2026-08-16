@@ -57,9 +57,8 @@ export interface AgentDetail extends AgentSummary {
  * Format: https://t.me/<BOT_USERNAME>?start=agent_<agentId>
  */
 export function agentInviteLink(agentId: string): string {
-  const botUsername = process.env.BOT_USERNAME;
-  if (!botUsername) throw new Error('BOT_USERNAME is not configured');
-  return `https://t.me/${botUsername}?start=agent_${agentId}`;
+  const botUsername = process.env.BOT_USERNAME || '';
+  return botUsername ? `https://t.me/${botUsername}?start=agent_${agentId}` : '';
 }
 
 /**
@@ -67,9 +66,8 @@ export function agentInviteLink(agentId: string): string {
  * Format: https://t.me/<BOT_USERNAME>?start=ref_agent_<agentId>
  */
 export function playerInviteLink(agentId: string): string {
-  const botUsername = process.env.BOT_USERNAME;
-  if (!botUsername) throw new Error('BOT_USERNAME is not configured');
-  return `https://t.me/${botUsername}?start=ref_agent_${agentId}`;
+  const botUsername = process.env.BOT_USERNAME || '';
+  return botUsername ? `https://t.me/${botUsername}?start=ref_agent_${agentId}` : '';
 }
 
 /**
