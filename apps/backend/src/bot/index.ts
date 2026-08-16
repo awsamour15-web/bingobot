@@ -529,7 +529,7 @@ async function ocrImage(imageBuffer: Buffer): Promise<string | null> {
 export async function processDepositClaim(
   playerId: string,
   txNumber: string,
-): Promise<{ success: true; amount: number; bonusAmount?: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
+): Promise<{ success: true; amount: number; bonusAmount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
   const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
 
   if (!deposit) return { success: false, reason: 'NOT_FOUND' };
@@ -609,7 +609,7 @@ export async function processDepositClaim(
     }
   });
 
-  return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : undefined };
+  return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : 0 };
 }
 
 // ─── Channel membership gate helpers ─────────────────────────────────────────

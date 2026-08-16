@@ -542,6 +542,7 @@ export const AgentService = {
       id: agent.id,
       telegramUsername: agent.telegram_username,
       agentInviteLink: agentInviteLink(agent.id),
+      playerInviteLink: playerInviteLink(agent.id),
       totalPlayersInvited: agent._count.players,
       totalCommission: Number(totalCommission),
       isActive: agent.is_active,

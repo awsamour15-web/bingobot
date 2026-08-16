@@ -1,5 +1,6 @@
 // Promotion service — CRUD, scheduling, delivery, stats, and utilities
 import prisma from '../lib/prisma.js';
+import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library.js';
 
 const MAX_TEXT_LENGTH = 4096;
@@ -76,12 +77,12 @@ export const PromotionService = {
       data: {
         title: data.title,
         content_type: data.content_type,
-        text_content: data.text_content,
-        media_file_id: data.media_file_id,
-        caption: data.caption,
-        bonus_amount: data.bonus_amount != null ? new Decimal(data.bonus_amount) : undefined,
-        bonus_wallet: data.bonus_wallet ?? undefined,
-        bonus_criteria: data.bonus_criteria ?? undefined,
+        ...(data.text_content !== undefined ? { text_content: data.text_content ?? null } : {}),
+        ...(data.media_file_id !== undefined ? { media_file_id: data.media_file_id ?? null } : {}),
+        ...(data.caption !== undefined ? { caption: data.caption ?? null } : {}),
+        ...(data.bonus_amount != null ? { bonus_amount: new Decimal(data.bonus_amount) } : {}),
+        ...(data.bonus_wallet !== undefined ? { bonus_wallet: data.bonus_wallet } : {}),
+        ...(data.bonus_criteria !== undefined ? { bonus_criteria: data.bonus_criteria as Prisma.InputJsonValue } : {}),
       },
     });
   },
@@ -101,14 +102,18 @@ export const PromotionService = {
     if (data.caption && data.caption.length > MAX_CAPTION_LENGTH) {
       throw new Error(`caption exceeds ${MAX_CAPTION_LENGTH} characters`);
     }
-    const { bonus_amount, bonus_wallet, bonus_criteria, ...rest } = data;
+    const { bonus_amount, bonus_wallet, bonus_criteria } = data;
     return prisma.promotion.update({
       where: { id },
       data: {
-        ...rest,
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.content_type !== undefined ? { content_type: data.content_type } : {}),
+        ...(data.text_content !== undefined ? { text_content: data.text_content ?? null } : {}),
+        ...(data.media_file_id !== undefined ? { media_file_id: data.media_file_id ?? null } : {}),
+        ...(data.caption !== undefined ? { caption: data.caption ?? null } : {}),
         ...(bonus_amount != null ? { bonus_amount: new Decimal(bonus_amount) } : {}),
         ...(bonus_wallet !== undefined ? { bonus_wallet } : {}),
-        ...(bonus_criteria !== undefined ? { bonus_criteria } : {}),
+        ...(bonus_criteria !== undefined ? { bonus_criteria: bonus_criteria as Prisma.InputJsonValue } : {}),
       },
     });
   },
@@ -124,12 +129,12 @@ export const PromotionService = {
       data: {
         title: `${source.title} (copy)`,
         content_type: source.content_type,
-        text_content: source.text_content,
-        media_file_id: source.media_file_id,
-        caption: source.caption,
-        bonus_amount: source.bonus_amount ?? undefined,
-        bonus_wallet: source.bonus_wallet ?? undefined,
-        bonus_criteria: source.bonus_criteria ?? undefined,
+        ...(source.text_content !== null ? { text_content: source.text_content ?? null } : {}),
+        ...(source.media_file_id !== null ? { media_file_id: source.media_file_id ?? null } : {}),
+        ...(source.caption !== null ? { caption: source.caption ?? null } : {}),
+        ...(source.bonus_amount != null ? { bonus_amount: source.bonus_amount } : {}),
+        ...(source.bonus_wallet !== null ? { bonus_wallet: source.bonus_wallet ?? undefined } : {}),
+        ...(source.bonus_criteria !== null ? { bonus_criteria: source.bonus_criteria as Prisma.InputJsonValue } : {}),
         status: 'inactive', // start copies as inactive
       },
     });
