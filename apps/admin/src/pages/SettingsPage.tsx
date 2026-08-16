@@ -347,125 +347,12 @@ function DepositAccountsSection() {
   );
 }
 
-// ── Deposit Bonus Section ──────────────────────────────────────────────────────
-function DepositBonusSection() {
-  const [pct, setPct] = useState('');
-  const [wallet, setWallet] = useState<'play' | 'main'>('play');
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    getConfig().then((entries) => {
-      const map = Object.fromEntries(entries.map((e) => [e.key, e.value]));
-      setPct(map['deposit_bonus_pct'] ?? '');
-      setWallet((map['deposit_bonus_wallet'] as 'play' | 'main') ?? 'play');
-      setStart(map['deposit_bonus_start'] ? map['deposit_bonus_start'].slice(0, 16) : '');
-      setEnd(map['deposit_bonus_end'] ? map['deposit_bonus_end'].slice(0, 16) : '');
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true); setFeedback(null);
-    try {
-      await updateConfig('deposit_bonus_pct', pct || '0');
-      await updateConfig('deposit_bonus_wallet', wallet);
-      await updateConfig('deposit_bonus_start', start ? new Date(start).toISOString() : '');
-      await updateConfig('deposit_bonus_end', end ? new Date(end).toISOString() : '');
-      setFeedback({ type: 'success', msg: 'Deposit bonus settings saved.' });
-    } catch (err) {
-      setFeedback({ type: 'error', msg: (err as Error).message });
-    } finally { setSaving(false); }
-  }
-
-  async function handleDisable() {
-    setSaving(true); setFeedback(null);
-    try {
-      await updateConfig('deposit_bonus_pct', '0');
-      setPct('0');
-      setFeedback({ type: 'success', msg: 'Deposit bonus disabled.' });
-    } catch (err) {
-      setFeedback({ type: 'error', msg: (err as Error).message });
-    } finally { setSaving(false); }
-  }
-
-  const activePct = parseFloat(pct || '0');
-  const isActive = activePct > 0;
-
-  return (
-    <Card style={{ marginBottom: 20 }}>
-      <CardHeader
-        title="🎁 Deposit Bonus"
-        subtitle="Automatically credit a % bonus when a player deposits"
-        action={
-          <Badge variant={isActive ? 'success' : 'neutral'}>
-            {isActive ? `${activePct}% active` : 'disabled'}
-          </Badge>
-        }
-      />
-      {loading ? (
-        <div style={{ color: C.muted, fontSize: 13 }}>Loading…</div>
-      ) : (
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-            <Field label="Bonus %" hint="e.g. 20 means 20% of deposit amount">
-              <input
-                type="number" min="0" max="100" step="0.01"
-                value={pct} onChange={e => setPct(e.target.value)}
-                style={inputCss} placeholder="0 = disabled"
-              />
-            </Field>
-            <Field label="Credit To">
-              <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss}>
-                <option value="play">Play Wallet</option>
-                <option value="main">Main Wallet</option>
-              </select>
-            </Field>
-            <Field label="Start (optional)" hint="Leave blank = no start limit">
-              <input
-                type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
-                style={inputCss}
-              />
-            </Field>
-            <Field label="End (optional)" hint="Leave blank = no end limit">
-              <input
-                type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}
-                style={inputCss}
-              />
-            </Field>
-          </div>
-
-          <div style={{ background: 'rgba(99,102,241,0.06)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.muted }}>
-            Example: if bonus is <strong style={{ color: 'var(--c-text)' }}>20%</strong> and player deposits{' '}
-            <strong style={{ color: 'var(--c-text)' }}>100 ETB</strong>, they get{' '}
-            <strong style={{ color: '#22c55e' }}>20 ETB</strong> extra in their {wallet} wallet automatically.
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Bonus Settings'}</Btn>
-            {isActive && (
-              <Btn type="button" variant="danger" disabled={saving} onClick={handleDisable}>Disable Bonus</Btn>
-            )}
-          </div>
-        </form>
-      )}
-    </Card>
-  );
-}
 
 export function SettingsPage() {
   return (
     <div className="fade-in">
       <PageHeader title="Settings" />
       <DepositAccountsSection />
-      <DepositBonusSection />
       <ConfigSection />
       <AdminAccountsSection />
     </div>
