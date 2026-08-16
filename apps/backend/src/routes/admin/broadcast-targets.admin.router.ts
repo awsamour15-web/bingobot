@@ -1,7 +1,7 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import { BroadcastTargetService } from '../../services/broadcast-target.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 
 router.get('/', async (_req, res: Response): Promise<void> => {
   res.json(await BroadcastTargetService.list());

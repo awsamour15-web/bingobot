@@ -125,9 +125,17 @@ export async function retryFailedDeliveries(promotionId: string): Promise<{ sent
   if (failedLogs.length === 0) return { sent: 0, failed: 0 };
 
   const promotion = await prisma.promotion.findUniqueOrThrow({ where: { id: promotionId } });
-  const channelIds = [...new Set(failedLogs.map(l => l.channel_id))];
+  const uniqueChannelIds = [...new Set(failedLogs.map(l => l.channel_id))];
 
-  return sendPromotionNow(promotion.id, channelIds);
+  // Convert raw channel IDs back to SendTarget objects for reuse
+  const targets: SendTarget[] = uniqueChannelIds.map(id => ({
+    id,
+    name: id,
+    type: 'channel' as const,
+    channel_id: id,
+  }));
+
+  return sendPromotionNow(promotion.id, targets);
 }
 
 async function tick(): Promise<void> {
