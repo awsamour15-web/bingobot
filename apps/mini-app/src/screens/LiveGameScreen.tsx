@@ -842,113 +842,78 @@ export default function LiveGameScreen() {
           <div style={{
             position: 'fixed', inset: 0, zIndex: 100,
             background: 'radial-gradient(ellipse at 50% 0%, rgba(80,113,170,0.26) 0%, rgba(9,14,26,0.98) 48%, #070d18 100%)',
-            display: 'flex', flexDirection: 'column',
-            overflowY: 'auto', overflowX: 'hidden',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             boxSizing: 'border-box',
             color: '#f8fafc',
+            padding: '10px',
           }}>
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0,
-              height: 72, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '0 18px', background: 'rgba(12, 18, 31, 0.72)', borderBottom: '1px solid rgba(148,163,184,0.15)',
-            }}>
-              <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1, color: '#f8fafc', opacity: 0.92 }}>×</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#f8fafc' }}>Fidel bingo</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ fontSize: 26, color: '#f8fafc' }}>⌄</div>
-                <div style={{ fontSize: 28, color: '#f8fafc', lineHeight: 1, transform: 'translateY(-1px)' }}>⋮</div>
-              </div>
-            </div>
-
-            <div style={{ width: '100%', maxWidth: 420, margin: '84px auto 0', padding: '0 14px 36px', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 10,
               }}>
                 <div style={{
-                  position: 'relative', width: 190, height: 46, marginBottom: 10,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  filter: 'drop-shadow(0 0 16px rgba(251,191,36,0.7))',
-                }}>
-                  <div style={{ position: 'absolute', inset: '8px 18px 0', borderRadius: 999, background: 'linear-gradient(180deg, #facc15 0%, #f59e0b 100%)', transform: 'rotate(-1deg)' }} />
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <div key={i} style={{
-                      position: 'absolute', bottom: 16 + (i % 2), left: 22 + i * 24,
-                      width: 18, height: 18, borderRadius: '50%',
-                      background: i % 2 === 0 ? '#7c3aed' : '#f59e0b',
-                      boxShadow: '0 0 10px rgba(255,255,255,0.3)',
-                    }} />
-                  ))}
-                  <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', width: 116, height: 12, borderRadius: 999, background: 'linear-gradient(180deg, #facc15, #f59e0b)', boxShadow: '0 0 20px rgba(251,191,36,0.8)' }} />
-                </div>
+                  fontSize: 32, fontWeight: 900, lineHeight: 1,
+                  color: '#f7c84d', textShadow: '0 0 16px rgba(247,200,77,0.6)',
+                  marginBottom: 4,
+                }}>🏆 BINGO! 🏆</div>
 
-                <div style={{
-                  fontSize: 62, fontWeight: 900, lineHeight: 0.9, letterSpacing: 3,
-                  color: '#f7c84d', textShadow: '0 0 26px rgba(247,200,77,0.7), 0 0 60px rgba(247,200,77,0.28)',
-                  marginBottom: 8,
-                }}>BINGO!</div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 17, color: '#f8fafc' }}>
-                  <span style={{ fontSize: 20 }}>🎉</span>
-                  <span>{wi.winnerCount} WINNER{wi.winnerCount !== 1 ? '!' : ''}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 12, color: '#f8fafc' }}>
+                  <span>{wi.winnerCount} WINNER{wi.winnerCount !== 1 ? 'S' : ''}!</span>
                 </div>
               </div>
 
               {primaryWinner && (
                 <div style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 12, padding: '12px 14px', background: 'linear-gradient(135deg, rgba(59,130,246,0.32), rgba(59,130,246,0.22))',
-                  border: '1.5px solid rgba(96,165,250,0.5)', borderRadius: 18, boxShadow: '0 8px 26px rgba(37,99,235,0.16)',
-                  marginBottom: 16,
+                  gap: 6, padding: '6px 8px', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.2))',
+                  border: '1px solid rgba(96,165,250,0.4)', borderRadius: 8,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{
-                      width: 42, height: 42, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 20,
-                      color: '#fff', boxShadow: '0 0 12px rgba(236,72,153,0.4)',
+                      width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 13,
+                      color: '#fff',
                     }}>{(primaryWinner.username ?? '?')[0]?.toUpperCase()}</div>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{primaryWinner.username}</div>
-                      <div style={{ fontSize: 12, color: '#dbeafe', marginTop: 2 }}>Cartela #{primaryWinner.cartelaNumber}</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>{primaryWinner.username}</div>
+                      <div style={{ fontSize: 9, color: '#dbeafe' }}>Cartela #{primaryWinner.cartelaNumber}</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 28 }}>🏆</div>
+                  <div style={{ fontSize: 18 }}>🏆</div>
                 </div>
               )}
 
               <div style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 14px', marginBottom: 10, background: 'rgba(14, 50, 38, 0.72)',
-                border: '2px solid rgba(52,211,153,0.8)', borderRadius: 14,
-                boxShadow: '0 0 0 1px rgba(52,211,153,0.18)',
+                padding: '5px 8px', background: 'rgba(14, 50, 38, 0.7)',
+                border: '1.5px solid rgba(52,211,153,0.7)', borderRadius: 8,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 14, letterSpacing: 1, color: '#4ade80' }}>
-                  <span style={{ fontSize: 18 }}>🏆</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 10, letterSpacing: 0.3, color: '#4ade80' }}>
+                  <span style={{ fontSize: 12 }}>🏆</span>
                   <span>WINNING CARTELA</span>
                 </div>
                 <div style={{
-                  minWidth: 52, padding: '4px 10px', borderRadius: 8,
-                  background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.18)',
-                  color: '#fcd34d', fontWeight: 900, textAlign: 'center',
+                  minWidth: 36, padding: '2px 6px', borderRadius: 5,
+                  background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.2)',
+                  color: '#fcd34d', fontWeight: 900, textAlign: 'center', fontSize: 10,
                 }}>#{winCartelaNum}</div>
               </div>
 
               {winGrid.length > 0 && (
                 <div style={{
-                  width: '100%', background: 'linear-gradient(180deg, rgba(17,25,44,0.94), rgba(12,20,34,0.94))',
-                  border: '2px solid rgba(52,211,153,0.7)', borderRadius: 16, overflow: 'hidden',
-                  boxShadow: '0 10px 22px rgba(15,118,110,0.18)', marginBottom: 16,
+                  width: '100%', background: 'linear-gradient(180deg, rgba(17,25,44,0.9), rgba(12,20,34,0.9))',
+                  border: '1.5px solid rgba(52,211,153,0.6)', borderRadius: 10, overflow: 'hidden',
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '8px 8px 2px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '4px 4px 1px' }}>
                     {COLS.map((col, ci) => (
                       <div key={col} style={{
-                        textAlign: 'center', padding: '4px 0', borderRadius: 6,
-                        fontWeight: 900, fontSize: 14, background: HDR[ci], color: '#fff',
+                        textAlign: 'center', padding: '2px 0', borderRadius: 3,
+                        fontWeight: 800, fontSize: 10, background: HDR[ci], color: '#fff',
                       }}>{col}</div>
                     ))}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '2px 8px 10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '1px 4px 4px' }}>
                     {winGrid.map((val, idx) => {
                       const isFree = idx === 12;
                       const isM = isFree || (val !== 0 && marked.has(val));
@@ -956,15 +921,16 @@ export default function LiveGameScreen() {
                       return (
                         <div key={idx} style={{
                           aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderRadius: 8, fontWeight: isW ? 900 : isM ? 700 : 500,
+                          borderRadius: 4, fontWeight: isW ? 800 : isM ? 600 : 500,
                           color: isW || isM ? '#fff' : '#52657d',
                           background: isW
                             ? 'linear-gradient(135deg, #22c55e, #16a34a)'
                             : isM
                               ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
-                              : 'rgba(255,255,255,0.05)',
-                          border: isW ? '2px solid #86efac' : '1px solid rgba(255,255,255,0.06)',
-                          boxShadow: isW ? '0 0 12px rgba(34,197,94,0.35)' : 'none',
+                              : 'rgba(255,255,255,0.04)',
+                          border: isW ? '1.5px solid #86efac' : '1px solid rgba(255,255,255,0.05)',
+                          boxShadow: isW ? '0 0 8px rgba(34,197,94,0.25)' : 'none',
+                          fontSize: 10,
                         }}>
                           {isFree ? '★' : val}
                         </div>
@@ -977,40 +943,28 @@ export default function LiveGameScreen() {
               {game.derash > 0 && (
                 <div style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 10, padding: '10px 18px', marginBottom: 18,
-                  background: 'rgba(251,146,60,0.12)', border: '2px solid rgba(251,146,60,0.8)',
-                  borderRadius: 14, boxShadow: '0 0 16px rgba(251,146,60,0.18)',
+                  gap: 5, padding: '6px 10px',
+                  background: 'rgba(251,146,60,0.15)', border: '1.5px solid rgba(251,146,60,0.7)',
+                  borderRadius: 8,
                 }}>
-                  <span style={{ fontSize: 20 }}>💰</span>
-                  <span style={{ fontSize: 28, fontWeight: 900, color: '#fbbf24', letterSpacing: 1 }}>{Math.round(game.derash)}</span>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: '#f59e0b' }}>Birr</span>
+                  <span style={{ fontSize: 14 }}>💰</span>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: '#fbbf24', letterSpacing: 0.5 }}>{Math.round(game.derash)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>Birr</span>
                 </div>
               )}
 
               {nextCountdown !== null && (
                 <div style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 10, padding: '12px 16px', borderRadius: 16,
-                  background: 'linear-gradient(135deg, rgba(30,64,175,0.35), rgba(59,130,246,0.18))',
-                  border: '2px solid rgba(96,165,250,0.7)', color: '#dbeafe', fontSize: 17, fontWeight: 700,
+                  gap: 5, padding: '6px 8px', borderRadius: 8,
+                  background: 'linear-gradient(135deg, rgba(30,64,175,0.3), rgba(59,130,246,0.15))',
+                  border: '1.5px solid rgba(96,165,250,0.6)', color: '#dbeafe', fontSize: 11, fontWeight: 700,
                 }}>
-                  <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 12px rgba(74,222,128,0.9)' }} />
-                  <span>Auto-starting next game in</span>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px rgba(74,222,128,0.7)' }} />
+                  <span>Next game in</span>
                   <span style={{ color: '#f8fafc', fontWeight: 900 }}>{nextCountdown}s</span>
                 </div>
               )}
-            </div>
-
-            <div style={{
-              position: 'fixed', left: 0, right: 0, bottom: 0, height: 68,
-              background: 'rgba(12, 18, 31, 0.92)', backdropFilter: 'blur(4px)',
-              borderTop: '1px solid rgba(148,163,184,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '0 16px', boxSizing: 'border-box',
-            }}>
-              <div style={{ fontSize: 30, fontWeight: 700, color: '#f8fafc', opacity: 0.92 }}>×</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc' }}>Beteseb Bingo</div>
-              <div style={{ fontSize: 30, color: '#f8fafc' }}>⌃</div>
             </div>
           </div>
         );
