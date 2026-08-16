@@ -1,20 +1,55 @@
 // Promotion Scheduler Service
-// Sends scheduled promotions to Telegram channels via the bot.
+// Sends scheduled promotions to Telegram channels/users via the bot.
 import prisma from '../lib/prisma.js';
 import { bot } from '../bot/index.js';
 import { PromotionService } from './promotion.service.js';
 
-const CHECK_INTERVAL_MS = 60_000; // check every 60 seconds
+type TargetType = 'channel' | 'bot_broadcast';
 
-type PromotionRow = {
+export interface SendTarget {
   id: string;
-  content_type: string;
-  text_content: string | null;
-  media_file_id: string | null;
-  caption?: string | null;
-};
+  name: string;
+  type: TargetType;
+  channel_id?: string | null;
+}
 
-type ScheduleRow = { id: string; channel_ids: string[] };
+/** Send a single message to one destination (channel ID or user telegram_id) */
+async function sendToOne(
+  promotion: { content_type: string; text_content: string | null; media_file_id: string | null; caption?: string | null },
+  chatId: string,
+): Promise<void> {
+  if (!bot) throw new Error('Bot not initialized');
+  const caption = promotion.caption ?? undefined;
+  if (promotion.content_type === 'text' && promotion.text_content) {
+    await bot.api.sendMessage(chatId, promotion.text_content);
+  } else if (promotion.content_type === 'image' && promotion.media_file_id) {
+    await bot.api.sendPhoto(chatId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
+  } else if (promotion.content_type === 'video' && promotion.media_file_id) {
+    await bot.api.sendVideo(chatId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
+  } else if (promotion.content_type === 'gif' && promotion.media_file_id) {
+    await bot.api.sendAnimation(chatId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
+  }
+}
+
+/** Resolve targets to a list of chat IDs to send to */
+async function resolveTargets(targets: SendTarget[]): Promise<string[]> {
+  const ids: string[] = [];
+  for (const t of targets) {
+    if (t.type === 'channel' && t.channel_id) {
+      ids.push(t.channel_id);
+    } else if (t.type === 'bot_broadcast') {
+      // Broadcast to all players who have interacted with the bot
+      const players = await prisma.player.findMany({
+        where: { is_suspended: false },
+        select: { telegram_id: true },
+      });
+      for (const p of players) ids.push(String(p.telegram_id));
+    }
+  }
+  return ids;
+}
+
+const CHECK_INTERVAL_MS = 60_000; // check every 60 seconds
 
 function advanceNextRunAt(frequency: string, from: Date): Date | null {
   const d = new Date(from);
@@ -27,104 +62,56 @@ function advanceNextRunAt(frequency: string, from: Date): Date | null {
 }
 
 /**
- * Send a single promotion to all given channel IDs.
- * Logs each delivery attempt individually.
+ * Send a promotion to a list of chat IDs (used by scheduler tick).
  */
 export async function sendPromotion(
-  promotion: PromotionRow,
-  schedule: ScheduleRow,
+  promotion: { id: string; content_type: string; text_content: string | null; media_file_id: string | null; caption?: string | null },
+  schedule: { id: string; channel_ids: string[] },
 ): Promise<{ sent: number; failed: number }> {
   if (!bot) return { sent: 0, failed: 0 };
-
-  let sent = 0;
-  let failed = 0;
-
+  let sent = 0, failed = 0;
   for (const channelId of schedule.channel_ids) {
     try {
-      const caption = promotion.caption ?? undefined;
-
-      if (promotion.content_type === 'text' && promotion.text_content) {
-        await bot.api.sendMessage(channelId, promotion.text_content);
-      } else if (promotion.content_type === 'image' && promotion.media_file_id) {
-        await bot.api.sendPhoto(channelId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
-      } else if (promotion.content_type === 'video' && promotion.media_file_id) {
-        await bot.api.sendVideo(channelId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
-      } else if (promotion.content_type === 'gif' && promotion.media_file_id) {
-        await bot.api.sendAnimation(channelId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
-      }
-
-      await PromotionService.logDelivery({
-        promotion_id: promotion.id,
-        schedule_id: schedule.id,
-        channel_id: channelId,
-        status: 'sent',
-      });
+      await sendToOne(promotion, channelId);
+      await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'sent' });
       sent++;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`[PromotionScheduler] Failed to send to channel ${channelId}:`, message);
-      await PromotionService.logDelivery({
-        promotion_id: promotion.id,
-        schedule_id: schedule.id,
-        channel_id: channelId,
-        status: 'failed',
-        error_message: message,
-      }).catch(() => {});
+      console.error(`[PromotionScheduler] Failed to send to ${channelId}:`, message);
+      await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'failed', error_message: message }).catch(() => {});
       failed++;
     }
   }
-
   return { sent, failed };
 }
 
 /**
- * Send a promotion immediately to a given list of channels (ad-hoc, no schedule).
- * Creates a virtual schedule_id of null in logs.
+ * Send a promotion immediately to selected targets.
+ * targets: list of SavedTarget objects (channel or bot_broadcast)
  */
 export async function sendPromotionNow(
   promotionId: string,
-  channelIds: string[],
+  targets: SendTarget[],
 ): Promise<{ sent: number; failed: number }> {
   if (!bot) throw new Error('Bot is not initialized');
-
   const promotion = await prisma.promotion.findUniqueOrThrow({ where: { id: promotionId } });
   if (promotion.status !== 'active') throw new Error('Promotion is not active');
-  if (channelIds.length === 0) throw new Error('At least one channel_id is required');
+  if (targets.length === 0) throw new Error('At least one target is required');
 
-  let sent = 0;
-  let failed = 0;
-  const caption = (promotion as typeof promotion & { caption?: string | null }).caption ?? undefined;
+  const chatIds = await resolveTargets(targets);
+  let sent = 0, failed = 0;
 
-  for (const channelId of channelIds) {
+  for (const chatId of chatIds) {
     try {
-      if (promotion.content_type === 'text' && promotion.text_content) {
-        await bot.api.sendMessage(channelId, promotion.text_content);
-      } else if (promotion.content_type === 'image' && promotion.media_file_id) {
-        await bot.api.sendPhoto(channelId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
-      } else if (promotion.content_type === 'video' && promotion.media_file_id) {
-        await bot.api.sendVideo(channelId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
-      } else if (promotion.content_type === 'gif' && promotion.media_file_id) {
-        await bot.api.sendAnimation(channelId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
-      }
-
-      await PromotionService.logDelivery({
-        promotion_id: promotion.id,
-        channel_id: channelId,
-        status: 'sent',
-      });
+      await sendToOne(promotion, chatId);
+      await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'sent' });
       sent++;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await PromotionService.logDelivery({
-        promotion_id: promotion.id,
-        channel_id: channelId,
-        status: 'failed',
-        error_message: message,
-      }).catch(() => {});
+      await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'failed', error_message: message }).catch(() => {});
       failed++;
     }
   }
-
   return { sent, failed };
 }
 

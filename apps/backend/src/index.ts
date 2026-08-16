@@ -29,6 +29,7 @@ import adminAgentsRouter from './routes/admin/agents.router.js';
 import agentRouter from './routes/agent.router.js';
 import promotionsAdminRouter from './routes/admin/promotions.admin.router.js';
 import adminCartelasRouter from './routes/admin/cartelas.admin.router.js';
+import broadcastTargetsRouter from './routes/admin/broadcast-targets.admin.router.js';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
@@ -99,6 +100,7 @@ app.use('/api/admin', jwtAdminMiddleware, adminConfigRouter);
 app.use('/api/agent', agentRouter);
 app.use('/api/admin/promotions', jwtAdminMiddleware, promotionsAdminRouter);
 app.use('/api/admin/cartelas', jwtAdminMiddleware, adminCartelasRouter);
+app.use('/api/admin/broadcast-targets', jwtAdminMiddleware, broadcastTargetsRouter);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {

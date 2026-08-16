@@ -92,15 +92,15 @@ router.post('/:id/duplicate', async (req: Request, res: Response): Promise<void>
   }
 });
 
-// POST /:id/send-now — immediately send to given channel IDs
+// POST /:id/send-now — immediately send to selected targets
 router.post('/:id/send-now', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { channel_ids } = req.body as { channel_ids: string[] };
-    if (!Array.isArray(channel_ids) || channel_ids.length === 0) {
-      res.status(400).json({ error: 'CHANNEL_IDS_REQUIRED', message: 'Provide at least one channel_id' });
+    const { targets } = req.body as { targets: import('../../services/promotion-scheduler.service.js').SendTarget[] };
+    if (!Array.isArray(targets) || targets.length === 0) {
+      res.status(400).json({ error: 'TARGETS_REQUIRED', message: 'Provide at least one target' });
       return;
     }
-    const result = await sendPromotionNow(req.params['id'] as string, channel_ids);
+    const result = await sendPromotionNow(req.params['id'] as string, targets);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: 'SEND_FAILED', message: (err as Error).message });

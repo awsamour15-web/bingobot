@@ -313,6 +313,18 @@ model PendingWithdrawal {
   @@map("pending_withdrawals")
 }
 
+model BroadcastTarget {
+  id         String   @id @default(uuid())
+  name       String
+  type       String   // 'channel' | 'bot_broadcast'
+  channel_id String?  // Telegram channel/group ID (null for bot_broadcast)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  @@index([is_active])
+  @@map("broadcast_targets")
+}
+
 model Promotion {
   id              String                @id @default(uuid())
   title           String

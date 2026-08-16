@@ -330,6 +330,35 @@ export function rejectAgentCommissionWithdrawal(id: string): Promise<{ success: 
 }
 
 // ---------------------------------------------------------------------------
+// Broadcast Targets
+// ---------------------------------------------------------------------------
+
+export interface BroadcastTarget {
+  id: string;
+  name: string;
+  type: 'channel' | 'bot_broadcast';
+  channel_id: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export function listBroadcastTargets(): Promise<BroadcastTarget[]> {
+  return adminApiRequest('GET', '/api/admin/broadcast-targets');
+}
+
+export function createBroadcastTarget(data: { name: string; type: 'channel' | 'bot_broadcast'; channel_id?: string }): Promise<BroadcastTarget> {
+  return adminApiRequest('POST', '/api/admin/broadcast-targets', data);
+}
+
+export function updateBroadcastTarget(id: string, data: Partial<{ name: string; channel_id: string; is_active: boolean }>): Promise<BroadcastTarget> {
+  return adminApiRequest('PATCH', `/api/admin/broadcast-targets/${id}`, data);
+}
+
+export function deleteBroadcastTarget(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest('DELETE', `/api/admin/broadcast-targets/${id}`);
+}
+
+// ---------------------------------------------------------------------------
 // Promotions
 // ---------------------------------------------------------------------------
 
@@ -414,8 +443,8 @@ export function duplicatePromotion(id: string): Promise<Promotion> {
   return adminApiRequest('POST', `/api/admin/promotions/${id}/duplicate`);
 }
 
-export function sendPromotionNow(id: string, channel_ids: string[]): Promise<{ sent: number; failed: number }> {
-  return adminApiRequest('POST', `/api/admin/promotions/${id}/send-now`, { channel_ids });
+export function sendPromotionNow(id: string, targets: BroadcastTarget[]): Promise<{ sent: number; failed: number }> {
+  return adminApiRequest('POST', `/api/admin/promotions/${id}/send-now`, { targets });
 }
 
 export function retryFailedDeliveries(id: string): Promise<{ sent: number; failed: number }> {
