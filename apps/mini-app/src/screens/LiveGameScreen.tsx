@@ -847,17 +847,17 @@ export default function LiveGameScreen() {
             color: '#f8fafc',
             padding: '10px',
           }}>
-            <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               }}>
                 <div style={{
-                  fontSize: 32, fontWeight: 900, lineHeight: 1,
-                  color: '#f7c84d', textShadow: '0 0 16px rgba(247,200,77,0.6)',
-                  marginBottom: 4,
+                  fontSize: 28, fontWeight: 900, lineHeight: 1,
+                  color: '#f7c84d', textShadow: '0 0 14px rgba(247,200,77,0.6)',
+                  marginBottom: 3,
                 }}>🏆 BINGO! 🏆</div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 12, color: '#f8fafc' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 11, color: '#f8fafc' }}>
                   <span>{wi.winnerCount} WINNER{wi.winnerCount !== 1 ? 'S' : ''}!</span>
                 </div>
               </div>
@@ -865,55 +865,56 @@ export default function LiveGameScreen() {
               {primaryWinner && (
                 <div style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 6, padding: '6px 8px', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.2))',
-                  border: '1px solid rgba(96,165,250,0.4)', borderRadius: 8,
+                  gap: 6, padding: '5px 8px', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.2))',
+                  border: '1px solid rgba(96,165,250,0.4)', borderRadius: 7,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{
-                      width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 13,
+                      width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 12,
                       color: '#fff',
                     }}>{(primaryWinner.username ?? '?')[0]?.toUpperCase()}</div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>{primaryWinner.username}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}>{primaryWinner.username}</div>
                       <div style={{ fontSize: 9, color: '#dbeafe' }}>Cartela #{primaryWinner.cartelaNumber}</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 18 }}>🏆</div>
+                  <div style={{ fontSize: 16 }}>🏆</div>
                 </div>
               )}
 
               <div style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '5px 8px', background: 'rgba(14, 50, 38, 0.7)',
-                border: '1.5px solid rgba(52,211,153,0.7)', borderRadius: 8,
+                padding: '4px 8px', background: 'rgba(14, 50, 38, 0.7)',
+                border: '1.5px solid rgba(52,211,153,0.7)', borderRadius: 7,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 10, letterSpacing: 0.3, color: '#4ade80' }}>
-                  <span style={{ fontSize: 12 }}>🏆</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 9, letterSpacing: 0.3, color: '#4ade80' }}>
+                  <span style={{ fontSize: 11 }}>🏆</span>
                   <span>WINNING CARTELA</span>
                 </div>
                 <div style={{
-                  minWidth: 36, padding: '2px 6px', borderRadius: 5,
+                  minWidth: 34, padding: '2px 5px', borderRadius: 4,
                   background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.2)',
-                  color: '#fcd34d', fontWeight: 900, textAlign: 'center', fontSize: 10,
+                  color: '#fcd34d', fontWeight: 900, textAlign: 'center', fontSize: 9,
                 }}>#{winCartelaNum}</div>
               </div>
 
               {winGrid.length > 0 && (
                 <div style={{
-                  width: '100%', background: 'linear-gradient(180deg, rgba(17,25,44,0.9), rgba(12,20,34,0.9))',
-                  border: '1.5px solid rgba(52,211,153,0.6)', borderRadius: 10, overflow: 'hidden',
+                  width: '100%', maxWidth: 280, margin: '0 auto',
+                  background: 'linear-gradient(180deg, rgba(17,25,44,0.9), rgba(12,20,34,0.9))',
+                  border: '1.5px solid rgba(52,211,153,0.6)', borderRadius: 8, overflow: 'hidden',
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '4px 4px 1px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '3px 3px 0.5px' }}>
                     {COLS.map((col, ci) => (
                       <div key={col} style={{
-                        textAlign: 'center', padding: '2px 0', borderRadius: 3,
-                        fontWeight: 800, fontSize: 10, background: HDR[ci], color: '#fff',
+                        textAlign: 'center', padding: '1px 0', borderRadius: 2,
+                        fontWeight: 700, fontSize: 8, background: HDR[ci], color: '#fff',
                       }}>{col}</div>
                     ))}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '1px 4px 4px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '0.5px 3px 3px' }}>
                     {winGrid.map((val, idx) => {
                       const isFree = idx === 12;
                       const isM = isFree || (val !== 0 && marked.has(val));
@@ -921,16 +922,16 @@ export default function LiveGameScreen() {
                       return (
                         <div key={idx} style={{
                           aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderRadius: 4, fontWeight: isW ? 800 : isM ? 600 : 500,
+                          borderRadius: 3, fontWeight: isW ? 700 : isM ? 600 : 500,
                           color: isW || isM ? '#fff' : '#52657d',
                           background: isW
                             ? 'linear-gradient(135deg, #22c55e, #16a34a)'
                             : isM
                               ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
                               : 'rgba(255,255,255,0.04)',
-                          border: isW ? '1.5px solid #86efac' : '1px solid rgba(255,255,255,0.05)',
-                          boxShadow: isW ? '0 0 8px rgba(34,197,94,0.25)' : 'none',
-                          fontSize: 10,
+                          border: isW ? '1px solid #86efac' : '0.5px solid rgba(255,255,255,0.05)',
+                          boxShadow: isW ? '0 0 6px rgba(34,197,94,0.2)' : 'none',
+                          fontSize: 8,
                         }}>
                           {isFree ? '★' : val}
                         </div>
@@ -943,25 +944,25 @@ export default function LiveGameScreen() {
               {game.derash > 0 && (
                 <div style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 5, padding: '6px 10px',
+                  gap: 4, padding: '5px 8px',
                   background: 'rgba(251,146,60,0.15)', border: '1.5px solid rgba(251,146,60,0.7)',
-                  borderRadius: 8,
+                  borderRadius: 7,
                 }}>
-                  <span style={{ fontSize: 14 }}>💰</span>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: '#fbbf24', letterSpacing: 0.5 }}>{Math.round(game.derash)}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b' }}>Birr</span>
+                  <span style={{ fontSize: 13 }}>💰</span>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: '#fbbf24', letterSpacing: 0.5 }}>{Math.round(game.derash)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>Birr</span>
                 </div>
               )}
 
               {nextCountdown !== null && (
                 <div style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 5, padding: '6px 8px', borderRadius: 8,
+                  gap: 4, padding: '5px 8px', borderRadius: 7,
                   background: 'linear-gradient(135deg, rgba(30,64,175,0.3), rgba(59,130,246,0.15))',
-                  border: '1.5px solid rgba(96,165,250,0.6)', color: '#dbeafe', fontSize: 11, fontWeight: 700,
+                  border: '1.5px solid rgba(96,165,250,0.6)', color: '#dbeafe', fontSize: 10, fontWeight: 700,
                 }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px rgba(74,222,128,0.7)' }} />
-                  <span>Next game in</span>
+                  <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 5px rgba(74,222,128,0.7)' }} />
+                  <span>Next in</span>
                   <span style={{ color: '#f8fafc', fontWeight: 900 }}>{nextCountdown}s</span>
                 </div>
               )}
