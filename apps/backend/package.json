@@ -11,7 +11,8 @@
     "test": "vitest --run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "verify:bot": "node verify-bot-config.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

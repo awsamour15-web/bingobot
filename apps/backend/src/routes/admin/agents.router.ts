@@ -114,9 +114,19 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  // Validate BOT_USERNAME is configured
+  const botUsername = process.env['BOT_USERNAME'];
+  if (!botUsername) {
+    console.error('[Admin Agents] BOT_USERNAME not configured - cannot create agent');
+    res.status(500).json({ 
+      error: 'CONFIGURATION_ERROR', 
+      message: 'BOT_USERNAME is not configured. Please set it in your .env file.' 
+    });
+    return;
+  }
+
   try {
     const agent = await AgentService.createAgent(telegramUsername);
-    const botUsername = process.env['BOT_USERNAME'] ?? '';
     
     res.status(201).json({
       agent: {
