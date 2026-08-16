@@ -102,7 +102,7 @@ export default function AgentDashboardScreen() {
       setDashboard((prev) => prev ? {
         ...prev,
         commissionBalance: Number(formatMoney((prev.commissionBalance ?? 0) - amount)),
-        withdrawalRequests: [response.withdrawal, ...prev.withdrawalRequests],
+        withdrawalRequests: [response.withdrawal, ...(prev.withdrawalRequests ?? [])],
       } : prev);
       setWithdrawAmount('');
       setWithdrawPhone('');
@@ -214,10 +214,10 @@ export default function AgentDashboardScreen() {
 
         <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 22, overflow: 'hidden', boxShadow: C.shadow }}>
           <div style={{ padding: '16px 18px', borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ fontWeight: 800, fontSize: 16 }}>👥 Referred players ({dashboard.players.length})</div>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>👥 Referred players ({(dashboard.players ?? []).length})</div>
           </div>
 
-          {dashboard.players.length === 0 ? (
+          {(dashboard.players ?? []).length === 0 ? (
             <div style={{ padding: '32px 18px', textAlign: 'center', color: C.muted }}>
               <div style={{ fontSize: 42, marginBottom: 12 }}>📊</div>
               <div style={{ fontSize: 14, fontWeight: 700 }}>No players yet</div>
@@ -232,7 +232,7 @@ export default function AgentDashboardScreen() {
                 <div style={{ textAlign: 'right' }}>Joined</div>
               </div>
 
-              {dashboard.players.map((player, index) => (
+              {(dashboard.players ?? []).map((player, index) => (
                 <div key={player.playerId} style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 1fr', gap: 12, padding: '14px 18px', borderTop: index === 0 ? 'none' : `1px solid ${C.border}` }}>
                   <div style={{ fontWeight: 700, color: C.text }}>@{player.username}</div>
                   <div style={{ textAlign: 'right', color: C.blue, fontWeight: 700 }}>{formatMoney(player.depositBalance ?? 0)}</div>
@@ -244,13 +244,13 @@ export default function AgentDashboardScreen() {
           )}
         </div>
 
-        {dashboard.withdrawalRequests.length > 0 && (
+        {(dashboard.withdrawalRequests ?? []).length > 0 && (
           <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 22, marginTop: 16, overflow: 'hidden', boxShadow: C.shadow }}>
             <div style={{ padding: '16px 18px', borderBottom: `1px solid ${C.border}` }}>
               <div style={{ fontWeight: 800, fontSize: 16 }}>📦 Withdrawal requests</div>
             </div>
             <div>
-              {dashboard.withdrawalRequests.map((request) => (
+              {(dashboard.withdrawalRequests ?? []).map((request) => (
                 <div key={request.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, padding: '14px 18px', borderBottom: `1px solid ${C.border}`, alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: 700, color: C.text }}>ETB {formatMoney(request.amount ?? 0)}</div>
