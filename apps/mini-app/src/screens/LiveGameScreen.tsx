@@ -837,7 +837,7 @@ export default function LiveGameScreen() {
         const shown = wi.winners.slice(0, 3);
         const extra = wi.winners.length - shown.length;
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'linear-gradient(135deg, rgba(10,14,26,0.98) 0%, rgba(20,30,50,0.98) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '24px 18px 36px' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'linear-gradient(135deg, rgba(10,14,26,0.98) 0%, rgba(20,30,50,0.98) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', overflowY: 'auto', padding: '24px 16px 40px', boxSizing: 'border-box' }}>
             {/* Crown Icon with animation */}
             <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 50, marginBottom: 16, boxShadow: '0 0 40px rgba(245,158,11,0.8), 0 0 80px rgba(245,158,11,0.4)', animation: 'winnerPulse 0.8s ease-in-out infinite', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)', animation: 'shine 2s infinite' }} />
@@ -849,7 +849,7 @@ export default function LiveGameScreen() {
             <div style={{ fontSize: 16, color: '#94a3b8', marginBottom: 28, fontWeight: 600, letterSpacing: 1 }}>🎉 {wi.winnerCount} WINNER{wi.winnerCount !== 1 ? 'S' : ''}!</div>
             
             {/* Winners List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 380, marginBottom: 28, animation: 'slideIn 0.6s ease-out' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 400, marginBottom: 28, animation: 'slideIn 0.6s ease-out' }}>
               {shown.map((w, idx) => (
                 <div key={w.playerId} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5080 100%)', border: '2px solid #3b82f6', borderRadius: 16, padding: '14px 16px', animation: `slideIn 0.6s ease-out ${idx * 0.1}s backwards`, position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.1), transparent)', animation: 'shine 2s infinite', pointerEvents: 'none' }} />
@@ -870,24 +870,41 @@ export default function LiveGameScreen() {
             
             {/* Winning Cartela Card */}
             {winGrid.length > 0 && (
-              <div style={{ background: 'linear-gradient(135deg, #0d1a2d 0%, #132033 100%)', border: '2px solid #22c55e', borderRadius: 16, overflow: 'hidden', width: '100%', maxWidth: 'min(92vw, 380px)', marginBottom: 24, boxShadow: '0 0 24px rgba(34,197,94,0.3)', animation: 'slideIn 0.7s ease-out 0.2s backwards' }}>
-                <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #0d1a2d 0%, #0f2229 100%)', borderBottom: '2px solid #22c55e', display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0d1a2d 0%, #132033 100%)', border: '2px solid #22c55e', borderRadius: 16, overflow: 'hidden', width: '100%', maxWidth: 400, marginBottom: 24, boxShadow: '0 0 24px rgba(34,197,94,0.3)', animation: 'slideIn 0.7s ease-out 0.2s backwards', boxSizing: 'border-box' }}>
+                {/* Header */}
+                <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #0d1a2d 0%, #0f2229 100%)', borderBottom: '2px solid #22c55e', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ fontSize: 16 }}>🏆</div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: '#22c55e', letterSpacing: 0.5 }}>WINNING CARTELA</div>
                   <div style={{ marginLeft: 'auto', fontSize: 14, fontWeight: 900, color: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.15)', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(251,191,36,0.3)' }}>#{winCartelaNum}</div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '6px 6px 2px' }}>
+                {/* BINGO headers */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3, padding: '8px 8px 3px' }}>
                   {COLS.map((c, ci) => (
-                    <div key={c} style={{ textAlign: 'center', padding: '5px 0', borderRadius: 4, fontWeight: 900, fontSize: 12, background: HDR[ci], color: '#fff', letterSpacing: 0.5 }}>{c}</div>
+                    <div key={c} style={{ textAlign: 'center', padding: '7px 0', borderRadius: 6, fontWeight: 900, fontSize: 14, background: HDR[ci], color: '#fff', letterSpacing: 0.5 }}>{c}</div>
                   ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '3px 6px 7px' }}>
+                {/* 5×5 grid — fills full width, no minHeight that can clip */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3, padding: '3px 8px 10px' }}>
                   {winGrid.map((val, idx) => {
                     const isFree = idx === 12;
                     const isM = isFree || (val !== 0 && marked.has(val));
                     const isW = winCells.has(idx);
                     return (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', minHeight: 34, borderRadius: 6, fontSize: 13, fontWeight: isW ? 900 : isM ? 800 : 500, background: isW ? '#22c55e' : isM ? '#3b82f6dd' : 'rgba(255,255,255,0.05)', color: isW || isM ? '#fff' : '#4a6080', boxShadow: isW ? '0 0 12px rgba(34,197,94,0.6)' : 'none', border: isW ? '2px solid #16a34a' : 'none' }}>
+                      <div key={idx} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        aspectRatio: '1',
+                        borderRadius: 8,
+                        fontSize: 'clamp(11px, 3.5vw, 16px)',
+                        fontWeight: isW ? 900 : isM ? 800 : 500,
+                        background: isW ? 'linear-gradient(135deg, #22c55e, #16a34a)' : isM ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'rgba(255,255,255,0.05)',
+                        color: isW || isM ? '#fff' : '#4a6080',
+                        boxShadow: isW ? '0 0 14px rgba(34,197,94,0.7), inset 0 1px 0 rgba(255,255,255,0.25)' : isM ? '0 0 8px rgba(59,130,246,0.4)' : 'none',
+                        border: isW ? '2px solid #4ade80' : isM ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                        transform: isW ? 'scale(1.05)' : 'none',
+                        transition: 'all 0.15s ease',
+                        minWidth: 0,
+                        width: '100%',
+                      }}>
                         {isFree ? '★' : val}
                       </div>
                     );
@@ -898,7 +915,7 @@ export default function LiveGameScreen() {
             
             {/* Prize Amount */}
             {game.derash > 0 && (
-              <div style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.15) 0%, rgba(245,158,11,0.15) 100%)', border: '2px solid #f97316', borderRadius: 14, padding: '14px 24px', fontSize: 16, fontWeight: 800, color: '#fbbf24', marginBottom: 20, textAlign: 'center', boxShadow: '0 0 24px rgba(245,158,11,0.2)', animation: 'slideIn 0.7s ease-out 0.3s backwards', width: '100%', maxWidth: 380 }}>
+              <div style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.15) 0%, rgba(245,158,11,0.15) 100%)', border: '2px solid #f97316', borderRadius: 14, padding: '14px 24px', fontSize: 16, fontWeight: 800, color: '#fbbf24', marginBottom: 20, textAlign: 'center', boxShadow: '0 0 24px rgba(245,158,11,0.2)', animation: 'slideIn 0.7s ease-out 0.3s backwards', width: '100%', maxWidth: 400 }}>
                 💰 <span style={{ fontSize: 24, fontWeight: 900, color: '#fbbf24' }}>{Math.round(game.derash)}</span> Birr
               </div>
             )}
