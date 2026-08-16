@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @fidel/shared build && prisma generate && tsc",
+    "build": "pnpm --filter @fidel/shared build && prisma migrate deploy && prisma generate && tsc",
     "type-check": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
-    "start": "prisma migrate deploy && node dist/index.js",
+    "start": "node dist/index.js",
     "test": "vitest --run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
