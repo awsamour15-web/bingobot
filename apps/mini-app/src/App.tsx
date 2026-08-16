@@ -14,18 +14,9 @@ const RankScreen = lazy(() => import('./screens/RankScreen'));
 
 import { socket } from './lib/socket';
 
-// Loading fallback screen
+// Minimal blank fallback — no spinner, no emoji, just background
 function LoadingScreen() {
-  return (
-    <div style={{
-      minHeight: '100dvh', background: '#0a0e1a', color: '#64748b',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', padding: 24, fontFamily: 'inherit',
-    }}>
-      <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
-      <div>Loading...</div>
-    </div>
-  );
+  return <div style={{ minHeight: '100dvh', background: '#0a0e1a' }} />;
 }
 
 // ─── Error boundary ───────────────────────────────────────────────────────────

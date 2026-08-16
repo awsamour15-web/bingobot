@@ -635,11 +635,7 @@ export default function CartelaScreen() {
   const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances, availability]);
 
   if (loading) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-      <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.15) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, animation: 'spin 1.5s linear infinite', border: '2px solid rgba(16,185,129,0.3)', boxShadow: '0 0 20px rgba(16,185,129,0.2)' }}>🎲</div>
-      <div style={{ color: '#cbd5e1', fontSize: 15, fontWeight: 600 }}>Loading cartelas…</div>
-      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-    </div>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #0a0e1a 100%)' }} />
   );
   if (!round || !availability) return (
     <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }}>

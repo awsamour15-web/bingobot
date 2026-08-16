@@ -186,21 +186,11 @@ export default function RankScreen() {
   return (
     <div style={{ background: C.bg, minHeight: '100dvh', paddingBottom: 90 }}>
       <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        .rank-shimmer {
-          background: linear-gradient(90deg, #0d1b2e 25%, #112240 50%, #0d1b2e 75%);
-          background-size: 200% auto;
-          animation: shimmer 1.4s linear infinite;
-          border-radius: 12px;
-        }
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(14px); }
+          from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .rank-row-enter { animation: fadeInUp 0.35s ease forwards; }
+        .rank-row-enter { animation: fadeInUp 0.2s ease forwards; }
       `}</style>
 
       {/* ── Header ── */}
@@ -227,14 +217,8 @@ export default function RankScreen() {
         </div>
       </div>
 
-      {/* ── Loading skeleton ── */}
-      {loading && (
-        <div style={{ padding: '24px 16px' }}>
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="rank-shimmer" style={{ height: 62, marginBottom: 8, opacity: 1 - i * 0.12 }} />
-          ))}
-        </div>
-      )}
+      {/* ── Loading ── */}
+      {loading && <div style={{ padding: 24 }} />}
 
       {/* ── Error ── */}
       {error && (
@@ -305,7 +289,7 @@ export default function RankScreen() {
                 Rankings
               </div>
               {rest.map((entry, i) => (
-                <div key={entry.playerId} className="rank-row-enter" style={{ animationDelay: `${i * 40}ms` }}>
+                <div key={entry.playerId} className="rank-row-enter">
                   <RankRow entry={entry} idx={i} />
                 </div>
               ))}

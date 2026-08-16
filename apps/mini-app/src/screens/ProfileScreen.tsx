@@ -45,11 +45,7 @@ export default function ProfileScreen() {
     setSoundOn(v => { const n = !v; localStorage.setItem('soundOn', String(n)); return n; });
   }, []);
 
-  if (loading) return (
-    <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>
-      Loading…
-    </div>
-  );
+  if (loading) return <div style={{ height: '60vh', background: C.bg }} />;
   if (error || !profile) return (
     <div style={{ padding: 24, textAlign: 'center', color: '#f87171' }}>{error ?? 'Failed to load'}</div>
   );

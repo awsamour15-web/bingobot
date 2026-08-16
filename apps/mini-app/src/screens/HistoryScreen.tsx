@@ -44,7 +44,7 @@ export default function HistoryScreen() {
         <div style={{ fontSize: 22, fontWeight: 900, color: C.text }}>Game History</div>
       </div>
 
-      {loading && <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>Loading…</div>}
+      {loading && <div style={{ padding: 40 }} />}
       {error && <div style={{ padding: 24, textAlign: 'center', color: C.red }}>{error}</div>}
 
       {!loading && !error && data?.items.length === 0 && (

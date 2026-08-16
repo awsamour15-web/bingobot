@@ -28,7 +28,7 @@ export default function HistoryDetailScreen() {
   }, [roundId]);
 
   if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>Loading…</div>;
+    return <div style={{ minHeight: '100dvh', background: '#0a0e1a' }} />;
   }
 
   if (error || !detail) {

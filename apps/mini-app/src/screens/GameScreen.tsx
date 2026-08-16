@@ -160,8 +160,8 @@ export default function GameScreen() {
         </div>
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#475569', fontSize: 14 }}>
-            Loading games…
+          <div style={{ textAlign: 'center', padding: '48px 0', color: '#1e293b', fontSize: 14 }}>
+            &nbsp;
           </div>
         )}
 

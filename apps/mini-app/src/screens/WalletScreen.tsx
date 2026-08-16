@@ -131,7 +131,7 @@ export default function WalletScreen() {
     finally { setWithdrawLoading(false); }
   }, [withdrawAmount, withdrawPhone, profile]);
 
-  if (loading) return <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}>Loading…</div>;
+  if (loading) return <div style={{ height: '60vh', background: C.bg }} />;
   if (error || !profile) return <div style={{ padding: 24, textAlign: 'center', color: C.red }}>{error ?? 'Failed to load'}</div>;
 
   const mainBal = Number(profile.mainWallet?.balance ?? 0);
@@ -262,7 +262,7 @@ export default function WalletScreen() {
 
       {tab === 'transactions' && (
         <div style={{ padding: '12px 0' }}>
-          {txLoading && <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>Loading…</div>}
+          {txLoading && <div style={{ padding: 32 }} />}
 
           {!txLoading && txData?.items.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>No transactions yet.</div>
