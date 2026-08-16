@@ -18,6 +18,7 @@ import historyRouter from './routes/history.router.js';
 import walletRouter from './routes/wallet.router.js';
 import referralRouter from './routes/referral.router.js';
 import systemRouter from './routes/system.router.js';
+import leaderboardRouter from './routes/leaderboard.router.js';
 import adminAuthRouter from './routes/admin/auth.admin.router.js';
 import adminPlayersRouter from './routes/admin/players.admin.router.js';
 import adminRoundsRouter from './routes/admin/rounds.admin.router.js';
@@ -87,6 +88,7 @@ app.use('/api/history', historyRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/referral', referralRouter);
 app.use('/api/system', systemRouter);
+app.use('/api/leaderboard', leaderboardRouter);
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use('/api/admin/auth', adminAuthRouter);

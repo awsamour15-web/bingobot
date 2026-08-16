@@ -210,11 +210,13 @@ router.post('/deposit/manual', async (req: Request, res: Response): Promise<void
     return;
   }
 
+  const bonusMsg = result.bonusAmount ? ` +${result.bonusAmount} ETB deposit bonus added!` : '';
   res.status(200).json({
     success: true,
     amount: result.amount,
+    bonusAmount: result.bonusAmount ?? 0,
     txNumber: validation.txNumber,
-    message: `✅ Your deposit of ${result.amount} ETB is approved.`,
+    message: `✅ Your deposit of ${result.amount} ETB is approved.${bonusMsg}`,
   });
 });
 

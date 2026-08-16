@@ -529,7 +529,7 @@ async function ocrImage(imageBuffer: Buffer): Promise<string | null> {
 export async function processDepositClaim(
   playerId: string,
   txNumber: string,
-): Promise<{ success: true; amount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
+): Promise<{ success: true; amount: number; bonusAmount?: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
   const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
 
   if (!deposit) return { success: false, reason: 'NOT_FOUND' };
@@ -537,6 +537,22 @@ export async function processDepositClaim(
   if (deposit.status === 'cancelled') return { success: false, reason: 'CANCELLED' };
 
   const amount = Number(deposit.amount);
+
+  // ── Deposit bonus check (runs outside the transaction to avoid extra latency) ──
+  const bonusConfigs = await prisma.config.findMany({
+    where: { key: { in: ['deposit_bonus_pct', 'deposit_bonus_start', 'deposit_bonus_end', 'deposit_bonus_wallet'] } },
+  });
+  const cfgMap = Object.fromEntries(bonusConfigs.map((c) => [c.key, c.value]));
+  const bonusPct = cfgMap['deposit_bonus_pct'] ? parseFloat(cfgMap['deposit_bonus_pct']) : 0;
+  const bonusWallet = (cfgMap['deposit_bonus_wallet'] === 'main' ? 'main' : 'play') as 'main' | 'play';
+  const now = new Date();
+  const bonusStart = cfgMap['deposit_bonus_start'] ? new Date(cfgMap['deposit_bonus_start']) : null;
+  const bonusEnd = cfgMap['deposit_bonus_end'] ? new Date(cfgMap['deposit_bonus_end']) : null;
+  const bonusActive =
+    bonusPct > 0 &&
+    (!bonusStart || now >= bonusStart) &&
+    (!bonusEnd || now <= bonusEnd);
+  const bonusAmount = bonusActive ? Math.round((amount * bonusPct) / 100 * 100) / 100 : 0;
 
   await prisma.$transaction(async (tx) => {
     await tx.pendingDeposit.update({
@@ -557,6 +573,26 @@ export async function processDepositClaim(
       data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
     });
 
+    // ── Apply deposit bonus ──────────────────────────────────────────────────
+    if (bonusAmount > 0) {
+      const bonusWalletRecord = await tx.wallet.findUniqueOrThrow({
+        where: { player_id_type: { player_id: playerId, type: bonusWallet } },
+      });
+      await tx.wallet.update({
+        where: { id: bonusWalletRecord.id },
+        data: { balance: { increment: bonusAmount } },
+      });
+      await tx.transaction.create({
+        data: {
+          wallet_id: bonusWalletRecord.id,
+          type: 'admin_credit',
+          amount: bonusAmount,
+          reference_id: txNumber,
+          note: `Deposit bonus ${bonusPct}% on ${amount} ETB`,
+        },
+      });
+    }
+
     // Credit agent commission if player was referred by an active agent
     const playerRecord = await tx.player.findUnique({
       where: { id: playerId },
@@ -573,7 +609,7 @@ export async function processDepositClaim(
     }
   });
 
-  return { success: true, amount };
+  return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : undefined };
 }
 
 // ─── Channel membership gate helpers ─────────────────────────────────────────

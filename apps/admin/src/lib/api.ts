@@ -246,6 +246,7 @@ export interface AgentSummary {
   id: string;
   telegramUsername: string;
   agentInviteLink: string;
+  playerInviteLink: string;
   totalPlayersInvited: number;
   totalCommission: number;
   isActive: boolean;
@@ -265,7 +266,7 @@ export interface AgentDetail extends AgentSummary {
   players: AgentPlayerRow[];
 }
 
-export function createAgent(telegramUsername: string): Promise<{ agent: AgentSummary & { agentInviteLink: string } }> {
+export function createAgent(telegramUsername: string): Promise<{ agent: AgentSummary }> {
   return adminApiRequest('POST', '/api/admin/agents', { telegramUsername });
 }
 

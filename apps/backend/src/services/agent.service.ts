@@ -38,6 +38,7 @@ export interface AgentSummary {
   id: string;
   telegramUsername: string;
   agentInviteLink: string;
+  playerInviteLink: string;
   totalPlayersInvited: number;
   totalCommission: number;
   isActive: boolean;
@@ -56,7 +57,8 @@ export interface AgentDetail extends AgentSummary {
  * Format: https://t.me/<BOT_USERNAME>?start=agent_<agentId>
  */
 export function agentInviteLink(agentId: string): string {
-  const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
+  const botUsername = process.env.BOT_USERNAME;
+  if (!botUsername) throw new Error('BOT_USERNAME is not configured');
   return `https://t.me/${botUsername}?start=agent_${agentId}`;
 }
 
@@ -65,10 +67,8 @@ export function agentInviteLink(agentId: string): string {
  * Format: https://t.me/<BOT_USERNAME>?start=ref_agent_<agentId>
  */
 export function playerInviteLink(agentId: string): string {
-  const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
-  if (!botUsername) {
-    console.error('[Agent Service] BOT_USERNAME is not configured in environment variables');
-  }
+  const botUsername = process.env.BOT_USERNAME;
+  if (!botUsername) throw new Error('BOT_USERNAME is not configured');
   return `https://t.me/${botUsername}?start=ref_agent_${agentId}`;
 }
 
@@ -479,6 +479,7 @@ export const AgentService = {
         id: a.id,
         telegramUsername: a.telegram_username,
         agentInviteLink: agentInviteLink(a.id),
+        playerInviteLink: playerInviteLink(a.id),
         totalPlayersInvited: a._count.players,
         totalCommission: Number(totalCommission),
         isActive: a.is_active,

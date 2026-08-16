@@ -455,3 +455,23 @@ export function requestAgentWithdrawal(amount: number, phone: string): Promise<{
     { amount, phone },
   );
 }
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  rank: number;
+  playerId: string;
+  username: string;
+  wins: number;
+  totalPrize: number;
+  isCurrentPlayer: boolean;
+}
+
+export interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[];
+  currentPlayerRank: { rank: number; wins: number; totalPrize: number } | null;
+}
+
+export function getLeaderboard(): Promise<LeaderboardResponse> {
+  return apiRequest<LeaderboardResponse>('GET', '/api/leaderboard');
+}

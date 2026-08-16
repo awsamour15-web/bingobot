@@ -123,6 +123,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         id: agent.id,
         telegramUsername: agent.telegram_username,
         agentInviteLink: `https://t.me/${botUsername}?start=agent_${agent.id}`,
+        playerInviteLink: `https://t.me/${botUsername}?start=ref_agent_${agent.id}`,
         isActive: agent.is_active,
         createdAt: agent.created_at.toISOString(),
       },
