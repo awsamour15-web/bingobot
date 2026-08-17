@@ -10,6 +10,173 @@ import {
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, selectCss,
 } from '../components/ui';
 
+// ── Channel Settings ───────────────────────────────────────────────────────────
+function ChannelSettingsSection() {
+  const [channelId, setChannelId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true); setError(null);
+    getConfig()
+      .then((data) => {
+        const channelConfig = data.find(e => e.key === 'required_channel');
+        setChannelId(channelConfig?.value ?? '');
+        setLoading(false);
+      })
+      .catch((e: Error) => { setError(e.message ?? 'Failed to load'); setLoading(false); });
+  }, []);
+
+  async function handleSave() {
+    setFeedback(null);
+    
+    // Validate format
+    const trimmed = channelId.trim();
+    if (trimmed && !trimmed.startsWith('@') && !trimmed.startsWith('-100')) {
+      setFeedback({ type: 'error', msg: 'Channel must start with @ (public) or -100 (private)' });
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      await updateConfig('required_channel', trimmed);
+      setFeedback({ type: 'success', msg: trimmed ? 'Channel gate enabled! Users must join to use bot.' : 'Channel gate disabled.' });
+    } catch (e: unknown) {
+      setFeedback({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isEnabled = channelId.trim() !== '';
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader 
+        title="📢 Channel Membership Gate" 
+        subtitle="Require all bot users to join a Telegram channel"
+      />
+      
+      <Alert type="info">
+        When enabled, users must join the specified channel before using bot features.
+        <br />
+        <strong>Important:</strong> Make sure your bot (@f_bingobot) is an admin in the channel!
+      </Alert>
+
+      {error && <Alert type="error">{error}</Alert>}
+      {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
+      
+      {loading ? (
+        <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>
+      ) : (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12,
+            marginBottom: 16,
+            padding: 12,
+            background: isEnabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+            borderRadius: 8,
+            border: `1px solid ${isEnabled ? 'rgba(34, 197, 94, 0.3)' : 'rgba(100, 116, 139, 0.2)'}`
+          }}>
+            <div style={{ 
+              fontSize: 24, 
+              width: 40, 
+              height: 40, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              borderRadius: 8,
+              background: isEnabled ? 'rgba(34, 197, 94, 0.15)' : 'rgba(100, 116, 139, 0.15)'
+            }}>
+              {isEnabled ? '✅' : '⚠️'}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>
+                Status: {isEnabled ? 'Enabled' : 'Disabled'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
+                {isEnabled ? `Users must join: ${channelId}` : 'Channel gate is currently disabled'}
+              </div>
+            </div>
+          </div>
+
+          <Field label="Channel ID or Username">
+            <input
+              style={{ ...inputCss, fontFamily: 'monospace' }}
+              type="text"
+              placeholder="@YourChannel or -1001234567890"
+              value={channelId}
+              onChange={(e) => setChannelId(e.target.value)}
+              disabled={saving}
+            />
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 6 }}>
+              • Public channel: <code style={{ background: 'var(--c-bg-secondary)', padding: '2px 6px', borderRadius: 4 }}>@YourChannelUsername</code>
+              <br />
+              • Private channel: <code style={{ background: 'var(--c-bg-secondary)', padding: '2px 6px', borderRadius: 4 }}>-1001234567890</code> (numeric ID)
+              <br />
+              • Leave empty to disable the gate
+            </div>
+          </Field>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <Btn onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Channel Settings'}
+            </Btn>
+            {isEnabled && (
+              <Btn 
+                variant="danger" 
+                onClick={() => { setChannelId(''); setFeedback(null); }}
+                disabled={saving}
+              >
+                Clear (Disable Gate)
+              </Btn>
+            )}
+          </div>
+
+          <div style={{ 
+            marginTop: 20, 
+            padding: 16, 
+            background: 'rgba(59, 130, 246, 0.08)', 
+            borderRadius: 8,
+            border: '1px solid rgba(59, 130, 246, 0.2)'
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10 }}>
+              📖 Setup Instructions
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.6 }}>
+              <strong>1. Get your channel ID:</strong>
+              <br />
+              • For public channels: Use @username format (e.g., @FidelBingo)
+              <br />
+              • For private channels: Add @getmyid_bot to your channel, forward a message to it to get the ID
+              <br /><br />
+              <strong>2. Make bot an admin:</strong>
+              <br />
+              • Go to your channel settings → Administrators
+              <br />
+              • Add @f_bingobot as administrator
+              <br />
+              • Grant "View Messages" permission (required to check membership)
+              <br /><br />
+              <strong>3. Save and test:</strong>
+              <br />
+              • Enter your channel ID above and click Save
+              <br />
+              • Test with a fresh account - they should see "Join Channel" prompt
+              <br />
+              • After joining, they can use the bot normally
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ── Config section ─────────────────────────────────────────────────────────────
 function ConfigSection() {
   const [entries, setEntries] = useState<ConfigEntry[]>([]);
@@ -352,6 +519,7 @@ export function SettingsPage() {
   return (
     <div className="fade-in">
       <PageHeader title="Settings" />
+      <ChannelSettingsSection />
       <DepositAccountsSection />
       <ConfigSection />
       <AdminAccountsSection />
