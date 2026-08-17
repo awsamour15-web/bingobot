@@ -80,13 +80,15 @@ const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, 
         fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: disabled && !taken ? 0.5 : 1,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: isPicked ? 'translateY(-2px) scale(1.08)' : taken ? 'scale(0.98)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
         lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '48px',
         boxShadow: shadow,
         position: 'relative',
         overflow: 'hidden',
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
       }}
     >
       {num}
@@ -508,16 +510,12 @@ export default function CartelaScreen() {
     }
 
     if (picksRef.current.has(num)) {
+      // INSTANT UI UPDATE: Update state immediately before API call
       const next = new Set(picksRef.current);
       next.delete(num);
       picksRef.current = next;
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-
-      // INSTANT FEEDBACK: Emit WebSocket event IMMEDIATELY for other players
-      if (roundId && socket.connected) {
-        socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
-      }
 
       // Update availability immediately - move cartela from taken to available
       setAvailability(prev => {
@@ -527,6 +525,11 @@ export default function CartelaScreen() {
           available: [...prev.available, num].sort((a, b) => a - b)
         };
       });
+
+      // INSTANT FEEDBACK: Emit WebSocket event IMMEDIATELY for other players
+      if (roundId && socket.connected) {
+        socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
+      }
 
       // Mark as recently released so stale server responses do not re-block the same cartela
       // while the release request is in flight.
@@ -570,38 +573,56 @@ export default function CartelaScreen() {
       return;
     }
     
-    // Reserve cartela via API first, then update UI if successful
+    // INSTANT UI UPDATE: Update picks immediately for instant feedback
+    const next = new Set([...picksRef.current, num]);
+    picksRef.current = next;
+    setPicks(next);
+    
+    // Update availability immediately - move cartela from available to taken
+    setAvailability(prev => {
+      if (!prev) return prev;
+      return {
+        taken: [...prev.taken, num],
+        available: prev.available.filter(n => n !== num)
+      };
+    });
+    
+    // Show grid instantly from local lookup
+    const localGrid = getLocalGrid(num);
+    if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
+    
+    // Reserve cartela via API
     if (roundId) {
-      // INSTANT FEEDBACK: Emit WebSocket reservation IMMEDIATELY before API call
+      // INSTANT FEEDBACK: Emit WebSocket reservation IMMEDIATELY
       if (socket.connected) {
         socket.emit('CARTELA_RESERVE', { roundId, cartelaNumbers: [num] });
       }
       
       reserveCartela(roundId, num)
         .then(() => {
-          // Only update UI if reservation was successful
-          const next = new Set([...picksRef.current, num]);
-          picksRef.current = next;
-          setPicks(next);
-          
-          // Update availability - move cartela from available to taken
-          setAvailability(prev => {
-            if (!prev) return prev;
-            return {
-              taken: [...prev.taken, num],
-              available: prev.available.filter(n => n !== num)
-            };
-          });
-          
-          // Show grid instantly from local lookup, then confirm/update from server cache
-          const localGrid = getLocalGrid(num);
-          if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
+          // Confirm with server-cached grid
           getCartelaGridCached(roundId, num)
             .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
             .catch(() => {});
         })
         .catch(err => {
-          // Reservation failed - undo WebSocket broadcast
+          // Reservation failed - rollback UI state
+          const rollback = new Set(picksRef.current);
+          rollback.delete(num);
+          picksRef.current = rollback;
+          setPicks(rollback);
+          
+          setAvailability(prev => {
+            if (!prev) return prev;
+            return {
+              taken: prev.taken.filter(n => n !== num),
+              available: [...prev.available, num].sort((a, b) => a - b)
+            };
+          });
+          
+          setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
+          
+          // Undo WebSocket broadcast
           if (socket.connected) {
             socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
           }
@@ -621,14 +642,6 @@ export default function CartelaScreen() {
             setAvailability(fresh);
           }).catch(() => {});
         });
-    } else {
-      // Fallback for when roundId is not available yet
-      const next = new Set([...picksRef.current, num]);
-      picksRef.current = next;
-      setPicks(next);
-      
-      const localGrid = getLocalGrid(num);
-      if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
     }
   }
 
