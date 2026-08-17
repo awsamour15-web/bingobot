@@ -187,14 +187,15 @@ export default function GameScreen() {
 
           return (
             <button key={round.id}
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 sessionStorage.setItem('selectedStake', String(round.stake));
+                sessionStorage.setItem('stakeSelectedForRound', round.id);
                 if (isPending) {
-                  sessionStorage.setItem('stakeSelectedForRound', round.id);
                   navigate(`/rounds/${round.id}/cartela`);
                 } else {
                   sessionStorage.setItem('selectedRoundId', round.id);
-                  sessionStorage.setItem('stakeSelectedForRound', round.id);
                   navigate(`/rounds/${round.id}/game`);
                 }
               }}
