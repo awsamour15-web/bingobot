@@ -42,6 +42,7 @@ export const MENU_BUTTONS = [
 export const AGENT_MENU_BUTTONS = [
   ['Play 🎮', 'Register 📝'],
   ['Check Balance 💰', 'Deposit 💰'],
+  ['Withdraw 🤑', 'Invite 🔗'],
   ['Agent Dashboard 📊', 'My Players 👥'],
   ['Agent Invite 🔗', 'Commission Balance 💵'],
   ['Contact Support 📞', 'Instruction 📖'],
@@ -878,11 +879,10 @@ if (BOT_TOKEN) {
         });
         if (linkedAgent) {
           const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${linkedAgent.id}`;
-          const dashboardUrl = `${MINI_APP_URL}agent/dashboard`;
           await ctx.reply(
             `👋 Welcome back, Agent!\n\n` +
             `Your player invite link:\n${playerInvite}`,
-            { reply_markup: buildAgentDashboardButton() },
+            { reply_markup: buildAgentMenu() },
           );
           return;
         }
