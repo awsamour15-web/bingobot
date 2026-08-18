@@ -659,6 +659,55 @@ if (BOT_TOKEN) {
   bot = new Bot(BOT_TOKEN);
   console.log('[Bot] ✅ Bot instance created successfully');
 
+  // ─── Admin Helper: Get file_id from media ───────────────────────────────────
+  // ADMIN_IDS: Replace with your actual Telegram user IDs
+  const ADMIN_IDS = [
+    123456789, // TODO: Replace with your admin Telegram ID
+    // Add more admin IDs here
+  ];
+
+  function isAdminUser(userId: number): boolean {
+    return ADMIN_IDS.includes(userId);
+  }
+
+  // Photo file_id helper
+  bot.on('message:photo', async (ctx) => {
+    if (!isAdminUser(ctx.from.id)) return;
+    
+    const photos = ctx.message.photo;
+    const largest = photos[photos.length - 1]; // Highest resolution
+    
+    await ctx.reply(
+      `📸 Photo File ID:\n\n\`${largest.file_id}\`\n\n` +
+      `✅ Copy this ID for promotions in admin panel`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  // Video file_id helper
+  bot.on('message:video', async (ctx) => {
+    if (!isAdminUser(ctx.from.id)) return;
+    
+    await ctx.reply(
+      `🎥 Video File ID:\n\n\`${ctx.message.video.file_id}\`\n\n` +
+      `✅ Copy this ID for promotions`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  // GIF file_id helper
+  bot.on('message:animation', async (ctx) => {
+    if (!isAdminUser(ctx.from.id)) return;
+    
+    await ctx.reply(
+      `🎬 GIF File ID:\n\n\`${ctx.message.animation.file_id}\`\n\n` +
+      `✅ Copy this ID for promotions`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  console.log('[Bot] ✅ Bot instance created successfully');
+
   /**
    * ─── Channel membership gate middleware ─────────────────────────────────────
    * If `required_channel` is set in Config, any guarded menu button or command

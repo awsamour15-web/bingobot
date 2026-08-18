@@ -19,15 +19,36 @@ async function sendToOne(
   chatId: string,
 ): Promise<void> {
   if (!bot) throw new Error('Bot not initialized');
+  
+  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
+  const playLink = `https://t.me/${botUsername}`;
+  
+  // Create inline keyboard with Play button
+  const keyboard = {
+    inline_keyboard: [[
+      { text: '🎮 Play Now', url: playLink }
+    ]]
+  };
+  
   const caption = promotion.caption ?? undefined;
+  
   if (promotion.content_type === 'text' && promotion.text_content) {
-    await bot.api.sendMessage(chatId, promotion.text_content);
+    await bot.api.sendMessage(chatId, promotion.text_content, { reply_markup: keyboard });
   } else if (promotion.content_type === 'image' && promotion.media_file_id) {
-    await bot.api.sendPhoto(chatId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
+    await bot.api.sendPhoto(chatId, promotion.media_file_id, {
+      ...(caption ? { caption } : {}),
+      reply_markup: keyboard,
+    });
   } else if (promotion.content_type === 'video' && promotion.media_file_id) {
-    await bot.api.sendVideo(chatId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
+    await bot.api.sendVideo(chatId, promotion.media_file_id, {
+      ...(caption ? { caption } : {}),
+      reply_markup: keyboard,
+    });
   } else if (promotion.content_type === 'gif' && promotion.media_file_id) {
-    await bot.api.sendAnimation(chatId, promotion.media_file_id, ...(caption ? [{ caption }] : []));
+    await bot.api.sendAnimation(chatId, promotion.media_file_id, {
+      ...(caption ? { caption } : {}),
+      reply_markup: keyboard,
+    });
   }
 }
 
