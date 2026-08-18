@@ -13,9 +13,12 @@ export function WithdrawalsPage() {
     setLoading(true);
     setError(null);
     try {
+      console.log('[Withdrawals] Fetching withdrawals...');
       const data = await getWithdrawals();
+      console.log('[Withdrawals] Received data:', data);
       setWithdrawals(data);
     } catch (e) {
+      console.error('[Withdrawals] Error loading withdrawals:', e);
       setError(e instanceof Error ? e.message : 'Failed to load withdrawals');
     } finally {
       setLoading(false);
@@ -92,6 +95,15 @@ export function WithdrawalsPage() {
       </div>
 
       {error && <Alert type="error">{error}</Alert>}
+
+      {/* Debug info */}
+      <div style={{ marginBottom: 16, padding: 12, background: 'var(--c-bg-card)', borderRadius: 8, border: '1px solid var(--c-border)', fontSize: 12, fontFamily: 'monospace' }}>
+        <div><strong>API URL:</strong> {import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com'}/api/admin/withdrawals</div>
+        <div><strong>JWT Token:</strong> {localStorage.getItem('adminJwt') ? '✓ Present' : '✗ Missing'}</div>
+        <div><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</div>
+        <div><strong>Withdrawals count:</strong> {withdrawals.length}</div>
+        <div><strong>Pending count:</strong> {pending.length}</div>
+      </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>

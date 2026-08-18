@@ -10,25 +10,34 @@ const router: RouterType = Router();
 
 // GET /api/admin/withdrawals — list pending withdrawal requests
 router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> => {
-  const withdrawals = await prisma.pendingWithdrawal.findMany({
-    where: { status: 'pending' },
-    orderBy: { created_at: 'desc' },
-    include: {
-      player: { select: { id: true, username: true, phone: true } },
-    },
-  });
+  try {
+    console.log('[Admin API] Fetching pending withdrawals...');
+    
+    const withdrawals = await prisma.pendingWithdrawal.findMany({
+      where: { status: 'pending' },
+      orderBy: { created_at: 'desc' },
+      include: {
+        player: { select: { id: true, username: true, phone: true } },
+      },
+    });
 
-  const result = withdrawals.map((w) => ({
-    id: w.id,
-    player_id: w.player.id,
-    username: w.player.username,
-    phone: w.phone,
-    amount: Number(w.amount),
-    created_at: w.created_at.toISOString(),
-    status: w.status,
-  }));
+    console.log(`[Admin API] Found ${withdrawals.length} pending withdrawals`);
 
-  res.json(result);
+    const result = withdrawals.map((w) => ({
+      id: w.id,
+      player_id: w.player.id,
+      username: w.player.username,
+      phone: w.phone,
+      amount: Number(w.amount),
+      created_at: w.created_at.toISOString(),
+      status: w.status,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('[Admin API] Error fetching withdrawals:', err);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+  }
 });
 
 // POST /api/admin/withdrawals/:id/approve — admin paid, submits Telebirr tx number or full SMS to verify

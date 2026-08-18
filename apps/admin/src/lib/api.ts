@@ -127,6 +127,7 @@ export function cancelRound(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export function getWithdrawals(): Promise<WithdrawalRequest[]> {
+  console.log('[API] Calling GET /api/admin/withdrawals');
   return adminApiRequest<WithdrawalRequest[]>('GET', '/api/admin/withdrawals');
 }
 
