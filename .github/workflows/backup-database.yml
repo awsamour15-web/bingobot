@@ -1,0 +1,47 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC (adjust timezone as needed)
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      
+      - name: Create backup directory
+        run: mkdir -p backups
+      
+      - name: Create database backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+          BACKUP_FILE="backups/fidelbingo_backup_${TIMESTAMP}.sql"
+          echo "Creating backup: $BACKUP_FILE"
+          pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+          gzip "$BACKUP_FILE"
+          echo "Backup created: ${BACKUP_FILE}.gz"
+      
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ github.run_number }}
+          path: backups/*.sql.gz
+          retention-days: 90  # Keep for 90 days (max for free GitHub)
+      
+      - name: Backup summary
+        run: |
+          echo "✓ Backup completed successfully"
+          echo "✓ Stored in GitHub Artifacts for 90 days"
+          echo "✓ Download from: https://github.com/${{ github.repository }}/actions"

@@ -38,7 +38,12 @@ export function WithdrawalsPage() {
       ''
     );
     
-    if (!txInput?.trim()) return;
+    if (!txInput || !txInput.trim()) {
+      if (txInput !== null) {
+        alert('❌ Transaction number is required. Please try again.');
+      }
+      return;
+    }
 
     setProcessing(withdrawal.id);
     try {
@@ -46,7 +51,9 @@ export function WithdrawalsPage() {
       await load();
       alert('✅ Withdrawal approved successfully!');
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to approve withdrawal');
+      const errorMsg = e instanceof Error ? e.message : 'Failed to approve withdrawal';
+      console.error('[Withdrawals] Approval error:', errorMsg, e);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setProcessing(null);
     }
