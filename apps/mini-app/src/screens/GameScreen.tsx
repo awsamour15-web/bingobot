@@ -34,10 +34,12 @@ export default function GameScreen() {
     async function load() {
       setLoading(true); setError(null);
       try {
+        // Wait for auth to complete BEFORE making API calls
+        await initAuth();
+        
         const [data, statsData] = await Promise.all([
           getRounds(),
           getSystemStats().catch(() => null),
-          initAuth(),
         ]);
         if (!cancelled) {
           const filtered = data

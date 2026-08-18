@@ -119,6 +119,10 @@ function buildAgentHeaders(hasBody = false): Record<string, string> {
   return headers;
 }
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function fetchOnce(method: string, path: string, body?: unknown): Promise<Response> {
   const hasBody = body !== undefined;
   const headers = buildHeaders(hasBody);
@@ -165,47 +169,86 @@ export async function apiRequest<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  let response = await fetchOnce(method, path, body);
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  if (response.status === 401) {
-    localStorage.clear();
-    window.location.href = '/';
-    throw new Error('Unauthorized');
-  }
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let response = await fetchOnce(method, path, body);
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: response.statusText }));
-
-    // Log the error for debugging
-    console.error(`API Error [${method} ${path}]:`, {
-      status: response.status,
-      error: errorData,
-      url: `${BASE_URL}${path}`,
-    });
-
-    // Stale JWT pointing at a deleted/reset player — re-auth and retry once.
-    // Avoid retrying for unrelated 404s such as missing rounds or cartelas.
-    if (response.status === 404 && shouldReAuthOnNotFound(path, errorData)) {
-      await deduplicatedReAuth();
-      response = await fetchOnce(method, path, body);
-
-      if (response.ok) return response.json() as Promise<T>;
-
-      // If still failing after re-auth, fall through to throw
-      const retryError = await response.json().catch(() => ({ message: response.statusText }));
-      throw Object.assign(new Error(retryError.message ?? 'Request failed'), {
-        status: response.status,
-        code: retryError.error,
-      });
+    // 401 handling: wait for auth to complete on first 2 attempts, then clear on final attempt
+    if (response.status === 401) {
+      if (attempt < maxRetries) {
+        // Auth might still be initializing - wait and retry with exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, attempt), 4000); // 1s, 2s, 4s max
+        console.log(`[API] 401 on attempt ${attempt + 1}/${maxRetries + 1}, retrying in ${delay}ms...`);
+        await sleep(delay);
+        
+        // Check if auth completed during our wait
+        const jwt = getJwt();
+        if (jwt) {
+          continue; // Retry with the new token
+        }
+      }
+      
+      // Final attempt failed or no token available - clear and redirect
+      console.error('[API] 401 Unauthorized after retries, clearing session');
+      localStorage.clear();
+      window.location.href = '/';
+      throw new Error('Unauthorized');
     }
 
-    throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
-      status: response.status,
-      code: errorData.error,
-    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+
+      // Log the error for debugging
+      console.error(`API Error [${method} ${path}]:`, {
+        status: response.status,
+        error: errorData,
+        url: `${BASE_URL}${path}`,
+        attempt: attempt + 1,
+      });
+
+      // Stale JWT pointing at a deleted/reset player — re-auth and retry once.
+      // Avoid retrying for unrelated 404s such as missing rounds or cartelas.
+      if (response.status === 404 && shouldReAuthOnNotFound(path, errorData)) {
+        await deduplicatedReAuth();
+        response = await fetchOnce(method, path, body);
+
+        if (response.ok) return response.json() as Promise<T>;
+
+        // If still failing after re-auth, fall through to throw
+        const retryError = await response.json().catch(() => ({ message: response.statusText }));
+        throw Object.assign(new Error(retryError.message ?? 'Request failed'), {
+          status: response.status,
+          code: retryError.error,
+        });
+      }
+
+      lastError = Object.assign(new Error(errorData.message ?? 'Request failed'), {
+        status: response.status,
+        code: errorData.error,
+      });
+
+      // Don't retry 4xx errors other than 401 (client errors are permanent)
+      if (response.status >= 400 && response.status < 500 && response.status !== 401) {
+        throw lastError;
+      }
+
+      // Retry 5xx errors with exponential backoff
+      if (attempt < maxRetries && response.status >= 500) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 4000);
+        console.log(`[API] Server error, retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
+        await sleep(delay);
+        continue;
+      }
+
+      throw lastError;
+    }
+
+    return response.json() as Promise<T>;
   }
 
-  return response.json() as Promise<T>;
+  throw lastError ?? new Error('Request failed after retries');
 }
 
 async function fetchOnceAgent(method: string, path: string, body?: unknown): Promise<Response> {

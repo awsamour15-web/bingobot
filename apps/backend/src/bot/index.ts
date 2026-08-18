@@ -926,6 +926,19 @@ if (BOT_TOKEN) {
         return;
       }
 
+      // Check if channel membership is required before completing registration
+      const channelId = await getRequiredChannel();
+      if (channelId) {
+        const isMember = await isChannelMember(bot!, ctx.from.id, channelId);
+        if (!isMember) {
+          await ctx.reply(
+            `📱 Phone number received!\n\n⚠️ Before completing your registration, you must join our channel.\n\nJoin the channel and then tap Register 📝 again to complete registration.`,
+            { reply_markup: buildJoinChannelMarkup(channelId) },
+          );
+          return;
+        }
+      }
+
       // Run all DB updates in parallel inside a transaction
       await prisma.$transaction([
         prisma.player.update({
