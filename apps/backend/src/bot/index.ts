@@ -677,6 +677,11 @@ if (BOT_TOKEN) {
     const photos = ctx.message.photo;
     const largest = photos[photos.length - 1]; // Highest resolution
     
+    if (!largest) {
+      await ctx.reply('❌ No photo found');
+      return;
+    }
+    
     await ctx.reply(
       `📸 Photo File ID:\n\n\`${largest.file_id}\`\n\n` +
       `✅ Copy this ID for promotions in admin panel`,
