@@ -5,6 +5,7 @@ import {
   getPlayers, creditPlayer, listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
   createPromotion, getConfig, updateConfig,
+  updatePromotion, setPromotionStatus,
 } from '../lib/api';
 import {
   C, Btn, Card, CardHeader, Field, PageHeader, StatCard,
@@ -13,7 +14,7 @@ import {
 } from '../components/ui';
 
 type WalletType = 'main' | 'play';
-type Tab = 'single' | 'bulk' | 'deposit';
+type Tab = 'single' | 'bulk' | 'deposit' | 'active';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Single-player bonus (unchanged feature, kept intact)
@@ -512,6 +513,230 @@ function BulkBonusPanel() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Active Bonuses panel — view and manage all active bonuses with CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ActiveBonusesPanel() {
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editWallet, setEditWallet] = useState<WalletType>('play');
+  const [saving, setSaving] = useState(false);
+
+  async function loadBonuses() {
+    setLoading(true); setError(null);
+    try {
+      const all = await listPromotions();
+      setPromotions(all.filter(p => p.bonus_amount && Number(p.bonus_amount) > 0));
+    } catch (err) { setError((err as Error).message); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => { void loadBonuses(); }, []);
+
+  async function handleEdit(promo: Promotion) {
+    setEditing(promo.id);
+    setEditAmount(String(promo.bonus_amount ?? 0));
+    setEditWallet(promo.bonus_wallet ?? 'play');
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function handleSaveEdit(id: string) {
+    setSaving(true); setError(null); setSuccess(null);
+    try {
+      await updatePromotion(id, {
+        bonus_amount: Number(editAmount),
+        bonus_wallet: editWallet,
+      });
+      setSuccess('Bonus updated successfully.');
+      setEditing(null);
+      await loadBonuses();
+    } catch (err) { setError((err as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleToggleStatus(promo: Promotion) {
+    setError(null); setSuccess(null);
+    try {
+      const newStatus = promo.status === 'active' ? 'inactive' : 'active';
+      await setPromotionStatus(promo.id, newStatus);
+      setSuccess(`Bonus ${newStatus === 'active' ? 'activated' : 'deactivated'}.`);
+      await loadBonuses();
+    } catch (err) { setError((err as Error).message); }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {error && <Alert type="error">{error}</Alert>}
+      {success && <Alert type="success">{success}</Alert>}
+
+      <Card>
+        <CardHeader
+          title="Active Bonuses"
+          subtitle="View and manage all active bonuses in the system"
+          action={
+            <Btn size="sm" onClick={() => void loadBonuses()}>
+              ↻ Refresh
+            </Btn>
+          }
+        />
+
+        {loading ? (
+          <TrLoading cols={5} />
+        ) : promotions.length === 0 ? (
+          <Alert type="info">
+            No active bonuses found. Create a bonus promotion from the "Bulk Bonus" tab.
+          </Alert>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>Bonus Title</Th>
+                <Th>Amount</Th>
+                <Th>Wallet</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {promotions.map(promo => {
+                const isEditing = editing === promo.id;
+                const criteriaCount = promo.bonus_criteria
+                  ? Object.keys(promo.bonus_criteria as BonusCriteria).length
+                  : 0;
+
+                return (
+                  <tr key={promo.id}>
+                    <Td>
+                      <div style={{ fontWeight: 600 }}>{promo.title}</div>
+                      {criteriaCount > 0 && (
+                        <div style={{ fontSize: 11, color: C.muted }}>
+                          {criteriaCount} eligibility {criteriaCount === 1 ? 'criterion' : 'criteria'}
+                        </div>
+                      )}
+                    </Td>
+                    <Td>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={editAmount}
+                          onChange={e => setEditAmount(e.target.value)}
+                          style={{ ...inputCss, width: 100 }}
+                        />
+                      ) : (
+                        <strong>{Number(promo.bonus_amount).toFixed(2)} ETB</strong>
+                      )}
+                    </Td>
+                    <Td>
+                      {isEditing ? (
+                        <select
+                          value={editWallet}
+                          onChange={e => setEditWallet(e.target.value as WalletType)}
+                          style={{ ...selectCss, width: 100 }}
+                        >
+                          <option value="play">Play</option>
+                          <option value="main">Main</option>
+                        </select>
+                      ) : (
+                        <Badge variant="neutral">{promo.bonus_wallet}</Badge>
+                      )}
+                    </Td>
+                    <Td>
+                      <Badge variant={promo.status === 'active' ? 'success' : 'neutral'}>
+                        {promo.status}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {isEditing ? (
+                          <>
+                            <Btn
+                              size="sm"
+                              onClick={() => handleSaveEdit(promo.id)}
+                              disabled={saving}
+                            >
+                              {saving ? 'Saving…' : 'Save'}
+                            </Btn>
+                            <Btn
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditing(null)}
+                              disabled={saving}
+                            >
+                              Cancel
+                            </Btn>
+                          </>
+                        ) : (
+                          <>
+                            <Btn
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(promo)}
+                            >
+                              Edit
+                            </Btn>
+                            <Btn
+                              size="sm"
+                              variant={promo.status === 'active' ? 'warning' : 'primary'}
+                              onClick={() => void handleToggleStatus(promo)}
+                            >
+                              {promo.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </Btn>
+                          </>
+                        )}
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="💡 Bonus Management Tips"
+          subtitle="How to manage your bonus system effectively"
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+          <div>
+            <strong style={{ color: 'var(--c-text)' }}>Edit Bonus:</strong>
+            <span style={{ color: C.muted, marginLeft: 6 }}>
+              Click "Edit" to modify the bonus amount or target wallet
+            </span>
+          </div>
+          <div>
+            <strong style={{ color: 'var(--c-text)' }}>Activate/Deactivate:</strong>
+            <span style={{ color: C.muted, marginLeft: 6 }}>
+              Control which bonuses are active without deleting them
+            </span>
+          </div>
+          <div>
+            <strong style={{ color: 'var(--c-text)' }}>Eligibility Criteria:</strong>
+            <span style={{ color: C.muted, marginLeft: 6 }}>
+              Edit criteria in the "Bulk Bonus" tab when creating or updating promotions
+            </span>
+          </div>
+          <div>
+            <strong style={{ color: 'var(--c-text)' }}>Distribution History:</strong>
+            <span style={{ color: C.muted, marginLeft: 6 }}>
+              View who received each bonus in the "Bulk Bonus" tab's history section
+            </span>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Deposit bonus config panel
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -621,7 +846,7 @@ function DepositBonusPanel() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function BonusPage() {
-  const [tab, setTab] = useState<Tab>('single');
+  const [tab, setTab] = useState<Tab>('active');
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -643,6 +868,9 @@ export function BonusPage() {
 
       {/* Tab switcher */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <Btn variant={tab === 'active' ? 'primary' : 'outline'} onClick={() => setTab('active')}>
+          ⭐ Active Bonuses
+        </Btn>
         <Btn variant={tab === 'single' ? 'primary' : 'outline'} onClick={() => setTab('single')}>
           👤 Single Player
         </Btn>
@@ -654,7 +882,7 @@ export function BonusPage() {
         </Btn>
       </div>
 
-      {tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : <DepositBonusPanel />}
+      {tab === 'active' ? <ActiveBonusesPanel /> : tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : <DepositBonusPanel />}
     </div>
   );
 }

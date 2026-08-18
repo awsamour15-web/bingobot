@@ -130,12 +130,12 @@ export function getWithdrawals(): Promise<WithdrawalRequest[]> {
   return adminApiRequest<WithdrawalRequest[]>('GET', '/api/admin/withdrawals');
 }
 
-export function approveWithdrawal(id: string): Promise<void> {
-  return adminApiRequest<void>('POST', `/api/admin/withdrawals/${id}/approve`);
+export function approveWithdrawal(id: string, txNumber: string): Promise<{ success: boolean; tx_number: string }> {
+  return adminApiRequest<{ success: boolean; tx_number: string }>('POST', `/api/admin/withdrawals/${id}/approve`, { tx_number: txNumber });
 }
 
-export function rejectWithdrawal(id: string): Promise<void> {
-  return adminApiRequest<void>('POST', `/api/admin/withdrawals/${id}/reject`);
+export function rejectWithdrawal(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest<{ success: boolean }>('POST', `/api/admin/withdrawals/${id}/reject`);
 }
 
 // ---------------------------------------------------------------------------

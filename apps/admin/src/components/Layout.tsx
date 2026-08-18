@@ -13,6 +13,7 @@ const navItems: NavItem[] = [
   { to: '/games',     label: 'Games',       icon: 'ticket'      },
   { to: '/finance',   label: 'Finance',     icon: 'finance'     },
   { to: '/deposits',  label: 'Deposits',    icon: 'deposits'    },
+  { to: '/withdrawals', label: 'Withdrawals', icon: 'withdrawals' },
   { to: '/agents',    label: 'Agents',      icon: 'agents'      },
   { to: '/promotions',label: 'Promotions',  icon: 'promotions'  },
   { to: '/cartelas',  label: 'Cartelas',    icon: 'cartelas'    },
