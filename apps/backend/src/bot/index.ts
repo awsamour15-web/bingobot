@@ -1117,7 +1117,21 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     }
 
     console.log('[Bot] Player found:', player.id, 'wallets:', player.wallets.length);
-    
+
+    // Require at least one successful deposit before allowing withdrawal
+    const playerWalletIds = player.wallets.map((w) => w.id);
+    const hasDeposit = await prisma.transaction.findFirst({
+      where: { wallet_id: { in: playerWalletIds }, type: TxType.deposit },
+    });
+    if (!hasDeposit) {
+      await ctx.reply(
+        `⚠️ ገንዘብ ለማውጣት መጀመሪያ ገንዘብ ማስገባት ያስፈልጋል።\n\n` +
+        `To withdraw, you must first make a deposit.\n\n` +
+        `Tap "Deposit 💰" to get started.`
+      );
+      return;
+    }
+
     const mainWallet = player.wallets.find(w => w.type === 'main');
     console.log('[Bot] Main wallet:', mainWallet ? `${mainWallet.balance} ${mainWallet.type}` : 'not found');
     
