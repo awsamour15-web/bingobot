@@ -149,8 +149,10 @@ export default function CartelaScreen() {
       return new Set();
     }
   });
-  const picksRef = useRef<Set<number>>(new Set());
-  useEffect(() => { picksRef.current = picks; }, [picks]);
+  const picksRef = useRef<Set<number>>(picks);
+  // Keep picksRef in sync synchronously — do NOT use useEffect here
+  // because there's a render cycle gap where the ref would be stale.
+  picksRef.current = picks;
 
   // Persist picks to sessionStorage whenever they change
   useEffect(() => {
@@ -637,8 +639,10 @@ export default function CartelaScreen() {
     </div>
   );
 
-  const takenSet = new Set(availability.taken);
-  console.log('[CartelaScreen] Taken cartelas:', availability.taken.length, 'Sample:', availability.taken.slice(0, 10));
+  // Build taken set — always exclude the current player's own picks so they
+  // never accidentally render as "taken by another player" regardless of what
+  // availability.taken contains (optimistic updates, stale polls, etc.)
+  const takenSet = new Set(availability.taken.filter(n => !picks.has(n)));
   const urgent = msLeft > 0 && msLeft < 10_000;
   const canPick = picks.size < MAX_SELECT;
   const picksArr = [...picks].sort((a, b) => a - b);
