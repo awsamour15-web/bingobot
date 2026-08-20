@@ -99,6 +99,7 @@ export const errorLogger = {
 
   error(error: Error | AppError, req?: Request, metadata?: Record<string, unknown>): void {
     const isAppError = error instanceof AppError;
+    const stack = process.env.NODE_ENV !== 'production' ? error.stack : undefined;
     
     this.log({
       timestamp: new Date().toISOString(),
@@ -106,11 +107,11 @@ export const errorLogger = {
       code: isAppError ? error.code : 'UNKNOWN_ERROR',
       message: error.message,
       statusCode: isAppError ? error.statusCode : 500,
-      path: req?.path,
-      method: req?.method,
-      userId: (req as any)?.user?.id,
-      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
-      metadata,
+      ...(req?.path !== undefined ? { path: req.path } : {}),
+      ...(req?.method !== undefined ? { method: req.method } : {}),
+      ...((req as any)?.user?.id !== undefined ? { userId: (req as any).user.id } : {}),
+      ...(stack !== undefined ? { stack } : {}),
+      ...(metadata !== undefined ? { metadata } : {}),
     });
   },
 
@@ -120,7 +121,7 @@ export const errorLogger = {
       level: 'warn',
       code,
       message,
-      metadata,
+      ...(metadata !== undefined ? { metadata } : {}),
     });
   },
 
@@ -130,7 +131,7 @@ export const errorLogger = {
       level: 'info',
       code,
       message,
-      metadata,
+      ...(metadata !== undefined ? { metadata } : {}),
     });
   },
 };
