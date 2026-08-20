@@ -114,6 +114,38 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ─── Telegram Bot webhook route (must be registered before 404 handler) ──────
+if (process.env['RENDER_EXTERNAL_URL'] && bot) {
+  const webhookPath = '/telegram-webhook';
+  let botReady = false;
+
+  app.post(webhookPath, express.json(), (req, res) => {
+    if (!botReady) {
+      res.sendStatus(503);
+      return;
+    }
+    bot!.handleUpdate(req.body)
+      .then(() => res.sendStatus(200))
+      .catch((err) => {
+        console.error('[Bot] Webhook handler error:', err);
+        res.sendStatus(200);
+      });
+  });
+
+  setTimeout(async () => {
+    try {
+      await bot!.init();
+      botReady = true;
+      const fullUrl = `${process.env['RENDER_EXTERNAL_URL']}${webhookPath}`;
+      await bot!.api.setWebhook(fullUrl, { drop_pending_updates: true });
+      const info = await bot!.api.getMe();
+      console.log(`[Bot] 🎉 Webhook set: ${fullUrl} as @${info.username}`);
+    } catch (err: any) {
+      console.error('[Bot] ❌ Failed to set webhook:', err?.description || err);
+    }
+  }, 3_000);
+}
+
 // ─── 404 Handler (must be after all routes) ──────────────────────────────────
 app.use(notFoundHandler);
 
@@ -228,71 +260,34 @@ httpServer.listen(PORT, () => {
   PromotionScheduler.start();
 });
 
-// ─── Telegram Bot — webhook on Render, polling locally ───────────────────────
-if (bot) {
-  const WEBHOOK_URL = process.env['RENDER_EXTERNAL_URL'];
+// ─── Telegram Bot — polling for local dev (webhook handled above for production) ───
+if (bot && !process.env['RENDER_EXTERNAL_URL']) {
+  // ── Local dev: use long polling
+  let botStarted = false;
 
-  if (WEBHOOK_URL) {
-    // ── Production (Render): use webhook — no polling conflicts on rolling deploys
-    const webhookPath = '/telegram-webhook';
-    let botReady = false;
-
-    app.post(webhookPath, express.json(), (req, res) => {
-      if (!botReady) {
-        // Bot not initialized yet — tell Telegram to retry
-        res.sendStatus(503);
-        return;
-      }
-      bot!.handleUpdate(req.body)
-        .then(() => res.sendStatus(200))
-        .catch((err) => {
-          console.error('[Bot] Webhook handler error:', err);
-          res.sendStatus(200); // always 200 to prevent Telegram retries
-        });
-    });
-
-    // Set the webhook after server is listening
-    setTimeout(async () => {
-      try {
-        await bot!.init(); // fetch botInfo before handling updates
-        botReady = true;
-        const fullUrl = `${WEBHOOK_URL}${webhookPath}`;
-        await bot!.api.setWebhook(fullUrl, { drop_pending_updates: true });
-        const info = await bot!.api.getMe();
-        console.log(`[Bot] 🎉 Webhook set: ${fullUrl} as @${info.username}`);
-      } catch (err: any) {
-        console.error('[Bot] ❌ Failed to set webhook:', err?.description || err);
-      }
-    }, 3_000);
-
-  } else {
-    // ── Local dev: use long polling
-    let botStarted = false;
-
-    async function startPolling(): Promise<void> {
-      if (botStarted) return;
-      try {
-        console.log('[Bot] Starting long polling...');
-        await bot!.api.deleteWebhook({ drop_pending_updates: true });
-        await bot!.start({
-          onStart: (info) => {
-            console.log(`[Bot] 🎉 Polling started as @${info.username}`);
-            botStarted = true;
-          },
-          drop_pending_updates: true,
-        });
-      } catch (err: any) {
-        const errorCode = err?.error_code;
-        console.error(`[Bot] ❌ Polling failed (${errorCode}):`, err?.description || err);
-        if (errorCode === 409) {
-          console.log('[Bot] Conflict — retrying in 65s...');
-          setTimeout(() => startPolling(), 65_000);
-        }
+  async function startPolling(): Promise<void> {
+    if (botStarted) return;
+    try {
+      console.log('[Bot] Starting long polling...');
+      await bot!.api.deleteWebhook({ drop_pending_updates: true });
+      await bot!.start({
+        onStart: (info) => {
+          console.log(`[Bot] 🎉 Polling started as @${info.username}`);
+          botStarted = true;
+        },
+        drop_pending_updates: true,
+      });
+    } catch (err: any) {
+      const errorCode = err?.error_code;
+      console.error(`[Bot] ❌ Polling failed (${errorCode}):`, err?.description || err);
+      if (errorCode === 409) {
+        console.log('[Bot] Conflict — retrying in 65s...');
+        setTimeout(() => startPolling(), 65_000);
       }
     }
-
-    setTimeout(() => startPolling(), 3_000);
   }
+
+  setTimeout(() => startPolling(), 3_000);
 }
 
 export default app;
