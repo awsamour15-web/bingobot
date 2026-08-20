@@ -158,6 +158,9 @@ export default function CartelaScreen() {
   const startRequestLockRef = useRef(false);
   const [manualTrigger, setManualTrigger] = useState(false);
 
+  // Cartelas currently reserved by other players (transient, not yet taken)
+  const [reservedByOthers, setReservedByOthers] = useState<Set<number>>(new Set());
+
   // Grids for picked cartelas — fetched on pick
   const [pickedGrids, setPickedGrids] = useState<Map<number, number[]>>(new Map());
 
