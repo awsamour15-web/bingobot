@@ -43,19 +43,19 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, 
   const bg = isPicked
     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
     : taken
-      ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+      ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' // Darker red for taken
       : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
-  const color = isPicked ? '#ecfdf5' : taken ? '#fef2f2' : '#cbd5e1';
+  const color = isPicked ? '#ecfdf5' : taken ? '#fecaca' : '#cbd5e1'; // Lighter text for taken
   const border = isPicked
     ? '2px solid #6ee7b7'
     : taken
-      ? '1px solid rgba(239,68,68,0.5)'
+      ? '2px solid #dc2626' // Thicker border for taken
       : '1px solid rgba(148,163,184,0.15)';
 
   const shadow = isPicked
     ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)'
     : taken
-      ? '0 0 12px rgba(239,68,68,0.15)'
+      ? '0 4px 14px rgba(220,38,38,0.3), inset 0 -2px 4px rgba(0,0,0,0.3)' // Stronger shadow for taken
       : '0 2px 8px rgba(0,0,0,0.2)';
 
   // CRITICAL FIX: Prevent clicks on taken cartelas
@@ -84,7 +84,14 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, 
         touchAction: 'manipulation',
       }}
     >
-      {num}
+      {taken ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <span style={{ fontSize: 14 }}>🔒</span>
+          <span style={{ fontSize: 11 }}>{num}</span>
+        </div>
+      ) : (
+        num
+      )}
     </button>
   );
 });
@@ -533,6 +540,7 @@ export default function CartelaScreen() {
   );
 
   const takenSet = new Set(availability.taken);
+  console.log('[CartelaScreen] Taken cartelas:', availability.taken.length, 'Sample:', availability.taken.slice(0, 10));
   const urgent = msLeft > 0 && msLeft < 10_000;
   const canPick = picks.size < MAX_SELECT;
   const picksArr = [...picks].sort((a, b) => a - b);
