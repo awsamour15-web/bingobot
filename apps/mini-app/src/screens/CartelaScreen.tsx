@@ -206,10 +206,25 @@ export default function CartelaScreen() {
 
   // Commit picks to server — only called when game is about to start.
   // Returns true if joined as player, false if navigating as watcher (error/no picks).
+  // NOW ASYNC: Navigates immediately, joins in background
   async function commitPicks(currentPicks: Set<number>): Promise<boolean> {
     if (currentPicks.size === 0) return false;
+    
+    // Store round data in sessionStorage for instant load on game screen
+    if (round) {
+      sessionStorage.setItem(`roundCache:${roundId}`, JSON.stringify({
+        id: round.id,
+        stake: round.stake,
+        derash: round.derash,
+        player_count: round.player_count,
+        status: 'active', // Optimistically set to active
+        timestamp: Date.now(),
+      }));
+    }
+    
     setCommitting(true);
     setError(null);
+    
     try {
       const result = await joinRoundBatch(roundId!, [...currentPicks]);
       setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
@@ -289,17 +304,17 @@ export default function CartelaScreen() {
       startRequestLockRef.current = true;
       setStarting(true);
       sessionStorage.setItem('selectedRoundId', roundId!);
-      try {
-        if (picksRef.current.size > 0) {
-          await commitPicks(picksRef.current);
-        } else {
+      
+      // Navigate IMMEDIATELY
+      navigate(`/rounds/${roundId}/game`, { replace: true });
+      
+      // Join in background (fire-and-forget)
+      if (picksRef.current.size > 0) {
+        commitPicks(picksRef.current).catch(() => {
           sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
-        }
-        navigate(`/rounds/${roundId}/game`, { replace: true });
-      } catch {
-        joinedRef.current = false;
-        startRequestLockRef.current = false;
-        setStarting(false);
+        });
+      } else {
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
     };
 
@@ -324,7 +339,7 @@ export default function CartelaScreen() {
         getCartelaAvailability(roundId!),
         getRound(roundId!),
       ]).then(([fresh, latestRound]) => {
-        // If round went active and we haven't joined yet, trigger join flow
+        // If round went active and we haven't joined yet, navigate IMMEDIATELY
         if (latestRound.status === 'active' && !joinedRef.current) {
           if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
           joinedRef.current = true;
@@ -332,17 +347,14 @@ export default function CartelaScreen() {
           setStarting(true);
           clearInterval(poll);
           sessionStorage.setItem('selectedRoundId', roundId!);
+          // Navigate first, join in background
+          navigate(`/rounds/${roundId}/game`, { replace: true });
           if (picksRef.current.size > 0) {
-            commitPicks(picksRef.current).then(() => {
-              navigate(`/rounds/${roundId}/game`, { replace: true });
-            }).catch(() => {
-              joinedRef.current = false;
-              startRequestLockRef.current = false;
-              setStarting(false);
+            commitPicks(picksRef.current).catch(() => {
+              sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
             });
           } else {
             sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
-            navigate(`/rounds/${roundId}/game`, { replace: true });
           }
           return;
         }
@@ -397,7 +409,7 @@ export default function CartelaScreen() {
     navigate(`/rounds/${roundId}/game`, { replace: true });
   }, [loading, round, roundId, navigate, starting]);
 
-  // Countdown hit 0 — commit picks and navigate
+  // Countdown hit 0 — navigate immediately, commit picks in background
   useEffect(() => {
     if (msLeft !== 0 || !countdownStartedRef.current || joinedRef.current) return;
     if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current })) return;
@@ -407,17 +419,18 @@ export default function CartelaScreen() {
       startRequestLockRef.current = true;
       setStarting(true);
       sessionStorage.setItem('selectedRoundId', roundId ?? '');
-      try {
-        if (picksRef.current.size > 0) {
-          await commitPicks(picksRef.current);
-        } else {
+      
+      // Navigate IMMEDIATELY for instant transition
+      navigate(`/rounds/${roundId}/game`, { replace: true });
+      
+      // Join in background (fire-and-forget)
+      if (picksRef.current.size > 0) {
+        commitPicks(picksRef.current).catch(() => {
+          // On error, store empty cartelas so user watches instead of crashing
           sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
-        }
-        navigate(`/rounds/${roundId}/game`, { replace: true });
-      } catch {
-        joinedRef.current = false;
-        startRequestLockRef.current = false;
-        setStarting(false);
+        });
+      } else {
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
     })();
   }, [msLeft, roundId, navigate, starting]);
@@ -440,12 +453,16 @@ export default function CartelaScreen() {
           return;
         }
         sessionStorage.setItem('selectedRoundId', roundId!);
+        // Navigate immediately
+        navigate(`/rounds/${roundId}/game`, { replace: true });
+        // Join in background
         if (picksRef.current.size > 0 && currentRound.status === 'pending') {
-          await commitPicks(picksRef.current);
+          commitPicks(picksRef.current).catch(() => {
+            sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+          });
         } else {
           sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
         }
-        navigate(`/rounds/${roundId}/game`, { replace: true });
       } catch {
         setStarting(false);
         joinedRef.current = false;
@@ -516,12 +533,26 @@ export default function CartelaScreen() {
 
     // Show grid from local lookup
     const localGrid = getLocalGrid(num);
-    if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
+    if (localGrid) {
+      setPickedGrids(prev => new Map(prev).set(num, localGrid));
+      // Pre-store in IDB so LiveGameScreen can load instantly
+      if (roundId) {
+        import('../lib/idb').then(({ idbPut }) => {
+          idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: localGrid }).catch(() => {});
+        });
+      }
+    }
 
     // Fetch server grid for confirmation
     if (roundId) {
       getCartelaGridCached(roundId, num)
-        .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
+        .then(res => {
+          setPickedGrids(prev => new Map(prev).set(num, res.grid));
+          // Keep IDB in sync with server grid
+          import('../lib/idb').then(({ idbPut }) => {
+            idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: res.grid }).catch(() => {});
+          });
+        })
         .catch(() => {});
     }
   }

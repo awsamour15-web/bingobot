@@ -202,6 +202,26 @@ export default function LiveGameScreen() {
   // ─── Load round + player entry ───────────────────────────────────────────
   useEffect(() => {
     if (!roundId) return;
+
+    // ── Instant cache load — show UI immediately with cached round data ────
+    const cached = sessionStorage.getItem(`roundCache:${roundId}`);
+    if (cached) {
+      try {
+        const cachedRound = JSON.parse(cached);
+        // Only use cache if it's fresh (< 30s old)
+        if (Date.now() - cachedRound.timestamp < 30_000) {
+          setRound(cachedRound);
+          setGame(g => ({
+            ...g,
+            playerCount: cachedRound.player_count,
+            derash: cachedRound.derash,
+            phase: 'active',
+          }));
+          setLoading(false); // Show UI instantly
+        }
+      } catch {}
+    }
+
     async function load() {
       try {
         // Fetch round and called numbers immediately — don't block on cartelas
@@ -212,8 +232,6 @@ export default function LiveGameScreen() {
         setRound(r);
 
         // Drain any NUMBER_CALLED events that arrived during the REST fetch.
-        // Sort by sequenceIndex so the order is authoritative, then deduplicate
-        // against what the REST response already contains.
         const buffered = pendingNumbers.current.splice(0);
         buffered.sort((a, b) => a.sequenceIndex - b.sequenceIndex);
         const restSet = new Set(calledNums);
@@ -240,6 +258,9 @@ export default function LiveGameScreen() {
             : r.status === 'cancelled' ? 'cancelled'
             : 'waiting',
         }));
+
+        // Clear round cache after successful load
+        sessionStorage.removeItem(`roundCache:${roundId}`);
 
         if (r.status === 'completed' && r.winner_cartela_number) {
           getCartelaGridCached(roundId!, r.winner_cartela_number)
