@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:backup": "node backup-database.mjs",
+    "db:backup:simple": "node simple-backup.mjs",
     "db:backup:shell": "bash backup-database.sh",
     "db:restore": "bash restore-database.sh",
     "verify:bot": "node verify-bot-config.js"

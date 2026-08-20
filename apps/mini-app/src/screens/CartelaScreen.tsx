@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, memo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached, reserveCartela, releaseCartela } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached } from '../lib/api';
 import cartelaGrids from '../lib/cartela-grids.json';
 
 // Instant local grid lookup — no network needed
@@ -35,35 +35,28 @@ const COL_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171'];
 interface CartelaCellProps {
   num: number;
   taken: boolean;
-  reserved: boolean;
   isPicked: boolean;
   disabled: boolean;
   onClick: (num: number) => void;
 }
-const CartelaCell = memo(function CartelaCell({ num, taken, reserved, isPicked, disabled, onClick }: CartelaCellProps) {
+const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, onClick }: CartelaCellProps) {
   const bg = isPicked
     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
     : taken
       ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-      : reserved
-        ? 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)'
-        : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
-  const color = isPicked ? '#ecfdf5' : taken ? '#fef2f2' : reserved ? '#d97706' : '#cbd5e1';
+      : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
+  const color = isPicked ? '#ecfdf5' : taken ? '#fef2f2' : '#cbd5e1';
   const border = isPicked
     ? '2px solid #6ee7b7'
     : taken
       ? '1px solid rgba(239,68,68,0.5)'
-      : reserved
-        ? '1.5px solid rgba(245,158,11,0.4)'
-        : '1px solid rgba(148,163,184,0.15)';
+      : '1px solid rgba(148,163,184,0.15)';
 
-  const shadow = isPicked 
-    ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)' 
-    : reserved 
-      ? '0 0 12px rgba(245,158,11,0.2)' 
-      : taken
-        ? '0 0 12px rgba(239,68,68,0.15)'
-        : '0 2px 8px rgba(0,0,0,0.2)';
+  const shadow = isPicked
+    ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)'
+    : taken
+      ? '0 0 12px rgba(239,68,68,0.15)'
+      : '0 2px 8px rgba(0,0,0,0.2)';
 
   // CRITICAL FIX: Prevent clicks on taken cartelas
   const handleClick = () => {
@@ -153,14 +146,8 @@ export default function CartelaScreen() {
     sessionStorage.setItem(`selectedCartelas:${roundId}`, JSON.stringify([...picks]));
   }, [picks, roundId]);
 
-  // Cartelas being released — keep them out of taken until release API confirms
-  const pendingReleaseRef = useRef<Set<number>>(new Set());
   // Cartelas recently released may still be reported as taken by stale server responses
-  // for a short time; allow immediate re-selection until the server catches up.
   const recentlyReleasedRef = useRef<Set<number>>(new Set());
-
-  // Track cartelas reserved by OTHER users (optimistic, not yet committed to DB)
-  const [reservedByOthers, setReservedByOthers] = useState<Set<number>>(new Set());
 
   const [balanceAlert, setBalanceAlert] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<{ title: string; message: string } | null>(null);
@@ -281,44 +268,8 @@ export default function CartelaScreen() {
       });
     };
 
-    const onCartelaReserved = (p: { cartelaNumbers: number[] }) => {
-      setReservedByOthers(prev => {
-        const next = new Set(prev);
-        p.cartelaNumbers.forEach(n => next.add(n));
-        return next;
-      });
-      // Force-deselect if we had locally picked a cartela someone else just reserved
-      setPicks(prev => {
-        const next = new Set(prev);
-        let changed = false;
-        for (const n of p.cartelaNumbers) {
-          if (next.has(n)) { next.delete(n); changed = true; }
-        }
-        if (changed) picksRef.current = next;
-        return changed ? next : prev;
-      });
-    };
-
-    const onCartelaUnreserved = (p: { cartelaNumbers: number[] }) => {
-      setReservedByOthers(prev => {
-        const next = new Set(prev);
-        p.cartelaNumbers.forEach(n => next.delete(n));
-        return next;
-      });
-      
-      // INSTANT UPDATE: Also update availability to show cartela as available immediately
-      setAvailability(prev => {
-        if (!prev) return prev;
-        // Move from reserved/taken back to available
-        const unreservedSet = new Set(p.cartelaNumbers);
-        const newTaken = prev.taken.filter(n => !unreservedSet.has(n));
-        const newAvailable = [...new Set([...prev.available, ...p.cartelaNumbers])].sort((a, b) => a - b);
-        return {
-          taken: newTaken,
-          available: newAvailable
-        };
-      });
-    };
+    const onCartelaReserved = (_p: { cartelaNumbers: number[] }) => {};
+    const onCartelaUnreserved = (_p: { cartelaNumbers: number[] }) => {};
 
     const onStarted = async (_p: RoundStartedPayload) => {
       if (_p.roundId && !shouldHandleCurrentRoundEvent(roundId, _p.roundId)) return;
@@ -395,13 +346,9 @@ export default function CartelaScreen() {
         setAvailability(prev => {
           if (!prev) return fresh;
           const localPicks = picksRef.current;
-          const pendingRelease = pendingReleaseRef.current;
           const recentlyReleased = recentlyReleasedRef.current;
-          // Exclude local picks, cartelas being released, and just-released cartelas from the
-          // server-taken set. These can be stale for a few hundred ms after unselect and must
-          // not block the user from re-selecting the same cartela immediately.
           const merged = new Set([...prev.taken, ...fresh.taken]);
-          const takenFromServer = [...merged].filter(n => !localPicks.has(n) && !pendingRelease.has(n) && !recentlyReleased.has(n));
+          const takenFromServer = [...merged].filter(n => !localPicks.has(n) && !recentlyReleased.has(n));
           const available = [...new Set([...fresh.available, ...Array.from(recentlyReleased)])].filter(n => !localPicks.has(n) && !takenFromServer.includes(n));
           return { taken: takenFromServer, available };
         });
@@ -501,23 +448,20 @@ export default function CartelaScreen() {
   function togglePick(num: number) {
     const wasRecentlyReleased = recentlyReleasedRef.current.has(num);
 
-    // CRITICAL FIX: Block taken cartelas at the handler level unless it was just released
-    // by this user and the server is still reporting stale taken state.
+    // Block taken cartelas unless just released by this user
     if (availability && availability.taken.includes(num) && !wasRecentlyReleased) {
-      // Provide user feedback
       setBalanceAlert(`Cartela ${num} is already taken by another player.`);
-      return; // Cartela is taken - do nothing
+      return;
     }
 
     if (picksRef.current.has(num)) {
-      // INSTANT UI UPDATE: Update state immediately before API call
+      // Deselect — instant UI update
       const next = new Set(picksRef.current);
       next.delete(num);
       picksRef.current = next;
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
 
-      // Update availability immediately - move cartela from taken to available
       setAvailability(prev => {
         if (!prev) return prev;
         return {
@@ -526,30 +470,14 @@ export default function CartelaScreen() {
         };
       });
 
-      // INSTANT FEEDBACK: Emit WebSocket event IMMEDIATELY for other players
-      if (roundId && socket.connected) {
-        socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
-      }
-
-      // Mark as recently released so stale server responses do not re-block the same cartela
-      // while the release request is in flight.
       recentlyReleasedRef.current.add(num);
-      if (roundId) {
-        pendingReleaseRef.current.add(num);
-        releaseCartela(roundId, num)
-          .catch(err => console.warn('Failed to release cartela reservation:', err))
-          .finally(() => {
-            pendingReleaseRef.current.delete(num);
-            window.setTimeout(() => {
-              recentlyReleasedRef.current.delete(num);
-            }, 1500);
-          });
-      }
+      window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
       return;
     }
+
     if (picksRef.current.size >= MAX_SELECT) return;
 
-    // Check balance
+    // Balance check
     if (round && balances) {
       const stake = Number(round.stake);
       const total = (picksRef.current.size + 1) * stake;
@@ -560,88 +488,31 @@ export default function CartelaScreen() {
       }
     }
 
-    // CRITICAL FIX: Double-check server-side availability before allowing selection,
-    // but never reject the cartela immediately after a user just released it.
     if (!availability?.available.includes(num) && !wasRecentlyReleased) {
-      // Cartela is not available - refresh and show message
       setBalanceAlert(`Cartela ${num} is not available. Refreshing...`);
-      if (roundId) {
-        getCartelaAvailability(roundId).then(fresh => {
-          setAvailability(fresh);
-        }).catch(() => {});
-      }
+      if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
       return;
     }
-    
-    // INSTANT UI UPDATE: Update picks immediately for instant feedback
+
+    // Instant UI update
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
-    
-    // Update availability immediately - move cartela from available to taken
+
     setAvailability(prev => {
       if (!prev) return prev;
-      return {
-        taken: [...prev.taken, num],
-        available: prev.available.filter(n => n !== num)
-      };
+      return { taken: [...prev.taken, num], available: prev.available.filter(n => n !== num) };
     });
-    
-    // Show grid instantly from local lookup
+
+    // Show grid from local lookup
     const localGrid = getLocalGrid(num);
     if (localGrid) setPickedGrids(prev => new Map(prev).set(num, localGrid));
-    
-    // Reserve cartela via API
+
+    // Fetch server grid for confirmation
     if (roundId) {
-      // INSTANT FEEDBACK: Emit WebSocket reservation IMMEDIATELY
-      if (socket.connected) {
-        socket.emit('CARTELA_RESERVE', { roundId, cartelaNumbers: [num] });
-      }
-      
-      reserveCartela(roundId, num)
-        .then(() => {
-          // Confirm with server-cached grid
-          getCartelaGridCached(roundId, num)
-            .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
-            .catch(() => {});
-        })
-        .catch(err => {
-          // Reservation failed - rollback UI state
-          const rollback = new Set(picksRef.current);
-          rollback.delete(num);
-          picksRef.current = rollback;
-          setPicks(rollback);
-          
-          setAvailability(prev => {
-            if (!prev) return prev;
-            return {
-              taken: prev.taken.filter(n => n !== num),
-              available: [...prev.available, num].sort((a, b) => a - b)
-            };
-          });
-          
-          setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-          
-          // Undo WebSocket broadcast
-          if (socket.connected) {
-            socket.emit('CARTELA_UNRESERVE', { roundId, cartelaNumbers: [num] });
-          }
-          
-          // Show error and refresh availability
-          const errorMsg = err.message || 'Failed to reserve cartela';
-          if (errorMsg.includes('reserved') || errorMsg.includes('taken')) {
-            setBalanceAlert(`Cartela ${num} was just taken by another player. Refreshing...`);
-          } else if (err.code === 'MAX_CARTELA_LIMIT_EXCEEDED') {
-            setBalanceAlert(`You can only select up to 2 cartelas per round.`);
-          } else {
-            setBalanceAlert(`Failed to select cartela ${num}: ${errorMsg}`);
-          }
-          
-          // Refresh availability to get current state
-          getCartelaAvailability(roundId).then(fresh => {
-            setAvailability(fresh);
-          }).catch(() => {});
-        });
+      getCartelaGridCached(roundId, num)
+        .then(res => setPickedGrids(prev => new Map(prev).set(num, res.grid)))
+        .catch(() => {});
     }
   }
 
@@ -732,10 +603,9 @@ export default function CartelaScreen() {
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);
           const taken = takenSet.has(num) && !isPicked;
-          const reserved = reservedByOthers.has(num) && !isPicked && !taken;
           const disabled = starting || committing || taken || (!isPicked && picks.size >= MAX_SELECT);
           return (
-            <CartelaCell key={num} num={num} taken={taken} reserved={reserved} isPicked={isPicked} disabled={disabled} onClick={handleCellClick} />
+            <CartelaCell key={num} num={num} taken={taken} isPicked={isPicked} disabled={disabled} onClick={handleCellClick} />
           );
         })}
       </div>

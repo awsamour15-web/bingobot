@@ -367,26 +367,6 @@ export function leaveRound(roundId: string, cartelaNumber: number): Promise<{ ok
 }
 
 // ---------------------------------------------------------------------------
-// Cartela Reservations
-// ---------------------------------------------------------------------------
-
-export function reserveCartela(roundId: string, cartelaNumber: number): Promise<{ cartelaNumber: number; reserved: boolean; message: string }> {
-  return apiRequest('POST', `/api/rounds/${roundId}/reserve-cartela`, { cartelaNumber });
-}
-
-export function releaseCartela(roundId: string, cartelaNumber: number): Promise<{ cartelaNumber: number; released: boolean }> {
-  return apiRequest('DELETE', `/api/rounds/${roundId}/release-cartela/${cartelaNumber}`);
-}
-
-export function getMyReservations(roundId: string): Promise<{ reservations: number[] }> {
-  return apiRequest('GET', `/api/rounds/${roundId}/my-reservations`);
-}
-
-export function releaseAllReservations(roundId: string): Promise<{ released: number; cartelas: number[] }> {
-  return apiRequest('DELETE', `/api/rounds/${roundId}/release-all-reservations`);
-}
-
-// ---------------------------------------------------------------------------
 // System state
 // ---------------------------------------------------------------------------
 

@@ -70,10 +70,12 @@ function PendingWithdrawals() {
   useEffect(() => { void fetchWithdrawals(); }, [fetchWithdrawals]);
 
   async function handleApprove(w: WithdrawalRequest) {
-    if (!window.confirm(`Approve ${Number(w.amount).toFixed(2)} ETB for @${w.username}?`)) return;
+    const txNumber = window.prompt(`Enter transaction number for @${w.username} (${Number(w.amount).toFixed(2)} ETB):`);
+    if (txNumber === null) return; // cancelled
+    if (!txNumber.trim()) { setActionMsg({ type: 'error', text: 'Transaction number is required.' }); return; }
     setActioningId(w.id); setActionMsg(null);
     try {
-      await approveWithdrawal(w.id);
+      await approveWithdrawal(w.id, txNumber.trim());
       setActionMsg({ type: 'success', text: `Withdrawal for @${w.username} approved.` });
       await fetchWithdrawals();
     } catch (e: unknown) { setActionMsg({ type: 'error', text: (e as Error).message ?? 'Failed' }); }

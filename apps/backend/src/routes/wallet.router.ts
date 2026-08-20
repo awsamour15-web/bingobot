@@ -291,6 +291,27 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  // Require at least one successful deposit before allowing withdrawal
+  const playerWallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
+    select: { id: true },
+  });
+  const playerWalletIds = playerWallets.map((w) => w.id);
+  const hasDeposit = await prisma.transaction.findFirst({
+    where: {
+      wallet_id: { in: playerWalletIds },
+      type: TxType.deposit,
+    },
+  });
+
+  if (!hasDeposit) {
+    res.status(403).json({
+      error: 'NO_DEPOSIT',
+      message: 'You must make a deposit before requesting a withdrawal',
+    });
+    return;
+  }
+
   try {
     // Debit atomically at request time — prevents double-spend across concurrent requests
     await WalletService.debit(

@@ -50,6 +50,9 @@ export class NumberCallingEngine {
   /** Rounds currently being started — synchronous guard against concurrent start() calls */
   readonly startingRounds = new Set<string>();
 
+  /** Per-round cartela grid cache — populated once at game start, cleared when round ends */
+  private readonly gridCache = new Map<string, Map<number, number[]>>();
+
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
   private onRoundVoid?: OnRoundVoid;
@@ -241,6 +244,7 @@ export class NumberCallingEngine {
       clearTimeout(handle);
       this.activeTimers.delete(roundId);
     }
+    this.gridCache.delete(roundId);
   }
 
   /**
@@ -262,12 +266,17 @@ export class NumberCallingEngine {
       });
       if (!entries.length) return false;
 
-      const cartelaNumbers = [...new Set(entries.map((e) => e.cartela_number))];
-      const cartelas = await prisma.cartelaDefinition.findMany({
-        where: { cartela_number: { in: cartelaNumbers } },
-        select: { cartela_number: true, grid: true },
-      });
-      const gridMap = new Map(cartelas.map((c) => [c.cartela_number, c.grid as number[]]));
+      // Use cached grid map; populate from DB on first call for this round
+      let gridMap = this.gridCache.get(roundId);
+      if (!gridMap) {
+        const cartelaNumbers = [...new Set(entries.map((e) => e.cartela_number))];
+        const cartelas = await prisma.cartelaDefinition.findMany({
+          where: { cartela_number: { in: cartelaNumbers } },
+          select: { cartela_number: true, grid: true },
+        });
+        gridMap = new Map(cartelas.map((c) => [c.cartela_number, c.grid as number[]]));
+        this.gridCache.set(roundId, gridMap);
+      }
 
       const winnerMap = new Map<string, { cartelaNumber: number }>();
       for (const entry of entries) {
@@ -338,6 +347,9 @@ export class NumberCallingEngine {
       where: { id: roundId },
       data: { status: GameStatus.void, ended_at: new Date() },
     });
+
+    // Clear grid cache for this round
+    this.gridCache.delete(roundId);
 
     // Fetch all entries with stake
     const entries = await prisma.roundEntry.findMany({

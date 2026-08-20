@@ -9,7 +9,7 @@ import { GameStatus } from '@fidel/shared';
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 60_000;
 const DEFAULT_MAX_PLAYERS = 880;
-const CHECK_INTERVAL_MS = 1_000; // Check every second so rounds start calling immediately once due
+const CHECK_INTERVAL_MS = 5_000; // Check every 5 seconds — 1s caused excessive DB queries and OOM
 
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
@@ -67,9 +67,15 @@ export const RoundScheduler = {
     }
   },
 
+  _tickCount: 0,
+
   async tick(): Promise<void> {
+    RoundScheduler._tickCount++;
     await RoundScheduler.expireEmptyRounds();
-    await RoundScheduler.recoverStaleActiveRounds();
+    // Only run heavy recovery checks every 6 ticks (~30s) to reduce DB pressure
+    if (RoundScheduler._tickCount % 6 === 0) {
+      await RoundScheduler.recoverStaleActiveRounds();
+    }
     await RoundScheduler.ensureRoundsExist();
   },
 
@@ -150,15 +156,6 @@ export const RoundScheduler = {
         const stake = Number(round.stake);
 
         if (round._count.round_entries === 0) {
-          // Check for active reservations — players may have reserved cartelas
-          // but not yet committed their join. Give up to 30s grace period.
-          const activeReservations = await prisma.cartelaReservation.count({
-            where: { round_id: round.id, expires_at: { gt: new Date() } },
-          });
-          if (activeReservations > 0) {
-            console.log(`[Scheduler] Round ${round.id} has 0 entries but ${activeReservations} active reservation(s) — skipping void`);
-            continue;
-          }
           try {
             await prisma.gameRound.update({
               where: { id: round.id },

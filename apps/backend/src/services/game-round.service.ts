@@ -6,7 +6,6 @@ import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { nce } from './nce.service.js';
 import { ReferralService } from './referral.service.js';
-import { CartelaReservationService } from './cartela-reservation.service.js';
 
 // ─── Typed errors ─────────────────────────────────────────────────────────────
 
@@ -156,16 +155,7 @@ export const GameRoundService = {
           throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, totalStake);
         }
 
-        // 5. Remove any existing reservations for these cartelas by this player
-        await tx.cartelaReservation.deleteMany({
-          where: {
-            round_id: roundId,
-            player_id: playerId,
-            cartela_number: { in: cartelaNumbers }
-          }
-        });
-
-        // 6. Insert all RoundEntries (no payment yet)
+        // 5. Insert all RoundEntries (no payment yet)
         await tx.roundEntry.createMany({
           data: cartelaNumbers.map((cartelaNumber) => ({
             round_id: roundId,
@@ -258,16 +248,7 @@ export const GameRoundService = {
         throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, stake);
       }
 
-      // 5. Remove any existing reservation for this cartela by this player
-      await tx.cartelaReservation.deleteMany({
-        where: {
-          round_id: roundId,
-          player_id: playerId,
-          cartela_number: cartelaNumber
-        }
-      });
-
-      // 6. Insert RoundEntry (no payment yet)
+      // 5. Insert RoundEntry (no payment yet)
       await tx.roundEntry.create({
         data: {
           round_id: roundId,
