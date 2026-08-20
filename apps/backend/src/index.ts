@@ -207,7 +207,7 @@ setInterval(() => {
   fetch(`${SELF_URL}/health`)
     .then(() => console.log('[KeepAlive] Pinged self'))
     .catch(() => {}); // silently ignore errors
-}, 10 * 60 * 1000); // every 10 minutes
+}, 4 * 60 * 1000); // every 4 minutes (keep Render free tier awake)
 
 // ─── HTTP server (shared with Socket.IO) ─────────────────────────────────────
 const httpServer = createServer(app);

@@ -34,29 +34,52 @@ export async function adminApiRequest<T>(
   method: string,
   path: string,
   body?: unknown,
+  _retries = 3,
 ): Promise<T> {
   const hasBody = body !== undefined;
-  const response = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: buildAdminHeaders(hasBody),
-    ...(hasBody ? { body: JSON.stringify(body) } : {}),
-  });
 
-  if (response.status === 401) {
-    localStorage.clear();
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+  for (let attempt = 0; attempt < _retries; attempt++) {
+    let response: Response;
+
+    try {
+      response = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: buildAdminHeaders(hasBody),
+        ...(hasBody ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch (networkErr) {
+      // Network-level failure (e.g. Render waking up, CORS blocked on 503)
+      if (attempt < _retries - 1) {
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+      throw networkErr;
+    }
+
+    if (response.status === 503 && attempt < _retries - 1) {
+      // Server sleeping on Render free tier — wait and retry
+      await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
+      continue;
+    }
+
+    if (response.status === 401) {
+      localStorage.clear();
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
+        status: response.status,
+        code: errorData.error,
+      });
+    }
+
+    return response.json() as Promise<T>;
   }
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: response.statusText }));
-    throw Object.assign(new Error(errorData.message ?? 'Request failed'), {
-      status: response.status,
-      code: errorData.error,
-    });
-  }
-
-  return response.json() as Promise<T>;
+  throw new Error('Request failed after retries');
 }
 
 // ---------------------------------------------------------------------------
