@@ -134,12 +134,17 @@ export default function CartelaScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Local picks — restore from sessionStorage on mount, persist on change
+  // Local picks — restore from sessionStorage on mount, persist on change.
+  // Also re-populate from confirmed joined cartelas so the player's own cartelas
+  // show as "selected" (green) instead of "taken by another player" (red) on reload.
   const [picks, setPicks] = useState<Set<number>>(() => {
     if (!roundId) return new Set();
     try {
       const saved = sessionStorage.getItem(`selectedCartelas:${roundId}`);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      if (saved) return new Set(JSON.parse(saved));
+      // Fallback: restore from confirmed joined cartelas (e.g. after page reload)
+      const confirmed = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+      return confirmed ? new Set(JSON.parse(confirmed)) : new Set();
     } catch {
       return new Set();
     }
@@ -184,7 +189,19 @@ export default function CartelaScreen() {
           getProfile().catch(() => null),
         ]);
         setRound(r);
-        setAvailability(avail);
+        // Strip the current player's own joined cartelas from the taken list so
+        // they render as "selected" (green) rather than "taken by others" (red).
+        setAvailability(prev => {
+          const myNums: number[] = (() => {
+            try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; }
+          })();
+          const mySet = new Set(myNums);
+          if (mySet.size === 0) return avail;
+          return {
+            taken: avail.taken.filter(n => !mySet.has(n)),
+            available: avail.available,
+          };
+        });
         if (profile) setBalances(profile);
         // If round is already active/completed, mark countdown as started so
         // the navigate effect can fire immediately
