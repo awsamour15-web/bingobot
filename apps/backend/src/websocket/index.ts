@@ -22,6 +22,17 @@ interface JwtPayload {
 
 const claimTimestamps = new Map<string, number[]>();
 
+// Purge stale claim timestamps every 5 minutes to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  const windowMs = 60_000;
+  for (const [playerId, timestamps] of claimTimestamps) {
+    const fresh = timestamps.filter((t) => now - t < windowMs);
+    if (fresh.length === 0) claimTimestamps.delete(playerId);
+    else claimTimestamps.set(playerId, fresh);
+  }
+}, 5 * 60_000);
+
 function isClaimRateLimited(playerId: string): boolean {
   const now = Date.now();
   const windowMs = 60_000;

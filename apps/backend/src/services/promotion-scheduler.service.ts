@@ -52,19 +52,33 @@ async function sendToOne(
   }
 }
 
-/** Resolve targets to a list of chat IDs to send to */
+/** Resolve targets to a list of chat IDs to send to - uses cursor pagination to avoid loading all players into memory */
 async function resolveTargets(targets: SendTarget[]): Promise<string[]> {
   const ids: string[] = [];
   for (const t of targets) {
     if (t.type === 'channel' && t.channel_id) {
       ids.push(t.channel_id);
     } else if (t.type === 'bot_broadcast') {
-      // Broadcast to all players who have interacted with the bot
-      const players = await prisma.player.findMany({
-        where: { is_suspended: false },
-        select: { telegram_id: true },
-      });
-      for (const p of players) ids.push(String(p.telegram_id));
+      // Stream players in batches to avoid OOM on large player bases
+      let cursor: string | undefined;
+      const BATCH_SIZE = 1000;
+      
+      while (true) {
+        const players = await prisma.player.findMany({
+          where: { is_suspended: false },
+          select: { id: true, telegram_id: true },
+          take: BATCH_SIZE,
+          ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+          orderBy: { id: 'asc' },
+        });
+        
+        if (players.length === 0) break;
+        
+        for (const p of players) ids.push(String(p.telegram_id));
+        
+        if (players.length < BATCH_SIZE) break;
+        cursor = players[players.length - 1]!.id;
+      }
     }
   }
   return ids;

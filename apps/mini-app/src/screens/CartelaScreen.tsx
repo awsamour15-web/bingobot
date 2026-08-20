@@ -310,7 +310,7 @@ export default function CartelaScreen() {
     socket.on('ROUND_VOID', onEnded as (p: RoundVoidPayload) => void);
     socket.on('ROUND_CANCELLED', onEnded as (p: RoundCancelledPayload) => void);
 
-    // Poll every 500ms for faster updates — catches missed socket events
+    // Poll every 3s — catches missed socket events without hammering the server
     const poll = setInterval(() => {
       // Also fetch round status to catch missed ROUND_STARTED socket events
       Promise.all([
@@ -356,7 +356,7 @@ export default function CartelaScreen() {
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
-    }, 500);
+    }, 3000);
 
     return () => {
       socket.off('PLAYER_JOINED', onJoined);

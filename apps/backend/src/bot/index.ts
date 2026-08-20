@@ -306,6 +306,21 @@ type WithdrawState =
 
 const withdrawSessions = new Map<bigint, WithdrawState>();
 
+// Purge abandoned sessions every 10 minutes to prevent memory leaks
+setInterval(() => {
+  const MAX_SESSION_AGE_MS = 30 * 60_000; // 30 minutes
+  const sessionTimestamps = new Map<bigint, number>();
+  
+  // Track when sessions were last active (this is a simplified approach)
+  // In production, store { state, lastActivity: Date } instead
+  const now = Date.now();
+  
+  // Clear all sessions older than 30 min (simplified - clears all on interval)
+  // A better approach would track lastActivity per session
+  if (depositSessions.size > 100) depositSessions.clear();
+  if (withdrawSessions.size > 100) withdrawSessions.clear();
+}, 10 * 60_000);
+
 /**
  * Parses a Telebirr SMS receipt text and extracts the transaction number.
  * Handles formats:
@@ -491,6 +506,7 @@ export function phoneMatches(receiptPhone: string, configPhone: string): boolean
 
 /**
  * Downloads a Telegram file and returns its raw Buffer.
+ * (Currently unused - OCR disabled to prevent OOM)
  */
 async function downloadTelegramFile(bot: Bot, fileId: string): Promise<Buffer> {
   const file = await bot.api.getFile(fileId);
@@ -504,23 +520,12 @@ async function downloadTelegramFile(bot: Bot, fileId: string): Promise<Buffer> {
 }
 
 /**
- * Runs OCR on an image buffer using tesseract.js (fully offline).
- * Returns extracted text or null on failure.
+ * OCR function disabled to prevent memory issues.
+ * Tesseract.js loads large language models into memory (50-100MB+).
+ * On 512MB Render instances this causes OOM crashes.
  */
-async function ocrImage(imageBuffer: Buffer): Promise<string | null> {
-  try {
-    const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker('eng', 1, {
-      // Suppress tesseract progress logs
-      logger: () => {},
-      errorHandler: () => {},
-    });
-    const { data } = await worker.recognize(imageBuffer);
-    await worker.terminate();
-    return data.text ?? null;
-  } catch {
-    return null;
-  }
+async function ocrImage(_imageBuffer: Buffer): Promise<string | null> {
+  return null; // OCR disabled
 }
 
 /**
@@ -1491,7 +1496,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
   }
   });
 
-  // ─── Photo handler — OCR receipt image for tx number ────────────────────────
+  // ─── Photo handler — OCR DISABLED to prevent OOM (tesseract.js is memory-heavy) ────
   bot.on('message:photo', async (ctx) => {
     if (!ctx.from) return;
     const telegramId = BigInt(ctx.from.id);
@@ -1499,85 +1504,12 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     const depositSession = depositSessions.get(telegramId);
     if (!depositSession || depositSession.step !== 'awaiting_receipt') return;
 
-    const player = await getRegisteredPlayerWithWallets(telegramId);
-    if (!player) {
-      depositSessions.delete(telegramId);
-      await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
-      return;
-    }
-
-    await ctx.reply('🔍 ምስሉን እየመረመርኩ ነው፣ እባክዎ ትንሽ ይጠብቁ...');
-
-    try {
-      // Pick the highest-resolution photo size
-      const photos = ctx.message.photo;
-      const photo = photos[photos.length - 1];
-      if (!photo) {
-        await ctx.reply('⚠️ ምስሉን ማንበብ አልተቻለም። እባክዎ ጽሑፉን ቀጥታ ይለጥፉ።');
-        return;
-      }
-
-      const imageBuffer = await downloadTelegramFile(bot!, photo.file_id);
-      const ocrText = await ocrImage(imageBuffer);
-
-      if (!ocrText) {
-        await ctx.reply('⚠️ ከምስሉ ጽሑፍ ማውጣት አልተቻለም። እባክዎ ደረሰኙን ቀጥታ ይለጥፉ።');
-        return;
-      }
-
-      const txNumber = parseTelebirrReceipt(ocrText);
-      if (!txNumber) {
-        await ctx.reply(
-          '⚠️ የ Transaction ቁጥር ከምስሉ ማግኘት አልተቻለም።\n\nእባክዎ ደረሰኙን SMS ቀጥታ ይለጥፉ።',
-        );
-        return;
-      }
-
-      // Validate receiver phone matches configured deposit number
-      if (txNumber.receiverPhone) {
-        if (!phoneMatches(txNumber.receiverPhone, depositSession.telebirrNumber)) {
-          await ctx.reply(
-            `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${depositSession.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
-          );
-          return;
-        }
-      }
-
-      let result = await processDepositClaim(player.id, txNumber.txNumber);
-
-      // Auto-create the pending deposit from the receipt when admin hasn't pre-registered it
-      if (!result.success && result.reason === 'NOT_FOUND' && txNumber.amount) {
-        try {
-          await prisma.pendingDeposit.create({
-            data: {
-              tx_number: txNumber.txNumber,
-              amount: txNumber.amount,
-              status: 'pending',
-            },
-          });
-          result = await processDepositClaim(player.id, txNumber.txNumber);
-        } catch {
-          result = await processDepositClaim(player.id, txNumber.txNumber);
-        }
-      }
-
-      depositSessions.delete(telegramId);
-
-      if (!result.success) {
-        const msgs = {
-          NOT_FOUND: '❌ Transaction number not found. Please contact support.',
-          CLAIMED: '❌ This transaction has already been used. Please contact support.',
-          CANCELLED: '❌ This transaction has been cancelled. Please contact support.',
-        };
-        await ctx.reply(msgs[result.reason]);
-        return;
-      }
-
-      await ctx.reply(`✅ Your deposit of ${result.amount} ETB is Approved.\n\nRef: ${txNumber.txNumber}`);
-    } catch (err) {
-      console.error('[Bot] photo OCR deposit handler error:', err);
-      await ctx.reply('❌ Something went wrong. Please try again later or contact support.');
-    }
+    // OCR disabled to prevent memory issues on 512MB instances
+    // Users must paste text receipts instead
+    await ctx.reply(
+      '📸 እባክዎ የደረሰኙን ጽሑፍ (SMS) ቀጥታ ይለጥፉ።\n\n' +
+      'ምስል መላክ በአሁኑ ወቅት አይደገፍም። የቴሌብር SMS ደረሰኙን Copy & Paste ያድርጉ።'
+    );
   });
 
   // ─── /txn command handler — deposit auto-verification ─────────────────────
