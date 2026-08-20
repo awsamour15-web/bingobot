@@ -136,26 +136,22 @@ router.get('/:id/my-cartelas', async (req: Request, res: Response): Promise<void
 router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
 
-  // Single query: get taken cartelas and verify round exists simultaneously
   const round = await prisma.gameRound.findUnique({ where: { id }, select: { id: true } });
   if (!round) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' });
     return;
   }
 
-  // Get taken cartelas only
   const taken = await prisma.roundEntry.findMany({
     where: { round_id: id, is_watching: false },
-    select: { cartela_number: true }
+    select: { cartela_number: true },
   }).then(entries => entries.map(e => e.cartela_number));
 
-  // All cartela numbers 1–800
   const ALL_CARTELAS = Array.from({ length: TOTAL_CARTELAS }, (_, i) => i + 1);
   const takenSet = new Set(taken);
   const available = ALL_CARTELAS.filter((n) => !takenSet.has(n));
 
   const response: CartelaAvailability = { available, taken };
-  // No cache for availability - always return fresh data to prevent race conditions
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.status(200).json(response);
 });

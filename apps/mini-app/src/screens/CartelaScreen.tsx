@@ -204,12 +204,12 @@ export default function CartelaScreen() {
     load();
   }, [roundId]);
 
-  // Commit picks to server — only called when game is about to start.
-  // Returns true if joined as player, false if navigating as watcher (error/no picks).
-  // NOW ASYNC: Navigates immediately, joins in background
+  // Commit picks to server — called when game is about to start.
+  // Since cartelas are joined immediately on pick, this just ensures
+  // sessionStorage has the confirmed cartela numbers for the game screen.
   async function commitPicks(currentPicks: Set<number>): Promise<boolean> {
     if (currentPicks.size === 0) return false;
-    
+
     // Store round data in sessionStorage for instant load on game screen
     if (round) {
       sessionStorage.setItem(`roundCache:${roundId}`, JSON.stringify({
@@ -217,38 +217,40 @@ export default function CartelaScreen() {
         stake: round.stake,
         derash: round.derash,
         player_count: round.player_count,
-        status: 'active', // Optimistically set to active
+        status: 'active',
         timestamp: Date.now(),
       }));
     }
-    
+
+    // Cartelas were already joined on pick — just confirm sessionStorage is populated
+    const stored = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+    if (stored) {
+      // Already have confirmed cartelas from the immediate join calls
+      return true;
+    }
+
+    // Fallback: try joining in case anything was missed
     setCommitting(true);
     setError(null);
-    
     try {
       const result = await joinRoundBatch(roundId!, [...currentPicks]);
       setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
-      // Store confirmed cartela numbers for the game screen (scoped to round)
       sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(result.cartelaNumbers));
-      // Clear the temporary picks storage after successful commit
       sessionStorage.removeItem(`selectedCartelas:${roundId}`);
       return true;
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
-      if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
+      if (e.code === 'CARTELA_TAKEN' || e.code === 'ROUND_NOT_JOINABLE') {
+        // Already joined — use whatever is in sessionStorage
+        const fallback = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+        if (fallback) return true;
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+      } else if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
         setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
-      } else if (e.code === 'CARTELA_TAKEN' || e.message?.includes('already taken')) {
-        // Cartela was taken by someone else — join as watcher instead
-        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
-        setPicks(new Set());
-        picksRef.current = new Set();
-      } else if (e.code === 'ROUND_NOT_JOINABLE') {
-        // Round already started — navigate with empty cartelas (watching)
-        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       } else if (e.code === 'PLAYER_SUSPENDED') {
         setJoinError({ title: 'Account Suspended', message: 'Your account has been suspended. Please contact support.' });
       } else {
-        setJoinError({ title: 'Join Failed', message: e.message ?? 'Could not register cartela. Please try again.' });
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       }
       return false;
     } finally {
@@ -293,8 +295,28 @@ export default function CartelaScreen() {
       });
     };
 
-    const onCartelaReserved = (_p: { cartelaNumbers: number[] }) => {};
-    const onCartelaUnreserved = (_p: { cartelaNumbers: number[] }) => {};
+    const onCartelaReserved = (p: { cartelaNumbers: number[] }) => {
+      setAvailability(prev => {
+        if (!prev) return prev;
+        const incoming = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
+        if (incoming.length === 0) return prev;
+        const takenSet = new Set([...prev.taken, ...incoming]);
+        return { taken: [...takenSet], available: prev.available.filter(n => !takenSet.has(n)) };
+      });
+    };
+
+    const onCartelaUnreserved = (p: { cartelaNumbers: number[] }) => {
+      setAvailability(prev => {
+        if (!prev) return prev;
+        const released = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
+        if (released.length === 0) return prev;
+        const releasedSet = new Set(released);
+        return {
+          taken: prev.taken.filter(n => !releasedSet.has(n)),
+          available: [...new Set([...prev.available, ...released])].sort((a, b) => a - b),
+        };
+      });
+    };
 
     const onStarted = async (_p: RoundStartedPayload) => {
       if (_p.roundId && !shouldHandleCurrentRoundEvent(roundId, _p.roundId)) return;
@@ -543,17 +565,45 @@ export default function CartelaScreen() {
       }
     }
 
-    // Fetch server grid for confirmation
+    // Join immediately so RoundEntry is created and CARTELA_TAKEN fires to all clients
     if (roundId) {
-      getCartelaGridCached(roundId, num)
-        .then(res => {
-          setPickedGrids(prev => new Map(prev).set(num, res.grid));
-          // Keep IDB in sync with server grid
-          import('../lib/idb').then(({ idbPut }) => {
-            idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: res.grid }).catch(() => {});
-          });
+      joinRoundBatch(roundId, [num])
+        .then(result => {
+          setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
+          // Merge confirmed cartela into sessionStorage
+          const existing: number[] = (() => { try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; } })();
+          sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([...new Set([...existing, ...result.cartelaNumbers])]));
+          return getCartelaGridCached(roundId!, num);
         })
-        .catch(() => {});
+        .then(res => {
+          if (res) {
+            setPickedGrids(prev => new Map(prev).set(num, res.grid));
+            import('../lib/idb').then(({ idbPut }) => {
+              idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: res.grid }).catch(() => {});
+            });
+          }
+        })
+        .catch((err: unknown) => {
+          const e = err as { code?: string; message?: string };
+          // Rollback optimistic UI
+          const rollback = new Set(picksRef.current);
+          rollback.delete(num);
+          picksRef.current = rollback;
+          setPicks(rollback);
+          setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
+          setAvailability(prev => {
+            if (!prev) return prev;
+            return { taken: prev.taken.filter(n => n !== num), available: [...prev.available, num].sort((a, b) => a - b) };
+          });
+          if (e.code === 'CARTELA_TAKEN') {
+            setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
+            if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
+          } else if (e.code === 'INSUFFICIENT_BALANCE') {
+            setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+          } else if (e.code !== 'ROUND_NOT_JOINABLE') {
+            setBalanceAlert(e.message ?? 'Could not join. Please try again.');
+          }
+        });
     }
   }
 
