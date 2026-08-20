@@ -37,6 +37,10 @@ import { bot } from './bot/index.js';
 import { RoundScheduler } from './services/round-scheduler.service.js';
 import { CleanupService } from './services/cleanup.service.js';
 import { PromotionScheduler } from './services/promotion-scheduler.service.js';
+import { errorHandler, notFoundHandler, setupGlobalErrorHandlers } from './lib/error-handler.js';
+
+// Setup global error handlers for unhandled rejections and exceptions
+setupGlobalErrorHandlers();
 
 const app: Express = express();
 
@@ -109,6 +113,12 @@ app.use('/api/admin/broadcast-targets', jwtAdminMiddleware, broadcastTargetsRout
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ─── 404 Handler (must be after all routes) ──────────────────────────────────
+app.use(notFoundHandler);
+
+// ─── Global Error Handler (must be last) ─────────────────────────────────────
+app.use(errorHandler);
 
 // ─── Bot health check endpoint ─────────────────────────────────────────────────
 app.get('/bot-status', async (_req, res): Promise<void> => {

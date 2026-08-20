@@ -13,6 +13,7 @@ import type {
   PaginatedResponse,
 } from '@fidel/shared';
 import { idbGet, idbPut } from './idb';
+import { parseError, errorLogger } from './error-handler';
 
 // Re-export types for screens that can't resolve the workspace package directly
 export type {
@@ -227,7 +228,12 @@ export async function apiRequest<T>(
       lastError = Object.assign(new Error(errorData.message ?? 'Request failed'), {
         status: response.status,
         code: errorData.error,
+        statusCode: response.status,
       });
+
+      // Log structured error
+      const appError = parseError(lastError);
+      errorLogger.log(appError, { method, path, attempt: attempt + 1 });
 
       // Don't retry 4xx errors other than 401 (client errors are permanent)
       if (response.status >= 400 && response.status < 500 && response.status !== 401) {
