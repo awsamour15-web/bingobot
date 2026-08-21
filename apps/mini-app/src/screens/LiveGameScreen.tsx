@@ -491,7 +491,7 @@ export default function LiveGameScreen() {
     if (game.phase !== 'won' && game.phase !== 'void' && game.phase !== 'cancelled') return;
     // Won: show winner cartela for 5 seconds then navigate
     // Void/cancelled: navigate after 3 seconds
-    const delay = game.phase === 'won' ? 10 : 3;
+    const delay = game.phase === 'won' ? 5 : 3;
     setNextCountdown(delay);
     const iv = setInterval(() => {
       setNextCountdown((p) => { if (p === null || p <= 1) { clearInterval(iv); return 0; } return p - 1; });
