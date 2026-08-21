@@ -42,18 +42,18 @@ interface CartelaCellProps {
 }
 const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirmed, disabled, onClick }: CartelaCellProps) {
   const bg = isPicked
-    ? 'rgba(99,102,241,0.18)'
+    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
     : taken
       ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
       : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
-  const color = isPicked ? '#e0e7ff' : taken ? '#fecaca' : '#cbd5e1';
+  const color = isPicked ? '#ecfdf5' : taken ? '#fecaca' : '#cbd5e1';
   const border = isPicked
-    ? '2px solid rgba(129,140,248,0.7)'
+    ? '2px solid #6ee7b7'
     : taken
       ? '2px solid #dc2626'
       : '1px solid rgba(148,163,184,0.15)';
   const shadow = isPicked
-    ? '0 0 16px rgba(99,102,241,0.55), 0 0 32px rgba(129,140,248,0.25), inset 0 0 12px rgba(99,102,241,0.15)'
+    ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)'
     : taken
       ? '0 4px 14px rgba(220,38,38,0.3)'
       : '0 2px 8px rgba(0,0,0,0.2)';
@@ -72,14 +72,11 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
         fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: disabled && !taken && !isPicked ? 0.5 : 1,
-        transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: isPicked ? 'translateY(-2px) scale(1.08)' : taken ? 'scale(0.98)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
         lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '48px',
-        boxShadow: shadow,
-        backdropFilter: isPicked ? 'blur(8px)' : 'none',
-        WebkitBackdropFilter: isPicked ? 'blur(8px)' : 'none',
-        position: 'relative', overflow: 'hidden',
+        boxShadow: shadow, position: 'relative', overflow: 'hidden',
         WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
       }}
     >
