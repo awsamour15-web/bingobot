@@ -142,6 +142,11 @@ router.post('/deposit/manual', async (req: Request, res: Response): Promise<void
     return;
   }
 
+  if (amount < 50) {
+    res.status(422).json({ error: 'BELOW_MINIMUM', message: 'Minimum deposit amount is ETB 50' });
+    return;
+  }
+
   if (typeof receipt !== 'string' || receipt.trim() === '') {
     res.status(400).json({ error: 'RECEIPT_REQUIRED', message: 'receipt message is required' });
     return;

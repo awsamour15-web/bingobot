@@ -1252,8 +1252,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       // ── Step 1: awaiting amount ───────────────────────────────────────────────
       if (depositSession.step === 'awaiting_amount') {
         const amount = Number(text);
-        if (!Number.isFinite(amount) || amount < 10) {
-          await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን (ከ10 ብር ጀምሮ) ያስጊቡ።');
+        if (!Number.isFinite(amount) || amount < 50) {
+          await ctx.reply('⚠️ እባክዎ ትክክለኛ መጠን (ከ50 ብር ጀምሮ) ያስጊቡ።');
           return;
         }
 
