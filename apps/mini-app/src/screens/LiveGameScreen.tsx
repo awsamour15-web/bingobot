@@ -648,7 +648,7 @@ export default function LiveGameScreen() {
       {/* ── STATS ROW ── */}
       <div style={{ background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }}>
         {[
-          { label: 'ROUND',    value: `${round.stake} ETB` },
+          { label: 'GAME ID',   value: round.id.slice(-6).toUpperCase() },
           { label: 'PLAYERS',  value: game.playerCount },
           { label: 'BET',      value: round.stake },
           { label: 'DERASH',   value: Math.round(game.derash) },
