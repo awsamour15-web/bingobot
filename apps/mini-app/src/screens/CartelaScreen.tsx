@@ -278,28 +278,13 @@ export default function CartelaScreen() {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
       setAvailability(prev => {
         if (!prev) return prev;
-        // Only mark as taken if not in our local picks
+        // Only add to taken if not our own pick
         const incoming = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
         if (incoming.length === 0) return prev;
-        const takenSet = new Set([...prev.taken, ...incoming]);
-        return { taken: [...takenSet], available: prev.available.filter(n => !takenSet.has(n)) };
+        const newTaken = new Set([...prev.taken, ...incoming]);
+        return { taken: [...newTaken], available: prev.available.filter(n => !newTaken.has(n)) };
       });
-      // Remove from reservedByOthers since it's now officially taken
-      setReservedByOthers(prev => {
-        const next = new Set(prev);
-        p.cartelaNumbers.forEach(n => next.delete(n));
-        return next;
-      });
-      // Force-deselect any locally picked cartelas that got taken by someone else
-      setPicks(prev => {
-        const next = new Set(prev);
-        let changed = false;
-        for (const n of p.cartelaNumbers) {
-          if (next.has(n)) { next.delete(n); changed = true; }
-        }
-        if (changed) picksRef.current = next;
-        return changed ? next : prev;
-      });
+      // Never remove from picks — the picker manages their own state
     };
 
     const onCartelaReserved = (p: { cartelaNumbers: number[] }) => {
