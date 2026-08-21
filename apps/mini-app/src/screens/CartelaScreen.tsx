@@ -200,7 +200,7 @@ export default function CartelaScreen() {
         setRound(r);
         // Strip the current player's own joined cartelas from the taken list so
         // they render as "selected" (green) rather than "taken by others" (red).
-        setAvailability(prev => {
+        setAvailability(() => {
           const myNums: number[] = (() => {
             try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; }
           })();
@@ -409,9 +409,14 @@ export default function CartelaScreen() {
           if (!prev) return fresh;
           const localPicks = picksRef.current;
           const recentlyReleased = recentlyReleasedRef.current;
+          // Also exclude confirmed cartelas (myCartelaNumbers) so own joins never show as taken
+          const myConfirmed: number[] = (() => {
+            try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; }
+          })();
+          const mySet = new Set([...localPicks, ...myConfirmed]);
           const merged = new Set([...prev.taken, ...fresh.taken]);
-          const takenFromServer = [...merged].filter(n => !localPicks.has(n) && !recentlyReleased.has(n));
-          const available = [...new Set([...fresh.available, ...Array.from(recentlyReleased)])].filter(n => !localPicks.has(n) && !takenFromServer.includes(n));
+          const takenFromServer = [...merged].filter(n => !mySet.has(n) && !recentlyReleased.has(n));
+          const available = [...new Set([...fresh.available, ...Array.from(recentlyReleased)])].filter(n => !mySet.has(n) && !takenFromServer.includes(n));
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
