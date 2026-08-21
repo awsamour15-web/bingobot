@@ -409,14 +409,13 @@ export default function CartelaScreen() {
           if (!prev) return fresh;
           const localPicks = picksRef.current;
           const recentlyReleased = recentlyReleasedRef.current;
-          // Also exclude confirmed cartelas (myCartelaNumbers) so own joins never show as taken
           const myConfirmed: number[] = (() => {
             try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; }
           })();
           const mySet = new Set([...localPicks, ...myConfirmed]);
-          const merged = new Set([...prev.taken, ...fresh.taken]);
-          const takenFromServer = [...merged].filter(n => !mySet.has(n) && !recentlyReleased.has(n));
-          const available = [...new Set([...fresh.available, ...Array.from(recentlyReleased)])].filter(n => !mySet.has(n) && !takenFromServer.includes(n));
+          // taken = server's fresh taken, minus anything that's ours
+          const takenFromServer = fresh.taken.filter(n => !mySet.has(n) && !recentlyReleased.has(n));
+          const available = fresh.available.filter(n => !mySet.has(n));
           return { taken: takenFromServer, available };
         });
       }).catch(() => {});
@@ -527,13 +526,7 @@ export default function CartelaScreen() {
       picksRef.current = next;
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-      setAvailability(prev => {
-        if (!prev) return prev;
-        return {
-          taken: prev.taken.filter(n => n !== num),
-          available: [...prev.available, num].sort((a, b) => a - b),
-        };
-      });
+      // No need to update availability.taken — own picks were never added to it
       try {
         const existing: number[] = JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
         sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(existing.filter(n => n !== num)));
@@ -571,20 +564,17 @@ export default function CartelaScreen() {
       }
     }
 
-    if (!availability?.available.includes(num) && !wasRecentlyReleased) {
+    if (!availability?.available.includes(num) && !wasRecentlyReleased && !picksRef.current.has(num)) {
       setBalanceAlert(`Cartela ${num} is not available. Refreshing...`);
       if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
       return;
     }
 
-    // Optimistic UI — add to picks immediately
+    // Optimistic UI — add to picks immediately (do NOT add to availability.taken,
+    // that set is only for other players' cartelas)
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
-    setAvailability(prev => {
-      if (!prev) return prev;
-      return { taken: [...prev.taken, num], available: prev.available.filter(n => n !== num) };
-    });
 
     // Load grid for preview
     const localGrid = getLocalGrid(num);
@@ -607,16 +597,12 @@ export default function CartelaScreen() {
         })
         .catch((err: unknown) => {
           const e = err as { code?: string; message?: string };
-          // Rollback optimistic UI
+          // Rollback optimistic picks
           const rollback = new Set(picksRef.current);
           rollback.delete(num);
           picksRef.current = rollback;
           setPicks(rollback);
           setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-          setAvailability(prev => {
-            if (!prev) return prev;
-            return { taken: prev.taken.filter(n => n !== num), available: [...prev.available, num].sort((a, b) => a - b) };
-          });
           if (e.code === 'CARTELA_TAKEN') {
             setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
             if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
@@ -642,9 +628,8 @@ export default function CartelaScreen() {
     </div>
   );
 
-  // Build taken set — always exclude the current player's own picks so they
-  // never accidentally render as "taken by another player"
-  const takenSet = new Set(availability.taken.filter(n => !picks.has(n)));
+  // availability.taken contains ONLY other players' cartelas — never the current player's picks
+  const takenSet = new Set(availability.taken);
   const urgent = msLeft > 0 && msLeft < 10_000;
   const canPick = picks.size < MAX_SELECT;
   const picksArr = [...picks].sort((a, b) => a - b);
