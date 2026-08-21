@@ -515,12 +515,6 @@ export default function CartelaScreen() {
   function togglePick(num: number) {
     const wasRecentlyReleased = recentlyReleasedRef.current.has(num);
 
-    // Block taken cartelas (by other players) unless just released by this user
-    if (availability && availability.taken.includes(num) && !wasRecentlyReleased) {
-      setBalanceAlert(`Cartela ${num} is already taken by another player.`);
-      return;
-    }
-
     if (picksRef.current.has(num)) {
       // Deselect — optimistic UI removal, then call leaveRound to free it for others
       const next = new Set(picksRef.current);
@@ -535,7 +529,6 @@ export default function CartelaScreen() {
           available: [...prev.available, num].sort((a, b) => a - b),
         };
       });
-      // Remove from sessionStorage confirmed list
       try {
         const existing: number[] = JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
         sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(existing.filter(n => n !== num)));
@@ -544,15 +537,19 @@ export default function CartelaScreen() {
       recentlyReleasedRef.current.add(num);
       window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
 
-      // Fire-and-forget — free the cartela on the server so others can take it
       if (roundId) {
         leaveRound(roundId, num).catch(() => {
-          // If leave fails, re-add to picks so state stays consistent
           const restored = new Set([...picksRef.current, num]);
           picksRef.current = restored;
           setPicks(restored);
         });
       }
+      return;
+    }
+
+    // Block taken cartelas (by other players) — must be checked AFTER own-picks check
+    if (availability && availability.taken.includes(num) && !wasRecentlyReleased) {
+      setBalanceAlert(`Cartela ${num} is already taken by another player.`);
       return;
     }
 
