@@ -1088,7 +1088,7 @@ if (BOT_TOKEN) {
       return;
     }
     depositSessions.set(telegramId, { step: 'awaiting_amount' });
-    await ctx.reply('💰 ማስገባት የሚፈልጉትን መጠን ከ10 ብር ጀምሮ ያስጊቡ።');
+    await ctx.reply('💰 ማስገባት የሚፈልጉትን መጠን ከ50 ብር ጀምሮ ያስጊቡ።');
   }
 
 async function handleWithdrawStart(ctx: import('grammy').Context) {
