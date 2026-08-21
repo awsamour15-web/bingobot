@@ -10,6 +10,122 @@ import {
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, selectCss,
 } from '../components/ui';
 
+// ── Cartela Limit Settings ─────────────────────────────────────────────────────
+function CartelaLimitSection() {
+  const [limit, setLimit] = useState('2');
+  const [poolSize, setPoolSize] = useState('800');
+  const [loading, setLoading] = useState(true);
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [savingPool, setSavingPool] = useState(false);
+  const [feedbackLimit, setFeedbackLimit] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [feedbackPool, setFeedbackPool] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getConfig()
+      .then((data) => {
+        const limitEntry = data.find(e => e.key === 'max_cartelas_per_player');
+        const poolEntry = data.find(e => e.key === 'active_cartela_count');
+        setLimit(limitEntry?.value ?? '2');
+        setPoolSize(poolEntry?.value ?? '800');
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleSaveLimit() {
+    const n = parseInt(limit, 10);
+    if (isNaN(n) || n < 1 || n > 10) {
+      setFeedbackLimit({ type: 'error', msg: 'Must be between 1 and 10' });
+      return;
+    }
+    setSavingLimit(true); setFeedbackLimit(null);
+    try {
+      await updateConfig('max_cartelas_per_player', String(n));
+      setFeedbackLimit({ type: 'success', msg: `Limit set to ${n} cartela${n !== 1 ? 's' : ''} per player` });
+    } catch (e: unknown) {
+      setFeedbackLimit({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally {
+      setSavingLimit(false);
+    }
+  }
+
+  async function handleSavePool() {
+    const n = parseInt(poolSize, 10);
+    if (isNaN(n) || n < 1 || n > 800) {
+      setFeedbackPool({ type: 'error', msg: 'Must be between 1 and 800' });
+      return;
+    }
+    setSavingPool(true); setFeedbackPool(null);
+    try {
+      await updateConfig('active_cartela_count', String(n));
+      setFeedbackPool({ type: 'success', msg: `Players will see cartelas 1–${n}` });
+    } catch (e: unknown) {
+      setFeedbackPool({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally {
+      setSavingPool(false);
+    }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader
+        title="🎴 Cartela Settings"
+        subtitle="Control how many cartelas are available and how many each player can pick"
+      />
+      {loading ? (
+        <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 8 }}>
+              Available cartela pool
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 10 }}>
+              Players will only see cartelas 1 through this number. Max 800.
+            </div>
+            {feedbackPool && <Alert type={feedbackPool.type}>{feedbackPool.msg}</Alert>}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <input
+                type="number" min={1} max={800}
+                value={poolSize}
+                onChange={(e) => setPoolSize(e.target.value)}
+                disabled={savingPool}
+                style={{ ...inputCss, width: 120 }}
+              />
+              <Btn onClick={handleSavePool} disabled={savingPool}>
+                {savingPool ? 'Saving…' : 'Save'}
+              </Btn>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 8 }}>
+              Max cartelas per player per round
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 10 }}>
+              How many cartelas one player can hold in a single round. Default is 2.
+            </div>
+            {feedbackLimit && <Alert type={feedbackLimit.type}>{feedbackLimit.msg}</Alert>}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <input
+                type="number" min={1} max={10}
+                value={limit}
+                onChange={(e) => setLimit(e.target.value)}
+                disabled={savingLimit}
+                style={{ ...inputCss, width: 100 }}
+              />
+              <Btn onClick={handleSaveLimit} disabled={savingLimit}>
+                {savingLimit ? 'Saving…' : 'Save'}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ── Channel Settings ───────────────────────────────────────────────────────────
 function ChannelSettingsSection() {
   const [channelId, setChannelId] = useState('');
@@ -519,6 +635,7 @@ export function SettingsPage() {
   return (
     <div className="fade-in">
       <PageHeader title="Settings" />
+      <CartelaLimitSection />
       <ChannelSettingsSection />
       <DepositAccountsSection />
       <ConfigSection />

@@ -70,6 +70,14 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  const maxCartelasRow = await prisma.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
+  const maxCartelasPerPlayer = maxCartelasRow ? parseInt(maxCartelasRow.value, 10) : 2;
+
+  const activeCartelaRow = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
+  const activeCartelaCount = (activeCartelaRow && parseInt(activeCartelaRow.value, 10) >= 1)
+    ? parseInt(activeCartelaRow.value, 10)
+    : TOTAL_CARTELAS;
+
   const detail: RoundDetail = {
     id: round.id,
     stake: Number(round.stake),
@@ -82,6 +90,8 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     ended_at: round.ended_at?.toISOString(),
     winner_player_id: round.winner_player_id ?? undefined,
     winner_cartela_number: round.winner_cartela_number ?? undefined,
+    max_cartelas_per_player: maxCartelasPerPlayer,
+    active_cartela_count: activeCartelaCount,
   };
 
   res.status(200).json(detail);
@@ -145,7 +155,12 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
 
   const { taken: takenNums, reserved: reservedNums } = await CartelaReservationService.getTakenAndReserved(id);
 
-  const ALL_CARTELAS = Array.from({ length: TOTAL_CARTELAS }, (_, i) => i + 1);
+  const activeRow = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
+  const poolSize = (activeRow && parseInt(activeRow.value, 10) >= 1)
+    ? Math.min(parseInt(activeRow.value, 10), TOTAL_CARTELAS)
+    : TOTAL_CARTELAS;
+
+  const ALL_CARTELAS = Array.from({ length: poolSize }, (_, i) => i + 1);
   const unavailable = new Set([...takenNums, ...reservedNums]);
   const available = ALL_CARTELAS.filter((n) => !unavailable.has(n));
 
@@ -219,6 +234,11 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
     }
     if (err instanceof RoundNotFoundError) {
       res.status(404).json({ error: 'NOT_FOUND', message: err.message });
+      return;
+    }
+    const e = err as { code?: string; message?: string };
+    if (e.code === 'MAX_CARTELA_LIMIT') {
+      res.status(409).json({ error: 'MAX_CARTELA_LIMIT', message: e.message });
       return;
     }
     throw err;

@@ -60,6 +60,8 @@ export interface RoundDetail extends RoundListItem {
   ended_at?: string | undefined;
   winner_player_id?: string | undefined;
   winner_cartela_number?: number | undefined;
+  max_cartelas_per_player?: number | undefined;
+  active_cartela_count?: number | undefined;
 }
 
 export interface JoinRoundRequest {

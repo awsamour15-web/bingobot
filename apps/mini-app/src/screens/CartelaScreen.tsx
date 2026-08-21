@@ -27,8 +27,6 @@ const asSafeBalance = (wallet?: { balance?: number | string | null } | null) => 
 };
 
 export const TOTAL_CARTELAS = 800;
-const MAX_SELECT = 2;
-const ALL_NUMBERS = Array.from({ length: TOTAL_CARTELAS }, (_, i) => i + 1);
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171'];
 
@@ -519,7 +517,7 @@ export default function CartelaScreen() {
       return;
     }
 
-    if (picksRef.current.size >= MAX_SELECT) return;
+    if (picksRef.current.size >= (round?.max_cartelas_per_player ?? 2)) return;
 
     // Balance check
     if (round && balances) {
@@ -590,7 +588,10 @@ export default function CartelaScreen() {
   // availability.taken contains ONLY other players' cartelas — never the current player's picks
   const takenSet = new Set(availability.taken);
   const urgent = msLeft > 0 && msLeft < 10_000;
-  const canPick = picks.size < MAX_SELECT;
+  const maxSelect = round.max_cartelas_per_player ?? 2;
+  const canPick = picks.size < maxSelect;
+  const poolSize = Math.min(round.active_cartela_count ?? TOTAL_CARTELAS, TOTAL_CARTELAS);
+  const allNumbers = Array.from({ length: poolSize }, (_, i) => i + 1);
   const picksArr = [...picks].sort((a, b) => a - b);
   // How much vertical space the bingo preview needs
   const previewCount = picksArr.length;
@@ -608,7 +609,7 @@ export default function CartelaScreen() {
             </button>
             <div>
               <div style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9' }}>Select Cartelas</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Up to 2 cartelas</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Up to {round?.max_cartelas_per_player ?? 2} cartela{(round?.max_cartelas_per_player ?? 2) !== 1 ? 's' : ''}</div>
             </div>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -659,7 +660,7 @@ export default function CartelaScreen() {
         background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
-        {ALL_NUMBERS.map(num => {
+        {allNumbers.map(num => {
           const isPicked = picks.has(num);
           const taken = takenSet.has(num) && !isPicked;
           const isConfirmed = false;

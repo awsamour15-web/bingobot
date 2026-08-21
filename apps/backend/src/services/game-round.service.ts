@@ -156,6 +156,17 @@ export const GameRoundService = {
           throw new CartelaTakenError(roundId, existingEntries[0]!.cartela_number);
         }
 
+        // 3b. Enforce per-player cartela limit from Config
+        const maxCartelasRow = await tx.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
+        const rawMax = maxCartelasRow ? parseInt(maxCartelasRow.value, 10) : 2;
+        const maxAllowed = Number.isFinite(rawMax) && rawMax >= 1 ? rawMax : 2;
+        const currentCount = await tx.roundEntry.count({
+          where: { round_id: roundId, player_id: playerId, is_watching: false },
+        });
+        if (currentCount + cartelaNumbers.length > maxAllowed) {
+          throw Object.assign(new Error(`You can only select up to ${maxAllowed} cartela(s) per round`), { code: 'MAX_CARTELA_LIMIT' });
+        }
+
         // 4. Check player has sufficient balance (soft check — actual debit at game start)
         const stake = parseFloat(round.stake);
         const totalStake = stake * cartelaNumbers.length;

@@ -4,7 +4,13 @@
 import prisma from '../lib/prisma.js';
 
 const RESERVATION_DURATION_MS = 45000; // 45 seconds — outlasts the 30s lead time
-const MAX_SELECT = 2; // Maximum number of cartelas a player can reserve/select
+const DEFAULT_MAX_SELECT = 2;
+
+async function getMaxSelect(): Promise<number> {
+  const row = await prisma.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
+  const val = row ? parseInt(row.value, 10) : DEFAULT_MAX_SELECT;
+  return Number.isFinite(val) && val >= 1 ? val : DEFAULT_MAX_SELECT;
+}
 
 export class CartelaAlreadyReservedError extends Error {
   constructor(roundId: string, cartelaNumber: number, reservedBy?: string) {
@@ -24,8 +30,9 @@ export class ReservationNotFoundError extends Error {
 }
 
 export class MaxCartelaLimitExceededError extends Error {
-  constructor(roundId: string, playerId: string, currentCount: number) {
-    super(`Player ${playerId} has reached maximum limit of ${MAX_SELECT} cartelas in round ${roundId} (currently has ${currentCount})`);
+  constructor(roundId: string, playerId: string, currentCount: number, maxAllowed?: number) {
+    const limit = maxAllowed ?? DEFAULT_MAX_SELECT;
+    super(`Player ${playerId} has reached maximum limit of ${limit} cartelas in round ${roundId} (currently has ${currentCount})`);
     this.name = 'MaxCartelaLimitExceededError';
   }
 }
@@ -37,6 +44,7 @@ export const CartelaReservationService = {
    * Throws MaxCartelaLimitExceededError if player already has MAX_SELECT cartelas reserved/joined.
    */
   async reserve(roundId: string, playerId: string, cartelaNumber: number): Promise<void> {
+    const maxSelect = await getMaxSelect();
     try {
       await prisma.$transaction(async (tx) => {
         // 1. Clean up expired reservations first
@@ -96,8 +104,8 @@ export const CartelaReservationService = {
 
           const totalCartelaCount = currentReservations + joinedCartelas;
           
-          if (totalCartelaCount >= MAX_SELECT) {
-            throw new MaxCartelaLimitExceededError(roundId, playerId, totalCartelaCount);
+          if (totalCartelaCount >= maxSelect) {
+            throw new MaxCartelaLimitExceededError(roundId, playerId, totalCartelaCount, maxSelect);
           }
         }
 
