@@ -2,13 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   getProfile,
   getWalletTransactions,
-  getDepositAccounts,
-  verifyManualDeposit,
-  withdrawFunds,
 } from '../lib/api';
 import { initAuth } from '../lib/auth';
 import { formatMoney } from '../lib/format';
-import type { PlayerProfile, TransactionListItem, PaginatedResponse, DepositAccountOption } from '../lib/api';
+import type { PlayerProfile, TransactionListItem, PaginatedResponse } from '../lib/api';
 
 const C = {
   bg: '#0a0e1a',
@@ -24,48 +21,49 @@ const C = {
 };
 
 const TX_META: Record<string, { label: string; color: string; sign: string }> = {
-  deposit:             { label: 'Deposit',           color: C.green,  sign: '+' },
-  withdrawal:          { label: 'Withdrawal',         color: C.red,    sign: '-' },
-  game_entry:          { label: 'Game Entry',         color: C.red,    sign: '-' },
-  game_win:            { label: 'Game Win',           color: C.green,  sign: '+' },
-  referral_commission: { label: 'Referral Bonus',     color: C.green,  sign: '+' },
-  admin_credit:        { label: 'Admin Credit',       color: C.green,  sign: '+' },
-  admin_debit:         { label: 'Admin Debit',        color: C.red,    sign: '-' },
-  refund:              { label: 'Refund',             color: C.green,  sign: '+' },
+  deposit:             { label: 'Deposit',       color: C.green, sign: '+' },
+  withdrawal:          { label: 'Withdrawal',     color: C.red,   sign: '-' },
+  game_entry:          { label: 'Game Entry',     color: C.red,   sign: '-' },
+  game_win:            { label: 'Game Win',       color: C.green, sign: '+' },
+  referral_commission: { label: 'Referral Bonus', color: C.green, sign: '+' },
+  admin_credit:        { label: 'Admin Credit',   color: C.green, sign: '+' },
+  admin_debit:         { label: 'Admin Debit',    color: C.red,   sign: '-' },
+  refund:              { label: 'Refund',         color: C.green, sign: '+' },
 };
 
-type Tab = 'overview' | 'transactions';
+type Tab = 'balance' | 'history';
 
 export default function WalletScreen() {
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [txData, setTxData] = useState<PaginatedResponse<TransactionListItem> | null>(null);
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>('balance');
   const [txPage, setTxPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [depositAmount, setDepositAmount] = useState('');
-  const [depositLoading, setDepositLoading] = useState(false);
-  const [depositError, setDepositError] = useState<string | null>(null);
-  const [depositStep, setDepositStep] = useState<'amount' | 'instruction' | 'receipt'>('amount');
-  const [depositAccounts, setDepositAccounts] = useState<DepositAccountOption[]>([]);
-  const [depositReceipt, setDepositReceipt] = useState('');
-  const [depositTargetAmount, setDepositTargetAmount] = useState(0);
-  const [depositSuccess, setDepositSuccess] = useState<string | null>(null);
+  const loadProfile = useCallback(async () => {
+    try {
+      await initAuth();
+      const p = await getProfile();
+      setProfile(p);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawPhone, setWithdrawPhone] = useState('');
-  const [withdrawLoading, setWithdrawLoading] = useState(false);
-  const [withdrawError, setWithdrawError] = useState<string | null>(null);
-  const [withdrawSuccess, setWithdrawSuccess] = useState(false);
+  useEffect(() => { loadProfile(); }, [loadProfile]);
 
-  useEffect(() => {
-    initAuth()
-      .then(() => getProfile())
-      .then(setProfile)
-      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load'))
-      .finally(() => setLoading(false));
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const p = await getProfile();
+      setProfile(p);
+    } catch {}
+    finally { setRefreshing(false); }
   }, []);
 
   const loadTx = useCallback(async (page: number) => {
@@ -75,194 +73,126 @@ export default function WalletScreen() {
   }, []);
 
   useEffect(() => {
-    if (tab === 'transactions') loadTx(txPage);
+    if (tab === 'history') loadTx(txPage);
   }, [tab, txPage, loadTx]);
 
-  const handleDeposit = useCallback(async () => {
-    const amount = parseFloat(depositAmount);
-    if (!amount || amount <= 0) { setDepositError('Enter a valid amount'); return; }
-    setDepositLoading(true); setDepositError(null); setDepositSuccess(null);
-    try {
-      const res = await getDepositAccounts();
-      setDepositAccounts(res.accounts.length ? res.accounts : [{ phone: 'N/A', name: 'Support' }]);
-      setDepositTargetAmount(amount);
-      setDepositStep('instruction');
-    } catch (err) {
-      setDepositError((err as { message?: string }).message ?? 'Unable to load deposit account');
-    } finally {
-      setDepositLoading(false);
-    }
-  }, [depositAmount]);
+  if (loading) return (
+    <div style={{ minHeight: '100dvh', background: C.bg }} />
+  );
 
-  const handleManualDepositSubmit = useCallback(async () => {
-    if (!depositReceipt.trim()) {
-      setDepositError('Please paste the full Telebirr SMS receipt.');
-      return;
-    }
-
-    setDepositLoading(true); setDepositError(null);
-    try {
-      const res = await verifyManualDeposit(depositTargetAmount, depositReceipt.trim());
-      setDepositSuccess(res.message);
-      setDepositStep('amount');
-      setDepositAmount('');
-      setDepositReceipt('');
-      const freshProfile = await getProfile();
-      setProfile(freshProfile);
-    } catch (err) {
-      setDepositError((err as { message?: string }).message ?? 'Deposit verification failed');
-    } finally {
-      setDepositLoading(false);
-    }
-  }, [depositReceipt, depositTargetAmount]);
-
-  const handleWithdraw = useCallback(async () => {
-    const amount = parseFloat(withdrawAmount);
-    if (!amount || amount <= 0) { setWithdrawError('Enter a valid amount'); return; }
-    if (!withdrawPhone.trim()) { setWithdrawError('Phone number required'); return; }
-    if (profile && amount > Number(profile.mainWallet?.balance ?? 0)) {
-      setWithdrawError('Exceeds main wallet balance'); return;
-    }
-    setWithdrawLoading(true); setWithdrawError(null);
-    try {
-      await withdrawFunds(amount, withdrawPhone.trim());
-      setWithdrawSuccess(true); setWithdrawAmount(''); setWithdrawPhone('');
-    } catch (err) { setWithdrawError((err as { message?: string }).message ?? 'Withdrawal failed'); }
-    finally { setWithdrawLoading(false); }
-  }, [withdrawAmount, withdrawPhone, profile]);
-
-  if (loading) return <div style={{ height: '60vh', background: C.bg }} />;
-  if (error || !profile) return <div style={{ padding: 24, textAlign: 'center', color: C.red }}>{error ?? 'Failed to load'}</div>;
+  if (error || !profile) return (
+    <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red }}>
+      {error ?? 'Failed to load'}
+    </div>
+  );
 
   const mainBal = Number(profile.mainWallet?.balance ?? 0);
   const playBal = Number(profile.playWallet?.balance ?? 0);
+  const phone = (profile as any).phone ?? (profile as any).username ?? '—';
   const txTotalPages = txData ? Math.ceil(txData.total / txData.pageSize) : 1;
 
-  const input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-    <input {...props} style={{
-      width: '100%', padding: '13px 14px',
-      background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
-      borderRadius: 12, fontSize: 15, color: C.text, outline: 'none',
-      boxSizing: 'border-box', ...props.style,
-    }} />
-  );
-
-  const btn = (label: string, onClick: () => void, loading2: boolean, color = C.amber) => (
-    <button onClick={onClick} disabled={loading2} style={{
-      width: '100%', padding: '14px', background: loading2 ? 'rgba(255,255,255,0.1)' : color,
-      color: loading2 ? C.muted : '#0a0e1a', border: 'none', borderRadius: 12,
-      fontSize: 15, fontWeight: 800, cursor: loading2 ? 'default' : 'pointer', marginTop: 10,
-    }}>
-      {loading2 ? 'Please wait…' : label}
-    </button>
-  );
-
   return (
-    <div style={{ background: C.bg, minHeight: '100dvh', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100dvh', background: C.bg, paddingBottom: 80 }}>
 
       {/* ── Header ── */}
-      <div style={{ background: `linear-gradient(135deg, ${C.surface2} 0%, ${C.surface} 100%)`, padding: '20px 20px 18px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ fontSize: 11, color: C.dim, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>Your Balances</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Winning Balance</div>
-            <div style={{ fontSize: 9, color: C.dim, marginBottom: 6 }}>Withdrawable</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: C.green }}>{formatMoney(mainBal)}</div>
-            <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
+      <div style={{ padding: '24px 20px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <span style={{ fontSize: 22, fontWeight: 900, color: C.text }}>Wallet</span>
+          <button
+            onClick={handleRefresh}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, opacity: refreshing ? 0.5 : 1 }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ display: 'block', transition: 'transform 0.6s', transform: refreshing ? 'rotate(360deg)' : 'none' }}>
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Phone + Verified */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: C.surface, borderRadius: 14, padding: '14px 16px', marginBottom: 4,
+          border: `1px solid ${C.border}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <span style={{ color: C.text, fontSize: 16, fontWeight: 600 }}>{phone}</span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: '14px' }}>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Play Balance</div>
-            <div style={{ fontSize: 9, color: C.dim, marginBottom: 6 }}>Deposit & Bonus</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#60a5fa' }}>{formatMoney(playBal)}</div>
-            <div style={{ fontSize: 11, color: C.dim }}>Birr</div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)',
+            borderRadius: 20, padding: '4px 12px',
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span style={{ color: C.green, fontSize: 13, fontWeight: 700 }}>Verified</span>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', background: C.surface, borderRadius: 12, padding: 4, marginTop: 12,
+          border: `1px solid ${C.border}`,
+        }}>
+          {(['balance', 'history'] as Tab[]).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              flex: 1, padding: '10px 0', border: 'none',
+              borderRadius: 10,
+              background: tab === t ? 'rgba(255,255,255,0.12)' : 'transparent',
+              color: tab === t ? C.text : C.muted,
+              fontWeight: tab === t ? 800 : 500,
+              fontSize: 14, cursor: 'pointer', transition: 'all 0.2s',
+            }}>
+              {t === 'balance' ? 'Balance' : 'History'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{ display: 'flex', background: C.surface, borderBottom: `1px solid ${C.border}` }}>
-        {(['overview', 'transactions'] as Tab[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: '13px 0', border: 'none', background: 'none',
-            fontWeight: tab === t ? 800 : 400, fontSize: 14,
-            color: tab === t ? C.amber : C.muted,
-            borderBottom: tab === t ? `2px solid ${C.amber}` : '2px solid transparent',
-            cursor: 'pointer',
+      {/* ── Balance Tab ── */}
+      {tab === 'balance' && (
+        <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Main Wallet */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: C.surface, border: `1px solid ${C.border}`,
+            borderRadius: 16, padding: '18px 20px',
           }}>
-            {t === 'overview' ? '💳 Payments' : '📄 Transactions'}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'overview' && (
-        <div style={{ padding: '16px' }}>
-          {/* Deposit */}
-          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 14 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 14 }}>⬇ Deposit</div>
-
-            {depositStep === 'amount' && (
-              <>
-                {input({ type: 'number', placeholder: 'Amount in Birr', value: depositAmount, min: 1, onChange: e => { setDepositAmount(e.target.value); setDepositError(null); setDepositSuccess(null); } })}
-                {depositError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{depositError}</div>}
-                {depositSuccess && <div style={{ color: C.green, fontSize: 13, marginTop: 6 }}>{depositSuccess}</div>}
-                {btn('Continue', handleDeposit, depositLoading)}
-              </>
-            )}
-
-            {depositStep === 'instruction' && (
-              <>
-                <div style={{ fontSize: 13, color: C.muted, marginBottom: 10 }}>
-                  Send exactly {depositTargetAmount} ETB to any active Telebirr account below, then paste the full SMS receipt.
-                </div>
-                {depositAccounts.map((account, idx) => (
-                  <div key={`${account.phone}-${idx}`} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
-                    <div style={{ color: C.text, fontWeight: 700 }}>Phone: {account.phone}</div>
-                    <div style={{ color: C.muted, fontSize: 12 }}>Name: {account.name}</div>
-                  </div>
-                ))}
-                <textarea
-                  value={depositReceipt}
-                  onChange={e => { setDepositReceipt(e.target.value); setDepositError(null); }}
-                  placeholder="Paste the full Telebirr SMS here..."
-                  rows={6}
-                  style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: 12, border: `1px solid ${C.border}`, background: 'rgba(255,255,255,0.04)', color: C.text, padding: 12, fontSize: 14, marginTop: 12 }}
-                />
-                {depositError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{depositError}</div>}
-                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                  <button onClick={() => { setDepositStep('amount'); setDepositReceipt(''); setDepositError(null); }} style={{ flex: 1, padding: '12px', borderRadius: 12, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontWeight: 700 }}>Back</button>
-                  <button onClick={handleManualDepositSubmit} disabled={depositLoading} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: depositLoading ? 'rgba(255,255,255,0.1)' : C.amber, color: depositLoading ? C.muted : '#0a0e1a', fontWeight: 800 }}>Confirm</button>
-                </div>
-              </>
-            )}
+            <span style={{ color: C.muted, fontSize: 16 }}>Main Wallet</span>
+            <span style={{ color: C.text, fontSize: 22, fontWeight: 900 }}>{formatMoney(mainBal)}</span>
           </div>
 
-          {/* Withdraw */}
-          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 4 }}>⬆ Withdraw</div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
-              Only your winning balance can be withdrawn. Deposit & bonus balance is not withdrawable.
+          {/* Play Wallet */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: C.surface, border: `1px solid ${C.border}`,
+            borderRadius: 16, padding: '18px 20px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span style={{ color: C.muted, fontSize: 16 }}>Play Wallet</span>
             </div>
-            {mainBal <= 0 && (
-              <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: C.red }}>
-                You have no winning balance to withdraw. Play and win to earn withdrawable balance.
-              </div>
-            )}
-            {withdrawSuccess && (
-              <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: C.green }}>
-                ✅ Request submitted — pending admin approval.
-              </div>
-            )}
-            {input({ type: 'number', placeholder: `Max ${formatMoney(mainBal)} Birr (winnings only)`, value: withdrawAmount, min: 100, max: mainBal, disabled: mainBal <= 0, onChange: e => { setWithdrawAmount(e.target.value); setWithdrawError(null); setWithdrawSuccess(false); }, style: { marginBottom: 10 } })}
-            {input({ type: 'tel', placeholder: 'Phone (e.g. 09XXXXXXXX)', value: withdrawPhone, disabled: mainBal <= 0, onChange: e => { setWithdrawPhone(e.target.value); setWithdrawError(null); } })}
-            {withdrawError && <div style={{ color: C.red, fontSize: 13, marginTop: 6 }}>{withdrawError}</div>}
-            {btn('Request Withdrawal', handleWithdraw, withdrawLoading || mainBal <= 0, '#0f9b8e')}
+            <span style={{ color: C.green, fontSize: 22, fontWeight: 900 }}>{formatMoney(playBal)}</span>
           </div>
+
         </div>
       )}
 
-      {tab === 'transactions' && (
-        <div style={{ padding: '12px 0' }}>
-          {txLoading && <div style={{ padding: 32 }} />}
+      {/* ── History Tab ── */}
+      {tab === 'history' && (
+        <div style={{ padding: '16px 0' }}>
+          {txLoading && <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>Loading…</div>}
 
           {!txLoading && txData?.items.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>No transactions yet.</div>
@@ -272,7 +202,7 @@ export default function WalletScreen() {
             const meta = TX_META[tx.type] ?? { label: tx.type, color: C.muted, sign: '' };
             return (
               <div key={tx.id} style={{
-                background: C.surface, margin: '0 14px 10px',
+                background: C.surface, margin: '0 16px 10px',
                 borderRadius: 14, padding: '14px 16px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 border: `1px solid ${C.border}`,
