@@ -36,31 +36,33 @@ interface CartelaCellProps {
   num: number;
   taken: boolean;
   isPicked: boolean;
+  isConfirmed: boolean;
   disabled: boolean;
   onClick: (num: number) => void;
 }
-const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, onClick }: CartelaCellProps) {
+const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirmed, disabled, onClick }: CartelaCellProps) {
   const bg = isPicked
-    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+    ? isConfirmed
+      ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' // Darker teal = confirmed/locked
+      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
     : taken
-      ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' // Darker red for taken
+      ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
       : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
-  const color = isPicked ? '#ecfdf5' : taken ? '#fecaca' : '#cbd5e1'; // Lighter text for taken
+  const color = isPicked ? '#ecfdf5' : taken ? '#fecaca' : '#cbd5e1';
   const border = isPicked
-    ? '2px solid #6ee7b7'
+    ? isConfirmed ? '2px solid #2dd4bf' : '2px solid #6ee7b7'
     : taken
-      ? '2px solid #dc2626' // Thicker border for taken
+      ? '2px solid #dc2626'
       : '1px solid rgba(148,163,184,0.15)';
 
   const shadow = isPicked
     ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)'
     : taken
-      ? '0 4px 14px rgba(220,38,38,0.3), inset 0 -2px 4px rgba(0,0,0,0.3)' // Stronger shadow for taken
+      ? '0 4px 14px rgba(220,38,38,0.3), inset 0 -2px 4px rgba(0,0,0,0.3)'
       : '0 2px 8px rgba(0,0,0,0.2)';
 
-  // CRITICAL FIX: Prevent clicks on taken cartelas
   const handleClick = () => {
-    if (taken || disabled) return; // Block clicks on taken/disabled cartelas
+    if (taken || disabled) return;
     onClick(num);
   };
 
@@ -71,8 +73,8 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, 
       style={{
         padding: '8px 0', borderRadius: 12, border, background: bg, color,
         fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
-        cursor: disabled || taken ? 'not-allowed' : 'pointer',
-        opacity: disabled && !taken ? 0.5 : 1,
+        cursor: disabled || taken || isConfirmed ? 'not-allowed' : 'pointer',
+        opacity: disabled && !taken && !isPicked ? 0.5 : 1,
         transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: isPicked ? 'translateY(-2px) scale(1.08)' : taken ? 'scale(0.98)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
@@ -87,6 +89,11 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, disabled, 
       {taken ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <span style={{ fontSize: 14 }}>🔒</span>
+          <span style={{ fontSize: 11 }}>{num}</span>
+        </div>
+      ) : isPicked && isConfirmed ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <span style={{ fontSize: 12 }}>✓</span>
           <span style={{ fontSize: 11 }}>{num}</span>
         </div>
       ) : (
@@ -224,10 +231,12 @@ export default function CartelaScreen() {
   }, [roundId]);
 
   // Commit picks to server — called when game is about to start.
-  // Since cartelas are joined immediately on pick, this just ensures
-  // sessionStorage has the confirmed cartela numbers for the game screen.
+  // Sends the final selection to the backend in one batch.
   async function commitPicks(currentPicks: Set<number>): Promise<boolean> {
-    if (currentPicks.size === 0) return false;
+    if (currentPicks.size === 0) {
+      sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+      return false;
+    }
 
     // Store round data in sessionStorage for instant load on game screen
     if (round) {
@@ -241,14 +250,6 @@ export default function CartelaScreen() {
       }));
     }
 
-    // Cartelas were already joined on pick — just confirm sessionStorage is populated
-    const stored = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
-    if (stored) {
-      // Already have confirmed cartelas from the immediate join calls
-      return true;
-    }
-
-    // Fallback: try joining in case anything was missed
     setCommitting(true);
     setError(null);
     try {
@@ -260,7 +261,6 @@ export default function CartelaScreen() {
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'CARTELA_TAKEN' || e.code === 'ROUND_NOT_JOINABLE') {
-        // Already joined — use whatever is in sessionStorage
         const fallback = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
         if (fallback) return true;
         sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
@@ -516,28 +516,26 @@ export default function CartelaScreen() {
   function togglePick(num: number) {
     const wasRecentlyReleased = recentlyReleasedRef.current.has(num);
 
-    // Block taken cartelas unless just released by this user
+    // Block taken cartelas (by other players) unless just released by this user
     if (availability && availability.taken.includes(num) && !wasRecentlyReleased) {
       setBalanceAlert(`Cartela ${num} is already taken by another player.`);
       return;
     }
 
     if (picksRef.current.has(num)) {
-      // Deselect — instant UI update
+      // Deselect — player can change during the 60s window (local only, no backend call yet)
       const next = new Set(picksRef.current);
       next.delete(num);
       picksRef.current = next;
       setPicks(next);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-
       setAvailability(prev => {
         if (!prev) return prev;
         return {
           taken: prev.taken.filter(n => n !== num),
-          available: [...prev.available, num].sort((a, b) => a - b)
+          available: [...prev.available, num].sort((a, b) => a - b),
         };
       });
-
       recentlyReleasedRef.current.add(num);
       window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
       return;
@@ -562,67 +560,26 @@ export default function CartelaScreen() {
       return;
     }
 
-    // Instant UI update
+    // Instant local UI update — backend join happens at round start
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
 
+    // Mark as locally taken so other clients see it as unavailable via optimistic state
     setAvailability(prev => {
       if (!prev) return prev;
       return { taken: [...prev.taken, num], available: prev.available.filter(n => n !== num) };
     });
 
-    // Show grid from local lookup
+    // Load grid for preview
     const localGrid = getLocalGrid(num);
     if (localGrid) {
       setPickedGrids(prev => new Map(prev).set(num, localGrid));
-      // Pre-store in IDB so LiveGameScreen can load instantly
       if (roundId) {
         import('../lib/idb').then(({ idbPut }) => {
           idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: localGrid }).catch(() => {});
         });
       }
-    }
-
-    // Join immediately so RoundEntry is created and CARTELA_TAKEN fires to all clients
-    if (roundId) {
-      joinRoundBatch(roundId, [num])
-        .then(result => {
-          setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
-          // Merge confirmed cartela into sessionStorage
-          const existing: number[] = (() => { try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; } })();
-          sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([...new Set([...existing, ...result.cartelaNumbers])]));
-          return getCartelaGridCached(roundId!, num);
-        })
-        .then(res => {
-          if (res) {
-            setPickedGrids(prev => new Map(prev).set(num, res.grid));
-            import('../lib/idb').then(({ idbPut }) => {
-              idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: res.grid }).catch(() => {});
-            });
-          }
-        })
-        .catch((err: unknown) => {
-          const e = err as { code?: string; message?: string };
-          // Rollback optimistic UI
-          const rollback = new Set(picksRef.current);
-          rollback.delete(num);
-          picksRef.current = rollback;
-          setPicks(rollback);
-          setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-          setAvailability(prev => {
-            if (!prev) return prev;
-            return { taken: prev.taken.filter(n => n !== num), available: [...prev.available, num].sort((a, b) => a - b) };
-          });
-          if (e.code === 'CARTELA_TAKEN') {
-            setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
-            if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
-          } else if (e.code === 'INSUFFICIENT_BALANCE') {
-            setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
-          } else if (e.code !== 'ROUND_NOT_JOINABLE') {
-            setBalanceAlert(e.message ?? 'Could not join. Please try again.');
-          }
-        });
     }
   }
 
@@ -640,8 +597,7 @@ export default function CartelaScreen() {
   );
 
   // Build taken set — always exclude the current player's own picks so they
-  // never accidentally render as "taken by another player" regardless of what
-  // availability.taken contains (optimistic updates, stale polls, etc.)
+  // never accidentally render as "taken by another player"
   const takenSet = new Set(availability.taken.filter(n => !picks.has(n)));
   const urgent = msLeft > 0 && msLeft < 10_000;
   const canPick = picks.size < MAX_SELECT;
@@ -716,9 +672,10 @@ export default function CartelaScreen() {
         {ALL_NUMBERS.map(num => {
           const isPicked = picks.has(num);
           const taken = takenSet.has(num) && !isPicked;
+          const isConfirmed = false;
           const disabled = starting || committing || taken || (!isPicked && picks.size >= MAX_SELECT);
           return (
-            <CartelaCell key={num} num={num} taken={taken} isPicked={isPicked} disabled={disabled} onClick={handleCellClick} />
+            <CartelaCell key={num} num={num} taken={taken} isPicked={isPicked} isConfirmed={isConfirmed} disabled={disabled} onClick={handleCellClick} />
           );
         })}
       </div>
