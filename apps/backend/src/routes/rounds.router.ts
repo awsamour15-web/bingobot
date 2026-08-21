@@ -343,6 +343,10 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
     });
 
     if (!res.headersSent) {
+      // Broadcast so other clients see this cartela as available again
+      if (GameRoundService._onCartelaUnreserved) {
+        void GameRoundService._onCartelaUnreserved(id, [cartelaNumber]);
+      }
       const wallets = await prisma.wallet.findMany({ where: { player_id: playerId } });
       const main = wallets.find(w => w.type === 'main');
       const play = wallets.find(w => w.type === 'play');

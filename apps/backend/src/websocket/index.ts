@@ -204,8 +204,23 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
   });
 
-  GameRoundService.setOnCartelaTaken((roundId, cartelaNumbers, playerCount) => {
-    io.to(`round:${roundId}`).emit('CARTELA_TAKEN', { roundId, cartelaNumbers, playerCount });
+  GameRoundService.setOnCartelaTaken((roundId, cartelaNumbers, playerCount, excludePlayerId) => {
+    const payload = { roundId, cartelaNumbers, playerCount };
+    if (excludePlayerId) {
+      // Find and exclude the picker's socket(s) — they manage their own UI
+      const sockets = io.sockets.sockets;
+      const excludeSocketIds: string[] = [];
+      for (const [id, s] of sockets) {
+        if ((s as any).data?.playerId === excludePlayerId) excludeSocketIds.push(id);
+      }
+      if (excludeSocketIds.length > 0) {
+        io.to(`round:${roundId}`).except(excludeSocketIds).emit('CARTELA_TAKEN', payload);
+      } else {
+        io.to(`round:${roundId}`).emit('CARTELA_TAKEN', payload);
+      }
+    } else {
+      io.to(`round:${roundId}`).emit('CARTELA_TAKEN', payload);
+    }
   });
 
   GameRoundService.setOnCartelaReserved((roundId, cartelaNumbers) => {
