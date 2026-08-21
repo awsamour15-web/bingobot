@@ -3,7 +3,7 @@
 
 import prisma from '../lib/prisma.js';
 
-const RESERVATION_DURATION_MS = 90000; // 90 seconds — must outlast the 60s lead time before start
+const RESERVATION_DURATION_MS = 45000; // 45 seconds — outlasts the 30s lead time
 const MAX_SELECT = 2; // Maximum number of cartelas a player can reserve/select
 
 export class CartelaAlreadyReservedError extends Error {

@@ -7,7 +7,7 @@ import { nce } from './nce.service.js';
 import { GameStatus } from '@fidel/shared';
 
 const STAKE_LEVELS = [10, 20, 50];
-const LEAD_TIME_MS = 60_000;
+const LEAD_TIME_MS = 30_000;
 const DEFAULT_MAX_PLAYERS = 880;
 const CHECK_INTERVAL_MS = 5_000; // Check every 5 seconds — 1s caused excessive DB queries and OOM
 
