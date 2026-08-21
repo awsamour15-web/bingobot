@@ -505,37 +505,31 @@ export default function CartelaScreen() {
     void startGame();
   }, [manualTrigger, roundId, navigate, starting]);
 
-  function togglePick(num: number) {
-    const wasRecentlyReleased = recentlyReleasedRef.current.has(num);
-
+  const handleCellClick = useCallback((num: number) => {
+    // Own pick — deselect
     if (picksRef.current.has(num)) {
-      // Deselect — optimistic UI removal, then call leaveRound to free it for others
       const next = new Set(picksRef.current);
       next.delete(num);
       picksRef.current = next;
-      setPicks(next);
+      setPicks(new Set(next));
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
-      // No need to update availability.taken — own picks were never added to it
       try {
         const existing: number[] = JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
         sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(existing.filter(n => n !== num)));
       } catch { /* ignore */ }
-
       recentlyReleasedRef.current.add(num);
       window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
-
-      if (roundId) {
-        leaveRound(roundId, num).catch(() => {
-          const restored = new Set([...picksRef.current, num]);
-          picksRef.current = restored;
-          setPicks(restored);
-        });
-      }
+      if (roundId) leaveRound(roundId, num).catch(() => {
+        const restored = new Set(picksRef.current);
+        restored.add(num);
+        picksRef.current = restored;
+        setPicks(new Set(restored));
+      });
       return;
     }
 
-    // Block taken cartelas (by other players) — must be checked AFTER own-picks check
-    if (availability && availability.taken.includes(num) && !wasRecentlyReleased) {
+    // Taken by another player
+    if (availability && availability.taken.includes(num) && !recentlyReleasedRef.current.has(num)) {
       setBalanceAlert(`Cartela ${num} is already taken by another player.`);
       return;
     }
@@ -546,24 +540,18 @@ export default function CartelaScreen() {
     if (round && balances) {
       const stake = Number(round.stake);
       const total = (picksRef.current.size + 1) * stake;
-      const bal = asSafeBalance(balances.playWallet) + asSafeBalance(balances.mainWallet);
+      const bal = asSafeBalance(balances?.playWallet) + asSafeBalance(balances?.mainWallet);
       if (bal < total) {
         setBalanceAlert(`ቀሪ ሂሳብ አይበቃም!\nNeed ${total} Birr — you have ${formatWholeMoney(bal)} Birr.\nPlease deposit to continue.`);
         return;
       }
     }
 
-    if (!availability?.available.includes(num) && !wasRecentlyReleased && !picksRef.current.has(num)) {
-      setBalanceAlert(`Cartela ${num} is not available. Refreshing...`);
-      if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
-      return;
-    }
-
-    // Optimistic UI — add to picks immediately (do NOT add to availability.taken,
-    // that set is only for other players' cartelas)
-    const next = new Set([...picksRef.current, num]);
+    // Add to picks immediately
+    const next = new Set(picksRef.current);
+    next.add(num);
     picksRef.current = next;
-    setPicks(next);
+    setPicks(new Set(next));
 
     // Load grid for preview
     const localGrid = getLocalGrid(num);
@@ -576,7 +564,7 @@ export default function CartelaScreen() {
       }
     }
 
-    // Join immediately — creates RoundEntry so CARTELA_TAKEN fires to all clients (shows red)
+    // Join immediately — CARTELA_TAKEN broadcasts to all other clients (shows red for them)
     if (roundId) {
       joinRoundBatch(roundId, [num])
         .then(result => {
@@ -586,11 +574,10 @@ export default function CartelaScreen() {
         })
         .catch((err: unknown) => {
           const e = err as { code?: string; message?: string };
-          // Rollback optimistic picks
           const rollback = new Set(picksRef.current);
           rollback.delete(num);
           picksRef.current = rollback;
-          setPicks(rollback);
+          setPicks(new Set(rollback));
           setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
           if (e.code === 'CARTELA_TAKEN') {
             setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
@@ -602,9 +589,7 @@ export default function CartelaScreen() {
           }
         });
     }
-  }
-
-  const handleCellClick = useCallback((num: number) => togglePick(num), [roundId, round, balances, availability]);
+  }, [roundId, round, balances, availability]);
 
   if (loading) return (
     <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #0a0e1a 100%)' }} />
