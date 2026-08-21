@@ -600,3 +600,38 @@ export function updateCartela(num: number, grid: number[]): Promise<CartelaDefin
 export function deleteCartela(num: number): Promise<{ success: boolean }> {
   return adminApiRequest<{ success: boolean }>('DELETE', `/api/admin/cartelas/${num}`);
 }
+
+// ---------------------------------------------------------------------------
+// Mock Players
+// ---------------------------------------------------------------------------
+
+export interface MockPlayer {
+  id: string;
+  username: string;
+  telegram_id: string;
+  is_suspended: boolean;
+  main_wallet_balance: number;
+  play_wallet_balance: number;
+  total_games: number;
+}
+
+export interface MockJoinResult {
+  joined: Array<{ playerId: string; username: string; cartelaNumber: number }>;
+  errors: Array<{ playerId: string; error: string }>;
+}
+
+export function seedMockPlayers(): Promise<{ message: string; players: Array<{ id: string; username: string; created: boolean }> }> {
+  return adminApiRequest('POST', '/api/admin/mock-players/seed');
+}
+
+export function getMockPlayers(): Promise<MockPlayer[]> {
+  return adminApiRequest<MockPlayer[]>('GET', '/api/admin/mock-players');
+}
+
+export function creditMockPlayer(id: string, amount: number, walletType: 'main' | 'play'): Promise<{ success: boolean }> {
+  return adminApiRequest('POST', `/api/admin/mock-players/${id}/credit`, { amount, walletType });
+}
+
+export function joinRoundWithMockPlayers(roundId: string, playerIds: string[], balance: number): Promise<MockJoinResult> {
+  return adminApiRequest('POST', '/api/admin/mock-players/join-round', { roundId, playerIds, balance });
+}

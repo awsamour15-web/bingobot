@@ -15,6 +15,7 @@ model Player {
   phone                String?
   phone_verified       Boolean              @default(false)
   is_suspended         Boolean              @default(false)
+  is_mock              Boolean              @default(false)
   referrer_id          String?
   created_at           DateTime             @default(now())
   agent_id             String?
@@ -34,6 +35,7 @@ model Player {
   @@index([telegram_id])
   @@index([referrer_id])
   @@index([agent_id])
+  @@index([is_mock])
   @@map("players")
 }
 

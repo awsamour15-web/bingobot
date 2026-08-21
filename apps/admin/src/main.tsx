@@ -16,6 +16,7 @@ import { PromotionsPage } from './pages/PromotionsPage';
 import { CartelasPage } from './pages/CartelasPage';
 import { BonusPage } from './pages/BonusPage';
 import { WithdrawalsPage } from './pages/WithdrawalsPage';
+import { MockPlayersPage } from './pages/MockPlayersPage';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="agents" element={<AgentsPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
           <Route path="cartelas" element={<CartelasPage />} />
+          <Route path="mock-players" element={<MockPlayersPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
