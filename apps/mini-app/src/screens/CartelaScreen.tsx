@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, memo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getRound, getCartelaAvailability, joinRoundBatch, getProfile, getCartelaGridCached } from '../lib/api';
+import { getRound, getCartelaAvailability, joinRoundBatch, leaveRound, getProfile, getCartelaGridCached } from '../lib/api';
 import cartelaGrids from '../lib/cartela-grids.json';
 
 // Instant local grid lookup — no network needed
@@ -231,27 +231,26 @@ export default function CartelaScreen() {
   }, [roundId]);
 
   // Commit picks to server — called when game is about to start.
-  // Sends the final selection to the backend in one batch.
+  // Cartelas are already joined on pick, so just confirm sessionStorage is set.
   async function commitPicks(currentPicks: Set<number>): Promise<boolean> {
     if (currentPicks.size === 0) {
       sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
       return false;
     }
 
-    // Store round data in sessionStorage for instant load on game screen
     if (round) {
       sessionStorage.setItem(`roundCache:${roundId}`, JSON.stringify({
-        id: round.id,
-        stake: round.stake,
-        derash: round.derash,
-        player_count: round.player_count,
-        status: 'active',
-        timestamp: Date.now(),
+        id: round.id, stake: round.stake, derash: round.derash,
+        player_count: round.player_count, status: 'active', timestamp: Date.now(),
       }));
     }
 
+    // Cartelas were joined immediately on pick — just confirm sessionStorage
+    const stored = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+    if (stored) return true;
+
+    // Fallback: batch join anything not yet confirmed
     setCommitting(true);
-    setError(null);
     try {
       const result = await joinRoundBatch(roundId!, [...currentPicks]);
       setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
@@ -523,7 +522,7 @@ export default function CartelaScreen() {
     }
 
     if (picksRef.current.has(num)) {
-      // Deselect — player can change during the 60s window (local only, no backend call yet)
+      // Deselect — optimistic UI removal, then call leaveRound to free it for others
       const next = new Set(picksRef.current);
       next.delete(num);
       picksRef.current = next;
@@ -536,8 +535,24 @@ export default function CartelaScreen() {
           available: [...prev.available, num].sort((a, b) => a - b),
         };
       });
+      // Remove from sessionStorage confirmed list
+      try {
+        const existing: number[] = JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(existing.filter(n => n !== num)));
+      } catch { /* ignore */ }
+
       recentlyReleasedRef.current.add(num);
       window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
+
+      // Fire-and-forget — free the cartela on the server so others can take it
+      if (roundId) {
+        leaveRound(roundId, num).catch(() => {
+          // If leave fails, re-add to picks so state stays consistent
+          const restored = new Set([...picksRef.current, num]);
+          picksRef.current = restored;
+          setPicks(restored);
+        });
+      }
       return;
     }
 
@@ -560,12 +575,10 @@ export default function CartelaScreen() {
       return;
     }
 
-    // Instant local UI update — backend join happens at round start
+    // Optimistic UI — add to picks immediately
     const next = new Set([...picksRef.current, num]);
     picksRef.current = next;
     setPicks(next);
-
-    // Mark as locally taken so other clients see it as unavailable via optimistic state
     setAvailability(prev => {
       if (!prev) return prev;
       return { taken: [...prev.taken, num], available: prev.available.filter(n => n !== num) };
@@ -580,6 +593,37 @@ export default function CartelaScreen() {
           idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: localGrid }).catch(() => {});
         });
       }
+    }
+
+    // Join immediately — creates RoundEntry so CARTELA_TAKEN fires to all clients (shows red)
+    if (roundId) {
+      joinRoundBatch(roundId, [num])
+        .then(result => {
+          setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
+          const existing: number[] = (() => { try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; } })();
+          sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([...new Set([...existing, num])]));
+        })
+        .catch((err: unknown) => {
+          const e = err as { code?: string; message?: string };
+          // Rollback optimistic UI
+          const rollback = new Set(picksRef.current);
+          rollback.delete(num);
+          picksRef.current = rollback;
+          setPicks(rollback);
+          setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
+          setAvailability(prev => {
+            if (!prev) return prev;
+            return { taken: prev.taken.filter(n => n !== num), available: [...prev.available, num].sort((a, b) => a - b) };
+          });
+          if (e.code === 'CARTELA_TAKEN') {
+            setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
+            if (roundId) getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => {});
+          } else if (e.code === 'INSUFFICIENT_BALANCE') {
+            setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+          } else if (e.code !== 'ROUND_NOT_JOINABLE') {
+            setBalanceAlert(e.message ?? 'Could not join. Please try again.');
+          }
+        });
     }
   }
 

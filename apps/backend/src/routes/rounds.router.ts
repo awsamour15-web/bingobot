@@ -14,6 +14,7 @@ import {
   PlayerSuspendedError,
   RoundNotFoundError,
 } from '../services/game-round.service.js';
+import { CartelaReservationService, CartelaAlreadyReservedError, MaxCartelaLimitExceededError, ReservationNotFoundError } from '../services/cartela-reservation.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
 import { WalletType } from '@fidel/shared';
 import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
@@ -142,16 +143,13 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  const taken = await prisma.roundEntry.findMany({
-    where: { round_id: id, is_watching: false },
-    select: { cartela_number: true },
-  }).then(entries => entries.map(e => e.cartela_number));
+  const { taken: takenNums, reserved: reservedNums } = await CartelaReservationService.getTakenAndReserved(id);
 
   const ALL_CARTELAS = Array.from({ length: TOTAL_CARTELAS }, (_, i) => i + 1);
-  const takenSet = new Set(taken);
-  const available = ALL_CARTELAS.filter((n) => !takenSet.has(n));
+  const unavailable = new Set([...takenNums, ...reservedNums]);
+  const available = ALL_CARTELAS.filter((n) => !unavailable.has(n));
 
-  const response: CartelaAvailability = { available, taken };
+  const response: CartelaAvailability = { available, taken: [...unavailable] };
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.status(200).json(response);
 });
@@ -355,6 +353,69 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
       console.error('[rounds] leave error:', err);
       res.status(500).json({ error: 'INTERNAL', message: 'Failed to leave round' });
     }
+  }
+});
+
+// ─── POST /api/rounds/:id/reserve ────────────────────────────────────────────
+// Reserve a cartela for the current player during the selection window.
+
+router.post('/:id/reserve', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+  const body = req.body as { cartelaNumber?: unknown };
+
+  const cartelaNumber = body?.cartelaNumber;
+  if (typeof cartelaNumber !== 'number' || !Number.isInteger(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > TOTAL_CARTELAS) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartelaNumber' });
+    return;
+  }
+
+  try {
+    await CartelaReservationService.reserve(id, playerId, cartelaNumber);
+    // Broadcast to other players in this round room
+    if (GameRoundService._onCartelaReserved) {
+      void GameRoundService._onCartelaReserved(id, [cartelaNumber]);
+    }
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    if (err instanceof CartelaAlreadyReservedError) {
+      res.status(409).json({ error: 'CARTELA_RESERVED', message: err.message });
+      return;
+    }
+    if (err instanceof MaxCartelaLimitExceededError) {
+      res.status(409).json({ error: 'MAX_CARTELA_LIMIT', message: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+// ─── DELETE /api/rounds/:id/reserve/:num ─────────────────────────────────────
+// Release a reservation when the player deselects a cartela.
+
+router.delete('/:id/reserve/:num', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const playerId = req.player!.playerId;
+  const cartelaNumber = parseInt(req.params['num'] as string, 10);
+
+  if (isNaN(cartelaNumber) || cartelaNumber < 1 || cartelaNumber > TOTAL_CARTELAS) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid cartela number' });
+    return;
+  }
+
+  try {
+    await CartelaReservationService.release(id, playerId, cartelaNumber);
+    if (GameRoundService._onCartelaUnreserved) {
+      void GameRoundService._onCartelaUnreserved(id, [cartelaNumber]);
+    }
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    if (err instanceof ReservationNotFoundError) {
+      // Already gone — treat as success
+      res.status(200).json({ ok: true });
+      return;
+    }
+    throw err;
   }
 });
 

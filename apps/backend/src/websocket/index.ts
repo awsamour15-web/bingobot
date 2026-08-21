@@ -208,6 +208,14 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     io.to(`round:${roundId}`).emit('CARTELA_TAKEN', { roundId, cartelaNumbers, playerCount });
   });
 
+  GameRoundService.setOnCartelaReserved((roundId, cartelaNumbers) => {
+    io.to(`round:${roundId}`).emit('CARTELA_RESERVED', { cartelaNumbers });
+  });
+
+  GameRoundService.setOnCartelaUnreserved((roundId, cartelaNumbers) => {
+    io.to(`round:${roundId}`).emit('CARTELA_UNRESERVED', { cartelaNumbers });
+  });
+
   // Broadcast system state whenever the scheduler creates a new pending round
   RoundScheduler.setOnRoundsReplenished(() => {
     void broadcastSystemState(io);

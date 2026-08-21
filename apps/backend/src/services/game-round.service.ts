@@ -42,6 +42,8 @@ export class RoundNotFoundError extends Error {
 export type OnRoundCancelled = (roundId: string) => void | Promise<void>;
 export type OnRoundVoidEmpty = (roundId: string) => void | Promise<void>;
 export type OnCartelaTaken = (roundId: string, cartelaNumbers: number[], playerCount: number) => void | Promise<void>;
+export type OnCartelaReserved = (roundId: string, cartelaNumbers: number[]) => void | Promise<void>;
+export type OnCartelaUnreserved = (roundId: string, cartelaNumbers: number[]) => void | Promise<void>;
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
@@ -65,6 +67,20 @@ export const GameRoundService = {
 
   setOnCartelaTaken(cb: OnCartelaTaken): void {
     GameRoundService._onCartelaTaken = cb;
+  },
+
+  /** Optional callback invoked when a cartela is reserved. */
+  _onCartelaReserved: undefined as OnCartelaReserved | undefined,
+
+  setOnCartelaReserved(cb: OnCartelaReserved): void {
+    GameRoundService._onCartelaReserved = cb;
+  },
+
+  /** Optional callback invoked when a cartela reservation is released. */
+  _onCartelaUnreserved: undefined as OnCartelaUnreserved | undefined,
+
+  setOnCartelaUnreserved(cb: OnCartelaUnreserved): void {
+    GameRoundService._onCartelaUnreserved = cb;
   },
 
   /**
