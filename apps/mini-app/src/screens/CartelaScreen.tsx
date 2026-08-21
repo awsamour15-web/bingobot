@@ -664,7 +664,7 @@ export default function CartelaScreen() {
           const isPicked = picks.has(num);
           const taken = takenSet.has(num) && !isPicked;
           const isConfirmed = false;
-          const disabled = starting || committing || taken || (!isPicked && picks.size >= MAX_SELECT);
+          const disabled = starting || committing || taken || (!isPicked && picks.size >= maxSelect);
           return (
             <CartelaCell key={num} num={num} taken={taken} isPicked={isPicked} isConfirmed={isConfirmed} disabled={disabled} onClick={handleCellClick} />
           );
