@@ -224,7 +224,7 @@ export default function GameScreen() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 13 }}>👥</span>
                   <span style={{ fontSize: 13, color: '#cbd5e1', fontWeight: 600 }}>
-                    {playerCount} / {round.max_players}
+                    {playerCount} / {round.active_cartela_count ?? round.max_players}
                   </span>
                 </div>
                 <div style={{
@@ -241,7 +241,7 @@ export default function GameScreen() {
               <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgba(148,163,184,0.08)', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 999,
-                  width: `${Math.min(100, (playerCount / round.max_players) * 100)}%`,
+                  width: `${Math.min(100, (playerCount / (round.active_cartela_count ?? round.max_players)) * 100)}%`,
                   background: isPending
                     ? 'linear-gradient(90deg, #2dd4bf, #14b8a6)'
                     : 'linear-gradient(90deg, #f59e0b, #d97706)',

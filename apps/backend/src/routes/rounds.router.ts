@@ -28,13 +28,20 @@ router.use(jwtAuthMiddleware);
 // ─── GET /api/rounds ─────────────────────────────────────────────────────────
 
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
-  const rounds = await prisma.gameRound.findMany({
-    where: { status: { in: ['pending', 'active'] } },
-    include: {
-      _count: { select: { round_entries: true } },
-    },
-    orderBy: { start_time: 'asc' },
-  });
+  const [rounds, activeCartelaRow] = await Promise.all([
+    prisma.gameRound.findMany({
+      where: { status: { in: ['pending', 'active'] } },
+      include: {
+        _count: { select: { round_entries: true } },
+      },
+      orderBy: { start_time: 'asc' },
+    }),
+    prisma.config.findUnique({ where: { key: 'active_cartela_count' } }),
+  ]);
+
+  const activeCartelaCount = (activeCartelaRow && parseInt(activeCartelaRow.value, 10) >= 1)
+    ? Math.min(parseInt(activeCartelaRow.value, 10), TOTAL_CARTELAS)
+    : TOTAL_CARTELAS;
 
   const items: RoundListItem[] = rounds.map((r) => ({
     id: r.id,
@@ -42,6 +49,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     status: r.status,
     player_count: r._count.round_entries,
     max_players: r.max_players,
+    active_cartela_count: activeCartelaCount,
     derash: Number(r.derash),
     start_time: r.start_time.toISOString(),
   }));

@@ -51,6 +51,7 @@ export interface RoundListItem {
   status: GameStatus;
   player_count: number;
   max_players: number;
+  active_cartela_count?: number | undefined;
   derash: number;
   start_time: string;
 }
