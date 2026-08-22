@@ -9,13 +9,28 @@ const router: RouterType = Router();
 
 // GET /api/admin/rounds — all rounds with status, player count, derash, called numbers count
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
-  const rounds = await prisma.gameRound.findMany({
-    orderBy: { start_time: 'desc' },
-    include: {
-      _count: { select: { round_entries: true, called_numbers: true } },
-      round_winners: { include: { player: { select: { username: true } } } },
-    },
-  });
+  // Fetch active/pending rounds (no limit) + last 100 completed/cancelled/void rounds
+  // to avoid fetching the entire table which causes timeouts as data grows
+  const [activeRounds, doneRounds] = await Promise.all([
+    prisma.gameRound.findMany({
+      where: { status: { in: ['pending', 'active'] } },
+      orderBy: { start_time: 'desc' },
+      include: {
+        _count: { select: { round_entries: true, called_numbers: true } },
+        round_winners: { include: { player: { select: { username: true } } } },
+      },
+    }),
+    prisma.gameRound.findMany({
+      where: { status: { in: ['completed', 'cancelled', 'void'] } },
+      orderBy: { start_time: 'desc' },
+      take: 100,
+      include: {
+        _count: { select: { round_entries: true, called_numbers: true } },
+        round_winners: { include: { player: { select: { username: true } } } },
+      },
+    }),
+  ]);
+  const rounds = [...activeRounds, ...doneRounds];
 
   const items = rounds.map((r) => ({
     id: r.id,
