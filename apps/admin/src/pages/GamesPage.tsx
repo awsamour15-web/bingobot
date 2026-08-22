@@ -144,18 +144,28 @@ export function GamesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchRounds = useCallback(async () => {
-    setFetchError(null);
     try {
       const res = await getAdminRounds(1);
       setAllRounds((res as any).items ?? (Array.isArray(res) ? res : []));
+      setFetchError(null);
     } catch (err: unknown) {
-      setFetchError((err as Error).message ?? 'Failed to load rounds');
+      // Only update error state if it changed — avoids re-renders on every poll failure
+      const msg = (err as Error).message ?? 'Failed to load rounds';
+      setFetchError((prev) => (prev === msg ? prev : msg));
     } finally { setFetchLoading(false); }
   }, []);
 
   useEffect(() => {
     void fetchRounds();
-    const t = setInterval(fetchRounds, 5000);
+    let t: ReturnType<typeof setInterval>;
+
+    function scheduleNext() {
+      t = setInterval(() => {
+        if (!document.hidden) void fetchRounds();
+      }, 5000);
+    }
+
+    scheduleNext();
     return () => clearInterval(t);
   }, [fetchRounds]);
 
