@@ -697,6 +697,37 @@ export default function LiveGameScreen() {
               })
             ).flat()}
           </div>
+
+          {/* ── LEAVE / REFRESH buttons ── */}
+          <div style={{ display: 'flex', gap: 6, padding: '6px 6px', flexShrink: 0, background: '#0d1a2d', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/', { replace: true })}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                boxShadow: '0 3px 10px rgba(239,68,68,0.4)',
+              }}
+            >
+              Leave
+            </button>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                background: 'rgba(255,255,255,0.1)',
+                color: refreshing ? '#4a6080' : '#94a3b8', fontWeight: 700, fontSize: 13,
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              }}
+            >
+              <span style={{ display: 'inline-block', fontSize: 14, transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>↻</span>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* ══ RIGHT PANEL ══ */}
