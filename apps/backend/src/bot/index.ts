@@ -7,6 +7,7 @@ import { WalletType, TxType } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { AgentService } from '../services/agent.service.js';
 import { WalletService } from '../services/wallet.service.js';
+import { ReferralService } from '../services/referral.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -1034,6 +1035,9 @@ if (BOT_TOKEN) {
         `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: await getMenuForUser(telegramId) },
       );
+
+      // Credit 5 ETB invite bonus to referrer (non-blocking)
+      void ReferralService.creditInviteBonus(player.id);
     } catch (err) {
       console.error('[Bot] Registration error:', err);
       await ctx.reply('Something went wrong during registration. Please try again.');
@@ -1451,7 +1455,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         console.log('[Bot] Balance sufficient - moving to phone step');
         withdrawSessions.set(telegramId, { step: 'awaiting_phone', amount });
         console.log('[Bot] Sending phone number request to user');
-        await ctx.reply('📱 እባክዎ የቴሌብር ስልክ ቁጥርዎን ያስጊቡ (ለምሳሌ: 0912345678)።\n\nብሩ ወደዚህ ቁጥር ይላካል។');
+        await ctx.reply('📱 እባክዎ የቴሌብር ስልክ ቁጥርዎን ያስጊቡ (ለምሳሌ: 0911111111)።\n\nብሩ ወደዚህ ቁጥር ይላካል។');
         return;
       }
 
@@ -1459,7 +1463,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
       if (withdrawSession.step === 'awaiting_phone') {
         const phone = text.trim();
         if (!phone || phone.length < 10) {
-          await ctx.reply('⚠️ እባክዎ ትክክለኛ ስልክ ቁጥር ያስጊቡ (ለምሳሌ: 0912345678)።');
+          await ctx.reply('⚠️ እባክዎ ትክክለኛ ስልክ ቁጥር ያስጊቡ (ለምሳሌ: 0911111111)።');
           return;
         }
 
@@ -1506,7 +1510,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             `🆔 ጥያቄ ID: ${pendingWithdrawal.id.slice(0, 8).toUpperCase()}\n` +
             `💵 መጠን: ${withdrawSession.amount} ብር\n` +
             `📱 ስልክ: ${phone}\n\n` +
-            `⏳ አስተዳዳሪው ብሩን ከከፈለ በኋላ የአቴቴ (Telebirr) ግብይት ቁጥሩን ያስገባሉ። ስኬታማ ሲሆን ማሳወቂያ ይደርስዎታል።`
+            `⏳ አስተዳዳሪው ብሩን ከከፈለ በኋላ  (Telebirr) ግብይት ቁጥሩን ያስገባሉ። ስኬታማ ሲሆን ማሳወቂያ ይደርስዎታል።`
           );
         } catch (err) {
           withdrawSessions.delete(telegramId);

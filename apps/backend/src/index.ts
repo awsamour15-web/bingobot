@@ -250,9 +250,10 @@ const httpServer = createServer(app);
 setupWebSocket(httpServer);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-const PORT = process.env['PORT'] ?? 3000;
+const PORT = parseInt(process.env['PORT'] ?? '3000', 10);
+const HOST = '0.0.0.0';
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, HOST, () => {
   console.log(`Backend listening on port ${PORT}`);
   // Start auto-round scheduler after server is up
   RoundScheduler.start();

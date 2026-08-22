@@ -7,6 +7,7 @@ import type { PrismaClient } from '@prisma/client';
 import { verifyTelegramInitData, TelegramAuthError } from '../lib/telegram-auth.js';
 import { authRateLimiter } from '../middleware/telegram-auth.middleware.js';
 import prisma from '../lib/prisma.js';
+import { ReferralService } from '../services/referral.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -107,7 +108,7 @@ router.post(
       referrerId = referrer?.id;
     }
 
-    const player = await prisma.$transaction(async (tx: PrismaTx) => {
+    const { player, isNew } = await prisma.$transaction(async (tx: PrismaTx) => {
       // Try to find existing player
       const existing = await tx.player.findUnique({
         where: { telegram_id: telegramId },
@@ -120,7 +121,7 @@ router.post(
           where: { telegram_id: telegramId },
           data: { username },
         });
-        return existing;
+        return { player: existing, isNew: false };
       }
 
       // First-time registration
@@ -133,7 +134,7 @@ router.post(
         select: { id: true },
       });
 
-      // Create main and play wallets — play wallet gets 10 ETB welcome bonus
+      // Create main and play wallets — play wallet gets 20 ETB welcome bonus
       await tx.wallet.createMany({
         data: [
           { player_id: newPlayer.id, type: 'main', balance: 0 },
@@ -158,8 +159,13 @@ router.post(
         });
       }
 
-      return newPlayer;
+      return { player: newPlayer, isNew: true };
     });
+
+    // Credit 5 ETB invite bonus to the referrer (non-blocking)
+    if (isNew && referrerId) {
+      void ReferralService.creditInviteBonus(player.id);
+    }
 
     // ── Step 4: Issue JWT ────────────────────────────────────────────────────
     const token = jwt.sign({ playerId: player.id }, jwtSecret, {

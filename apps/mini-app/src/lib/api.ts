@@ -339,23 +339,30 @@ export async function getCartelaGridCached(
   roundId: string,
   cartelaNumber: number,
 ): Promise<{ cartela_number: number; grid: number[] }> {
-  const key = `${roundId}:${cartelaNumber}`;
-  const cached = await idbGet<{ cartela_number: number; grid: number[] }>('cartelas', key);
-  if (cached) return cached;
+  // Use cartelaNumber-only key (no roundId) so admin edits to a cartela
+  // are reflected on next fetch rather than serving a stale per-round entry.
+  // TTL: 1 hour — cartela grids rarely change but must reflect admin edits promptly.
+  const key = `cartela:${cartelaNumber}`;
+  const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+  const cached = await idbGet<{ cartela_number: number; grid: number[]; cachedAt?: number }>('cartelas', key);
+  if (cached && cached.cachedAt && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    return { cartela_number: cached.cartela_number, grid: cached.grid };
+  }
   const result = await apiRequest<{ cartela_number: number; grid: number[] }>(
     'GET',
     `/api/rounds/${roundId}/cartelas/${cartelaNumber}/grid`,
   );
-  idbPut('cartelas', key, result).catch(() => {}); // fire-and-forget, quota errors silenced
+  idbPut('cartelas', key, { ...result, cachedAt: Date.now() }).catch(() => {}); // fire-and-forget, quota errors silenced
   return result;
 }
 
 export async function getMyCartelas(roundId: string): Promise<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }> {
   const result = await apiRequest<{ cartelas: Array<{ cartelaNumber: number; cartelaGrid: number[] }> }>('GET', `/api/rounds/${roundId}/my-cartelas`);
-  // Write each cartela grid to IDB so a mid-game reload can skip the API call
+  // Write each cartela grid to IDB with cartelaNumber-only key + timestamp so admin edits
+  // are picked up after the TTL expires (see getCartelaGridCached).
   for (const c of result.cartelas) {
-    const key = `${roundId}:${c.cartelaNumber}`;
-    idbPut('cartelas', key, { cartela_number: c.cartelaNumber, grid: c.cartelaGrid }).catch(() => {});
+    const key = `cartela:${c.cartelaNumber}`;
+    idbPut('cartelas', key, { cartela_number: c.cartelaNumber, grid: c.cartelaGrid, cachedAt: Date.now() }).catch(() => {});
   }
   return result;
 }

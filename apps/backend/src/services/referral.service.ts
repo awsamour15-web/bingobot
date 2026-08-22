@@ -23,64 +23,26 @@ export const ReferralService = {
   },
 
   /**
-   * Credit a referral commission to the referrer's main wallet after a paid
-   * round completes (win, cancel, or void) for `playerId`.
-   *
-   * Steps:
-   *  1. Look up the player's referrer_id. If none, return immediately.
-   *  2. Fetch the round stake amount.
-   *  3. Read `referral_commission_pct` from Config (default 2).
-   *  4. Call WalletService.credit on the referrer's main wallet with
-   *     type = referral_commission.
+   * Credit a 5 ETB invite bonus to the referrer's main wallet when a new
+   * player they invited completes registration.
    *
    * Requirements: 9.3
    */
-  async creditCommission(playerId: string, roundId: string): Promise<void> {
-    // 1. Fetch the player and their referrer_id
+  async creditInviteBonus(newPlayerId: string): Promise<void> {
     const player = await prisma.player.findUnique({
-      where: { id: playerId },
+      where: { id: newPlayerId },
       select: { referrer_id: true },
     });
 
-    if (!player?.referrer_id) {
-      // No referrer — nothing to credit
-      return;
-    }
+    if (!player?.referrer_id) return;
 
-    const referrerId = player.referrer_id;
-
-    // 2. Fetch the round stake
-    const round = await prisma.gameRound.findUnique({
-      where: { id: roundId },
-      select: { stake: true },
-    });
-
-    if (!round) {
-      return;
-    }
-
-    const stake = Number(round.stake);
-
-    // 3. Read referral commission rate from Config
-    const configRow = await prisma.config.findUnique({
-      where: { key: 'referral_commission_pct' },
-    });
-    const commissionPct = configRow ? parseFloat(configRow.value) : 2;
-
-    const commissionAmount = stake * (commissionPct / 100);
-
-    if (commissionAmount <= 0) {
-      return;
-    }
-
-    // 4. Credit the referrer's main wallet
     await WalletService.credit(
-      referrerId,
-      WalletType.main,
-      commissionAmount,
+      player.referrer_id,
+      WalletType.play,
+      5,
       TxType.referral_commission,
-      roundId,
-      `Referral commission for player ${playerId} round ${roundId}`,
+      newPlayerId,
+      `Invite bonus for referring player ${newPlayerId}`,
     );
   },
 };

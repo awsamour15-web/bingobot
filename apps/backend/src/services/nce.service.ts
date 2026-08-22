@@ -5,7 +5,6 @@ import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { shuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';
-import { ReferralService } from './referral.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -361,7 +360,7 @@ export class NumberCallingEngine {
 
     const stake = Number(round.stake);
 
-    // Refund each player and credit referral commissions
+    // Refund each player
     await Promise.all(
       entries.map(async (entry) => {
         await WalletService.credit(
@@ -372,8 +371,7 @@ export class NumberCallingEngine {
           roundId,
           'Round voided — no winner after all 75 numbers called',
         );
-        // Credit referral commission for each paying entry
-        await ReferralService.creditCommission(entry.player_id, roundId);
+
       }),
     );
 

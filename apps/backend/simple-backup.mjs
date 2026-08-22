@@ -75,8 +75,9 @@ async function backupDatabase() {
     console.log(`   ├─ Pending Withdrawals: ${stats.pendingWithdrawals}`);
     console.log(`   └─ Promotions: ${stats.promotions}\n`);
 
-    // Write to file
-    await fs.writeFile(backupFile, JSON.stringify(data, null, 2), 'utf-8');
+    // Write to file (handle BigInt serialization)
+    const replacer = (_, value) => typeof value === 'bigint' ? value.toString() : value;
+    await fs.writeFile(backupFile, JSON.stringify(data, replacer, 2), 'utf-8');
 
     // Get file size
     const fileStats = await fs.stat(backupFile);

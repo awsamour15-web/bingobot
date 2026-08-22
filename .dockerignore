@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# All node_modules — Docker installs its own
+node_modules
+**/node_modules
+
+# Other apps — not needed for backend build
+apps/admin
+apps/mini-app
+
+# Build artifacts (Docker builds fresh)
+apps/backend/dist
+packages/shared/dist
+
+# Backups and local files
+apps/backend/backups
+apps/backend/*.sh
+apps/backend/*.mjs
+
+# Dev/editor
+.vscode
+.kiro
+.qodo
+*.md
+*.log
+
+# Env files (secrets should come from fly secrets)
+apps/backend/.env

@@ -5,7 +5,6 @@ import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { nce } from './nce.service.js';
-import { ReferralService } from './referral.service.js';
 
 // ─── Typed errors ─────────────────────────────────────────────────────────────
 
@@ -420,7 +419,7 @@ export const GameRoundService = {
 
     const stake = Number(round.stake);
 
-    // Refund all paying entries and credit referral commissions
+    // Refund all paying entries
     await Promise.all(
       round.round_entries.map(async (entry) => {
         await WalletService.credit(
@@ -431,7 +430,6 @@ export const GameRoundService = {
           roundId,
           'Round cancelled by admin',
         );
-        await ReferralService.creditCommission(entry.player_id, roundId);
       }),
     );
 

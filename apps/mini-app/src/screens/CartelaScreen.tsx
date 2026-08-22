@@ -90,31 +90,26 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
   );
 });
 
-function useServerCountdown(targetIso: string | null) {
-  const [msLeft, setMsLeft] = useState(() =>
-    targetIso ? Math.max(0, new Date(targetIso).getTime() - Date.now()) : 0
-  );
-  const totalMsRef = useRef<number>(0);
+const LOCAL_COUNTDOWN_SEC = 40;
+
+/** 40-second countdown that starts the moment the hook first mounts. */
+function useLocalCountdown() {
+  const [msLeft, setMsLeft] = useState(LOCAL_COUNTDOWN_SEC * 1000);
 
   useEffect(() => {
-    if (!targetIso) return;
-    const target = new Date(targetIso).getTime();
-    // Record total duration once so pct stays meaningful
-    totalMsRef.current = Math.max(1, target - (Date.now() - 100));
-    const tick = () => setMsLeft(Math.max(0, target - Date.now()));
+    const startedAt = Date.now();
+    const totalMs = LOCAL_COUNTDOWN_SEC * 1000;
+    const tick = () => setMsLeft(Math.max(0, totalMs - (Date.now() - startedAt)));
     tick();
-    // Update every 100ms for smoother countdown animation
     const id = setInterval(tick, 100);
     return () => clearInterval(id);
-  }, [targetIso]);
+  }, []); // run once on mount
 
-  const totalSec = Math.ceil(msLeft / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
+  const secLeft = Math.ceil(msLeft / 1000);
   return {
     msLeft,
-    label: msLeft <= 0 ? '0:00' : `${m}:${String(s).padStart(2, '0')}`,
-    pct: totalMsRef.current > 0 ? Math.min(1, msLeft / totalMsRef.current) : 0,
+    label: `${secLeft}s`,
+    pct: msLeft / (LOCAL_COUNTDOWN_SEC * 1000),
   };
 }
 
@@ -172,7 +167,7 @@ export default function CartelaScreen() {
   // Grids for picked cartelas — fetched on pick
   const [pickedGrids, setPickedGrids] = useState<Map<number, number[]>>(new Map());
 
-  const { msLeft, label: countdownLabel, pct } = useServerCountdown(round?.start_time ?? null);
+  const { msLeft, label: countdownLabel, pct } = useLocalCountdown();
 
   useEffect(() => {
     if (!roundId) return;

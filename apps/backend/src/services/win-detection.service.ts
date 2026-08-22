@@ -4,7 +4,6 @@
 import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
-import { ReferralService } from './referral.service.js';
 import { nce } from './nce.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -199,11 +198,6 @@ async function distributeWinnings(
         void notifyWin(w.playerId, w.amount, winnerCount);
       }
     }).catch(() => {});
-
-    // Credit referral commissions (non-blocking)
-    for (const playerId of playerIds) {
-      void ReferralService.creditCommission(playerId, roundId);
-    }
 
     // Replenish pending rounds — wait 5s so clients can see the winner screen first
     setTimeout(() => {

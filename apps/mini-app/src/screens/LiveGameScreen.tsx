@@ -283,8 +283,9 @@ export default function LiveGameScreen() {
           if (nums.length > 0) {
             const cached = await Promise.all(
               nums.map(async (num) => {
-                const idb = await idbGet<{ cartela_number: number; grid: number[] }>('cartelas', `${roundId}:${num}`);
-                if (idb) return { cartelaNumber: num, cartelaGrid: idb.grid };
+                const idb = await idbGet<{ cartela_number: number; grid: number[]; cachedAt?: number }>('cartelas', `cartela:${num}`);
+                const CACHE_TTL_MS = 60 * 60 * 1000;
+                if (idb && idb.cachedAt && Date.now() - idb.cachedAt < CACHE_TTL_MS) return { cartelaNumber: num, cartelaGrid: idb.grid };
                 try {
                   const fetched = await getCartelaGridCached(roundId!, num);
                   return { cartelaNumber: num, cartelaGrid: fetched.grid };
