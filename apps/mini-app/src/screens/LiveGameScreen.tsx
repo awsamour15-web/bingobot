@@ -634,16 +634,7 @@ export default function LiveGameScreen() {
   return (
     <div style={{ height: '100dvh', background: '#0e1726', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
-      {/* ── HEADER ── */}
-      <div style={{ background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', padding: '11px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button type="button" onClick={() => { sessionStorage.removeItem('selectedStake'); sessionStorage.removeItem('stakeSelectedForRound'); navigate('/'); }}
-          style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', padding: 0, lineHeight: 1, opacity: 0.85 }}>✕</button>
-        <span style={{ fontWeight: 900, fontSize: 18, color: '#ffffff', letterSpacing: 0.3 }}>Fidel Bingo</span>
-        <button type="button" onClick={toggleSound}
-          style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', padding: 0, opacity: 0.85 }}>
-          {soundOn ? '🔊' : '🔇'}
-        </button>
-      </div>
+
 
       {/* ── STATS ROW ── */}
       <div style={{ background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }}>
