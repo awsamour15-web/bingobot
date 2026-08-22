@@ -362,9 +362,12 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
   }
 
   // Last resort: any standalone 10-char uppercase alphanumeric (Telebirr tx IDs are 10 chars)
+  // Must contain at least one letter — pure digit strings (e.g. phone numbers) are rejected.
   if (!txNumber) {
     const standaloneMatch = normalized.match(/\b([A-Z0-9]{10})\b/);
-    if (standaloneMatch?.[1]) txNumber = standaloneMatch[1].toUpperCase();
+    if (standaloneMatch?.[1] && /[A-Z]/.test(standaloneMatch[1])) {
+      txNumber = standaloneMatch[1].toUpperCase();
+    }
   }
 
   if (!txNumber) return null;
@@ -560,65 +563,74 @@ export async function processDepositClaim(
     (!bonusEnd || now <= bonusEnd);
   const bonusAmount = bonusActive ? Math.round((amount * bonusPct) / 100 * 100) / 100 : 0;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.pendingDeposit.update({
-      where: { id: deposit.id },
-      data: { status: 'claimed', player_id: playerId, claimed_at: new Date() },
-    });
-
-    const wallet = await tx.wallet.findUniqueOrThrow({
-      where: { player_id_type: { player_id: playerId, type: 'play' } },
-    });
-
-    await tx.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: { increment: amount } },
-    });
-
-    await tx.transaction.create({
-      data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
-    });
-
-    // ── Apply deposit bonus ──────────────────────────────────────────────────
-    if (bonusAmount > 0) {
-      const bonusWalletRecord = await tx.wallet.findUniqueOrThrow({
-        where: { player_id_type: { player_id: playerId, type: bonusWallet } },
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Atomic claim: only update if still pending — prevents double-claim race conditions.
+      // updateMany returns a count; if 0 rows updated, another request already claimed it.
+      const { count } = await tx.pendingDeposit.updateMany({
+        where: { id: deposit.id, status: 'pending' },
+        data: { status: 'claimed', player_id: playerId, claimed_at: new Date() },
       });
+      if (count === 0) throw new Error('ALREADY_CLAIMED');
+
+      const wallet = await tx.wallet.findUniqueOrThrow({
+        where: { player_id_type: { player_id: playerId, type: 'play' } },
+      });
+
       await tx.wallet.update({
-        where: { id: bonusWalletRecord.id },
-        data: { balance: { increment: bonusAmount } },
+        where: { id: wallet.id },
+        data: { balance: { increment: amount } },
       });
-      await tx.transaction.create({
-        data: {
-          wallet_id: bonusWalletRecord.id,
-          type: 'admin_credit',
-          amount: bonusAmount,
-          reference_id: txNumber,
-          note: `Deposit bonus ${bonusPct}% on ${amount} ETB`,
-        },
-      });
-    }
 
-    // Credit agent commission if player was referred by an active agent
-    const playerRecord = await tx.player.findUnique({
-      where: { id: playerId },
-      select: { agent_id: true },
-    });
-    if (playerRecord?.agent_id) {
-      const agentRecord = await tx.agent.findUnique({
-        where: { id: playerRecord.agent_id },
-        select: { is_active: true, approval_status: true },
+      await tx.transaction.create({
+        data: { wallet_id: wallet.id, type: 'deposit', amount, reference_id: txNumber },
       });
-      if (agentRecord?.is_active && agentRecord.approval_status === 'approved') {
-        await AgentService.creditCommission(tx, playerRecord.agent_id, playerId, deposit.id, deposit.amount);
+
+      // ── Apply deposit bonus ──────────────────────────────────────────────────
+      if (bonusAmount > 0) {
+        const bonusWalletRecord = await tx.wallet.findUniqueOrThrow({
+          where: { player_id_type: { player_id: playerId, type: bonusWallet } },
+        });
+        await tx.wallet.update({
+          where: { id: bonusWalletRecord.id },
+          data: { balance: { increment: bonusAmount } },
+        });
+        await tx.transaction.create({
+          data: {
+            wallet_id: bonusWalletRecord.id,
+            type: 'admin_credit',
+            amount: bonusAmount,
+            reference_id: txNumber,
+            note: `Deposit bonus ${bonusPct}% on ${amount} ETB`,
+          },
+        });
       }
+
+      // Credit agent commission if player was referred by an active agent
+      const playerRecord = await tx.player.findUnique({
+        where: { id: playerId },
+        select: { agent_id: true },
+      });
+      if (playerRecord?.agent_id) {
+        const agentRecord = await tx.agent.findUnique({
+          where: { id: playerRecord.agent_id },
+          select: { is_active: true, approval_status: true },
+        });
+        if (agentRecord?.is_active && agentRecord.approval_status === 'approved') {
+          await AgentService.creditCommission(tx, playerRecord.agent_id, playerId, deposit.id, deposit.amount);
+        }
+      }
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'ALREADY_CLAIMED') {
+      return { success: false, reason: 'CLAIMED' };
     }
-  });
+    throw err;
+  }
 
   return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : 0 };
 }
 
-// ─── Channel membership gate helpers ─────────────────────────────────────────
 
 /**
  * Returns the required channel username/id from config (key: required_channel).
@@ -1352,7 +1364,17 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           // Auto-create the pending deposit when admin hasn't pre-registered it.
           // Use the SMS-parsed amount if available, otherwise fall back to the
           // amount the player entered in step 1.
+          // Guard: txNumber must look like a real Telebirr ID (alphanumeric, contains letters).
+          // Pure-digit strings are phone numbers, not transaction IDs — reject them.
+          const isTelebirrTxId = /^[A-Z0-9]{6,20}$/.test(parsed.txNumber) && /[A-Z]/.test(parsed.txNumber);
           if (!result.success && result.reason === 'NOT_FOUND') {
+            if (!isTelebirrTxId) {
+              depositSessions.delete(telegramId);
+              await ctx.reply(
+                '❌ ደረሰኙ ትክክለኛ የTelebirr ደረሰኝ አይደለም። እባክዎ ትክክለኛ ደረሰኝ ያጋሩ።\n\n❌ Invalid receipt. Please share a valid Telebirr receipt.',
+              );
+              return;
+            }
             const depositAmount = parsed.amount ?? depositSession.amount;
             try {
               await prisma.pendingDeposit.create({
