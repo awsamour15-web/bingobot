@@ -296,25 +296,68 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Require at least one successful deposit before allowing withdrawal
+  // ── Deposit requirement checks ───────────────────────────────────────────
   const playerWallets = await prisma.wallet.findMany({
     where: { player_id: playerId },
     select: { id: true },
   });
   const playerWalletIds = playerWallets.map((w) => w.id);
-  const hasDeposit = await prisma.transaction.findFirst({
+
+  // Sum of all real deposits the player has ever made
+  const depositAgg = await prisma.transaction.aggregate({
     where: {
       wallet_id: { in: playerWalletIds },
       type: TxType.deposit,
     },
+    _sum: { amount: true },
   });
+  const totalDeposited = Number(depositAgg._sum.amount ?? 0);
 
-  if (!hasDeposit) {
-    res.status(403).json({
-      error: 'NO_DEPOSIT',
-      message: 'You must make a deposit before requesting a withdrawal',
+  if (totalDeposited === 0) {
+    // Check if they have any game wins (meaning they won using the welcome bonus)
+    const hasWin = await prisma.transaction.findFirst({
+      where: { wallet_id: { in: playerWalletIds }, type: TxType.game_win },
     });
+
+    if (hasWin) {
+      // Won using welcome bonus — require 200 ETB deposit to unlock withdrawal
+      res.status(403).json({
+        error: 'DEPOSIT_REQUIRED_FOR_BONUS_WIN',
+        message: 'You won using your welcome bonus. Please deposit at least ETB 200 to withdraw your winnings.',
+      });
+    } else {
+      res.status(403).json({
+        error: 'NO_DEPOSIT',
+        message: 'You must make a deposit before requesting a withdrawal',
+      });
+    }
     return;
+  }
+
+  if (totalDeposited < 200) {
+    // Has deposited but not enough to unlock welcome-bonus winnings
+    const hasWelcomeBonusWin = await prisma.transaction.findFirst({
+      where: {
+        wallet_id: { in: playerWalletIds },
+        type: TxType.game_win,
+      },
+    });
+    // Only enforce 200 ETB floor if they have bonus-sourced wins
+    // (players who deposit and win from their deposit are fine at normal minimum)
+    const welcomeBonusTx = await prisma.transaction.findFirst({
+      where: {
+        wallet_id: { in: playerWalletIds },
+        type: TxType.admin_credit,
+        note: 'Welcome bonus',
+      },
+    });
+    if (welcomeBonusTx && hasWelcomeBonusWin) {
+      res.status(403).json({
+        error: 'DEPOSIT_REQUIRED_FOR_BONUS_WIN',
+        message: `You won using your welcome bonus. Please deposit at least ETB 200 to withdraw your winnings. You have deposited ETB ${totalDeposited.toFixed(0)} so far.`,
+      });
+      return;
+    }
   }
 
   try {

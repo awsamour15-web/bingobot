@@ -133,13 +133,30 @@ router.post(
         select: { id: true },
       });
 
-      // Create main and play wallets
+      // Create main and play wallets — play wallet gets 10 ETB welcome bonus
       await tx.wallet.createMany({
         data: [
           { player_id: newPlayer.id, type: 'main', balance: 0 },
-          { player_id: newPlayer.id, type: 'play', balance: 0 },
+          { player_id: newPlayer.id, type: 'play', balance: 20 },
         ],
       });
+
+      // Record the welcome bonus as a transaction for audit trail
+      const playWallet = await tx.wallet.findFirst({
+        where: { player_id: newPlayer.id, type: 'play' },
+        select: { id: true },
+      });
+      if (playWallet) {
+        await tx.transaction.create({
+          data: {
+            wallet_id: playWallet.id,
+            type: 'admin_credit',
+            amount: 20,
+            reference_id: `welcome_bonus_${newPlayer.id}`,
+            note: 'Welcome bonus',
+          },
+        });
+      }
 
       return newPlayer;
     });
