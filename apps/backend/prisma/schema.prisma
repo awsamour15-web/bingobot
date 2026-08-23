@@ -31,6 +31,7 @@ model Player {
   round_wins              RoundWinner[]
   wallets                 Wallet[]
   bonus_distributions     PromotionBonusDistribution[]
+  crash_bets              CrashBet[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -405,6 +406,12 @@ enum WithdrawalStatus {
   rejected
 }
 
+enum CrashStatus {
+  waiting
+  running
+  crashed
+}
+
 enum PromotionContentType {
   text
   image
@@ -422,4 +429,37 @@ enum PromotionScheduleFrequency {
   daily
   weekly
   monthly
+}
+
+// ─── Crash Game ───────────────────────────────────────────────────────────────
+
+model CrashRound {
+  id           String          @id @default(uuid())
+  status       CrashStatus     @default(waiting)
+  crash_point  Float?          // multiplier at which it crashed (null until crashed)
+  started_at   DateTime?
+  crashed_at   DateTime?
+  created_at   DateTime        @default(now())
+  bets         CrashBet[]
+
+  @@index([status])
+  @@index([created_at])
+  @@map("crash_rounds")
+}
+
+model CrashBet {
+  id           String      @id @default(uuid())
+  round_id     String
+  player_id    String
+  bet_amount   Decimal     @db.Decimal(14, 2)
+  cashout_at   Float?      // multiplier at cashout (null = not cashed out yet / bust)
+  payout       Decimal?    @db.Decimal(14, 2)
+  created_at   DateTime    @default(now())
+  round        CrashRound  @relation(fields: [round_id], references: [id])
+  player       Player      @relation(fields: [player_id], references: [id])
+
+  @@unique([round_id, player_id])
+  @@index([round_id])
+  @@index([player_id])
+  @@map("crash_bets")
 }

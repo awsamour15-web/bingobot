@@ -32,6 +32,7 @@ import promotionsAdminRouter from './routes/admin/promotions.admin.router.js';
 import adminCartelasRouter from './routes/admin/cartelas.admin.router.js';
 import broadcastTargetsRouter from './routes/admin/broadcast-targets.admin.router.js';
 import adminMockPlayersRouter from './routes/admin/mock-players.admin.router.js';
+import crashRouter from './routes/crash.router.js';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
@@ -94,6 +95,7 @@ app.use('/api/wallet', walletRouter);
 app.use('/api/referral', referralRouter);
 app.use('/api/system', systemRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/crash', crashRouter);
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use('/api/admin/auth', adminAuthRouter);

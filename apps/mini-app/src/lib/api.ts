@@ -511,3 +511,48 @@ export interface LeaderboardResponse {
 export function getLeaderboard(): Promise<LeaderboardResponse> {
   return apiRequest<LeaderboardResponse>('GET', '/api/leaderboard');
 }
+
+// ---------------------------------------------------------------------------
+// Crash Game
+// ---------------------------------------------------------------------------
+
+export interface CrashBetEntry {
+  username: string;
+  betAmount: number;
+  cashoutAt: number | null;
+  payout: number | null;
+}
+
+export interface CrashState {
+  phase: 'waiting' | 'running' | 'crashed' | 'idle';
+  round: {
+    id: string;
+    status: string;
+    startedAt: string | null;
+    crashPoint: number | null;
+  } | null;
+  myBet: {
+    betAmount: number;
+    cashoutAt: number | null;
+    payout: number | null;
+  } | null;
+  bets: CrashBetEntry[];
+}
+
+export interface CrashHistoryEntry {
+  id: string;
+  crashPoint: number | null;
+  crashedAt: string | null;
+}
+
+export function getCrashState(): Promise<CrashState> {
+  return apiRequest<CrashState>('GET', '/api/crash/state');
+}
+
+export function placeCrashBet(betAmount: number): Promise<{ roundId: string; betAmount: number }> {
+  return apiRequest('POST', '/api/crash/bet', { betAmount });
+}
+
+export function getCrashHistory(): Promise<CrashHistoryEntry[]> {
+  return apiRequest<CrashHistoryEntry[]>('GET', '/api/crash/history');
+}

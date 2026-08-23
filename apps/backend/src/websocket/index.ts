@@ -11,6 +11,11 @@ import { nce } from '../services/nce.service.js';
 import { GameRoundService } from '../services/game-round.service.js';
 import { RoundScheduler } from '../services/round-scheduler.service.js';
 import { GameStatus } from '@fidel/shared';
+import { crashEngine } from '../services/crash-engine.service.js';
+
+// ─── Module-level io reference for crash routes ───────────────────────────────
+let _crashIo: InstanceType<typeof SocketIOServer> | null = null;
+export function getCrashIo(): InstanceType<typeof SocketIOServer> | null { return _crashIo; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -241,6 +246,27 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     io.to(`round:${roundId}`).emit('ROUND_WON', payload);
   });
 
+  // ── Wire Crash Engine callbacks ────────────────────────────────────────────
+  _crashIo = io;
+
+  crashEngine.onBettingOpen = (roundId, countdownMs) => {
+    io.emit('CRASH_BETTING_OPEN', { roundId, countdownMs });
+  };
+  crashEngine.onStarted = (roundId, startedAt) => {
+    io.emit('CRASH_STARTED', { roundId, startedAt });
+  };
+  crashEngine.onTick = (multiplier) => {
+    io.emit('CRASH_TICK', { multiplier });
+  };
+  crashEngine.onCashedOut = (playerId, username, multiplier, payout) => {
+    io.emit('CRASH_CASHED_OUT', { playerId, username, multiplier, payout });
+  };
+  crashEngine.onEnded = (roundId, crashPoint) => {
+    io.emit('CRASH_ENDED', { roundId, crashPoint });
+  };
+
+  crashEngine.start();
+
   // ── Connection handler ─────────────────────────────────────────────────────
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -320,6 +346,18 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         }
       },
     );
+
+    // ── CRASH_CASHOUT ─────────────────────────────────────────────────────────
+    socket.on('CRASH_CASHOUT', async (data: { roundId: string }, ack?: (res: object) => void) => {
+      try {
+        const { multiplier, payout } = await crashEngine.cashout(data.roundId, playerId);
+        socket.emit('CRASH_CASHOUT_ACK', { multiplier, payout });
+        if (ack) ack({ ok: true, multiplier, payout });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Cashout failed';
+        if (ack) ack({ ok: false, error: msg });
+      }
+    });
   });
 
   return io;
