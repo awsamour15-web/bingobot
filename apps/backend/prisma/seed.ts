@@ -75,6 +75,7 @@ async function seedConfig(): Promise<void> {
     { key: 'required_channel', value: '' },
     // Mock player bot — auto-fills rounds with bot players
     { key: 'mock_bot_enabled', value: 'false' },
+    { key: 'mock_bot_win_enabled', value: 'false' },
     { key: 'mock_bot_count', value: '3' },
     { key: 'mock_bot_balance', value: '0' },
   ];

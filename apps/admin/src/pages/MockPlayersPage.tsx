@@ -314,6 +314,7 @@ function PlayersTable({ players, loading, onCredit, onRename }: {
 
 function BotConfigCard() {
   const [enabled, setEnabled] = useState(false);
+  const [winEnabled, setWinEnabled] = useState(false);
   const [count, setCount] = useState('3');
   const [balance, setBalance] = useState('0');
   const [loading, setLoading] = useState(true);
@@ -321,8 +322,8 @@ function BotConfigCard() {
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    adminApiRequest<{ enabled: boolean; count: number; balance: number }>('GET', '/api/admin/mock-players/bot-config')
-      .then((d) => { setEnabled(d.enabled); setCount(String(d.count)); setBalance(String(d.balance)); })
+    adminApiRequest<{ enabled: boolean; winEnabled: boolean; count: number; balance: number }>('GET', '/api/admin/mock-players/bot-config')
+      .then((d) => { setEnabled(d.enabled); setWinEnabled(d.winEnabled ?? false); setCount(String(d.count)); setBalance(String(d.balance)); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -332,6 +333,7 @@ function BotConfigCard() {
     try {
       await adminApiRequest('PATCH', '/api/admin/mock-players/bot-config', {
         enabled,
+        winEnabled,
         count: parseInt(count, 10),
         balance: parseFloat(balance),
       });
@@ -352,6 +354,13 @@ function BotConfigCard() {
             <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)}
               style={{ accentColor: '#6366f1', width: 16, height: 16 }} />
             Enabled
+          </label>
+        </div>
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--c-text)' }}>
+            <input type="checkbox" checked={winEnabled} onChange={(e) => setWinEnabled(e.target.checked)}
+              style={{ accentColor: '#f59e0b', width: 16, height: 16 }} />
+            Guaranteed Win (one mock player wins each round)
           </label>
         </div>
         <Field label="Players per round (1–10)">

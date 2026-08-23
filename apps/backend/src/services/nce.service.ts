@@ -61,6 +61,9 @@ export class NumberCallingEngine {
   setOnRoundVoid(cb: OnRoundVoid): void { this.onRoundVoid = cb; }
   setOnRoundStarted(cb: OnRoundStarted): void { this.onRoundStarted = cb; }
 
+  /** Invalidate the grid cache for a round so next win-check re-reads from DB */
+  clearGridCache(roundId: string): void { this.gridCache.delete(roundId); }
+
   /**
    * Start (or resume) calling numbers for a round.
    *

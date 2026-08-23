@@ -10,6 +10,7 @@ import { WinDetectionService } from '../services/win-detection.service.js';
 import { nce } from '../services/nce.service.js';
 import { GameRoundService } from '../services/game-round.service.js';
 import { RoundScheduler } from '../services/round-scheduler.service.js';
+import { MockPlayerBotService } from '../services/mock-player-bot.service.js';
 import { GameStatus } from '@fidel/shared';
 import { crashEngine } from '../services/crash-engine.service.js';
 
@@ -191,9 +192,13 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   nce.setOnNumberCalled((roundId, payload) => {
     io.to(`round:${roundId}`).emit('NUMBER_CALLED', payload);
+    // Feed called numbers to mock bot win injector
+    void prisma.calledNumber.findMany({ where: { round_id: roundId }, select: { number: true } })
+      .then((rows) => MockPlayerBotService.onNumberCalled(roundId, rows.map((r) => r.number)));
   });
 
   nce.setOnRoundVoid((roundId) => {
+    MockPlayerBotService.onRoundEnded(roundId);
     io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId });
     // Replenish — create a new pending round for this stake level
     void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
@@ -205,6 +210,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   });
 
   GameRoundService.setOnRoundCancelled((roundId) => {
+    MockPlayerBotService.onRoundEnded(roundId);
     io.to(`round:${roundId}`).emit('ROUND_CANCELLED', { roundId });
     void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
   });
