@@ -90,7 +90,7 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
   );
 });
 
-const LOCAL_COUNTDOWN_SEC = 40;
+const LOCAL_COUNTDOWN_SEC = 30; // must match LEAD_TIME_MS (30s) in round-scheduler.service.ts
 
 /** 40-second countdown that starts the moment the hook first mounts. */
 function useLocalCountdown() {
@@ -611,7 +611,7 @@ export default function CartelaScreen() {
             <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(8px)' }}>
               <span style={{ fontSize: 14 }}>⏱️</span>
               <span style={{ fontSize: 11, fontWeight: 800, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
-                {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : round?.status === 'active' ? '●' : '⏳'}
+                {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : starting ? '●' : '0s'}
               </span>
             </div>
             <button onClick={() => window.location.reload()} style={{ background: 'linear-gradient(135deg, rgba(100,116,139,0.15) 0%, rgba(71,85,105,0.1) 100%)', border: '1px solid rgba(148,163,184,0.25)', color: '#cbd5e1', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' }}>
