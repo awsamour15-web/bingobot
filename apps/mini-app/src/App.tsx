@@ -12,6 +12,7 @@ const ProfileScreen = lazy(() => import('./screens/ProfileScreen'));
 const AgentDashboardScreen = lazy(() => import('./screens/AgentDashboardScreen'));
 const RankScreen = lazy(() => import('./screens/RankScreen'));
 const CrashScreen = lazy(() => import('./screens/CrashScreen'));
+const SlotsScreen = lazy(() => import('./screens/SlotsScreen'));
 
 import { socket } from './lib/socket';
 
@@ -88,7 +89,7 @@ function BottomNav() {
 
   const tabs = [
     { to: '/', icon: '🎯', label: 'Play' },
-    { to: '/crash', icon: '🚀', label: 'Crash' },
+    { to: '/slots', icon: '🎰', label: 'Slots' },
     { to: '/history', icon: '🧾', label: 'History' },
     { to: '/wallet', icon: '💳', label: 'Wallet' },
     { to: '/profile', icon: '◎', label: 'Profile' },
@@ -247,6 +248,7 @@ function AppInner() {
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/rank" element={<RankScreen />} />
           <Route path="/crash" element={<CrashScreen />} />
+          <Route path="/slots" element={<SlotsScreen />} />
           <Route path="/agent/dashboard" element={<AgentDashboardScreen />} />
           <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />
           <Route path="/rounds/:id/game" element={<LiveGameScreen />} />

@@ -32,6 +32,7 @@ model Player {
   wallets                 Wallet[]
   bonus_distributions     PromotionBonusDistribution[]
   crash_bets              CrashBet[]
+  slot_spins              SlotSpin[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -412,6 +413,11 @@ enum CrashStatus {
   crashed
 }
 
+enum SlotSpinStatus {
+  win
+  loss
+}
+
 enum PromotionContentType {
   text
   image
@@ -462,4 +468,24 @@ model CrashBet {
   @@index([round_id])
   @@index([player_id])
   @@map("crash_bets")
+}
+
+// ─── Slots Game ───────────────────────────────────────────────────────────────
+
+model SlotSpin {
+  id              String         @id @default(uuid())
+  player_id       String
+  bet_amount      Decimal        @db.Decimal(14, 2)
+  reels           Json           // number[][] — 3 columns × 3 rows symbol indices
+  multiplier_reel Int            @default(1)
+  payline_wins    Json           // { line: number, symbols: number[], payout: number }[]
+  total_win       Decimal        @default(0) @db.Decimal(14, 2)
+  status          SlotSpinStatus
+  gamble_result   Json?          // { guess: 'red'|'black', actual: 'red'|'black', won: bool, payout: number } | null
+  created_at      DateTime       @default(now())
+  player          Player         @relation(fields: [player_id], references: [id])
+
+  @@index([player_id])
+  @@index([created_at])
+  @@map("slot_spins")
 }

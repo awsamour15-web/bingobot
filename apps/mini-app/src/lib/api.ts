@@ -556,3 +556,54 @@ export function placeCrashBet(betAmount: number): Promise<{ roundId: string; bet
 export function getCrashHistory(): Promise<CrashHistoryEntry[]> {
   return apiRequest<CrashHistoryEntry[]>('GET', '/api/crash/history');
 }
+
+// ---------------------------------------------------------------------------
+// Slots Game
+// ---------------------------------------------------------------------------
+
+export type SlotSymbol = 'cherry' | 'watermelon' | 'orange' | 'lemon' | 'bell' | 'double_dollar' | 'seven';
+
+export interface PaylineWin {
+  line: number;
+  symbols: SlotSymbol[];
+  payout: number;
+}
+
+export interface SpinResponse {
+  spinId: string;
+  reels: SlotSymbol[][];   // 3 columns × 3 rows
+  multiplierReel: number;
+  paylineWins: PaylineWin[];
+  totalWin: number;
+  balance: number;
+  canGamble: boolean;
+}
+
+export interface GambleResponse {
+  guess: 'red' | 'black';
+  actual: 'red' | 'black';
+  won: boolean;
+  payout: number;
+  balance: number;
+}
+
+export interface SlotHistoryEntry {
+  id: string;
+  betAmount: number;
+  totalWin: number;
+  multiplierReel: number;
+  status: 'win' | 'loss';
+  createdAt: string;
+}
+
+export function spinSlots(betAmount: number): Promise<SpinResponse> {
+  return apiRequest<SpinResponse>('POST', '/api/slots/spin', { betAmount });
+}
+
+export function gambleSlots(spinId: string, guess: 'red' | 'black'): Promise<GambleResponse> {
+  return apiRequest<GambleResponse>('POST', '/api/slots/gamble', { spinId, guess });
+}
+
+export function getSlotsHistory(): Promise<SlotHistoryEntry[]> {
+  return apiRequest<SlotHistoryEntry[]>('GET', '/api/slots/history');
+}

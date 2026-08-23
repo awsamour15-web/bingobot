@@ -54,6 +54,13 @@ async function getBotBalance(): Promise<number> {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** Read the active cartela pool size (same config the rounds router uses). */
+async function getCartelaPoolSize(): Promise<number> {
+  const row = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
+  const n = row ? parseInt(row.value, 10) : 800;
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 800) : 800;
+}
+
 /** Fisher-Yates shuffle — returns a new shuffled array */
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -197,10 +204,11 @@ export const MockPlayerBotService = {
       if (!round || round.status !== 'pending') return;
 
       const stake = parseFloat(round.stake.toString());
-      const [botCount, botBalance, winEnabled, allMockPlayers] = await Promise.all([
+      const [botCount, botBalance, winEnabled, poolSize, allMockPlayers] = await Promise.all([
         getBotCount(),
         getBotBalance(),
         isWinEnabled(),
+        getCartelaPoolSize(),
         prisma.$queryRaw<MockPlayerRow[]>`
           SELECT id, username FROM players WHERE is_mock = true AND is_suspended = false
         `,
@@ -218,9 +226,10 @@ export const MockPlayerBotService = {
       });
       const takenSet = new Set(taken.map((e) => e.cartela_number));
 
-      // Build shuffled available cartela pool
+      // Build shuffled available cartela pool — capped to active_cartela_count so we
+      // never pick a cartela number that has no CartelaDefinition row in the DB.
       const available = shuffle(
-        Array.from({ length: 800 }, (_, i) => i + 1).filter((n) => !takenSet.has(n)),
+        Array.from({ length: poolSize }, (_, i) => i + 1).filter((n) => !takenSet.has(n)),
       );
 
       if (available.length < selected.length) {
