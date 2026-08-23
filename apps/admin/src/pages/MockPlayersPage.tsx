@@ -79,19 +79,23 @@ function CreditModal({ player, onClose, onDone }: {
         </h3>
         {err && <Alert type="error">{err}</Alert>}
         <form onSubmit={handleSubmit}>
-          <Field label="Amount (ETB)" style={{ marginBottom: 12 }}>
-            <input style={inputCss} type="number" min="1" step="any" value={amount}
-              onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100" required autoFocus />
-          </Field>
-          <Field label="Wallet" style={{ marginBottom: 16 }}>
-            <select style={inputCss} value={wallet} onChange={(e) => setWallet(e.target.value as 'play' | 'main')}>
-              <option value="play">Play wallet</option>
-              <option value="main">Main wallet</option>
-            </select>
-          </Field>
+          <div style={{ marginBottom: 12 }}>
+            <Field label="Amount (ETB)">
+              <input style={inputCss} type="number" min="1" step="any" value={amount}
+                onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 100" required autoFocus />
+            </Field>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <Field label="Wallet">
+              <select style={inputCss} value={wallet} onChange={(e) => setWallet(e.target.value as 'play' | 'main')}>
+                <option value="play">Play wallet</option>
+                <option value="main">Main wallet</option>
+              </select>
+            </Field>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn type="submit" disabled={loading}>{loading ? 'Crediting…' : 'Credit'}</Btn>
-            <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
+            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
           </div>
         </form>
       </div>
@@ -237,7 +241,7 @@ function PlayersTable({ players, loading, onCredit }: {
                 : <Badge variant="success">Active</Badge>}
             </Td>
             <Td>
-              <Btn size="sm" variant="secondary" onClick={() => onCredit(p)}>+ Credit</Btn>
+              <Btn size="sm" variant="outline" onClick={() => onCredit(p)}>+ Credit</Btn>
             </Td>
           </tr>
         ))}
