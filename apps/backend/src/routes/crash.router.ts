@@ -2,14 +2,14 @@
 // POST /api/crash/bet   — place a bet on the current waiting round
 // GET  /api/crash/state — current round state + player's bet
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { crashEngine } from '../services/crash-engine.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 router.use(jwtAuthMiddleware);
 
 // ─── GET /api/crash/state ─────────────────────────────────────────────────────
