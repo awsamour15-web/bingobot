@@ -4,6 +4,7 @@ import {
   getMockPlayers, seedMockPlayers, creditMockPlayer,
   joinRoundWithMockPlayers, renameMockPlayer, type MockPlayer,
 } from '../lib/api';
+import { adminApiRequest } from '../lib/api';
 import { getAdminRounds } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td,
@@ -309,6 +310,64 @@ function PlayersTable({ players, loading, onCredit, onRename }: {
   );
 }
 
+// ─── Bot Config Card ──────────────────────────────────────────────────────────
+
+function BotConfigCard() {
+  const [enabled, setEnabled] = useState(false);
+  const [count, setCount] = useState('3');
+  const [balance, setBalance] = useState('0');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminApiRequest<{ enabled: boolean; count: number; balance: number }>('GET', '/api/admin/mock-players/bot-config')
+      .then((d) => { setEnabled(d.enabled); setCount(String(d.count)); setBalance(String(d.balance)); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true); setMsg(null);
+    try {
+      await adminApiRequest('PATCH', '/api/admin/mock-players/bot-config', {
+        enabled,
+        count: parseInt(count, 10),
+        balance: parseFloat(balance),
+      });
+      setMsg('Saved');
+    } catch { setMsg('Failed to save'); }
+    finally { setSaving(false); }
+  }
+
+  if (loading) return null;
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader title="Auto-Join Bot" subtitle="Mock players automatically join new pending rounds with a 1s stagger" />
+      {msg && <Alert type={msg === 'Saved' ? 'success' : 'error'}>{msg}</Alert>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--c-text)' }}>
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)}
+              style={{ accentColor: '#6366f1', width: 16, height: 16 }} />
+            Enabled
+          </label>
+        </div>
+        <Field label="Players per round (1–10)">
+          <input style={inputCss} type="number" min="1" max="10" value={count}
+            onChange={(e) => setCount(e.target.value)} />
+        </Field>
+        <Field label="Balance per player (0 = auto-cover stake)">
+          <input style={inputCss} type="number" min="0" step="any" value={balance}
+            onChange={(e) => setBalance(e.target.value)} />
+        </Field>
+      </div>
+      <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Btn>
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function MockPlayersPage() {
@@ -350,6 +409,8 @@ export function MockPlayersPage() {
       {fetchErr && <Alert type="error">{fetchErr}</Alert>}
 
       <SeedCard onSeeded={fetchPlayers} />
+
+      <BotConfigCard />
 
       {players.length > 0 && (
         <JoinRoundCard players={players} onJoined={fetchPlayers} />

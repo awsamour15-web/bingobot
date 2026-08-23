@@ -5,6 +5,7 @@ import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { GameStatus } from '@fidel/shared';
+import { MockPlayerBotService } from './mock-player-bot.service.js';
 
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 30_000;
@@ -274,6 +275,8 @@ export const RoundScheduler = {
           });
           console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
           if (RoundScheduler._onRoundsReplenished) RoundScheduler._onRoundsReplenished();
+          // Trigger mock bot auto-join (non-blocking)
+          void MockPlayerBotService.onRoundPending(round.id);
         } catch (err: unknown) {
           if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
             console.log(`[Scheduler] Skipping stake=${stake} - concurrent insert created pending round first`);

@@ -269,4 +269,37 @@ router.patch('/:id/rename', async (req: Request, res: Response): Promise<void> =
   res.json({ success: true, username: trimmed });
 });
 
+// GET /api/admin/mock-players/bot-config
+router.get('/bot-config', async (_req: Request, res: Response): Promise<void> => {
+  const keys = ['mock_bot_enabled', 'mock_bot_count', 'mock_bot_balance'];
+  const rows = await prisma.config.findMany({ where: { key: { in: keys } } });
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  res.json({
+    enabled: map['mock_bot_enabled'] === 'true',
+    count: parseInt(map['mock_bot_count'] ?? '3', 10),
+    balance: parseFloat(map['mock_bot_balance'] ?? '0'),
+  });
+});
+
+// PATCH /api/admin/mock-players/bot-config
+router.patch('/bot-config', async (req: Request, res: Response): Promise<void> => {
+  const { enabled, count, balance } = req.body as { enabled?: boolean; count?: number; balance?: number };
+  const updates: Array<{ key: string; value: string }> = [];
+  if (enabled !== undefined) updates.push({ key: 'mock_bot_enabled', value: String(enabled) });
+  if (count !== undefined) updates.push({ key: 'mock_bot_count', value: String(Math.max(1, Math.min(10, count))) });
+  if (balance !== undefined) updates.push({ key: 'mock_bot_balance', value: String(Math.max(0, balance)) });
+  for (const { key, value } of updates) {
+    await prisma.config.upsert({ where: { key }, update: { value }, create: { key, value } });
+  }
+  res.json({ success: true });
+});
+
+// POST /api/admin/mock-players/bot-trigger/:roundId
+router.post('/bot-trigger/:roundId', async (req: Request, res: Response): Promise<void> => {
+  const { roundId } = req.params as { roundId: string };
+  const { MockPlayerBotService } = await import('../../services/mock-player-bot.service.js');
+  void MockPlayerBotService.onRoundPending(roundId);
+  res.json({ success: true, message: 'Mock bot triggered for round' });
+});
+
 export default router;

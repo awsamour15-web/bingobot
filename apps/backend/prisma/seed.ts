@@ -73,6 +73,10 @@ async function seedConfig(): Promise<void> {
     // Channel membership gate — set to @YourChannel or a numeric ID to enforce joining.
     // Leave empty to disable the gate.
     { key: 'required_channel', value: '' },
+    // Mock player bot — auto-fills rounds with bot players
+    { key: 'mock_bot_enabled', value: 'false' },
+    { key: 'mock_bot_count', value: '3' },
+    { key: 'mock_bot_balance', value: '0' },
   ];
 
   for (const row of defaults) {
