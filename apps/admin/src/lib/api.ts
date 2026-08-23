@@ -635,3 +635,7 @@ export function creditMockPlayer(id: string, amount: number, walletType: 'main' 
 export function joinRoundWithMockPlayers(roundId: string, playerIds: string[], balance: number): Promise<MockJoinResult> {
   return adminApiRequest('POST', '/api/admin/mock-players/join-round', { roundId, playerIds, balance });
 }
+
+export function renameMockPlayer(id: string, username: string): Promise<{ success: boolean; username: string }> {
+  return adminApiRequest('PATCH', `/api/admin/mock-players/${id}/rename`, { username });
+}

@@ -244,4 +244,29 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   res.json({ joined: results, errors });
 });
 
+// PATCH /api/admin/mock-players/:id/rename
+// Rename a mock player's username
+router.patch('/:id/rename', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params as { id: string };
+  const { username } = req.body as { username?: string };
+
+  if (!username || !username.trim()) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'username is required' });
+    return;
+  }
+
+  const trimmed = username.trim();
+
+  const [player] = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM players WHERE id = ${id} AND is_mock = true LIMIT 1
+  `;
+  if (!player) {
+    res.status(404).json({ error: 'NOT_FOUND', message: 'Mock player not found' });
+    return;
+  }
+
+  await prisma.player.update({ where: { id }, data: { username: trimmed } });
+  res.json({ success: true, username: trimmed });
+});
+
 export default router;

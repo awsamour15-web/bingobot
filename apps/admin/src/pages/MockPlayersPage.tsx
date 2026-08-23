@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminRound } from '@fidel/shared';
 import {
   getMockPlayers, seedMockPlayers, creditMockPlayer,
-  joinRoundWithMockPlayers, type MockPlayer,
+  joinRoundWithMockPlayers, renameMockPlayer, type MockPlayer,
 } from '../lib/api';
 import { getAdminRounds } from '../lib/api';
 import {
@@ -95,6 +95,61 @@ function CreditModal({ player, onClose, onDone }: {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn type="submit" disabled={loading}>{loading ? 'Crediting…' : 'Credit'}</Btn>
+            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Rename Modal ─────────────────────────────────────────────────────────────
+
+function RenameModal({ player, onClose, onDone }: {
+  player: MockPlayer;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [username, setUsername] = useState(player.username);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!username.trim()) { setErr('Username cannot be empty'); return; }
+    setLoading(true); setErr(null);
+    try {
+      await renameMockPlayer(player.id, username.trim());
+      onDone();
+      onClose();
+    } catch (ex: unknown) {
+      setErr((ex as Error).message ?? 'Failed');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400,
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--c-card)', border: '1px solid var(--c-border)', borderRadius: 14,
+        padding: 24, width: 340, maxWidth: '90vw',
+      }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: 'var(--c-text)' }}>
+          Rename — {player.username}
+        </h3>
+        {err && <Alert type="error">{err}</Alert>}
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <Field label="New Username">
+              <input style={inputCss} type="text" value={username}
+                onChange={(e) => setUsername(e.target.value)} placeholder="e.g. john_bot" required autoFocus />
+            </Field>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn type="submit" disabled={loading}>{loading ? 'Saving…' : 'Save'}</Btn>
             <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
           </div>
         </form>
@@ -209,10 +264,11 @@ function JoinRoundCard({ players, onJoined }: {
 
 // ─── Players Table ────────────────────────────────────────────────────────────
 
-function PlayersTable({ players, loading, onCredit }: {
+function PlayersTable({ players, loading, onCredit, onRename }: {
   players: MockPlayer[];
   loading: boolean;
   onCredit: (p: MockPlayer) => void;
+  onRename: (p: MockPlayer) => void;
 }) {
   return (
     <Table>
@@ -241,7 +297,10 @@ function PlayersTable({ players, loading, onCredit }: {
                 : <Badge variant="success">Active</Badge>}
             </Td>
             <Td>
-              <Btn size="sm" variant="outline" onClick={() => onCredit(p)}>+ Credit</Btn>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Btn size="sm" variant="outline" onClick={() => onCredit(p)}>+ Credit</Btn>
+                <Btn size="sm" variant="ghost" onClick={() => onRename(p)}>✏ Rename</Btn>
+              </div>
             </Td>
           </tr>
         ))}
@@ -257,6 +316,7 @@ export function MockPlayersPage() {
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
   const [creditTarget, setCreditTarget] = useState<MockPlayer | null>(null);
+  const [renameTarget, setRenameTarget] = useState<MockPlayer | null>(null);
 
   const fetchPlayers = useCallback(async () => {
     setFetchErr(null);
@@ -301,13 +361,21 @@ export function MockPlayersPage() {
           subtitle="Bot-controlled players managed by admin"
           action={<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-muted)' }}>{players.length} / 10</span>}
         />
-        <PlayersTable players={players} loading={loading} onCredit={setCreditTarget} />
+        <PlayersTable players={players} loading={loading} onCredit={setCreditTarget} onRename={setRenameTarget} />
       </Card>
 
       {creditTarget && (
         <CreditModal
           player={creditTarget}
           onClose={() => setCreditTarget(null)}
+          onDone={fetchPlayers}
+        />
+      )}
+
+      {renameTarget && (
+        <RenameModal
+          player={renameTarget}
+          onClose={() => setRenameTarget(null)}
           onDone={fetchPlayers}
         />
       )}
