@@ -331,12 +331,12 @@ export default function SlotsScreen() {
   // Compute which rows are winners per column
   const winRowsPerCol = useCallback((col: number): number[] => {
     const rows = new Set<number>();
+    const PAYLINES: [number, number, number][] = [
+      [1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0],
+    ];
     for (const w of paylineWins) {
-      const PAYLINES: [number, number, number][] = [
-        [1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0],
-      ];
       const line = PAYLINES[w.line - 1];
-      if (line) rows.add(line[col]);
+      if (line) rows.add(line[col as 0 | 1 | 2] as number);
     }
     return [...rows];
   }, [paylineWins]);

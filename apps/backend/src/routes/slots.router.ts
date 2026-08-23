@@ -3,14 +3,14 @@
 // POST /api/slots/gamble  — X2 gamble on last win
 // GET  /api/slots/history — last 20 spins for player
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { spin, gamble } from '../services/slots-engine.service.js';
 
-const router = Router();
+const router: RouterType = Router();
 router.use(jwtAuthMiddleware);
 
 const MIN_BET = 5;
@@ -144,7 +144,7 @@ router.get('/history', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
-  res.json(spins.map((s) => ({
+  res.json(spins.map((s: { id: string; bet_amount: { toString(): string }; total_win: { toString(): string }; multiplier_reel: number; status: string; created_at: Date }) => ({
     id: s.id,
     betAmount: Number(s.bet_amount),
     totalWin: Number(s.total_win),
