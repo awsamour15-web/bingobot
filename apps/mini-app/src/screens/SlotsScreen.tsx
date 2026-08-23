@@ -321,6 +321,11 @@ export default function SlotsScreen() {
   const [gambleResult, setGambleResult] = useState<{ won: boolean; actual: 'red' | 'black'; payout: number } | null>(null);
   const [gambleLoading, setGambleLoading] = useState(false);
 
+  // Refs to avoid stale closures
+  const spinningRef = useRef(false);
+  const betIndexRef = useRef(betIndex);
+  useEffect(() => { betIndexRef.current = betIndex; }, [betIndex]);
+
   const betAmount = BET_STEPS[betIndex]!;
 
   // Load balance on mount
@@ -341,45 +346,51 @@ export default function SlotsScreen() {
     return [...rows];
   }, [paylineWins]);
 
-  const doSpin = useCallback(async () => {
-    if (spinning) return;
+  // Stable doSpin — uses refs so it never goes stale in loops
+  const doSpin = useCallback(async (): Promise<boolean> => {
+    if (spinningRef.current) return false;
+    spinningRef.current = true;
     setSpinning(true);
     setPaylineWins([]);
     setTotalWin(null);
     setError(null);
 
-    try {
-      const res: SpinResponse = await spinSlots(betAmount);
+    const bet = BET_STEPS[betIndexRef.current]!;
 
-      // Let reels spin for 1.2s before showing result
+    try {
+      const res: SpinResponse = await spinSlots(bet);
+
+      // Animate for 1.2s then snap to result
       await new Promise((r) => setTimeout(r, 1200));
 
       setReels(res.reels);
       setMultiplierReel(res.multiplierReel);
+      spinningRef.current = false;
       setSpinning(false);
 
-      // Small pause then show result
       await new Promise((r) => setTimeout(r, 200));
       setPaylineWins(res.paylineWins);
       setTotalWin(res.totalWin);
       setBalance(res.balance);
 
-      if (res.canGamble) {
+      if (res.canGamble && !autoRef.current) {
         setGambleSpinId(res.spinId);
         setGambleWin(res.totalWin);
         setGambleResult(null);
-        if (!autoRef.current) {
-          setShowGamble(true);
-          return; // pause auto spin for gamble prompt
-        }
+        setShowGamble(true);
+        return false; // signal auto-spin to pause
       }
+
+      return true;
     } catch (err: any) {
+      spinningRef.current = false;
       setSpinning(false);
       setError(err?.message ?? 'Spin failed');
       autoRef.current = false;
       setAutoSpin(false);
+      return false;
     }
-  }, [spinning, betAmount]);
+  }, []); // stable — no deps needed, all via refs
 
   // Auto spin loop
   useEffect(() => {
@@ -389,13 +400,15 @@ export default function SlotsScreen() {
     let cancelled = false;
     async function loop() {
       while (autoRef.current && !cancelled) {
-        await doSpin();
-        await new Promise((r) => setTimeout(r, 600));
+        const ok = await doSpin();
+        if (!ok) break; // error or gamble prompt — stop auto
+        await new Promise((r) => setTimeout(r, 500));
       }
+      if (!cancelled) setAutoSpin(false);
     }
     void loop();
-    return () => { cancelled = true; };
-  }, [autoSpin]);
+    return () => { cancelled = true; autoRef.current = false; };
+  }, [autoSpin, doSpin]);
 
   const handleGamble = async (guess: 'red' | 'black') => {
     if (!gambleSpinId) return;
@@ -579,7 +592,7 @@ export default function SlotsScreen() {
 
           {/* Spin button */}
           <button
-            onClick={() => { if (!autoSpin) doSpin(); }}
+            onClick={() => { if (!autoSpin && !spinningRef.current) doSpin(); }}
             disabled={spinning || autoSpin}
             style={{
               width: '100%',
