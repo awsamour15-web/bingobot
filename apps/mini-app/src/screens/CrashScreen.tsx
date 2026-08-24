@@ -219,9 +219,14 @@ export default function CrashScreen() {
   // Load initial state + history
   useEffect(() => {
     getCrashState().then((s) => {
-      setPhase(s.phase === 'idle' ? 'idle' : s.phase);
+      const phase = s.phase === 'idle' ? 'idle' : s.phase;
+      setPhase(phase);
       if (s.round) setRoundId(s.round.id);
       if (s.round?.crashPoint) setCrashPoint(s.round.crashPoint);
+      // If we join mid-round, sync multiplier immediately
+      if (phase === 'running' && s.round?.currentMultiplier) {
+        setMultiplier(s.round.currentMultiplier);
+      }
       if (s.myBet) setMyBet(s.myBet);
       setBets(s.bets);
     }).catch(() => {});

@@ -530,6 +530,7 @@ export interface CrashState {
     status: string;
     startedAt: string | null;
     crashPoint: number | null;
+    currentMultiplier: number | null;
   } | null;
   myBet: {
     betAmount: number;

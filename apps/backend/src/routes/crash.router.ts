@@ -15,7 +15,7 @@ router.use(jwtAuthMiddleware);
 // ─── GET /api/crash/state ─────────────────────────────────────────────────────
 
 router.get('/state', async (req: Request, res: Response): Promise<void> => {
-  const playerId = (req as Request & { playerId: string }).playerId;
+  const playerId = req.player?.playerId;
 
   const round = await prisma.crashRound.findFirst({
     where: { status: { in: ['waiting', 'running'] } },
@@ -40,6 +40,13 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
 
   const myBet = round.bets.find((b) => b.player_id === playerId) ?? null;
 
+  // For running rounds, calculate the live multiplier so clients can sync immediately
+  let currentMultiplier = 1.0;
+  if (round.status === 'running' && round.started_at) {
+    const elapsed = (Date.now() - round.started_at.getTime()) / 1000;
+    currentMultiplier = parseFloat(Math.pow(Math.E, 0.00006 * elapsed * 1000).toFixed(2));
+  }
+
   res.json({
     phase: round.status,
     round: {
@@ -47,6 +54,7 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
       status: round.status,
       startedAt: round.started_at,
       crashPoint: round.status === 'crashed' ? round.crash_point : null,
+      currentMultiplier: round.status === 'running' ? currentMultiplier : null,
     },
     myBet: myBet
       ? {
@@ -67,7 +75,8 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
 // ─── POST /api/crash/bet ──────────────────────────────────────────────────────
 
 router.post('/bet', async (req: Request, res: Response): Promise<void> => {
-  const playerId = (req as Request & { playerId: string }).playerId;
+  const playerId = req.player?.playerId;
+  if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
   const { betAmount } = req.body as { betAmount?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < 5 || betAmount > 10_000) {
