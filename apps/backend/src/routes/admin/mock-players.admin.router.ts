@@ -271,25 +271,34 @@ router.patch('/:id/rename', async (req: Request, res: Response): Promise<void> =
 
 // GET /api/admin/mock-players/bot-config
 router.get('/bot-config', async (_req: Request, res: Response): Promise<void> => {
-  const keys = ['mock_bot_enabled', 'mock_bot_count', 'mock_bot_balance', 'mock_bot_win_enabled'];
+  const keys = ['mock_bot_enabled', 'mock_bot_count', 'mock_bot_balance', 'mock_bot_win_enabled', 'mock_bot_stakes'];
   const rows = await prisma.config.findMany({ where: { key: { in: keys } } });
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const rawStakes = map['mock_bot_stakes'] ?? '10,20,50';
+  const stakes = rawStakes.split(',').map((s) => parseInt(s.trim(), 10)).filter(Boolean);
   res.json({
     enabled: map['mock_bot_enabled'] === 'true',
     winEnabled: map['mock_bot_win_enabled'] === 'true',
     count: parseInt(map['mock_bot_count'] ?? '3', 10),
     balance: parseFloat(map['mock_bot_balance'] ?? '0'),
+    stakes,
   });
 });
 
 // PATCH /api/admin/mock-players/bot-config
 router.patch('/bot-config', async (req: Request, res: Response): Promise<void> => {
-  const { enabled, winEnabled, count, balance } = req.body as { enabled?: boolean; winEnabled?: boolean; count?: number; balance?: number };
+  const { enabled, winEnabled, count, balance, stakes } = req.body as {
+    enabled?: boolean; winEnabled?: boolean; count?: number; balance?: number; stakes?: number[];
+  };
   const updates: Array<{ key: string; value: string }> = [];
   if (enabled !== undefined) updates.push({ key: 'mock_bot_enabled', value: String(enabled) });
   if (winEnabled !== undefined) updates.push({ key: 'mock_bot_win_enabled', value: String(winEnabled) });
   if (count !== undefined) updates.push({ key: 'mock_bot_count', value: String(Math.max(1, Math.min(10, count))) });
   if (balance !== undefined) updates.push({ key: 'mock_bot_balance', value: String(Math.max(0, balance)) });
+  if (stakes !== undefined) {
+    const valid = stakes.filter((s) => [10, 20, 50].includes(s));
+    updates.push({ key: 'mock_bot_stakes', value: valid.join(',') });
+  }
   for (const { key, value } of updates) {
     await prisma.config.upsert({ where: { key }, update: { value }, create: { key, value } });
   }

@@ -54,6 +54,14 @@ async function getBotBalance(): Promise<number> {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** Read allowed stakes for the bot (defaults to all: 10, 20, 50). */
+async function getBotStakes(): Promise<Set<number>> {
+  const row = await prisma.config.findUnique({ where: { key: 'mock_bot_stakes' } });
+  const raw = row?.value ?? '10,20,50';
+  const stakes = raw.split(',').map((s) => parseInt(s.trim(), 10)).filter(Boolean);
+  return new Set(stakes.length ? stakes : [10, 20, 50]);
+}
+
 /** Read the active cartela pool size (same config the rounds router uses). */
 async function getCartelaPoolSize(): Promise<number> {
   const row = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
@@ -204,6 +212,14 @@ export const MockPlayerBotService = {
       if (!round || round.status !== 'pending') return;
 
       const stake = parseFloat(round.stake.toString());
+
+      // Only proceed if this round's stake is in the configured bot stakes
+      const allowedStakes = await getBotStakes();
+      if (!allowedStakes.has(stake)) {
+        console.log(`[MockBot] Skipping round ${roundId} — stake ${stake} not in allowed set [${[...allowedStakes].join(',')}]`);
+        return;
+      }
+
       const [botCount, botBalance, winEnabled, poolSize, allMockPlayers] = await Promise.all([
         getBotCount(),
         getBotBalance(),

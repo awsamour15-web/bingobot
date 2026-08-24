@@ -317,18 +317,34 @@ function BotConfigCard() {
   const [winEnabled, setWinEnabled] = useState(false);
   const [count, setCount] = useState('3');
   const [balance, setBalance] = useState('0');
+  const [stakes, setStakes] = useState<Set<number>>(new Set([10, 20, 50]));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    adminApiRequest<{ enabled: boolean; winEnabled: boolean; count: number; balance: number }>('GET', '/api/admin/mock-players/bot-config')
-      .then((d) => { setEnabled(d.enabled); setWinEnabled(d.winEnabled ?? false); setCount(String(d.count)); setBalance(String(d.balance)); })
+    adminApiRequest<{ enabled: boolean; winEnabled: boolean; count: number; balance: number; stakes: number[] }>('GET', '/api/admin/mock-players/bot-config')
+      .then((d) => {
+        setEnabled(d.enabled);
+        setWinEnabled(d.winEnabled ?? false);
+        setCount(String(d.count));
+        setBalance(String(d.balance));
+        setStakes(new Set(d.stakes?.length ? d.stakes : [10, 20, 50]));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
+  function toggleStake(s: number) {
+    setStakes((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  }
+
   async function save() {
+    if (!stakes.size) { setMsg('Select at least one stake'); return; }
     setSaving(true); setMsg(null);
     try {
       await adminApiRequest('PATCH', '/api/admin/mock-players/bot-config', {
@@ -336,6 +352,7 @@ function BotConfigCard() {
         winEnabled,
         count: parseInt(count, 10),
         balance: parseFloat(balance),
+        stakes: [...stakes],
       });
       setMsg('Saved');
     } catch { setMsg('Failed to save'); }
@@ -372,6 +389,30 @@ function BotConfigCard() {
             onChange={(e) => setBalance(e.target.value)} />
         </Field>
       </div>
+
+      {/* Stake filter */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-secondary)', marginBottom: 8 }}>
+          Active on stakes (select at least one)
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[10, 20, 50].map((s) => (
+            <label key={s} style={{
+              display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+              padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              background: stakes.has(s) ? 'rgba(99,102,241,0.15)' : 'var(--c-surface)',
+              border: `1px solid ${stakes.has(s) ? 'rgba(99,102,241,0.4)' : 'var(--c-border)'}`,
+              color: stakes.has(s) ? '#a5b4fc' : 'var(--c-text-secondary)',
+              transition: 'all 0.15s',
+            }}>
+              <input type="checkbox" checked={stakes.has(s)} onChange={() => toggleStake(s)}
+                style={{ accentColor: '#6366f1' }} />
+              {s} ETB
+            </label>
+          ))}
+        </div>
+      </div>
+
       <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Btn>
     </Card>
   );
