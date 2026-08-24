@@ -3,14 +3,15 @@ import type {
   AdminCreditRequest,
   AdminRound,
   CreateRoundRequest,
-  WithdrawalRequest,
-  RevenueStats,
   ConfigEntry,
   AdminAccount,
   CreateAdminRequest,
   UpdateAdminRequest,
   PaginatedResponse,
 } from '@fidel/shared';
+import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
+
+export type { WithdrawalRequest, RevenueStats };
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
 

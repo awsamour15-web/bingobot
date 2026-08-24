@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { socket } from '../lib/socket';
-import { getCrashState, placeCrashBet, getCrashHistory } from '../lib/api';
+import { getCrashState, placeCrashBet, getCrashHistory, getProfile } from '../lib/api';
 import type { CrashBetEntry, CrashHistoryEntry } from '../lib/api';
 
 type Phase = 'waiting' | 'running' | 'crashed' | 'idle';
@@ -11,7 +11,7 @@ interface MyBet {
   payout: number | null;
 }
 
-const MIN_BET = 4;
+const MIN_BET = 5;
 const MAX_BET = 10_000;
 
 function fmtMul(v: number): string {
@@ -47,129 +47,165 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<{ x: number; y: number }[]>([]);
-  const startTimeRef = useRef<number>(0);
-  const animRef = useRef<number>(0);
+  const startTimeRef = useRef<number>(Date.now());
+  const rafRef = useRef<number>(0);
+  // Store plane pixel position so the DOM overlay can follow the canvas tip
+  const [planePct, setPlanePct] = useState<{ x: number; y: number } | null>(null);
 
   const isCrashed = phase === 'crashed';
   const displayVal = isCrashed ? (crashPoint ?? multiplier) : multiplier;
 
-  // Build curve points from multiplier history
+  // Reset points when a new round starts
   useEffect(() => {
     if (phase === 'waiting' || phase === 'idle') {
       pointsRef.current = [];
       startTimeRef.current = Date.now();
+      setPlanePct(null);
+    }
+    if (phase === 'running') {
+      // Reset start time when round starts so curve grows from t=0
+      startTimeRef.current = Date.now();
+      pointsRef.current = [];
     }
   }, [phase]);
 
+  // Accumulate points whenever multiplier changes
+  useEffect(() => {
+    if (phase !== 'running' && phase !== 'crashed') return;
+    const t = (Date.now() - startTimeRef.current) / 1000;
+    const pts = pointsRef.current;
+    const last = pts[pts.length - 1];
+    if (!last || Math.abs(multiplier - last.y) > 0.01 || t - last.x > 0.3) {
+      pts.push({ x: t, y: multiplier });
+      if (pts.length > 300) pts.splice(0, pts.length - 300);
+    }
+  }, [multiplier, phase]);
+
+  // Animation loop — draws every RAF frame while running/crashed
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    const W = canvas.width;
-    const H = canvas.height;
 
-    // Add current point
-    if (phase === 'running' || phase === 'crashed') {
-      const now = Date.now();
-      const t = (now - startTimeRef.current) / 1000;
-      const pts = pointsRef.current;
-      if (pts.length === 0 || Math.abs(multiplier - (pts[pts.length - 1]?.y ?? 1)) > 0.02) {
-        pts.push({ x: t, y: multiplier });
-        if (pts.length > 200) pts.splice(0, pts.length - 200);
+    const draw = () => {
+      const ctx = canvas.getContext('2d')!;
+      const W = canvas.width;
+      const H = canvas.height;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // ── Conic ray background ──
+      const rays = 18;
+      for (let i = 0; i < rays; i++) {
+        const a1 = (-Math.PI / 2) * (i / rays);
+        const a2 = (-Math.PI / 2) * ((i + 0.5) / rays);
+        const r = Math.max(W, H) * 2;
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        ctx.lineTo(Math.cos(a1) * r, H + Math.sin(a1) * r);
+        ctx.lineTo(Math.cos(a2) * r, H + Math.sin(a2) * r);
+        ctx.closePath();
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.022)' : 'rgba(0,0,0,0)';
+        ctx.fill();
       }
-    }
 
-    ctx.clearRect(0, 0, W, H);
+      // ── Left axis dots ──
+      const padX = 32, padY = 24;
+      for (let i = 0; i <= 6; i++) {
+        const y = padY + (i / 6) * (H - padY - 10);
+        ctx.beginPath();
+        ctx.arc(10, y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(99,140,255,0.45)';
+        ctx.fill();
+      }
 
-    // Conic ray background
-    const cx = 0, cy = H;
-    const rays = 18;
-    for (let i = 0; i < rays; i++) {
-      const a1 = (-Math.PI / 2) * (i / rays);
-      const a2 = (-Math.PI / 2) * ((i + 0.5) / rays);
-      const r = Math.max(W, H) * 1.8;
+      const pts = pointsRef.current;
+      if (pts.length < 2) {
+        if (phase === 'running' || phase === 'crashed') rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
+      const lastPt = pts[pts.length - 1]!;
+      const maxT = Math.max(lastPt.x, 0.5);
+      const maxM = Math.max(...pts.map(p => p.y), 2);
+
+      const toX = (t: number) => padX + (t / maxT) * (W - padX - 14);
+      const toY = (m: number) => H - 10 - ((m - 1) / Math.max(maxM - 1, 0.5)) * (H - padY - 10);
+
+      const tipX = toX(lastPt.x);
+      const tipY = toY(lastPt.y);
+
+      // ── Filled area under curve ──
+      const grad = ctx.createLinearGradient(0, tipY, 0, H);
+      grad.addColorStop(0, isCrashed ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.22)');
+      grad.addColorStop(1, 'rgba(239,68,68,0.02)');
+
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
-      ctx.lineTo(cx + Math.cos(a2) * r, cy + Math.sin(a2) * r);
+      ctx.moveTo(toX(pts[0]!.x), H - 10);
+      pts.forEach(p => ctx.lineTo(toX(p.x), toY(p.y)));
+      ctx.lineTo(tipX, H - 10);
       ctx.closePath();
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0)';
+      ctx.fillStyle = grad;
       ctx.fill();
-    }
 
-    const pts = pointsRef.current;
-    if (pts.length < 2) return;
-
-    const lastPt = pts[pts.length - 1]!;
-    const firstPt = pts[0]!;
-    const maxT = lastPt.x;
-    const maxM = Math.max(...pts.map(p => p.y), 2);
-    const padX = 30, padY = 20;
-
-    const toCanvasX = (t: number) => padX + (t / (maxT || 1)) * (W - padX - 10);
-    const toCanvasY = (m: number) => H - padY - ((m - 1) / (maxM - 1 || 1)) * (H - padY - 20);
-
-    // Red gradient fill under curve
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, isCrashed ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.18)');
-    grad.addColorStop(1, 'rgba(239,68,68,0)');
-
-    ctx.beginPath();
-    ctx.moveTo(toCanvasX(firstPt.x), H - padY);
-    pts.forEach(p => ctx.lineTo(toCanvasX(p.x), toCanvasY(p.y)));
-    ctx.lineTo(toCanvasX(lastPt.x), H - padY);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Curve line
-    ctx.beginPath();
-    pts.forEach((p, i) => {
-      const x = toCanvasX(p.x);
-      const y = toCanvasY(p.y);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = isCrashed ? '#ef4444' : '#ef4444';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Dot grid (left axis)
-    for (let i = 0; i <= 8; i++) {
-      const y = padY + (i / 8) * (H - padY * 2);
+      // ── Curve line ──
       ctx.beginPath();
-      ctx.arc(10, y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(100,150,255,0.5)';
-      ctx.fill();
-    }
+      pts.forEach((p, i) => {
+        const x = toX(p.x), y = toY(p.y);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
 
-    animRef.current = requestAnimationFrame(() => {}); // trigger repaint on next tick
-  });
+      // ── Glow dot at tip ──
+      if (!isCrashed) {
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // Update plane overlay position as percentage of canvas
+      setPlanePct({ x: (tipX / W) * 100, y: (tipY / H) * 100 });
+
+      if (phase === 'running') rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [phase, isCrashed]); // re-attach loop only on phase change
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 200 }}>
+    <div style={{ position: 'relative', width: '100%', height: 210 }}>
       <canvas
         ref={canvasRef}
         width={420}
-        height={200}
+        height={210}
         style={{ width: '100%', height: '100%', display: 'block' }}
       />
-      {/* Plane on the curve tip */}
-      {(phase === 'running' || phase === 'crashed') && (
+
+      {/* Plane follows curve tip */}
+      {(phase === 'running' || phase === 'crashed') && planePct && (
         <div style={{
           position: 'absolute',
-          top: isCrashed ? '35%' : '20%',
-          right: isCrashed ? '10%' : '12%',
-          transition: 'top 0.5s ease',
-          transform: isCrashed ? 'rotate(30deg)' : 'rotate(-8deg)',
+          left: `${Math.min(planePct.x, 88)}%`,
+          top: `${Math.max(planePct.y - 12, 2)}%`,
+          transform: isCrashed ? 'rotate(35deg)' : 'rotate(-12deg)',
+          transition: isCrashed ? 'transform 0.3s' : 'left 0.15s linear, top 0.15s linear',
+          pointerEvents: 'none',
         }}>
           <PlaneSVG crashed={isCrashed} />
         </div>
       )}
+
       {/* Multiplier overlay */}
       <div style={{
         position: 'absolute',
-        top: '50%',
+        top: '42%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center',
@@ -192,7 +228,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
               fontVariantNumeric: 'tabular-nums',
               textShadow: isCrashed
                 ? '0 0 40px rgba(239,68,68,0.8)'
-                : '0 0 30px rgba(255,255,255,0.6)',
+                : '0 0 30px rgba(255,255,255,0.5)',
             }}>
               {fmtMul(displayVal)}
             </div>
@@ -285,8 +321,8 @@ interface BetPanelProps {
 
 function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut }: BetPanelProps) {
   const [tab, setTab] = useState<'bet' | 'auto'>('bet');
-  const [amount, setAmount] = useState(4);
-  const QUICK = [4, 10, 40, 100];
+  const [amount, setAmount] = useState(5);
+  const QUICK = [5, 10, 40, 100];
 
   const canBet = phase === 'waiting' && !myBet && !placing;
   const canCashout = phase === 'running' && myBet && myBet.cashoutAt === null && !cashingOut;
@@ -477,6 +513,7 @@ export default function CrashScreen() {
   const [cashingOut2, setCashingOut2] = useState(false);
   const [betTab, setBetTab] = useState<'all' | 'previous' | 'top'>('all');
   const [myUsername, setMyUsername] = useState('');
+  const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
     getCrashState().then((s) => {
@@ -489,6 +526,7 @@ export default function CrashScreen() {
       setBets(s.bets);
     }).catch(() => {});
     getCrashHistory().then(setHistory).catch(() => {});
+    getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
     try {
       const jwt = localStorage.getItem('jwt') ?? '';
       const payload = JSON.parse(atob(jwt.split('.')[1]!));
@@ -547,7 +585,10 @@ export default function CrashScreen() {
       setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
       setBets(prev => [{ username: myUsername || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
       setRoundId(res.roundId);
-    } catch { /* ignore */ } finally {
+      getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
+    } catch (err: any) {
+      alert(err?.message ?? 'Failed to place bet');
+    } finally {
       setPlacing(false);
     }
   }, [myUsername]);
@@ -561,6 +602,7 @@ export default function CrashScreen() {
       setCashingOut(false);
       if (res?.ok) {
         setMyBet(prev => prev ? { ...prev, cashoutAt: res.multiplier, payout: res.payout } : prev);
+        getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
       }
     });
   }, [roundId]);
@@ -601,7 +643,9 @@ export default function CrashScreen() {
           }}>Aviator</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>0.00 ETB</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
+            {balance !== null ? balance.toFixed(2) : '—'} ETB
+          </span>
           <span style={{ fontSize: 18, color: '#475569', cursor: 'pointer' }}>≡</span>
           <span style={{ fontSize: 18, color: '#475569', cursor: 'pointer' }}>💬</span>
         </div>

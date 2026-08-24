@@ -10,12 +10,10 @@ import { PlayersPage } from './pages/PlayersPage';
 import { GamesPage } from './pages/GamesPage';
 import { FinancePage } from './pages/FinancePage';
 import { SettingsPage } from './pages/SettingsPage';
-import { DepositsPage } from './pages/DepositsPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { PromotionsPage } from './pages/PromotionsPage';
 import { CartelasPage } from './pages/CartelasPage';
 import { BonusPage } from './pages/BonusPage';
-import { WithdrawalsPage } from './pages/WithdrawalsPage';
 import { MockPlayersPage } from './pages/MockPlayersPage';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -32,8 +30,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="bonus" element={<BonusPage />} />
           <Route path="games" element={<GamesPage />} />
           <Route path="finance" element={<FinancePage />} />
-          <Route path="deposits" element={<DepositsPage />} />
-          <Route path="withdrawals" element={<WithdrawalsPage />} />
+          <Route path="deposits" element={<Navigate to="/finance" replace />} />
+          <Route path="withdrawals" element={<Navigate to="/finance" replace />} />
           <Route path="agents" element={<AgentsPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
           <Route path="cartelas" element={<CartelasPage />} />
