@@ -315,9 +315,9 @@ export default function SlotsScreen() {
   const ws = winCells(spinning?[]:wins);
 
   return (
-    <div style={{
+    <div className="slots-screen" style={{
       minHeight:"100dvh",
-      background:"#060b14",
+      background:"radial-gradient(circle at 50% -10%, rgba(245,158,11,0.12), transparent 34%), linear-gradient(180deg,#07111d 0%,#050912 55%,#03060b 100%)",
       color:"#f8fafc",
       display:"flex", flexDirection:"column",
       maxWidth:480, margin:"0 auto",
@@ -326,37 +326,39 @@ export default function SlotsScreen() {
 
       {/* Header */}
       <div style={{
-        padding:"20px 20px 16px",
+        padding:"22px 20px 18px",
         display:"flex", alignItems:"center", gap:12,
-        borderBottom:"1px solid rgba(255,255,255,0.05)",
+        borderBottom:"1px solid rgba(255,255,255,0.07)",
+        background:"rgba(3,7,14,0.42)",
+        boxShadow:"0 12px 28px rgba(0,0,0,0.14)",
       }}>
         <div style={{
-          width:44,height:44,borderRadius:14,
-          background:"linear-gradient(135deg,#f59e0b,#f97316)",
+          width:46,height:46,borderRadius:15,
+          background:"linear-gradient(145deg,#ffd166 0%,#f59e0b 48%,#c2410c 100%)",
           display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:22,boxShadow:"0 4px 16px rgba(245,158,11,0.4)",
+          fontSize:23,boxShadow:"0 8px 24px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.45)",
         }}>🎰</div>
         <div>
-          <div style={{ fontSize:17,fontWeight:900,letterSpacing:"-0.5px" }}>Multi Hot 5</div>
-          <div style={{ fontSize:11,color:"#475569",fontWeight:600,letterSpacing:"0.06em",marginTop:1 }}>
-            5 FIXED LINES · 96% RTP
+          <div style={{ fontSize:19,fontWeight:900,letterSpacing:"-0.7px" }}>Multi Hot 5</div>
+          <div style={{ fontSize:10,color:"#7c8da3",fontWeight:700,letterSpacing:"0.13em",marginTop:3 }}>
+            5 LINES <span style={{ color:"#d89b2b" }}>·</span> 96% RTP
           </div>
         </div>
         <div style={{ marginLeft:"auto",textAlign:"right" }}>
-          <div style={{ fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em" }}>Balance</div>
-          <div style={{ fontSize:20,fontWeight:900,color:"#f8fafc",letterSpacing:"-0.5px",marginTop:2 }}>
+          <div style={{ fontSize:9,color:"#7c8da3",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.13em" }}>Available</div>
+          <div style={{ fontSize:21,fontWeight:900,color:"#fff7e6",letterSpacing:"-0.6px",marginTop:3 }}>
             {balance!==null?balance.toFixed(2):"—"}
-            <span style={{ fontSize:11,color:"#64748b",fontWeight:600,marginLeft:4 }}>ETB</span>
+            <span style={{ fontSize:10,color:"#d89b2b",fontWeight:800,marginLeft:4 }}>ETB</span>
           </div>
         </div>
       </div>
 
       {/* Win banner */}
-      <div style={{ minHeight:52,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"10px 20px" }}>
+      <div style={{ minHeight:60,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7,padding:"12px 20px" }}>
         {totalWin!==null&&totalWin>0&&!spinning&&(
           <div style={{ display:"flex",alignItems:"center",gap:10,animation:"winPop 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
-            <div style={{ fontSize:11,color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em" }}>WIN</div>
-            <div style={{ fontSize:28,fontWeight:900,color:"#f59e0b",letterSpacing:"-1px",filter:"drop-shadow(0 0 16px rgba(245,158,11,0.7))" }}>
+            <div style={{ fontSize:10,color:"#d89b2b",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.16em" }}>WIN</div>
+            <div style={{ fontSize:30,fontWeight:900,color:"#ffd166",letterSpacing:"-1px",filter:"drop-shadow(0 0 16px rgba(245,158,11,0.7))" }}>
               +{totalWin.toFixed(2)}
             </div>
             <div style={{ fontSize:11,color:"#64748b",fontWeight:700 }}>ETB</div>
@@ -382,22 +384,22 @@ export default function SlotsScreen() {
       {/* Slot machine */}
       <div style={{ padding:"0 16px",marginBottom:16 }}>
         <div style={{
-          background:"linear-gradient(145deg,#0d1520,#080e18)",
-          border:"1px solid rgba(255,255,255,0.06)",
-          borderRadius:24,
-          padding:14,
-          boxShadow:"0 24px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)",
+          background:"linear-gradient(145deg,#172331 0%,#0d1723 42%,#09111b 100%)",
+          border:"1px solid rgba(245,158,11,0.22)",
+          borderRadius:22,
+          padding:12,
+          boxShadow:"0 24px 56px rgba(0,0,0,0.52), 0 0 0 5px rgba(245,158,11,0.035), inset 0 1px 0 rgba(255,255,255,0.1)",
           position:"relative",
           overflow:"hidden",
         }}>
           {/* Top light strip */}
           <div style={{
             position:"absolute",top:0,left:"20%",right:"20%",height:2,
-            background:"linear-gradient(90deg,transparent,rgba(245,158,11,0.6),transparent)",
+            background:"linear-gradient(90deg,transparent,rgba(255,209,102,0.9),transparent)",
             borderRadius:2,
           }}/>
 
-          <div style={{ display:"flex",gap:8,alignItems:"stretch" }}>
+          <div style={{ display:"flex",gap:7,alignItems:"stretch" }}>
             <MulBadge value={mul} spinning={spinning}/>
             <div style={{ width:1,background:"rgba(255,255,255,0.05)",margin:"0 2px" }}/>
             {reels.map((col,ci)=>(
@@ -406,7 +408,7 @@ export default function SlotsScreen() {
           </div>
 
           {/* Payline dots */}
-          <div style={{ display:"flex",justifyContent:"center",gap:8,marginTop:12 }}>
+          <div style={{ display:"flex",justifyContent:"center",gap:8,marginTop:13 }}>
             {[1,2,3,4,5].map(n=>{
               const active=wins.some(w=>w.line===n);
               return (
@@ -436,10 +438,10 @@ export default function SlotsScreen() {
       {/* Controls */}
       <div style={{ padding:"0 16px" }}>
         <div style={{
-          background:"linear-gradient(145deg,#0d1520,#080e18)",
-          border:"1px solid rgba(255,255,255,0.06)",
-          borderRadius:24,padding:18,
-          boxShadow:"inset 0 1px 0 rgba(255,255,255,0.04)",
+          background:"linear-gradient(145deg,rgba(18,31,45,0.96),rgba(8,15,24,0.96))",
+          border:"1px solid rgba(148,163,184,0.14)",
+          borderRadius:20,padding:18,
+          boxShadow:"0 16px 34px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.07)",
         }}>
           {/* Bet + Auto row */}
           <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
@@ -477,11 +479,11 @@ export default function SlotsScreen() {
               width:"100%",height:60,borderRadius:18,border:"none",
               background: spinning||auto
                 ? "rgba(255,255,255,0.04)"
-                : "linear-gradient(135deg,#f59e0b,#f97316)",
+                : "linear-gradient(135deg,#ffd166 0%,#f59e0b 52%,#ea580c 100%)",
               color: spinning||auto?"#334155":"#000",
               fontSize:17,fontWeight:900,letterSpacing:"0.04em",
               cursor:spinning||auto?"default":"pointer",
-              boxShadow: spinning||auto?"none":"0 8px 32px rgba(245,158,11,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+              boxShadow: spinning||auto?"none":"0 10px 30px rgba(245,158,11,0.34), inset 0 1px 0 rgba(255,255,255,0.45)",
               transition:"all 0.2s",
               position:"relative",overflow:"hidden",
             }}
