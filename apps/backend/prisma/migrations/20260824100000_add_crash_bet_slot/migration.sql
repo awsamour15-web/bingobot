@@ -2,7 +2,8 @@
 ALTER TABLE "crash_bets" ADD COLUMN IF NOT EXISTS "slot" INTEGER NOT NULL DEFAULT 1;
 
 -- Drop old unique constraint only if it exists
-DO $$ BEGIN
+DO $$
+BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'crash_bets_round_id_player_id_key'
@@ -10,10 +11,12 @@ DO $$ BEGIN
   ) THEN
     ALTER TABLE "crash_bets" DROP CONSTRAINT "crash_bets_round_id_player_id_key";
   END IF;
-END $$;
+END
+$$;
 
--- Drop new constraint if already exists (idempotent)
-DO $$ BEGIN
+-- Drop new constraint if already exists (idempotent re-run safety)
+DO $$
+BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'crash_bets_round_id_player_id_slot_key'
@@ -21,7 +24,8 @@ DO $$ BEGIN
   ) THEN
     ALTER TABLE "crash_bets" DROP CONSTRAINT "crash_bets_round_id_player_id_slot_key";
   END IF;
-END $$;
+END
+$$;
 
--- Add new unique constraint including slot
+-- Add new unique constraint including slot (allows same player to have slot 1 and slot 2)
 ALTER TABLE "crash_bets" ADD CONSTRAINT "crash_bets_round_id_player_id_slot_key" UNIQUE ("round_id", "player_id", "slot");
