@@ -19,7 +19,8 @@ const MAX_BET = 500;
 // ─── POST /api/slots/spin ─────────────────────────────────────────────────────
 
 router.post('/spin', async (req: Request, res: Response): Promise<void> => {
-  const playerId = (req as Request & { playerId: string }).playerId;
+  const playerId = req.player?.playerId;
+  if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
   const { betAmount } = req.body as { betAmount?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < MIN_BET || betAmount > MAX_BET) {
@@ -79,7 +80,8 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
 // ─── POST /api/slots/gamble ───────────────────────────────────────────────────
 
 router.post('/gamble', async (req: Request, res: Response): Promise<void> => {
-  const playerId = (req as Request & { playerId: string }).playerId;
+  const playerId = req.player?.playerId;
+  if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
   const { spinId, guess } = req.body as { spinId?: string; guess?: unknown };
 
   if (!spinId || (guess !== 'red' && guess !== 'black')) {
@@ -128,7 +130,8 @@ router.post('/gamble', async (req: Request, res: Response): Promise<void> => {
 // ─── GET /api/slots/history ───────────────────────────────────────────────────
 
 router.get('/history', async (req: Request, res: Response): Promise<void> => {
-  const playerId = (req as Request & { playerId: string }).playerId;
+  const playerId = req.player?.playerId;
+  if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
 
   const spins = await prisma.slotSpin.findMany({
     where: { player_id: playerId },
