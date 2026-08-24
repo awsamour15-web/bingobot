@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @fidel/shared build && prisma migrate resolve --rolled-back 20260823100000_add_mock_bot_win_config || true && prisma migrate deploy && prisma generate && tsc",
+    "build": "pnpm --filter @fidel/shared build && prisma migrate resolve --rolled-back 20260823100000_add_mock_bot_win_config || true && prisma migrate resolve --rolled-back 20260824100000_add_crash_bet_slot || true && prisma migrate deploy && prisma generate && tsc",
     "type-check": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
