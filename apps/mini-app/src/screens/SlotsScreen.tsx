@@ -91,7 +91,7 @@ function MulBadge({ value, spinning }: { value: number, spinning: boolean }) {
       {[-1, 0, 1].map((offset) => {
         const v = value + offset;
         const isMid = offset === 0;
-        const color = colors[v] ?? "#334155";
+        const color = isMid ? c : "#334155";
         return (
           <div key={offset} style={{
             height: 76,
