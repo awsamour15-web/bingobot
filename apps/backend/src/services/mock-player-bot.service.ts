@@ -45,7 +45,7 @@ async function isWinEnabled(): Promise<boolean> {
 async function getBotCount(): Promise<number> {
   const row = await prisma.config.findUnique({ where: { key: 'mock_bot_count' } });
   const n = row ? parseInt(row.value, 10) : 3;
-  return Number.isFinite(n) && n >= 1 ? Math.min(n, 10) : 3;
+  return Number.isFinite(n) && n >= 1 ? n : 3;
 }
 
 async function getBotBalance(): Promise<number> {
