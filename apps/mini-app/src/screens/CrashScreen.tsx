@@ -410,15 +410,19 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
     const prev = prevPhaseRef.current;
     prevPhaseRef.current = phase;
 
-    // When phase transitions into 'waiting' and auto is active — place next bet
-    if (phase === 'waiting' && prev !== 'waiting' && autoActiveRef.current && autoRoundsLeftRef.current > 0) {
-      onBet(amount);
-      setAutoRoundsLeft(r => r - 1);
-    }
+    if (!autoActiveRef.current) return;
 
-    // If we just ran out of rounds, stop auto
-    if (autoRoundsLeftRef.current <= 0 && autoActiveRef.current) {
-      setAutoActive(false);
+    // Genuine transition into waiting (not the mount tick where prev === phase)
+    if (phase === 'waiting' && prev !== 'waiting') {
+      if (autoRoundsLeftRef.current > 0) {
+        onBet(amount);
+        autoRoundsLeftRef.current -= 1;
+        setAutoRoundsLeft(autoRoundsLeftRef.current);
+      }
+      if (autoRoundsLeftRef.current <= 0) {
+        setAutoActive(false);
+        autoActiveRef.current = false;
+      }
     }
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -442,12 +446,18 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
   }, [phase]);
 
   const startAuto = () => {
+    // Mark auto as active — the phase watcher will handle placing the bet
+    // (avoids double-bet by not calling onBet here AND in the effect)
+    autoActiveRef.current = true;
     setAutoActive(true);
-    setAutoRoundsLeft(autoRounds);
-    // If currently in waiting phase, place bet immediately
+    const rounds = autoRounds;
+    autoRoundsLeftRef.current = rounds;
+    setAutoRoundsLeft(rounds);
+    // If betting is already open, place the first bet now
     if (phase === 'waiting' && !myBet && !placing) {
       onBet(amount);
-      setAutoRoundsLeft(autoRounds - 1);
+      autoRoundsLeftRef.current = rounds - 1;
+      setAutoRoundsLeft(rounds - 1);
     }
   };
 
@@ -775,7 +785,11 @@ export default function CrashScreen() {
       setRoundId(res.roundId);
       getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
     } catch (err: any) {
-      alert(err?.message ?? 'Failed to place bet');
+      const msg: string = err?.message ?? '';
+      // Silently ignore 409 "already have a bet" — can happen during auto-play
+      if (!msg.toLowerCase().includes('already')) {
+        alert(msg || 'Failed to place bet');
+      }
     } finally {
       setPlacing(false);
     }
