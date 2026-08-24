@@ -397,43 +397,49 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
   const [autoCashoutAt, setAutoCashoutAt] = useState(2.0);
   const [autoActive, setAutoActive] = useState(false);
   const [autoRoundsLeft, setAutoRoundsLeft] = useState(0);
+  // Use a single ref-based state machine to avoid React render/effect timing races.
+  // All auto logic reads from refs; React state is only for display.
   const autoActiveRef = useRef(false);
   const autoRoundsLeftRef = useRef(0);
+  const autoBetPendingRef = useRef(false); // set true when we want ONE bet placed on next waiting phase
 
-  // Keep refs in sync so socket callbacks can read them without stale closures
-  useEffect(() => { autoActiveRef.current = autoActive; }, [autoActive]);
-  useEffect(() => { autoRoundsLeftRef.current = autoRoundsLeft; }, [autoRoundsLeft]);
-
-  // Auto-bet: place bet when a new round's betting opens (phase → 'waiting')
   const prevPhaseRef = useRef<Phase>(phase);
+
+  // This effect is the ONLY place that calls onBet for auto-play.
+  // It fires when phase changes to 'waiting' OR when autoBetPendingRef is set.
   useEffect(() => {
     const prev = prevPhaseRef.current;
     prevPhaseRef.current = phase;
 
     if (!autoActiveRef.current) return;
+    if (phase !== 'waiting') return;
 
-    // Genuine transition into waiting (not the mount tick where prev === phase)
-    if (phase === 'waiting' && prev !== 'waiting') {
-      if (autoRoundsLeftRef.current > 0) {
+    // Fire on genuine transition to 'waiting', or on first activation (prev === phase === 'waiting')
+    const isNewRound = prev !== 'waiting';
+    const isFirstActivation = autoBetPendingRef.current;
+
+    if (isNewRound || isFirstActivation) {
+      autoBetPendingRef.current = false;
+      if (autoRoundsLeftRef.current > 0 && !myBet && !placing) {
         onBet(amount);
         autoRoundsLeftRef.current -= 1;
         setAutoRoundsLeft(autoRoundsLeftRef.current);
-      }
-      if (autoRoundsLeftRef.current <= 0) {
+        if (autoRoundsLeftRef.current <= 0) {
+          setAutoActive(false);
+          autoActiveRef.current = false;
+        }
+      } else if (autoRoundsLeftRef.current <= 0) {
         setAutoActive(false);
         autoActiveRef.current = false;
       }
     }
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase, myBet, placing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-cashout: when multiplier reaches the target
   const hasCashedOutRef = useRef(false);
   useEffect(() => {
     if (!autoActive || !myBet || myBet.cashoutAt !== null) return;
-    if (phase !== 'running') {
-      hasCashedOutRef.current = false;
-      return;
-    }
+    if (phase !== 'running') return;
     if (!hasCashedOutRef.current && multiplier >= autoCashoutAt) {
       hasCashedOutRef.current = true;
       onCashout();
@@ -446,22 +452,18 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
   }, [phase]);
 
   const startAuto = () => {
-    // Mark auto as active — the phase watcher will handle placing the bet
-    // (avoids double-bet by not calling onBet here AND in the effect)
-    autoActiveRef.current = true;
-    setAutoActive(true);
     const rounds = autoRounds;
     autoRoundsLeftRef.current = rounds;
+    autoActiveRef.current = true;
+    // Signal the phase effect to fire a bet immediately (handles phase === 'waiting' already)
+    autoBetPendingRef.current = phase === 'waiting';
     setAutoRoundsLeft(rounds);
-    // If betting is already open, place the first bet now
-    if (phase === 'waiting' && !myBet && !placing) {
-      onBet(amount);
-      autoRoundsLeftRef.current = rounds - 1;
-      setAutoRoundsLeft(rounds - 1);
-    }
+    setAutoActive(true); // triggers re-render → effect runs with autoBetPendingRef = true
   };
 
   const stopAuto = () => {
+    autoActiveRef.current = false;
+    autoBetPendingRef.current = false;
     setAutoActive(false);
     setAutoRoundsLeft(0);
   };
