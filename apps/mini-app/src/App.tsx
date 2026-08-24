@@ -13,6 +13,7 @@ const AgentDashboardScreen = lazy(() => import('./screens/AgentDashboardScreen')
 const RankScreen = lazy(() => import('./screens/RankScreen'));
 const CrashScreen = lazy(() => import('./screens/CrashScreen'));
 const SlotsScreen = lazy(() => import('./screens/SlotsScreen'));
+const GamesLobbyScreen = lazy(() => import('./screens/GamesLobbyScreen'));
 
 import { socket } from './lib/socket';
 
@@ -88,8 +89,8 @@ function BottomNav() {
   if (location.pathname.includes('/cartela') || location.pathname.includes('/game')) return null;
 
   const tabs = [
-    { to: '/', icon: '🎯', label: 'Play' },
-    { to: '/slots', icon: '🎰', label: 'Slots' },
+    { to: '/', icon: '🎮', label: 'Games' },
+    { to: '/crash', icon: '🚀', label: 'Crash' },
     { to: '/history', icon: '🧾', label: 'History' },
     { to: '/wallet', icon: '💳', label: 'Wallet' },
     { to: '/profile', icon: '◎', label: 'Profile' },
@@ -241,7 +242,8 @@ function AppInner() {
     <div style={{ paddingBottom: isSubPage ? 0 : 70, minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          <Route path="/" element={<GameScreen />} />
+          <Route path="/" element={<GamesLobbyScreen />} />
+          <Route path="/bingo" element={<GameScreen />} />
           <Route path="/history" element={<HistoryScreen />} />
           <Route path="/history/:roundId" element={<HistoryDetailScreen />} />
           <Route path="/wallet" element={<WalletScreen />} />
