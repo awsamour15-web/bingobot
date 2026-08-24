@@ -317,14 +317,16 @@ interface BetPanelProps {
   onCashout: () => void;
   placing: boolean;
   cashingOut: boolean;
+  /** Disable betting because the other slot already placed a bet this round */
+  otherSlotBet?: boolean;
 }
 
-function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut }: BetPanelProps) {
+function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut, otherSlotBet }: BetPanelProps) {
   const [tab, setTab] = useState<'bet' | 'auto'>('bet');
   const [amount, setAmount] = useState(5);
   const QUICK = [5, 10, 40, 100];
 
-  const canBet = phase === 'waiting' && !myBet && !placing;
+  const canBet = phase === 'waiting' && !myBet && !placing && !otherSlotBet;
   const canCashout = phase === 'running' && myBet && myBet.cashoutAt === null && !cashingOut;
   const alreadyCashedOut = myBet && myBet.cashoutAt !== null;
 
@@ -579,6 +581,10 @@ export default function CrashScreen() {
   const handleBet = useCallback(async (slotIdx: 1 | 2, amount: number) => {
     const setPlacing = slotIdx === 1 ? setPlacing1 : setPlacing2;
     const setMyBet = slotIdx === 1 ? setMyBet1 : setMyBet2;
+    const currentBet = slotIdx === 1 ? myBet1 : myBet2;
+    const otherBet = slotIdx === 1 ? myBet2 : myBet1;
+    // Guard: don't send if already placed or other slot already has a bet
+    if (currentBet || otherBet) return;
     setPlacing(true);
     try {
       const res = await placeCrashBet(amount);
@@ -591,7 +597,7 @@ export default function CrashScreen() {
     } finally {
       setPlacing(false);
     }
-  }, [myUsername]);
+  }, [myUsername, myBet1, myBet2]);
 
   const handleCashout = useCallback((slotIdx: 1 | 2) => {
     if (!roundId) return;
@@ -677,6 +683,7 @@ export default function CrashScreen() {
           onCashout={() => handleCashout(1)}
           placing={placing1}
           cashingOut={cashingOut1}
+          otherSlotBet={!!myBet2}
         />
         <BetPanel
           phase={phase}
@@ -686,6 +693,7 @@ export default function CrashScreen() {
           onCashout={() => handleCashout(2)}
           placing={placing2}
           cashingOut={cashingOut2}
+          otherSlotBet={!!myBet1}
         />
       </div>
 
