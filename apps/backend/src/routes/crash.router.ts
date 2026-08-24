@@ -129,9 +129,20 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   }
 
   // Record bet
-  await prisma.crashBet.create({
-    data: { round_id: round.id, player_id: playerId, slot: slotIdx, bet_amount: betAmount },
-  });
+  try {
+    await prisma.crashBet.create({
+      data: { round_id: round.id, player_id: playerId, slot: slotIdx, bet_amount: betAmount },
+    });
+  } catch (dbErr: any) {
+    // P2002 = unique constraint violation — already bet (race condition or duplicate request)
+    if (dbErr?.code === 'P2002') {
+      // Refund the wallet debit
+      await WalletService.credit(playerId, WalletType.main, betAmount, TxType.game_entry, round.id, `Crash bet refund slot ${slotIdx}`).catch(() => {});
+      res.status(409).json({ error: 'You already have a bet in this round' });
+      return;
+    }
+    throw dbErr;
+  }
 
   // Notify via WebSocket
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });
