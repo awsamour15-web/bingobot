@@ -537,6 +537,11 @@ export interface CrashState {
     cashoutAt: number | null;
     payout: number | null;
   } | null;
+  myBet2: {
+    betAmount: number;
+    cashoutAt: number | null;
+    payout: number | null;
+  } | null;
   bets: CrashBetEntry[];
 }
 
@@ -550,8 +555,8 @@ export function getCrashState(): Promise<CrashState> {
   return apiRequest<CrashState>('GET', '/api/crash/state');
 }
 
-export function placeCrashBet(betAmount: number): Promise<{ roundId: string; betAmount: number }> {
-  return apiRequest('POST', '/api/crash/bet', { betAmount });
+export function placeCrashBet(betAmount: number, slot: 1 | 2 = 1): Promise<{ roundId: string; betAmount: number; slot: number }> {
+  return apiRequest('POST', '/api/crash/bet', { betAmount, slot });
 }
 
 export function getCrashHistory(): Promise<CrashHistoryEntry[]> {

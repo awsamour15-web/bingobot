@@ -134,7 +134,7 @@ export class CrashEngine {
   /**
    * Process a cashout for a player. Returns payout amount, or throws if invalid.
    */
-  async cashout(roundId: string, playerId: string): Promise<{ multiplier: number; payout: number }> {
+  async cashout(roundId: string, playerId: string, slot: number = 1): Promise<{ multiplier: number; payout: number }> {
     // Get round
     const round = await prisma.crashRound.findUnique({ where: { id: roundId } });
     if (!round || round.status !== 'running') {
@@ -150,11 +150,11 @@ export class CrashEngine {
       throw new Error('Already crashed');
     }
 
-    // Find bet
+    // Find bet by slot
     const bet = await prisma.crashBet.findUnique({
-      where: { round_id_player_id: { round_id: roundId, player_id: playerId } },
+      where: { round_id_player_id_slot: { round_id: roundId, player_id: playerId, slot } },
     });
-    if (!bet) throw new Error('No bet found for this round');
+    if (!bet) throw new Error('No bet found for this round/slot');
     if (bet.cashout_at !== null) throw new Error('Already cashed out');
 
     const payout = parseFloat((Number(bet.bet_amount) * multiplier).toFixed(2));
@@ -166,7 +166,7 @@ export class CrashEngine {
     });
 
     // Credit winnings
-    await WalletService.credit(playerId, WalletType.main, payout, TxType.game_win, roundId, `Crash cashout at ${multiplier}x`);
+    await WalletService.credit(playerId, WalletType.main, payout, TxType.game_win, roundId, `Crash cashout at ${multiplier}x (slot ${slot})`);
 
     // Fetch username for broadcast
     const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });

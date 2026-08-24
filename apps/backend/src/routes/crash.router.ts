@@ -24,6 +24,7 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
       bets: {
         select: {
           player_id: true,
+          slot: true,
           bet_amount: true,
           cashout_at: true,
           payout: true,
@@ -39,6 +40,9 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
   }
 
   const myBet = round.bets.find((b) => b.player_id === playerId) ?? null;
+  const myBets = round.bets.filter((b) => b.player_id === playerId);
+  const myBet1 = myBets.find((b) => b.slot === 1) ?? null;
+  const myBet2 = myBets.find((b) => b.slot === 2) ?? null;
 
   // For running rounds, calculate the live multiplier so clients can sync immediately
   let currentMultiplier = 1.0;
@@ -56,11 +60,18 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
       crashPoint: round.status === 'crashed' ? round.crash_point : null,
       currentMultiplier: round.status === 'running' ? currentMultiplier : null,
     },
-    myBet: myBet
+    myBet: myBet1
       ? {
-          betAmount: Number(myBet.bet_amount),
-          cashoutAt: myBet.cashout_at,
-          payout: myBet.payout ? Number(myBet.payout) : null,
+          betAmount: Number(myBet1.bet_amount),
+          cashoutAt: myBet1.cashout_at,
+          payout: myBet1.payout ? Number(myBet1.payout) : null,
+        }
+      : null,
+    myBet2: myBet2
+      ? {
+          betAmount: Number(myBet2.bet_amount),
+          cashoutAt: myBet2.cashout_at,
+          payout: myBet2.payout ? Number(myBet2.payout) : null,
         }
       : null,
     bets: round.bets.map((b) => ({
@@ -77,12 +88,14 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
 router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
-  const { betAmount } = req.body as { betAmount?: unknown };
+  const { betAmount, slot } = req.body as { betAmount?: unknown; slot?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < 5 || betAmount > 10_000) {
     res.status(400).json({ error: 'betAmount must be a number between 5 and 10000' });
     return;
   }
+
+  const slotIdx = slot === 2 ? 2 : 1;
 
   // Find current waiting round
   const round = await prisma.crashRound.findFirst({
@@ -95,18 +108,18 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Check for duplicate bet
+  // Check for duplicate bet on this slot
   const existing = await prisma.crashBet.findUnique({
-    where: { round_id_player_id: { round_id: round.id, player_id: playerId } },
+    where: { round_id_player_id_slot: { round_id: round.id, player_id: playerId, slot: slotIdx } },
   });
   if (existing) {
-    res.status(409).json({ error: 'You already have a bet in this round' });
+    res.status(409).json({ error: 'You already have a bet in this slot for this round' });
     return;
   }
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, round.id, 'Crash bet');
+    await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: err.message });
@@ -117,17 +130,16 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
 
   // Record bet
   await prisma.crashBet.create({
-    data: { round_id: round.id, player_id: playerId, bet_amount: betAmount },
+    data: { round_id: round.id, player_id: playerId, slot: slotIdx, bet_amount: betAmount },
   });
 
-  // Notify via WebSocket (handled by crashEngine callbacks wired in websocket/index.ts)
+  // Notify via WebSocket
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });
-  // Emit via io — accessed through the module-level ref wired in websocket setup
   const { getCrashIo } = await import('../websocket/index.js');
-  getCrashIo()?.emit('CRASH_BET_PLACED', { playerId, betAmount });
-  void player; // silence unused warning
+  getCrashIo()?.emit('CRASH_BET_PLACED', { playerId, betAmount, slot: slotIdx });
+  void player;
 
-  res.json({ roundId: round.id, betAmount });
+  res.json({ roundId: round.id, betAmount, slot: slotIdx });
 });
 
 // ─── GET /api/crash/history ───────────────────────────────────────────────────

@@ -457,6 +457,7 @@ model CrashBet {
   id           String      @id @default(uuid())
   round_id     String
   player_id    String
+  slot         Int         @default(1)  // 1 or 2 — supports dual-bet panels
   bet_amount   Decimal     @db.Decimal(14, 2)
   cashout_at   Float?      // multiplier at cashout (null = not cashed out yet / bust)
   payout       Decimal?    @db.Decimal(14, 2)
@@ -464,7 +465,7 @@ model CrashBet {
   round        CrashRound  @relation(fields: [round_id], references: [id])
   player       Player      @relation(fields: [player_id], references: [id])
 
-  @@unique([round_id, player_id])
+  @@unique([round_id, player_id, slot])
   @@index([round_id])
   @@index([player_id])
   @@map("crash_bets")

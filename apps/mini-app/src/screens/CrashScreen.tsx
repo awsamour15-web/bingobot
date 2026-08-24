@@ -317,16 +317,14 @@ interface BetPanelProps {
   onCashout: () => void;
   placing: boolean;
   cashingOut: boolean;
-  /** Disable betting because the other slot already placed a bet this round */
-  otherSlotBet?: boolean;
 }
 
-function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut, otherSlotBet }: BetPanelProps) {
+function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut }: BetPanelProps) {
   const [tab, setTab] = useState<'bet' | 'auto'>('bet');
   const [amount, setAmount] = useState(5);
   const QUICK = [5, 10, 40, 100];
 
-  const canBet = phase === 'waiting' && !myBet && !placing && !otherSlotBet;
+  const canBet = phase === 'waiting' && !myBet && !placing;
   const canCashout = phase === 'running' && myBet && myBet.cashoutAt === null && !cashingOut;
   const alreadyCashedOut = myBet && myBet.cashoutAt !== null;
 
@@ -525,6 +523,7 @@ export default function CrashScreen() {
       if (s.round?.crashPoint) setCrashPoint(s.round.crashPoint);
       if (p === 'running' && s.round?.currentMultiplier) setMultiplier(s.round.currentMultiplier);
       if (s.myBet) setMyBet1(s.myBet);
+      if (s.myBet2) setMyBet2(s.myBet2);
       setBets(s.bets);
     }).catch(() => {});
     getCrashHistory().then(setHistory).catch(() => {});
@@ -582,12 +581,10 @@ export default function CrashScreen() {
     const setPlacing = slotIdx === 1 ? setPlacing1 : setPlacing2;
     const setMyBet = slotIdx === 1 ? setMyBet1 : setMyBet2;
     const currentBet = slotIdx === 1 ? myBet1 : myBet2;
-    const otherBet = slotIdx === 1 ? myBet2 : myBet1;
-    // Guard: don't send if already placed or other slot already has a bet
-    if (currentBet || otherBet) return;
+    if (currentBet) return; // already bet on this slot
     setPlacing(true);
     try {
-      const res = await placeCrashBet(amount);
+      const res = await placeCrashBet(amount, slotIdx);
       setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
       setBets(prev => [{ username: myUsername || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
       setRoundId(res.roundId);
@@ -604,7 +601,7 @@ export default function CrashScreen() {
     const setCashingOut = slotIdx === 1 ? setCashingOut1 : setCashingOut2;
     const setMyBet = slotIdx === 1 ? setMyBet1 : setMyBet2;
     setCashingOut(true);
-    (socket as any).emit('CRASH_CASHOUT', { roundId }, (res: any) => {
+    (socket as any).emit('CRASH_CASHOUT', { roundId, slot: slotIdx }, (res: any) => {
       setCashingOut(false);
       if (res?.ok) {
         setMyBet(prev => prev ? { ...prev, cashoutAt: res.multiplier, payout: res.payout } : prev);
@@ -683,7 +680,6 @@ export default function CrashScreen() {
           onCashout={() => handleCashout(1)}
           placing={placing1}
           cashingOut={cashingOut1}
-          otherSlotBet={!!myBet2}
         />
         <BetPanel
           phase={phase}
@@ -693,7 +689,6 @@ export default function CrashScreen() {
           onCashout={() => handleCashout(2)}
           placing={placing2}
           cashingOut={cashingOut2}
-          otherSlotBet={!!myBet1}
         />
       </div>
 

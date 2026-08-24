@@ -354,11 +354,11 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     );
 
     // ── CRASH_CASHOUT ─────────────────────────────────────────────────────────
-    socket.on('CRASH_CASHOUT', async (data: { roundId: string }, ack?: (res: object) => void) => {
+    socket.on('CRASH_CASHOUT', async (data: { roundId: string; slot?: number }, ack?: (res: object) => void) => {
       try {
-        const { multiplier, payout } = await crashEngine.cashout(data.roundId, playerId);
-        socket.emit('CRASH_CASHOUT_ACK', { multiplier, payout });
-        if (ack) ack({ ok: true, multiplier, payout });
+        const { multiplier, payout } = await crashEngine.cashout(data.roundId, playerId, data.slot ?? 1);
+        socket.emit('CRASH_CASHOUT_ACK', { multiplier, payout, slot: data.slot ?? 1 });
+        if (ack) ack({ ok: true, multiplier, payout, slot: data.slot ?? 1 });
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Cashout failed';
         if (ack) ack({ ok: false, error: msg });
