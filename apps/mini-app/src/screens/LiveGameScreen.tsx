@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { socket } from '../lib/socket';
 import { getRound, getMyCartelas, getRounds, getCalledNumbers, getCartelaGridCached } from '../lib/api';
 import { idbGet, idbPut } from '../lib/idb';
+import { getJwtFromStorage } from '../lib/auth-storage';
 import type {
   RoundDetail,
   NumberCalledPayload,
@@ -325,7 +326,7 @@ export default function LiveGameScreen() {
   useEffect(() => {
     if (!roundId) return;
     if (!socket.connected) socket.connect();
-    socket.emit('JOIN_ROUND', { roundId, token: localStorage.getItem('jwt') ?? '' });
+    socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
 
     const onNumber = (p: NumberCalledPayload) => {
       setGame((g) => {

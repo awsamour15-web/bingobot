@@ -9,6 +9,7 @@ function getLocalGrid(num: number): number[] | null {
   return rows ?? null;
 }
 import { initAuth } from '../lib/auth';
+import { getJwtFromStorage } from '../lib/auth-storage';
 import { socket } from '../lib/socket';
 import { shouldHandleCurrentRoundEvent } from '../lib/round-event-guards';
 import { isRoundStartBlocked } from '../lib/round-start-flow';
@@ -261,7 +262,7 @@ export default function CartelaScreen() {
   useEffect(() => {
     if (!roundId) return;
     if (!socket.connected) socket.connect();
-    socket.emit('JOIN_ROUND', { roundId, token: localStorage.getItem('jwt') ?? '' });
+    socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
 
     const onJoined = (p: PlayerJoinedPayload) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);

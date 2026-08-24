@@ -1,11 +1,15 @@
 import WebApp from '@twa-dev/sdk';
 import { login } from './api';
+import { authStorageKey } from './auth-storage';
 
 // In development, WebApp.initData may be empty. Use a mock fallback.
 const DEV_MOCK_INIT_DATA = 'mock_init_data_for_development';
 
 // In-flight promise to prevent concurrent login calls
 let authPromise: Promise<void> | null = null;
+
+// Alias for brevity
+const storageKey = authStorageKey;
 
 /**
  * Decodes the JWT payload without verifying the signature.
@@ -28,8 +32,8 @@ function getJwtExpiry(token: string): number | null {
  * A 60-second buffer ensures we re-auth before the token actually expires.
  */
 export function isLoggedIn(): boolean {
-  const jwt = localStorage.getItem('jwt');
-  const playerId = localStorage.getItem('playerId');
+  const jwt = localStorage.getItem(storageKey('jwt'));
+  const playerId = localStorage.getItem(storageKey('playerId'));
   if (!jwt || !playerId) return false;
 
   const exp = getJwtExpiry(jwt);
@@ -40,40 +44,40 @@ export function isLoggedIn(): boolean {
 }
 
 export function clearSession(): void {
-  localStorage.removeItem('jwt');
-  localStorage.removeItem('playerId');
-  localStorage.removeItem('agentJwt');
-  localStorage.removeItem('agentId');
+  localStorage.removeItem(storageKey('jwt'));
+  localStorage.removeItem(storageKey('playerId'));
+  localStorage.removeItem(storageKey('agentJwt'));
+  localStorage.removeItem(storageKey('agentId'));
 }
 
 async function doLogin(): Promise<void> {
   const initData = WebApp.initData || DEV_MOCK_INIT_DATA;
-  
+
   console.log('[Auth] Attempting login...', {
     hasInitData: !!WebApp.initData,
     initDataLength: WebApp.initData?.length || 0,
     isMock: initData === DEV_MOCK_INIT_DATA,
   });
-  
+
   // Check if we're running outside Telegram (no real initData)
   if (!WebApp.initData && initData === DEV_MOCK_INIT_DATA) {
     console.warn('Running outside Telegram - using mock auth data. This will fail in production.');
   }
-  
+
   const startParam = (WebApp.initDataUnsafe as { start_param?: string }).start_param;
 
   try {
     const response = await login(initData, startParam);
     console.log('[Auth] Login successful', { playerId: response.playerId });
-    localStorage.setItem('jwt', response.token);
-    localStorage.setItem('playerId', response.playerId);
+    localStorage.setItem(storageKey('jwt'), response.token);
+    localStorage.setItem(storageKey('playerId'), response.playerId);
 
     // Store agent JWT if the user is also an agent
     if (response.agentToken) {
-      localStorage.setItem('agentJwt', response.agentToken);
+      localStorage.setItem(storageKey('agentJwt'), response.agentToken);
     }
     if (response.agentId) {
-      localStorage.setItem('agentId', response.agentId);
+      localStorage.setItem(storageKey('agentId'), response.agentId);
     }
   } catch (error) {
     console.error('[Auth] Login failed:', error);
@@ -106,17 +110,17 @@ export async function reAuth(): Promise<void> {
 }
 
 export function getPlayerId(): string | null {
-  return localStorage.getItem('playerId');
+  return localStorage.getItem(storageKey('playerId'));
 }
 
 export function getJwt(): string | null {
-  return localStorage.getItem('jwt');
+  return localStorage.getItem(storageKey('jwt'));
 }
 
 export function getAgentJwt(): string | null {
-  return localStorage.getItem('agentJwt');
+  return localStorage.getItem(storageKey('agentJwt'));
 }
 
 export function getAgentId(): string | null {
-  return localStorage.getItem('agentId');
+  return localStorage.getItem(storageKey('agentId'));
 }

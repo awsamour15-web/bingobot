@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import type { ServerToClientEvents, ClientToServerEvents } from '@fidel/shared';
+import { getJwtFromStorage } from './auth-storage';
 
 // Connect to the same origin as the page (or a configured WebSocket URL).
 // In dev, set VITE_API_URL=http://localhost:3000 so the socket connects to the backend.
@@ -15,6 +16,6 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(WS_
   timeout: 10000,
   auth: (cb) => {
     // Fetch the JWT dynamically at connection time so the token is always fresh.
-    cb({ token: localStorage.getItem('jwt') ?? '' });
+    cb({ token: getJwtFromStorage() ?? '' });
   },
 });

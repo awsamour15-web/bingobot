@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { socket } from '../lib/socket';
 import { getCrashState, placeCrashBet, getCrashHistory, getProfile } from '../lib/api';
 import type { CrashBetEntry, CrashHistoryEntry } from '../lib/api';
+import { getJwtFromStorage } from '../lib/auth-storage';
 
 type Phase = 'waiting' | 'running' | 'crashed' | 'idle';
 
@@ -726,7 +727,7 @@ export default function CrashScreen() {
     getCrashHistory().then(setHistory).catch(() => {});
     getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
     try {
-      const jwt = localStorage.getItem('jwt') ?? '';
+      const jwt = getJwtFromStorage() ?? '';
       const payload = JSON.parse(atob(jwt.split('.')[1]!));
       setMyUsername(payload.username ?? '');
     } catch { /* ignore */ }

@@ -14,6 +14,7 @@ import type {
 } from '@fidel/shared';
 import { idbGet, idbPut } from './idb';
 import { parseError, errorLogger } from './error-handler';
+import { getJwtFromStorage, getAgentJwtFromStorage, authStorageKey } from './auth-storage';
 
 // Re-export types for screens that can't resolve the workspace package directly
 export type {
@@ -89,11 +90,11 @@ async function deduplicatedReAuth(): Promise<void> {
 }
 
 function getJwt(): string | null {
-  return localStorage.getItem('jwt');
+  return getJwtFromStorage();
 }
 
 function getAgentJwt(): string | null {
-  return localStorage.getItem('agentJwt');
+  return getAgentJwtFromStorage();
 }
 
 function buildHeaders(hasBody = false): Record<string, string> {
@@ -275,8 +276,8 @@ export async function agentApiRequest<T>(
 
   if (response.status === 401) {
     // Clear agent session but don't redirect - just throw error
-    localStorage.removeItem('agentJwt');
-    localStorage.removeItem('agentId');
+    localStorage.removeItem(authStorageKey('agentJwt'));
+    localStorage.removeItem(authStorageKey('agentId'));
     throw new Error('Agent session expired');
   }
 
