@@ -173,11 +173,12 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
+  const [sortBy, setSortBy] = useState<'created_at' | 'balance'>('created_at');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchPlayers = useCallback((p: number, q: string) => {
+  const fetchPlayers = useCallback((p: number, q: string, sort: string) => {
     setLoading(true); setError(null);
-    getPlayers(p, q || undefined)
+    getPlayers(p, q || undefined, sort)
       .then((res: any) => {
         setPlayers(res.items ?? res.players ?? []);
         setTotal(res.total ?? 0);
@@ -187,13 +188,20 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
       .catch((e: Error) => { setError(e.message ?? 'Failed to load'); setLoading(false); });
   }, []);
 
-  useEffect(() => { fetchPlayers(1, ''); }, [fetchPlayers]);
+  useEffect(() => { fetchPlayers(1, '', sortBy); }, [fetchPlayers, sortBy]);
 
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setSearch(val); setPage(1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchPlayers(1, val), 380);
+    debounceRef.current = setTimeout(() => fetchPlayers(1, val, sortBy), 380);
+  }
+
+  function handleSortToggle() {
+    const next = sortBy === 'created_at' ? 'balance' : 'created_at';
+    setSortBy(next);
+    setPage(1);
+    fetchPlayers(1, search, next);
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -232,7 +240,17 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
           <thead>
             <tr>
               <Th>Player</Th><Th>Telegram ID</Th><Th>Phone</Th>
-              <Th>Main Wallet</Th><Th>Play Wallet</Th>
+              <Th>
+                <button onClick={handleSortToggle} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  color: sortBy === 'balance' ? 'var(--c-primary, #6366f1)' : 'inherit',
+                  fontWeight: sortBy === 'balance' ? 800 : 600,
+                  fontSize: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  Main Wallet {sortBy === 'balance' ? '↓' : '↕'}
+                </button>
+              </Th>
+              <Th>Play Wallet</Th>
               <Th>Status</Th><Th>Joined</Th><Th right>Actions</Th>
             </tr>
           </thead>
@@ -261,11 +279,11 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
             <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 600 }}>Page {page} of {totalPages}</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn size="sm" variant="outline" disabled={page <= 1 || loading}
-                onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search); }}>
+                onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search, sortBy); }}>
                 ← Prev
               </Btn>
               <Btn size="sm" variant="outline" disabled={page >= totalPages || loading}
-                onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search); }}>
+                onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search, sortBy); }}>
                 Next →
               </Btn>
             </div>

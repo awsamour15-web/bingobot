@@ -101,9 +101,11 @@ export function adminLogin(
 export function getPlayers(
   page: number,
   search?: string,
+  sortBy?: string,
 ): Promise<PaginatedResponse<AdminPlayer>> {
   const params = new URLSearchParams({ page: String(page) });
   if (search) params.set('search', search);
+  if (sortBy) params.set('sortBy', sortBy);
   return adminApiRequest<PaginatedResponse<AdminPlayer>>('GET', `/api/admin/players?${params}`);
 }
 

@@ -13,6 +13,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const page = Math.max(1, parseInt(req.query['page'] as string) || 1);
   const pageSize = Math.min(100, parseInt(req.query['limit'] as string) || 20);
   const search = (req.query['search'] as string | undefined) ?? '';
+  const sortBy = (req.query['sortBy'] as string | undefined) ?? 'created_at';
 
   const where = search
     ? {
@@ -23,12 +24,17 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       }
     : {};
 
+  const orderBy =
+    sortBy === 'balance'
+      ? { wallets: { _sum: { balance: 'desc' as const } } }
+      : { created_at: 'desc' as const };
+
   const [players, total] = await Promise.all([
     prisma.player.findMany({
       where,
       skip: (page - 1) * pageSize,
       take: pageSize,
-      orderBy: { created_at: 'desc' },
+      orderBy,
       include: {
         wallets: { select: { type: true, balance: true } },
         _count: { select: { round_entries: true, referrals: true } },
