@@ -135,11 +135,24 @@ export default function GameScreen() {
               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Ethiopia's #1 Bingo</div>
             </div>
           </div>
-          <div style={{
-            background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
-            borderRadius: 20, padding: '6px 10px', fontSize: 10, color: '#fca5a5', fontWeight: 800, letterSpacing: 0.8,
-          }}>
-            LIVE
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                background: 'rgba(148,163,184,0.08)', border: '1px solid rgba(148,163,184,0.15)',
+                borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: '#94a3b8', fontSize: 18,
+              }}
+              aria-label="Home"
+            >
+              🏠
+            </button>
+            <div style={{
+              background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
+              borderRadius: 20, padding: '6px 10px', fontSize: 10, color: '#fca5a5', fontWeight: 800, letterSpacing: 0.8,
+            }}>
+              LIVE
+            </div>
           </div>
         </div>
       </div>
