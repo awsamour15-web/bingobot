@@ -59,6 +59,48 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   res.json({ items, total, page, pageSize });
 });
 
+// GET /api/admin/players/:id/transactions — paginated transaction history
+router.get('/:id/transactions', async (req: Request, res: Response): Promise<void> => {
+  const id = req.params['id'] as string;
+  const page = Math.max(1, parseInt(req.query['page'] as string) || 1);
+  const pageSize = Math.min(100, parseInt(req.query['pageSize'] as string) || 30);
+
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: id },
+    select: { id: true, type: true },
+  });
+
+  if (!wallets.length) {
+    res.status(404).json({ error: 'NOT_FOUND', message: 'Player not found' });
+    return;
+  }
+
+  const walletIds = wallets.map((w) => w.id);
+  const walletTypeMap = new Map(wallets.map((w) => [w.id, w.type]));
+
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { wallet_id: { in: walletIds } },
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.transaction.count({ where: { wallet_id: { in: walletIds } } }),
+  ]);
+
+  const items = transactions.map((tx) => ({
+    id: tx.id,
+    type: tx.type,
+    amount: Number(tx.amount),
+    walletType: walletTypeMap.get(tx.wallet_id) ?? 'play',
+    note: tx.note ?? null,
+    reference_id: tx.reference_id ?? null,
+    created_at: tx.created_at.toISOString(),
+  }));
+
+  res.json({ items, total, page, pageSize });
+});
+
 // GET /api/admin/players/:id — full player detail
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;

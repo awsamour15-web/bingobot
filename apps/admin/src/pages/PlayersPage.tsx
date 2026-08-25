@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
-import { getPlayers, getPlayer, suspendPlayer, restorePlayer, creditPlayer } from '../lib/api';
+import { getPlayers, getPlayer, suspendPlayer, restorePlayer, creditPlayer, getPlayerTransactions } from '../lib/api';
+import type { AdminTransaction } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td,
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, selectCss, StatCard,
@@ -18,6 +19,9 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
   const [note, setNote] = useState('');
   const [creditLoading, setCreditLoading] = useState(false);
   const [creditMsg, setCreditMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [txData, setTxData] = useState<{ items: AdminTransaction[]; total: number; page: number; pageSize: number } | null>(null);
+  const [txPage, setTxPage] = useState(1);
+  const [txLoading, setTxLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true); setError(null);
@@ -25,6 +29,13 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
       .then((p) => { setPlayer(p); setLoading(false); })
       .catch((e: Error) => { setError(e.message ?? 'Failed to load player'); setLoading(false); });
   }, [playerId]);
+
+  useEffect(() => {
+    setTxLoading(true);
+    getPlayerTransactions(playerId, txPage)
+      .then((d) => { setTxData(d); setTxLoading(false); })
+      .catch(() => setTxLoading(false));
+  }, [playerId, txPage]);
 
   async function handleSuspendToggle() {
     if (!player) return;
@@ -160,6 +171,48 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
           </Field>
           <Btn type="submit" disabled={creditLoading}>{creditLoading ? 'Submitting…' : 'Apply Adjustment'}</Btn>
         </form>
+      </Card>
+
+      {/* Transaction History */}
+      <Card style={{ marginTop: 16 }}>
+        <CardHeader title="Transaction History" subtitle={`${txData?.total ?? 0} total transactions`} />
+        <Table>
+          <thead>
+            <tr>
+              <Th>Type</Th><Th>Wallet</Th><Th>Amount (ETB)</Th><Th>Reference</Th><Th>Note</Th><Th>Date</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {txLoading ? <TrLoading cols={6} /> :
+             !txData?.items.length ? <TrEmpty cols={6} message="No transactions yet." /> :
+             txData.items.map((tx) => {
+               const isCredit = ['deposit', 'game_win', 'admin_credit', 'referral_commission', 'refund'].includes(tx.type);
+               return (
+                 <tr key={tx.id}>
+                   <Td><Badge variant={isCredit ? 'success' : 'danger'}>{tx.type.replace(/_/g, ' ')}</Badge></Td>
+                   <Td muted>{tx.walletType}</Td>
+                   <Td><span style={{ fontWeight: 700, color: isCredit ? C.success : C.danger }}>{isCredit ? '+' : '-'}{tx.amount.toFixed(2)}</span></Td>
+                   <Td muted>{tx.reference_id ?? '—'}</Td>
+                   <Td muted>{tx.note ?? '—'}</Td>
+                   <Td muted>{new Date(tx.created_at).toLocaleString()}</Td>
+                 </tr>
+               );
+             })}
+          </tbody>
+        </Table>
+        {txData && Math.ceil(txData.total / txData.pageSize) > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 14 }}>
+            <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 600 }}>
+              Page {txData.page} of {Math.ceil(txData.total / txData.pageSize)}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn size="sm" variant="outline" disabled={txPage <= 1 || txLoading}
+                onClick={() => setTxPage(p => p - 1)}>← Prev</Btn>
+              <Btn size="sm" variant="outline" disabled={txPage >= Math.ceil(txData.total / txData.pageSize) || txLoading}
+                onClick={() => setTxPage(p => p + 1)}>Next →</Btn>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

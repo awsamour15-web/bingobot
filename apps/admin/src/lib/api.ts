@@ -275,6 +275,30 @@ export function approveDeposit(id: string): Promise<{ success: boolean; amount: 
 }
 
 // ---------------------------------------------------------------------------
+// Player Transactions
+// ---------------------------------------------------------------------------
+
+export interface AdminTransaction {
+  id: string;
+  type: string;
+  amount: number;
+  walletType: string;
+  note: string | null;
+  reference_id: string | null;
+  created_at: string;
+}
+
+export function getPlayerTransactions(
+  playerId: string,
+  page = 1,
+): Promise<PaginatedResponse<AdminTransaction>> {
+  return adminApiRequest<PaginatedResponse<AdminTransaction>>(
+    'GET',
+    `/api/admin/players/${playerId}/transactions?page=${page}&pageSize=30`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Admin accounts
 // ---------------------------------------------------------------------------
 
