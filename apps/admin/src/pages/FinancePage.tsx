@@ -1,13 +1,74 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { AdminDeposit, DepositsResponse } from '../lib/api';
+import type { AdminDeposit, DepositsResponse, FinanceSummary } from '../lib/api';
 import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
-import { getDeposits, createDeposit, cancelDeposit, getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue } from '../lib/api';
+import { getDeposits, createDeposit, cancelDeposit, getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue, getFinanceSummary } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, StatCard, Table, Th, Td,
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
 } from '../components/ui';
 
 type Tab = 'deposits' | 'withdrawals' | 'revenue';
+
+// ── Finance Summary Banner ───────────────────────────────────────────────────
+
+function fmt(n: number) {
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+const periodLabels = ['Today', 'This Week', 'This Month', 'All Time'] as const;
+type Period = 0 | 1 | 2 | 3;
+const periodKeys: Array<keyof import('../lib/api').FinancePeriodStats> = ['day', 'week', 'month', 'total'];
+
+function FinanceSummaryBanner() {
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>(0);
+
+  useEffect(() => {
+    void getFinanceSummary()
+      .then(setSummary)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const pk = periodKeys[period] as keyof import('../lib/api').FinancePeriodStats;
+  const dep   = summary?.deposits[pk] ?? 0;
+  const with_ = summary?.withdrawals[pk] ?? 0;
+  const profit = summary?.profit[pk] ?? 0;
+
+  return (
+    <Card style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>📊 Finance Overview</span>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--c-bg)', borderRadius: 8, padding: 3, border: '1px solid var(--c-border)' }}>
+          {periodLabels.map((label, i) => (
+            <button
+              key={label}
+              onClick={() => setPeriod(i as Period)}
+              style={{
+                padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12,
+                fontWeight: period === i ? 700 : 500,
+                background: period === i ? 'rgba(99,102,241,0.18)' : 'transparent',
+                color: period === i ? '#a5b4fc' : 'var(--c-text-secondary)',
+                transition: 'all 0.12s',
+              }}
+            >{label}</button>
+          ))}
+        </div>
+      </div>
+      {loading ? (
+        <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
+          <StatCard icon="💰" label={`Deposits (${periodLabels[period]})`}    value={`${fmt(dep)} ETB`}    color={C.success} />
+          <StatCard icon="💸" label={`Withdrawals (${periodLabels[period]})`} value={`${fmt(with_)} ETB`}  color={C.danger}  />
+          <StatCard icon={profit >= 0 ? '📈' : '📉'} label={`Net Profit (${periodLabels[period]})`}
+            value={`${profit >= 0 ? '+' : ''}${fmt(profit)} ETB`}
+            color={profit >= 0 ? C.success : C.danger} />
+        </div>
+      )}
+    </Card>
+  );
+}
 
 // ── Deposits helpers ────────────────────────────────────────────────────────
 
@@ -355,6 +416,8 @@ export function FinancePage() {
   return (
     <div className="fade-in">
       <PageHeader title="Finance" />
+
+      <FinanceSummaryBanner />
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--c-bg-card)', padding: 6, borderRadius: 12, border: '1px solid var(--c-border)', width: 'fit-content' }}>

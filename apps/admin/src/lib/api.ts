@@ -164,6 +164,27 @@ export function rejectWithdrawal(id: string): Promise<{ success: boolean }> {
 }
 
 // ---------------------------------------------------------------------------
+// Finance Summary
+// ---------------------------------------------------------------------------
+
+export interface FinancePeriodStats {
+  day: number;
+  week: number;
+  month: number;
+  total: number;
+}
+
+export interface FinanceSummary {
+  deposits: FinancePeriodStats;
+  withdrawals: FinancePeriodStats;
+  profit: FinancePeriodStats;
+}
+
+export function getFinanceSummary(): Promise<FinanceSummary> {
+  return adminApiRequest<FinanceSummary>('GET', '/api/admin/finance-summary');
+}
+
+// ---------------------------------------------------------------------------
 // Revenue
 // ---------------------------------------------------------------------------
 

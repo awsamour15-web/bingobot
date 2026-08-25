@@ -133,6 +133,67 @@ router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Prom
   res.json({ success: true });
 });
 
+// GET /api/admin/finance-summary — deposits/withdrawals/profit broken by day/week/month
+router.get('/finance-summary', async (_req: Request, res: Response): Promise<void> => {
+  const now = new Date();
+
+  function startOf(unit: 'day' | 'week' | 'month'): Date {
+    const d = new Date(now);
+    if (unit === 'day') {
+      d.setHours(0, 0, 0, 0);
+    } else if (unit === 'week') {
+      const day = d.getDay(); // 0=Sun
+      d.setDate(d.getDate() - day);
+      d.setHours(0, 0, 0, 0);
+    } else {
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+    }
+    return d;
+  }
+
+  async function depositTotal(since: Date): Promise<number> {
+    const result = await prisma.pendingDeposit.aggregate({
+      where: { status: 'claimed', claimed_at: { gte: since } },
+      _sum: { amount: true },
+    });
+    return Number(result._sum.amount ?? 0);
+  }
+
+  async function withdrawalTotal(since: Date): Promise<number> {
+    const result = await prisma.pendingWithdrawal.aggregate({
+      where: { status: 'approved', created_at: { gte: since } },
+      _sum: { amount: true },
+    });
+    return Number(result._sum.amount ?? 0);
+  }
+
+  const [
+    depositDay, depositWeek, depositMonth, depositAll,
+    withdrawDay, withdrawWeek, withdrawMonth, withdrawAll,
+  ] = await Promise.all([
+    depositTotal(startOf('day')),
+    depositTotal(startOf('week')),
+    depositTotal(startOf('month')),
+    depositTotal(new Date(0)),
+    withdrawalTotal(startOf('day')),
+    withdrawalTotal(startOf('week')),
+    withdrawalTotal(startOf('month')),
+    withdrawalTotal(new Date(0)),
+  ]);
+
+  res.json({
+    deposits:    { day: depositDay,  week: depositWeek,  month: depositMonth,  total: depositAll  },
+    withdrawals: { day: withdrawDay, week: withdrawWeek, month: withdrawMonth, total: withdrawAll },
+    profit: {
+      day:   depositDay   - withdrawDay,
+      week:  depositWeek  - withdrawWeek,
+      month: depositMonth - withdrawMonth,
+      total: depositAll   - withdrawAll,
+    },
+  });
+});
+
 // GET /api/admin/revenue — revenue summary filterable by date range
 router.get('/revenue', async (req: Request, res: Response): Promise<void> => {
   const startDate = req.query['startDate'] as string | undefined;
