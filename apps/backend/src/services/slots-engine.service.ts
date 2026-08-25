@@ -23,20 +23,33 @@ export const PAYOUTS: Record<Symbol, number> = {
   cherry:         2,
 };
 
-// Reel strips — weighted for ~85% RTP (15% house edge)
-// More blanks/low-value fillers, premium symbols appear less often
-const REEL_STRIP: Symbol[] = [
-  'lemon',   'cherry',  'lemon',   'orange',  'lemon',
-  'cherry',  'lemon',   'orange',  'lemon',   'cherry',
-  'lemon',   'orange',  'lemon',   'cherry',  'lemon',
-  'watermelon', 'lemon', 'cherry', 'lemon',   'orange',
-  'lemon',   'cherry',  'lemon',   'bell',    'lemon',
-  'cherry',  'lemon',   'orange',  'lemon',   'cherry',
-  'lemon',   'orange',  'lemon',   'cherry',  'lemon',
-  'double_dollar', 'lemon', 'cherry', 'lemon', 'orange',
-  'lemon',   'cherry',  'lemon',   'seven',   'lemon',
-  'cherry',  'lemon',   'orange',  'lemon',   'cherry',
+// Reel strips per column — weighted for controlled hit frequency
+// Column 0 (left): fewer premiums
+const REEL_0: Symbol[] = [
+  'lemon','cherry','lemon','orange','lemon','cherry','lemon','orange','lemon','cherry',
+  'lemon','orange','lemon','cherry','lemon','watermelon','lemon','cherry','lemon','orange',
+  'lemon','cherry','lemon','bell','lemon','cherry','lemon','orange','lemon','cherry',
+  'lemon','orange','lemon','cherry','lemon','double_dollar','lemon','cherry','lemon','orange',
+  'lemon','cherry','lemon','seven','lemon','cherry','lemon','orange','lemon','cherry',
 ];
+// Column 1 (middle): moderate premiums
+const REEL_1: Symbol[] = [
+  'lemon','orange','lemon','cherry','lemon','orange','lemon','cherry','lemon','lemon',
+  'orange','lemon','cherry','lemon','orange','lemon','watermelon','lemon','cherry','lemon',
+  'orange','lemon','cherry','lemon','bell','lemon','orange','lemon','cherry','lemon',
+  'orange','lemon','cherry','lemon','orange','lemon','double_dollar','lemon','cherry','lemon',
+  'orange','lemon','cherry','lemon','seven','lemon','orange','lemon','cherry','lemon',
+];
+// Column 2 (right): also moderate
+const REEL_2: Symbol[] = [
+  'orange','lemon','cherry','lemon','orange','lemon','cherry','lemon','orange','lemon',
+  'cherry','lemon','orange','lemon','watermelon','lemon','cherry','lemon','orange','lemon',
+  'cherry','lemon','orange','lemon','cherry','bell','lemon','orange','lemon','cherry',
+  'lemon','orange','lemon','cherry','lemon','orange','lemon','double_dollar','cherry','lemon',
+  'orange','lemon','cherry','lemon','orange','lemon','seven','lemon','cherry','lemon',
+];
+
+const REELS = [REEL_0, REEL_1, REEL_2] as const;
 
 // Multiplier reel: 5 possible values (1x–5x). 1x most common, 5x rare.
 const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 1, 1, 1, 5, 1];
@@ -81,19 +94,22 @@ function randInt(max: number): number {
   return crypto.randomInt(0, max);
 }
 
-function spinReel(): Symbol[] {
-  // Pick a random start position on the strip, return 3 consecutive symbols
-  const pos = randInt(REEL_STRIP.length);
+// Each reel column picks 3 independent positions (not consecutive)
+function spinColumn(strip: readonly Symbol[]): Symbol[] {
   return [
-    REEL_STRIP[pos % REEL_STRIP.length]!,
-    REEL_STRIP[(pos + 1) % REEL_STRIP.length]!,
-    REEL_STRIP[(pos + 2) % REEL_STRIP.length]!,
+    strip[randInt(strip.length)]!,
+    strip[randInt(strip.length)]!,
+    strip[randInt(strip.length)]!,
   ];
 }
 
-export function spin(betAmount: number, houseEdgePct = 15): SpinResult {
-  // Generate 3 columns (reels), each with 3 symbols
-  const reels: Symbol[][] = [spinReel(), spinReel(), spinReel()];
+export function spin(betAmount: number, houseEdgePct = 35): SpinResult {
+  // Each column spins independently from its own strip
+  const reels: Symbol[][] = [
+    spinColumn(REELS[0]),
+    spinColumn(REELS[1]),
+    spinColumn(REELS[2]),
+  ];
 
   // Multiplier reel
   const multiplierReel = MULTIPLIER_STRIP[randInt(MULTIPLIER_STRIP.length)]!;
@@ -123,21 +139,24 @@ export function spin(betAmount: number, houseEdgePct = 15): SpinResult {
     paylineWins.reduce((sum, w) => sum + w.payout, 0).toFixed(2),
   );
 
-  // Apply house edge: if win exceeds (1 - houseEdge) × bet, cap it.
-  // More precisely: on any winning spin, randomly suppress the win
-  // proportional to the house edge so expected RTP = (100 - houseEdgePct)%.
+  // Apply house edge: suppress wins to maintain target RTP.
+  // houseEdgePct = 35 means players get back ~65% on average.
+  // On each winning spin, roll to decide if house takes it.
+  // Also cap max win at 50× bet to prevent outlier losses.
   if (totalWin > 0) {
-    const rtpRatio = (100 - houseEdgePct) / 100;
-    // Roll a number: if it falls in the house edge band, zero out the win
     const roll = crypto.randomInt(0, 1000) / 1000;
     if (roll < (houseEdgePct / 100)) {
-      // House takes this round — zero paylineWins
       paylineWins.length = 0;
       totalWin = 0;
     } else {
-      // Scale win to maintain correct RTP on wins that do pay out
-      // win × (rtpRatio / (1 - houseEdgePct/100)) — already correct, no scaling needed
-      void rtpRatio;
+      // Cap win at 50× bet
+      const maxWin = betAmount * 50;
+      if (totalWin > maxWin) {
+        totalWin = maxWin;
+        // Reduce individual payline amounts proportionally
+        const ratio = maxWin / totalWin;
+        for (const w of paylineWins) w.payout = parseFloat((w.payout * ratio).toFixed(2));
+      }
     }
   }
 
