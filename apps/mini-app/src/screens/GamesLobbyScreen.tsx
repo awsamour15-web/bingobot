@@ -111,18 +111,24 @@ const GAMES: Game[] = [
   },
 ];
 
-function GameCard({ game, balance }: { game: Game; balance: number | null }) {
+// Only these usernames can access Multi Hot 5 while it's under maintenance
+const SLOTS_WHITELIST = ['fidel', 'fidelAdmin']; // ← add your username here
+
+function GameCard({ game, balance, username }: { game: Game; balance: number | null; username: string | null }) {
   const navigate = useNavigate();
 
+  // Slots maintenance check — show maintenance overlay for non-whitelisted users
+  const isSlotsUnderMaintenance = game.id === 'slots' && !SLOTS_WHITELIST.includes(username ?? '');
+
   function handleClick() {
-    if (!game.available) return;
+    if (!game.available || isSlotsUnderMaintenance) return;
     navigate(game.route);
   }
 
   return (
     <button
       onClick={handleClick}
-      disabled={!game.available}
+      disabled={!game.available || isSlotsUnderMaintenance}
       style={{
         position: 'relative',
         display: 'flex',
@@ -130,30 +136,47 @@ function GameCard({ game, balance }: { game: Game; balance: number | null }) {
         width: '100%',
         minHeight: 148,
         background: game.gradient,
-        border: `1px solid ${game.available ? `${game.glowColor.replace('0.', '0.4').replace('rgba', 'rgba')}` : 'rgba(255,255,255,0.04)'}`,
+        border: `1px solid ${game.available && !isSlotsUnderMaintenance ? `${game.glowColor.replace('0.', '0.4').replace('rgba', 'rgba')}` : 'rgba(255,255,255,0.04)'}`,
         borderRadius: 22,
         padding: '18px 16px 16px',
-        cursor: game.available ? 'pointer' : 'default',
+        cursor: game.available && !isSlotsUnderMaintenance ? 'pointer' : 'default',
         textAlign: 'left',
         overflow: 'hidden',
-        opacity: game.available ? 1 : 0.55,
-        boxShadow: game.available
+        opacity: game.available && !isSlotsUnderMaintenance ? 1 : 0.7,
+        boxShadow: game.available && !isSlotsUnderMaintenance
           ? `0 16px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08)`
           : '0 8px 20px rgba(0,0,0,0.3)',
         transition: 'transform 0.18s ease, box-shadow 0.18s ease',
       }}
       onMouseEnter={e => {
-        if (!game.available) return;
+        if (!game.available || isSlotsUnderMaintenance) return;
         (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-3px)';
         (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 24px 52px rgba(0,0,0,0.5), 0 0 28px ${game.glowColor}, inset 0 1px 0 rgba(255,255,255,0.1)`;
       }}
       onMouseLeave={e => {
         (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = game.available
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = game.available && !isSlotsUnderMaintenance
           ? '0 16px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08)'
           : '0 8px 20px rgba(0,0,0,0.3)';
       }}
     >
+      {/* Maintenance overlay */}
+      {isSlotsUnderMaintenance && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 10,
+          background: 'rgba(0,0,0,0.72)',
+          backdropFilter: 'blur(3px)',
+          borderRadius: 22,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          <span style={{ fontSize: 28 }}>🔧</span>
+          <div style={{ fontSize: 12, fontWeight: 900, color: '#f59e0b', letterSpacing: '0.06em' }}>MAINTENANCE</div>
+          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textAlign: 'center', padding: '0 12px' }}>
+            Back soon
+          </div>
+        </div>
+      )}
       {/* Glow orb */}
       <div style={{
         position: 'absolute', top: -24, right: -24,
@@ -231,13 +254,13 @@ function GameCard({ game, balance }: { game: Game; balance: number | null }) {
         {game.available ? (
           <div style={{
             marginLeft: 'auto',
-            fontSize: 11, fontWeight: 800, color: '#f8fafc',
-            background: 'rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            fontSize: 11, fontWeight: 800, color: isSlotsUnderMaintenance ? '#64748b' : '#f8fafc',
+            background: isSlotsUnderMaintenance ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.1)',
+            border: isSlotsUnderMaintenance ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(255,255,255,0.12)',
             borderRadius: 10, padding: '5px 12px',
             display: 'flex', alignItems: 'center', gap: 5,
           }}>
-            Play <span style={{ fontSize: 13 }}>→</span>
+            {isSlotsUnderMaintenance ? '🔧 Soon' : <>Play <span style={{ fontSize: 13 }}>→</span></>}
           </div>
         ) : (
           <div style={{
@@ -418,7 +441,7 @@ export default function GamesLobbyScreen() {
             key={game.id}
             style={{ animation: `lobbySlideUp 0.38s cubic-bezier(0.22,1,0.36,1) ${i * 0.06}s both` }}
           >
-            <GameCard game={game} balance={balance} />
+            <GameCard game={game} balance={balance} username={username} />
           </div>
         ))}
       </div>
