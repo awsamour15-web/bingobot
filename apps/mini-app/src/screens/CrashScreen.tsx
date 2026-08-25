@@ -16,6 +16,154 @@ interface MyBet {
 const MIN_BET = 5;
 const MAX_BET = 10_000;
 
+// ─── Aviator Rules Modal ──────────────────────────────────────────────────────
+function AviatorRulesModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 400,
+      background: '#060a14',
+      overflowY: 'auto',
+      display: 'flex', flexDirection: 'column',
+      fontFamily: "'Inter', sans-serif",
+    }}>
+      {/* Top bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>✈️ How to Play</span>
+        <button onClick={onClose} style={{
+          background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
+          color: '#fff', borderRadius: 10, padding: '7px 16px',
+          fontSize: 13, fontWeight: 700, cursor: 'pointer',
+        }}>✕ Close</button>
+      </div>
+
+      <div style={{ padding: '24px 18px 48px', display: 'flex', flexDirection: 'column', gap: 28 }}>
+
+        {/* Objective */}
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#e8073f', letterSpacing: '0.06em', marginBottom: 10 }}>
+            🎯 OBJECTIVE
+          </div>
+          <div style={{ fontSize: 14, color: '#cbd5e1', lineHeight: 1.75 }}>
+            A plane takes off and a multiplier climbs from <strong style={{ color: '#fff' }}>1.00x</strong> upward.
+            Cash out before the plane flies away to lock in your winnings.
+            If the plane crashes before you cash out, you lose your bet.
+          </div>
+        </section>
+
+        {/* How to bet */}
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#e8073f', letterSpacing: '0.06em', marginBottom: 10 }}>
+            💰 HOW TO BET
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { icon: '1️⃣', text: 'Set your bet amount during the betting phase (before the plane takes off).' },
+              { icon: '2️⃣', text: 'Press BET to confirm. You can place up to 2 simultaneous bets in separate panels.' },
+              { icon: '3️⃣', text: 'Watch the multiplier rise. Press CASH OUT at any time to collect Bet × Multiplier.' },
+              { icon: '4️⃣', text: 'If the plane crashes before you cash out, the round is lost.' },
+            ].map(({ icon, text }) => (
+              <div key={icon} style={{
+                display: 'flex', gap: 12, alignItems: 'flex-start',
+                background: 'rgba(255,255,255,0.03)', borderRadius: 12,
+                padding: '12px 14px', border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
+                <span style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Auto cashout */}
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#e8073f', letterSpacing: '0.06em', marginBottom: 10 }}>
+            ⚡ AUTO CASH OUT
+          </div>
+          <div style={{ fontSize: 14, color: '#cbd5e1', lineHeight: 1.75 }}>
+            Set a target multiplier in the bet panel. If the plane reaches that multiplier,
+            your bet cashes out automatically — no need to watch or click manually.
+          </div>
+        </section>
+
+        {/* Payout table */}
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#e8073f', letterSpacing: '0.06em', marginBottom: 10 }}>
+            📊 EXAMPLE PAYOUTS
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 14, overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+              padding: '8px 16px', background: 'rgba(255,255,255,0.05)',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+            }}>
+              {['Bet (ETB)', 'Cash Out @', 'Win (ETB)'].map(h => (
+                <span key={h} style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textAlign: 'center' }}>{h}</span>
+              ))}
+            </div>
+            {[
+              [100, '1.50x', 150],
+              [100, '2.00x', 200],
+              [100, '5.00x', 500],
+              [100, '10.00x', 1000],
+              [100, '50.00x', 5000],
+            ].map(([bet, mul, win]) => (
+              <div key={String(mul)} style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+              }}>
+                <span style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' }}>{bet}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', textAlign: 'center' }}>{mul}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#4ade80', textAlign: 'center' }}>+{win}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Rules */}
+        <section>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#e8073f', letterSpacing: '0.06em', marginBottom: 10 }}>
+            📋 RULES & REGULATIONS
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              'Minimum bet is 5 ETB. Maximum bet is 10,000 ETB.',
+              'Each player may place up to 2 bets per round.',
+              'Bets can only be placed during the betting (waiting) phase before takeoff.',
+              'Once the round starts (plane takes off), no new bets are accepted.',
+              'Cashing out is only possible during a running round.',
+              'Winnings are credited to your balance immediately after cashout.',
+              'If you fail to cash out before a crash, the full bet is lost.',
+              'The crash point is determined by a provably fair algorithm.',
+              'All outcomes are final. No refunds after a round has started.',
+              'Management reserves the right to void rounds due to technical issues.',
+            ].map((rule, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '10px 14px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#e8073f', minWidth: 20, marginTop: 1 }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>{rule}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+      </div>
+    </div>
+  );
+}
+
 function fmtMul(v: number): string {
   return v.toFixed(2) + 'x';
 }
@@ -824,6 +972,7 @@ export default function CrashScreen() {
   const [betTab, setBetTab] = useState<'all' | 'previous' | 'top'>('all');
   const [myUsername, setMyUsername] = useState('');
   const [balance, setBalance] = useState<number | null>(null);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     getCrashState().then((s) => {
@@ -942,6 +1091,8 @@ export default function CrashScreen() {
       overflow: 'hidden',
     }}>
 
+      {showRules && <AviatorRulesModal onClose={() => setShowRules(false)} />}
+
       {/* Header */}
       <div style={{
         flexShrink: 0,
@@ -973,7 +1124,7 @@ export default function CrashScreen() {
           <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
             {balance !== null ? balance.toFixed(2) : '—'} ETB
           </span>
-          <span style={{ fontSize: 18, color: '#475569', cursor: 'pointer' }}>≡</span>
+          <span onClick={() => setShowRules(true)} style={{ fontSize: 18, color: '#475569', cursor: 'pointer' }}>≡</span>
           <span style={{ fontSize: 18, color: '#475569', cursor: 'pointer' }}>💬</span>
         </div>
       </div>
