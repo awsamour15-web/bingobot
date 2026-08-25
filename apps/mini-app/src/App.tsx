@@ -107,107 +107,59 @@ function BottomNav() {
       <style>{`
         .mini-app-bottom-nav {
           position: fixed;
-          left: 50%;
-          bottom: 10px;
-          transform: translateX(-50%);
-          width: min(92vw, 420px);
+          left: 0;
+          right: 0;
+          bottom: 0;
           z-index: 100;
-          padding-bottom: max(12px, env(safe-area-inset-bottom));
-          pointer-events: none;
+          background: rgba(10, 14, 26, 0.96);
+          border-top: 1px solid rgba(148, 163, 184, 0.1);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          padding-bottom: env(safe-area-inset-bottom);
         }
 
         .mini-app-bottom-nav-inner {
           display: flex;
           align-items: stretch;
-          gap: 6px;
-          padding: 7px 8px;
-          border-radius: 22px;
-          background: rgba(15, 23, 42, 0.82);
-          border: 1px solid rgba(148, 163, 184, 0.12);
-          box-shadow: 0 18px 40px rgba(2, 6, 23, 0.52), inset 0 1px 0 rgba(255,255,255,0.04);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
-          pointer-events: auto;
-          overflow: hidden;
+          height: 52px;
         }
 
         .mini-app-bottom-tab {
-          position: relative;
           flex: 1;
-          min-height: 58px;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 4px;
-          padding: 8px 8px 7px;
-          border-radius: 15px;
+          gap: 3px;
           text-decoration: none;
-          color: #94a3b8;
+          color: #64748b;
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 600;
           letter-spacing: 0.02em;
           line-height: 1;
-          transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-          will-change: transform;
-        }
-
-        .mini-app-bottom-tab:hover {
-          transform: translateY(-1px);
+          transition: color 0.18s ease, background 0.18s ease;
         }
 
         .mini-app-bottom-tab.active {
-          color: #f8fafc;
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.08));
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 20px rgba(245, 158, 11, 0.18);
-          transform: translateY(-2px);
-          animation: miniNavPulse 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+          color: #f59e0b;
         }
 
         .mini-app-bottom-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 24px;
-          height: 24px;
-          border-radius: 9px;
-          background: rgba(255,255,255,0.02);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-          font-size: 15px;
+          font-size: 18px;
           line-height: 1;
-          transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease, box-shadow 0.2s ease;
-          transform-origin: center;
+          transition: transform 0.18s ease;
         }
 
         .mini-app-bottom-tab.active .mini-app-bottom-icon {
-          background: rgba(255,255,255,0.06);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 12px rgba(245, 158, 11, 0.18);
-          transform: scale(1.08) translateY(-1px);
+          transform: scale(1.12);
         }
 
         .mini-app-bottom-label {
-          opacity: 0.9;
-          transition: opacity 0.2s ease, transform 0.2s ease;
+          opacity: 0.85;
         }
 
         .mini-app-bottom-tab.active .mini-app-bottom-label {
           opacity: 1;
-          transform: translateY(-1px);
-        }
-
-        @keyframes miniNavPulse {
-          0% {
-            transform: translateY(0) scale(0.96);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 rgba(245, 158, 11, 0);
-          }
-          50% {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 24px rgba(245, 158, 11, 0.18);
-          }
-          100% {
-            transform: translateY(-2px) scale(1);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 20px rgba(245, 158, 11, 0.16);
-          }
         }
       `}</style>
 
@@ -245,7 +197,7 @@ function AppInner() {
   }, []);
 
   return (
-    <div style={{ paddingBottom: isSubPage ? 0 : 70, height: isSubPage ? '100dvh' : undefined, minHeight: isSubPage ? undefined : '100dvh', background: '#0a0e1a', color: '#fff', overflow: isSubPage ? 'hidden' : undefined }}>
+    <div style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', height: isSubPage ? '100dvh' : undefined, minHeight: isSubPage ? undefined : '100dvh', background: '#0a0e1a', color: '#fff', overflow: isSubPage ? 'hidden' : undefined }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<GamesLobbyScreen />} />
