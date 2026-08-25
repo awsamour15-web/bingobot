@@ -23,6 +23,8 @@ interface Game {
   tag?: string;
   tagColor?: string;
   available: boolean;
+  bonusNote?: string;
+  bonusNoteColor?: string;
 }
 
 const GAMES: Game[] = [
@@ -39,6 +41,8 @@ const GAMES: Game[] = [
     tag: '🔥 HOT',
     tagColor: '#f59e0b',
     available: true,
+    bonusNote: '🎁 Bonus accepted',
+    bonusNoteColor: '#22c55e',
   },
   {
     id: 'slots',
@@ -52,6 +56,8 @@ const GAMES: Game[] = [
     tag: 'NEW',
     tagColor: '#10b981',
     available: true,
+    bonusNote: '💳 Deposit required',
+    bonusNoteColor: '#f59e0b',
   },
   {
     id: 'crash',
@@ -64,6 +70,8 @@ const GAMES: Game[] = [
     tag: 'LIVE',
     tagColor: '#8b5cf6',
     available: true,
+    bonusNote: '💳 Deposit required',
+    bonusNoteColor: '#f59e0b',
   },
   {
     id: 'keno',
@@ -201,6 +209,16 @@ function GameCard({ game, balance }: { game: Game; balance: number | null }) {
         <div style={{ fontSize: 11, color: 'rgba(203,213,225,0.7)', fontWeight: 500, lineHeight: 1.45 }}>
           {game.subtitle}
         </div>
+        {game.bonusNote && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center',
+            marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: '0.05em',
+            color: game.bonusNoteColor,
+            background: `${game.bonusNoteColor}18`,
+            border: `1px solid ${game.bonusNoteColor}40`,
+            borderRadius: 7, padding: '3px 7px',
+          }}>{game.bonusNote}</div>
+        )}
       </div>
 
       {/* Bottom row */}
@@ -359,9 +377,17 @@ export default function GamesLobbyScreen() {
               <div style={{ fontSize:24, fontWeight:900, color:'#f8fafc', letterSpacing:'-0.6px', marginBottom:5 }}>
                 Fidel Bingo
               </div>
-              <div style={{ fontSize:12, color:'rgba(203,213,225,0.75)', marginBottom:14 }}>
+              <div style={{ fontSize:12, color:'rgba(203,213,225,0.75)', marginBottom:10 }}>
                 Multiplayer live bingo • Win up to <span style={{ color:'#f59e0b', fontWeight:800 }}>40,000 ETB</span>
               </div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center',
+                marginBottom: 14, fontSize: 10, fontWeight: 800, letterSpacing: '0.05em',
+                color: '#22c55e',
+                background: 'rgba(34,197,94,0.12)',
+                border: '1px solid rgba(34,197,94,0.3)',
+                borderRadius: 8, padding: '4px 10px',
+              }}>🎁 Welcome bonus accepted here</div>
               <div style={{
                 display:'inline-flex', alignItems:'center', gap:6,
                 background:'linear-gradient(135deg,#f59e0b,#d97706)',

@@ -973,6 +973,7 @@ export default function CrashScreen() {
   const [myUsername, setMyUsername] = useState('');
   const [balance, setBalance] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [depositModal, setDepositModal] = useState(false);
 
   useEffect(() => {
     getCrashState().then((s) => {
@@ -1055,7 +1056,11 @@ export default function CrashScreen() {
       const msg: string = err?.message ?? '';
       // Silently ignore 409 "already have a bet" — can happen during auto-play
       if (!msg.toLowerCase().includes('already')) {
-        alert(msg || 'Failed to place bet');
+        if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('deposit')) {
+          setDepositModal(true);
+        } else {
+          alert(msg || 'Failed to place bet');
+        }
       }
     } finally {
       placingRef.current = false;
@@ -1092,6 +1097,50 @@ export default function CrashScreen() {
     }}>
 
       {showRules && <AviatorRulesModal onClose={() => setShowRules(false)} />}
+
+      {/* ── Deposit required modal ── */}
+      {depositModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 500,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg,#0f1e2e,#0a1220)',
+            border: '1px solid rgba(232,7,63,0.3)',
+            borderRadius: 24, padding: '32px 24px', maxWidth: 320, width: '100%',
+            textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>💳</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>
+              ቀሪ ሂሳብ አይበቃም!
+            </div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, lineHeight: 1.6 }}>
+              Insufficient balance to place a bet.
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+              Welcome bonus only works for <span style={{ color: '#f59e0b', fontWeight: 700 }}>Bingo</span>. To play Aviator, please deposit to your main balance.
+            </div>
+            <button
+              onClick={() => { setDepositModal(false); navigate('/wallet'); }}
+              style={{
+                width: '100%', padding: '13px 0', borderRadius: 14, border: 'none',
+                background: 'linear-gradient(135deg,#e8073f,#b00530)',
+                color: '#fff', fontWeight: 900, fontSize: 15, cursor: 'pointer',
+                marginBottom: 10,
+              }}
+            >Deposit Now</button>
+            <button
+              onClick={() => setDepositModal(false)}
+              style={{
+                width: '100%', padding: '11px 0', borderRadius: 14,
+                border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
+                color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              }}
+            >Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{
