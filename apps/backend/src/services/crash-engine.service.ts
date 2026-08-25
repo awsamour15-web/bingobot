@@ -81,18 +81,6 @@ export class CrashEngine {
 
     if (!this.running) return;
 
-    // 4. Snapshot bet count — no new bets accepted after this
-    const betCount = await prisma.crashBet.count({ where: { round_id: roundId } });
-    if (betCount === 0) {
-      // No bets — skip to next round immediately after marking crashed at 1x
-      await prisma.crashRound.update({
-        where: { id: roundId },
-        data: { status: 'crashed', crash_point: crashPoint, started_at: new Date(), crashed_at: new Date() },
-      });
-      this.onEnded?.(roundId, crashPoint);
-      return;
-    }
-
     // 5. Mark round as running
     const startedAt = Date.now();
     await prisma.crashRound.update({
