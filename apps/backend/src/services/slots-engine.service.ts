@@ -1,6 +1,6 @@
 // Slots Engine — Multi Hot 5 style
 // 3×3 grid, 5 fixed paylines, multiplier reel, X2 gamble feature
-// RTP ~96%
+// RTP ~85% (house edge ~15%)
 
 import crypto from 'node:crypto';
 
@@ -22,18 +22,23 @@ export const PAYOUTS: Record<Symbol, number> = {
   seven:         333,
 };
 
-// Reel strips — weighted for ~96% RTP
-// Higher index = more frequent = lower value symbols appear more
+// Reel strips — weighted for ~85% RTP (15% house edge)
+// More blanks/low-value fillers, premium symbols appear less often
 const REEL_STRIP: Symbol[] = [
-  'seven', 'lemon', 'cherry', 'orange', 'lemon', 'watermelon',
-  'cherry', 'bell', 'lemon', 'orange', 'cherry', 'lemon',
-  'double_dollar', 'watermelon', 'lemon', 'cherry', 'orange', 'lemon',
-  'cherry', 'watermelon', 'lemon', 'bell', 'cherry', 'lemon',
-  'orange', 'cherry', 'lemon', 'watermelon', 'cherry', 'lemon',
+  'lemon',   'cherry',  'lemon',   'orange',  'lemon',
+  'cherry',  'lemon',   'orange',  'lemon',   'cherry',
+  'lemon',   'orange',  'lemon',   'cherry',  'lemon',
+  'watermelon', 'lemon', 'cherry', 'lemon',   'orange',
+  'lemon',   'cherry',  'lemon',   'bell',    'lemon',
+  'cherry',  'lemon',   'orange',  'lemon',   'cherry',
+  'lemon',   'orange',  'lemon',   'cherry',  'lemon',
+  'double_dollar', 'lemon', 'cherry', 'lemon', 'orange',
+  'lemon',   'cherry',  'lemon',   'seven',   'lemon',
+  'cherry',  'lemon',   'orange',  'lemon',   'cherry',
 ];
 
-// Multiplier reel strip: 1x appears most, 5x rarely
-const MULTIPLIER_STRIP = [1, 1, 1, 1, 2, 1, 1, 3, 1, 1, 1, 2, 1, 1, 5, 1, 1, 1, 4, 1];
+// Multiplier reel strip: 1x appears most (85%), higher values very rare
+const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 3, 1];
 
 // ─── Paylines ─────────────────────────────────────────────────────────────────
 // 5 fixed paylines. Each payline is [col0_row, col1_row, col2_row]
