@@ -2,76 +2,247 @@
 import { spinSlots, gambleSlots, getProfile } from "../lib/api";
 import type { SlotSymbol, PaylineWin, SpinResponse } from "../lib/api";
 
-const EMOJI: Record<SlotSymbol, string> = {
-  cherry: "🍒", watermelon: "🍉", orange: "🍊", lemon: "🍋",
-  bell: "🔔", double_dollar: "💵", seven: "7️⃣",
-};
-const GLOW: Record<SlotSymbol, string> = {
-  cherry: "#ef4444", watermelon: "#22c55e", orange: "#f97316",
-  lemon: "#eab308", bell: "#f59e0b", double_dollar: "#84cc16", seven: "#ec4899",
-};
+
+
+// SVG symbols rendered inline
+function SymbolSvg({ sym, size = 56 }: { sym: SlotSymbol; size?: number }) {
+  const s = size;
+  if (sym === "seven") return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g77r" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff6b6b"/>
+          <stop offset="50%" stopColor="#ee0000"/>
+          <stop offset="100%" stopColor="#aa0000"/>
+        </linearGradient>
+        <linearGradient id="g77g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffd700"/>
+          <stop offset="50%" stopColor="#ffa000"/>
+          <stop offset="100%" stopColor="#e65100"/>
+        </linearGradient>
+      </defs>
+      <text x="3" y="44" fontSize="42" fontWeight="900" fontFamily="Arial Black, sans-serif" fill="url(#g77r)" stroke="url(#g77g)" strokeWidth="2">77</text>
+    </svg>
+  );
+  if (sym === "double_dollar") return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gds" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffd700"/>
+          <stop offset="50%" stopColor="#ff9800"/>
+          <stop offset="100%" stopColor="#e65100"/>
+        </linearGradient>
+      </defs>
+      <text x="2" y="44" fontSize="40" fontWeight="900" fontFamily="Arial Black, sans-serif" fill="url(#gds)" stroke="#b8620010" strokeWidth="1">$$</text>
+    </svg>
+  );
+  if (sym === "bell") return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gbell" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%" stopColor="#fff176"/>
+          <stop offset="40%" stopColor="#fdd835"/>
+          <stop offset="100%" stopColor="#f57f17"/>
+        </linearGradient>
+      </defs>
+      {/* Bell body */}
+      <path d="M30 8 C18 8 13 20 13 30 L13 40 L47 40 L47 30 C47 20 42 8 30 8Z" fill="url(#gbell)" stroke="#e65100" strokeWidth="1.5"/>
+      {/* Rim */}
+      <rect x="10" y="39" width="40" height="6" rx="3" fill="#f57f17"/>
+      {/* Clapper */}
+      <circle cx="30" cy="49" r="4" fill="#e65100"/>
+      {/* Shine */}
+      <ellipse cx="23" cy="18" rx="5" ry="3" fill="rgba(255,255,255,0.4)" transform="rotate(-20,23,18)"/>
+    </svg>
+  );
+  if (sym === "lemon") return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="glem" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%" stopColor="#fff9c4"/>
+          <stop offset="50%" stopColor="#ffee58"/>
+          <stop offset="100%" stopColor="#f9a825"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="30" cy="32" rx="20" ry="16" fill="url(#glem)" stroke="#f9a825" strokeWidth="1.5"/>
+      <path d="M30 16 C30 16 28 8 30 6 C32 8 30 16 30 16Z" fill="#4caf50"/>
+      <ellipse cx="23" cy="24" rx="5" ry="3" fill="rgba(255,255,255,0.4)" transform="rotate(-20,23,24)"/>
+    </svg>
+  );
+  if (sym === "orange") return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gorg" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%" stopColor="#ffcc80"/>
+          <stop offset="50%" stopColor="#ffa726"/>
+          <stop offset="100%" stopColor="#e65100"/>
+        </linearGradient>
+      </defs>
+      <circle cx="30" cy="34" r="20" fill="url(#gorg)" stroke="#e65100" strokeWidth="1.5"/>
+      <path d="M30 14 C30 14 26 6 28 4 C30 2 32 6 30 14Z" fill="#4caf50"/>
+      <ellipse cx="23" cy="24" rx="5" ry="3" fill="rgba(255,255,255,0.4)" transform="rotate(-20,23,24)"/>
+    </svg>
+  );
+  if (sym === "watermelon") return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gwm" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#66bb6a"/>
+          <stop offset="100%" stopColor="#2e7d32"/>
+        </linearGradient>
+        <linearGradient id="gwmr" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ef9a9a"/>
+          <stop offset="100%" stopColor="#c62828"/>
+        </linearGradient>
+      </defs>
+      <path d="M8 46 A28 28 0 0 1 52 46Z" fill="url(#gwm)"/>
+      <path d="M11 46 A25 25 0 0 1 49 46Z" fill="url(#gwmr)"/>
+      <circle cx="22" cy="40" r="2" fill="#1b5e20"/>
+      <circle cx="30" cy="38" r="2" fill="#1b5e20"/>
+      <circle cx="38" cy="40" r="2" fill="#1b5e20"/>
+    </svg>
+  );
+  // cherry
+  return (
+    <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gch" x1="20%" y1="0%" x2="80%" y2="100%">
+          <stop offset="0%" stopColor="#ef9a9a"/>
+          <stop offset="50%" stopColor="#e53935"/>
+          <stop offset="100%" stopColor="#b71c1c"/>
+        </linearGradient>
+      </defs>
+      {/* Stems */}
+      <path d="M20 42 C20 30 30 26 30 18" stroke="#4caf50" strokeWidth="2" fill="none"/>
+      <path d="M40 42 C40 30 30 26 30 18" stroke="#4caf50" strokeWidth="2" fill="none"/>
+      <path d="M28 18 C24 12 20 10 18 12" stroke="#4caf50" strokeWidth="2" fill="none"/>
+      {/* Left cherry */}
+      <circle cx="18" cy="44" r="10" fill="url(#gch)" stroke="#b71c1c" strokeWidth="1"/>
+      <ellipse cx="14" cy="40" rx="3" ry="2" fill="rgba(255,255,255,0.3)" transform="rotate(-20,14,40)"/>
+      {/* Right cherry */}
+      <circle cx="42" cy="44" r="10" fill="url(#gch)" stroke="#b71c1c" strokeWidth="1"/>
+      <ellipse cx="38" cy="40" rx="3" ry="2" fill="rgba(255,255,255,0.3)" transform="rotate(-20,38,40)"/>
+    </svg>
+  );
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 const BETS = [5, 8, 10, 20, 50, 100, 200, 500];
 const SYMS: SlotSymbol[] = ["cherry","watermelon","orange","lemon","bell","double_dollar","seven"];
 const PAYOUTS: Record<SlotSymbol, number> = {
-  cherry:44, watermelon:44, orange:88, lemon:88, bell:111, double_dollar:222, seven:333,
+  cherry: 10, watermelon: 20, orange: 20, lemon: 25,
+  bell: 25, double_dollar: 50, seven: 75,
 };
 const LINES: [number,number,number][] = [[1,1,1],[0,0,0],[2,2,2],[0,1,2],[2,1,0]];
-const INIT: SlotSymbol[][] = [
-  ["bell","cherry","lemon"],
-  ["seven","orange","watermelon"],
-  ["lemon","bell","cherry"],
+const INIT_SAFE: SlotSymbol[][] = [
+  ["lemon","orange","watermelon"],
+  ["seven","bell","cherry"],
+  ["double_dollar","cherry","bell"],
 ];
 
-function rnd() { return SYMS[Math.floor(Math.random()*SYMS.length)]!; }
-function rndCol(): SlotSymbol[] { return [rnd(),rnd(),rnd()]; }
+const MUL_COLORS: Record<number, { text: string; border: string; bg: string }> = {
+  1: { text: "#7c9cbf", border: "#4a7090", bg: "rgba(74,112,144,0.2)" },
+  2: { text: "#4ade80", border: "#16a34a", bg: "rgba(22,163,74,0.2)" },
+  3: { text: "#c9a84c", border: "#a07828", bg: "rgba(160,120,40,0.2)" },
+  4: { text: "#e879f9", border: "#a855f7", bg: "rgba(168,85,247,0.2)" },
+  5: { text: "#ff6b6b", border: "#dc2626", bg: "rgba(220,38,38,0.2)" },
+};
+
+function rnd() { return SYMS[Math.floor(Math.random() * SYMS.length)]!; }
+function rndCol(): SlotSymbol[] { return [rnd(), rnd(), rnd()]; }
 
 function winCells(wins: PaylineWin[]): Set<string> {
   const s = new Set<string>();
   for (const w of wins) {
-    const l = LINES[w.line-1];
+    const l = LINES[w.line - 1];
     if (l) { s.add(`0-${l[0]}`); s.add(`1-${l[1]}`); s.add(`2-${l[2]}`); }
   }
   return s;
 }
 
-// Rolling slot animation per column
-function ReelCol({ symbols, spinning, winSet, colIdx }: {
-  symbols: SlotSymbol[], spinning: boolean, winSet: Set<string>, colIdx: number
-}) {
+// ─── Multiplier reel (left column) ───────────────────────────────────────────
+function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
+  const offsets = [-1, 0, 1];
   return (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", gap:3 }}>
-      {symbols.map((sym, row) => {
-        const key = `${colIdx}-${row}`;
-        const win = !spinning && winSet.has(key);
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, width: 58 }}>
+      {offsets.map((off) => {
+        const v = value + off;
+        const isMid = off === 0;
+        const cfg = MUL_COLORS[Math.min(5, Math.max(1, v))] ?? MUL_COLORS[1]!;
+        const valid = v >= 1 && v <= 5;
         return (
-          <div key={row} style={{
-            height: 76,
-            display:"flex", alignItems:"center", justifyContent:"center",
-            borderRadius: 14,
-            background: win
-              ? `linear-gradient(135deg, ${GLOW[sym]}22, ${GLOW[sym]}11)`
-              : "rgba(255,255,255,0.03)",
-            border: win
-              ? `1.5px solid ${GLOW[sym]}66`
-              : "1.5px solid rgba(255,255,255,0.07)",
-            boxShadow: win ? `0 0 20px ${GLOW[sym]}33, inset 0 1px 0 rgba(255,255,255,0.08)` : "inset 0 1px 0 rgba(255,255,255,0.04)",
-            transition: "all 0.3s cubic-bezier(0.22,1,0.36,1)",
+          <div key={off} style={{
+            height: 72,
+            borderRadius: 10,
+            border: isMid ? `2px solid ${cfg.border}` : "1.5px solid rgba(255,255,255,0.06)",
+            background: isMid
+              ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.3))`
+              : "rgba(0,0,0,0.25)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: isMid ? `0 0 12px ${cfg.border}66, inset 0 1px 0 rgba(255,255,255,0.1)` : "none",
+            transition: spinning ? "none" : "all 0.35s cubic-bezier(0.22,1,0.36,1)",
             position: "relative",
             overflow: "hidden",
           }}>
-            {win && (
+            {isMid && (
               <div style={{
-                position:"absolute", inset:0,
-                background: `radial-gradient(circle at center, ${GLOW[sym]}22 0%, transparent 70%)`,
+                position: "absolute", inset: 0,
+                background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.08), transparent 60%)`,
+              }}/>
+            )}
+            {valid && (
+              <span style={{
+                fontFamily: "Arial Black, Impact, sans-serif",
+                fontSize: isMid ? 22 : 15,
+                fontWeight: 900,
+                color: isMid ? cfg.text : "rgba(255,255,255,0.15)",
+                letterSpacing: "-0.5px",
+                textShadow: isMid ? `0 0 12px ${cfg.text}88` : "none",
+                position: "relative",
+              }}>{v}x</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Single reel column ───────────────────────────────────────────────────────
+function ReelCol({ symbols, spinning, winSet, colIdx }: {
+  symbols: SlotSymbol[]; spinning: boolean; winSet: Set<string>; colIdx: number;
+}) {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+      {symbols.map((sym, row) => {
+        const key = `${colIdx}-${row}`;
+        const isWin = !spinning && winSet.has(key);
+        return (
+          <div key={row} style={{
+            height: 72,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 8,
+            background: isWin
+              ? "rgba(255,220,50,0.12)"
+              : "rgba(0,0,0,0.2)",
+            border: isWin
+              ? "1.5px solid rgba(255,220,50,0.5)"
+              : "1px solid rgba(255,255,255,0.07)",
+            boxShadow: isWin ? "0 0 16px rgba(255,220,50,0.25)" : "none",
+            transition: "all 0.3s",
+            position: "relative",
+            overflow: "hidden",
+          }}>
+            {isWin && (
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "radial-gradient(circle at center, rgba(255,220,50,0.15) 0%, transparent 70%)",
                 animation: "pulse 1s ease-in-out infinite",
               }}/>
             )}
-            <span style={{
-              fontSize: 36,
-              filter: win ? `drop-shadow(0 0 8px ${GLOW[sym]})` : "none",
-              transition: "filter 0.3s",
-              position: "relative",
-            }}>{EMOJI[sym]}</span>
+            <div style={{ position: "relative", filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none" }}>
+              <SymbolSvg sym={sym} size={54} />
+            </div>
           </div>
         );
       })}
@@ -79,125 +250,132 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
   );
 }
 
-function MulBadge({ value, spinning }: { value: number, spinning: boolean }) {
-  const colors = ["","#64748b","#f59e0b","#f97316","#ef4444","#a855f7"];
-  const c = colors[value] ?? "#64748b";
-  const labels = ["","1×","2×","3×","4×","5×"];
+// ─── Hexagon button ───────────────────────────────────────────────────────────
+function HexBtn({
+  children, onClick, disabled, color = "#1a5c36", border = "#2d8a52", size = 72,
+}: {
+  children: React.ReactNode; onClick?: () => void; disabled?: boolean;
+  color?: string; border?: string; size?: number;
+}) {
   return (
-    <div style={{
-      width: 44,
-      display:"flex", flexDirection:"column", gap:3,
-    }}>
-      {[-1, 0, 1].map((offset) => {
-        const v = value + offset;
-        const isMid = offset === 0;
-        const color = isMid ? c : "#334155";
-        return (
-          <div key={offset} style={{
-            height: 76,
-            display:"flex", alignItems:"center", justifyContent:"center",
-            borderRadius: 14,
-            background: isMid ? `${c}18` : "rgba(255,255,255,0.02)",
-            border: isMid ? `1.5px solid ${c}55` : "1px solid rgba(255,255,255,0.04)",
-            transition: spinning ? "none" : "all 0.3s",
-            boxShadow: isMid ? `0 0 16px ${c}22` : "none",
-          }}>
-            <span style={{
-              fontSize: isMid ? 16 : 11,
-              fontWeight: 900,
-              color: isMid ? c : "#1e293b",
-              letterSpacing: "-0.5px",
-            }}>{v >= 1 && v <= 5 ? labels[v] : ""}</span>
-          </div>
-        );
-      })}
-    </div>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: size, height: size,
+        clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+        background: disabled ? "#1a2a1a" : color,
+        border: "none",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: disabled ? "default" : "pointer",
+        position: "relative",
+        padding: 0,
+        opacity: disabled ? 0.45 : 1,
+        transition: "opacity 0.2s",
+        outline: "none",
+      }}
+    >
+      <div style={{
+        position: "absolute", inset: 0,
+        clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+        border: `2px solid ${border}`,
+        pointerEvents: "none",
+      }}/>
+      {children}
+    </button>
   );
 }
 
+// ─── Gamble modal ─────────────────────────────────────────────────────────────
 function GambleModal({ win, onGuess, onCollect, result, loading }: {
-  win: number, onGuess: (g:"red"|"black")=>void,
-  onCollect: ()=>void,
-  result: {won:boolean,actual:"red"|"black",payout:number}|null,
-  loading: boolean,
+  win: number; onGuess: (g: "red" | "black") => void;
+  onCollect: () => void;
+  result: { won: boolean; actual: "red" | "black"; payout: number } | null;
+  loading: boolean;
 }) {
   return (
     <div style={{
-      position:"fixed",inset:0,
-      background:"rgba(2,6,23,0.92)",
-      backdropFilter:"blur(12px)",
-      display:"flex",alignItems:"center",justifyContent:"center",
-      zIndex:300,padding:24,
+      position: "fixed", inset: 0,
+      background: "rgba(2,6,23,0.92)",
+      backdropFilter: "blur(12px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 300, padding: 24,
     }}>
       <div style={{
-        background:"linear-gradient(145deg,#0f1829,#0a0e1a)",
-        border:"1px solid rgba(255,255,255,0.08)",
-        borderRadius:28,padding:32,
-        width:"100%",maxWidth:340,
-        boxShadow:"0 40px 80px rgba(0,0,0,0.6)",
+        background: "linear-gradient(145deg,#0f1829,#0a0e1a)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 28, padding: 32,
+        width: "100%", maxWidth: 340,
+        boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
       }}>
-        <div style={{ textAlign:"center",marginBottom:24 }}>
-          <div style={{ fontSize:12,color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8 }}>Double or Nothing</div>
-          <div style={{ fontSize:36,fontWeight:900,color:"#f59e0b",letterSpacing:"-1px" }}>{win.toFixed(2)}</div>
-          <div style={{ fontSize:13,color:"#64748b",marginTop:2 }}>ETB to gamble</div>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Double or Nothing</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "#f59e0b", letterSpacing: "-1px" }}>{win.toFixed(2)}</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>ETB to gamble</div>
         </div>
 
-        <div style={{ display:"flex",justifyContent:"center",gap:8,marginBottom:28 }}>
-          {["♦","♥","♣","♠"].map((s,i) => (
-            <div key={i} style={{
-              width:52,height:72,
-              background: result?(i<2?"linear-gradient(135deg,#ef4444,#dc2626)":"linear-gradient(135deg,#1e293b,#0f172a)"):"linear-gradient(135deg,#1e293b,#0f172a)",
-              border:`1px solid ${result?(i<2?"rgba(239,68,68,0.4)":"rgba(255,255,255,0.08)"):"rgba(255,255,255,0.08)"}`,
-              borderRadius:12,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:26,
-              color: i<2?"#fca5a5":"#94a3b8",
-              boxShadow: result&&((i<2&&result.actual==="red")||(i>=2&&result.actual==="black"))
-                ? "0 0 24px rgba(245,158,11,0.5)" : "none",
-              transition:"all 0.3s",
-            }}>{result?s:"?"}</div>
+        {/* Multiplier card visual */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 28, flexDirection: "column", alignItems: "center", gap: 6 }}>
+          {[{v:"1x",mid:false},{v:"2x",mid:true},{v:"5x",mid:false}].map(({v, mid}) => (
+            <div key={v} style={{
+              width: 100, height: 72, borderRadius: 12,
+              background: mid
+                ? "linear-gradient(145deg, rgba(22,163,74,0.3), rgba(0,0,0,0.4))"
+                : "rgba(0,0,0,0.3)",
+              border: mid ? "2px solid #e91e8c" : "1.5px solid rgba(255,255,255,0.08)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: mid ? "0 0 16px rgba(233,30,140,0.4)" : "none",
+            }}>
+              <span style={{
+                fontFamily: "Arial Black, Impact, sans-serif",
+                fontSize: mid ? 28 : 20,
+                fontWeight: 900,
+                color: mid ? "#4ade80" : "rgba(255,255,255,0.2)",
+                textShadow: mid ? "0 0 12px #4ade8088" : "none",
+              }}>{v}</span>
+            </div>
           ))}
         </div>
 
         {result ? (
           <>
             <div style={{
-              padding:"14px 20px",borderRadius:16,marginBottom:20,
-              background: result.won?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",
-              border:`1px solid ${result.won?"rgba(34,197,94,0.25)":"rgba(239,68,68,0.25)"}`,
-              textAlign:"center",fontSize:16,fontWeight:800,
-              color: result.won?"#4ade80":"#f87171",
+              padding: "14px 20px", borderRadius: 16, marginBottom: 20,
+              background: result.won ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+              border: `1px solid ${result.won ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
+              textAlign: "center", fontSize: 16, fontWeight: 800,
+              color: result.won ? "#4ade80" : "#f87171",
             }}>
-              {result.won?`🎉 Won! +${result.payout.toFixed(2)} ETB`:`💥 Lost! It was ${result.actual}`}
+              {result.won ? `🎉 Won! +${result.payout.toFixed(2)} ETB` : `💥 Lost! It was ${result.actual}`}
             </div>
             <button onClick={onCollect} style={{
-              width:"100%",padding:"14px",borderRadius:14,border:"none",
-              background:"linear-gradient(135deg,#f59e0b,#f97316)",
-              color:"#000",fontSize:15,fontWeight:800,cursor:"pointer",
+              width: "100%", padding: "14px", borderRadius: 14, border: "none",
+              background: "linear-gradient(135deg,#f59e0b,#f97316)",
+              color: "#000", fontSize: 15, fontWeight: 800, cursor: "pointer",
             }}>Collect & Continue</button>
           </>
         ) : (
           <>
-            <div style={{ display:"flex",gap:10,marginBottom:12 }}>
-              <button onClick={()=>onGuess("red")} disabled={loading} style={{
-                flex:1,padding:"16px 0",borderRadius:14,border:"none",
-                background:"linear-gradient(135deg,#ef4444,#dc2626)",
-                color:"#fff",fontSize:15,fontWeight:800,
-                cursor:loading?"default":"pointer",opacity:loading?0.6:1,
-                boxShadow:"0 4px 16px rgba(239,68,68,0.3)",
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              <button onClick={() => onGuess("red")} disabled={loading} style={{
+                flex: 1, padding: "16px 0", borderRadius: 14, border: "none",
+                background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                color: "#fff", fontSize: 15, fontWeight: 800,
+                cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1,
+                boxShadow: "0 4px 16px rgba(239,68,68,0.3)",
               }}>🔴 RED</button>
-              <button onClick={()=>onGuess("black")} disabled={loading} style={{
-                flex:1,padding:"16px 0",borderRadius:14,
-                border:"1px solid rgba(255,255,255,0.12)",
-                background:"linear-gradient(135deg,#374151,#1f2937)",
-                color:"#fff",fontSize:15,fontWeight:800,
-                cursor:loading?"default":"pointer",opacity:loading?0.6:1,
-                boxShadow:"0 4px 16px rgba(0,0,0,0.3)",
+              <button onClick={() => onGuess("black")} disabled={loading} style={{
+                flex: 1, padding: "16px 0", borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "linear-gradient(135deg,#374151,#1f2937)",
+                color: "#fff", fontSize: 15, fontWeight: 800,
+                cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1,
               }}>⚫ BLACK</button>
             </div>
             <button onClick={onCollect} style={{
-              width:"100%",padding:"12px",borderRadius:14,border:"1px solid rgba(255,255,255,0.07)",
-              background:"transparent",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer",
+              width: "100%", padding: "12px", borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.07)",
+              background: "transparent", color: "#64748b", fontSize: 13, fontWeight: 600, cursor: "pointer",
             }}>Take {win.toFixed(2)} ETB &amp; skip</button>
           </>
         )}
@@ -206,49 +384,248 @@ function GambleModal({ win, onGuess, onCollect, result, loading }: {
   );
 }
 
+// ─── Rules / Paytable screen ──────────────────────────────────────────────────
+function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
+  const PAYTABLE: { sym: SlotSymbol; payout: number }[] = [
+    { sym: "seven",         payout: 75 },
+    { sym: "double_dollar", payout: 50 },
+    { sym: "bell",          payout: 25 },
+    { sym: "watermelon",    payout: 20 },
+    { sym: "lemon",         payout: 25 },
+    { sym: "orange",        payout: 20 },
+    { sym: "cherry",        payout: 10 },
+  ];
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200,
+      background: "#060e0a",
+      overflowY: "auto",
+      display: "flex", flexDirection: "column",
+    }}>
+      {/* Top bar */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "16px 20px",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+      }}>
+        <button onClick={onClose} style={{
+          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+          color: "#fff", borderRadius: 10, padding: "8px 18px",
+          fontSize: 14, fontWeight: 700, cursor: "pointer",
+        }}>Exit</button>
+        <button onClick={onClose} style={{
+          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+          color: "#fff", borderRadius: 10, padding: "8px 18px",
+          fontSize: 14, fontWeight: 700, cursor: "pointer",
+        }}>Close</button>
+      </div>
+
+      <div style={{ padding: "24px 20px 40px" }}>
+        {/* Title */}
+        <div style={{
+          fontSize: 13, fontWeight: 800, color: "#f5c518",
+          textAlign: "center", marginBottom: 24, letterSpacing: "0.04em",
+        }}>
+          All Symbol wins are in ETB
+        </div>
+
+        {/* Bet selector display */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 28 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: "rgba(0,0,0,0.4)", border: "2px solid #1e7a3a",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#22c55e", fontSize: 22, fontWeight: 900,
+          }}>−</div>
+          <div style={{
+            padding: "10px 32px", borderRadius: 12,
+            background: "linear-gradient(145deg, #1e2d3d, #0f1a28)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#fff" }}>{bet}</div>
+            <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>ETB</div>
+          </div>
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: "rgba(0,0,0,0.4)", border: "2px solid #1e7a3a",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#22c55e", fontSize: 22, fontWeight: 900,
+          }}>+</div>
+        </div>
+
+        {/* Paytable — top symbol (77) centered */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 16, padding: "18px 32px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+          }}>
+            <SymbolSvg sym="seven" size={72} />
+            <span style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>
+              {(bet * PAYOUTS["seven"]).toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* 2-column grid for rest */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {(["double_dollar","bell","watermelon","lemon","orange","cherry"] as SlotSymbol[]).map((sym) => (
+            <div key={sym} style={{
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 16, padding: "18px 12px",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+            }}>
+              {sym === "double_dollar" || sym === "bell" ? (
+                <div style={{ display: "flex", gap: 4 }}>
+                  <SymbolSvg sym={sym} size={60} />
+                  <SymbolSvg sym={sym} size={60} />
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 2 }}>
+                  <SymbolSvg sym={sym} size={48} />
+                  <SymbolSvg sym={sym} size={48} />
+                  <SymbolSvg sym={sym} size={48} />
+                </div>
+              )}
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#fff" }}>
+                {(bet * PAYOUTS[sym]).toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Multiplier reel section */}
+        <div style={{ marginTop: 36 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#e91e8c", marginBottom: 8, letterSpacing: "0.05em" }}>
+            ✦ MULTIPLIER REEL
+          </div>
+          <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, marginBottom: 20 }}>
+            Besides these standard rules, the game also includes the X Multiplier, which can appear on the left side reel. With five possible multipliers (1x, 2x, 3x, 4x, 5x) your wins will be multiplied for even greater rewards.
+          </div>
+          {/* Multiplier reel illustration */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{
+              border: "2px solid #c9a84c", borderRadius: 14, overflow: "hidden",
+              display: "inline-flex", flexDirection: "column",
+            }}>
+              {[
+                { v: "1x", mid: false, cfg: MUL_COLORS[1]! },
+                { v: "2x", mid: true,  cfg: MUL_COLORS[2]! },
+              ].map(({ v, mid, cfg }) => (
+                <div key={v} style={{
+                  width: 100, height: 80,
+                  background: mid
+                    ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.4))`
+                    : "rgba(0,0,0,0.35)",
+                  border: mid ? `2px solid ${cfg.border}` : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: mid ? `0 0 16px ${cfg.border}55` : "none",
+                }}>
+                  <span style={{
+                    fontFamily: "Arial Black, Impact, sans-serif",
+                    fontSize: mid ? 30 : 20,
+                    fontWeight: 900,
+                    color: mid ? cfg.text : "rgba(255,255,255,0.18)",
+                    textShadow: mid ? `0 0 14px ${cfg.text}99` : "none",
+                  }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Gamble feature section */}
+        <div style={{ marginTop: 36 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#e91e8c", marginBottom: 8, letterSpacing: "0.05em" }}>
+            ✦ GAMBLE FEATURE
+          </div>
+          <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, marginBottom: 20 }}>
+            After a winning spin, players can access the Gamble round by clicking the 2x button. The gamble screen appears with a card in the middle of the screen face down, indicating the gamble feature is active. Players must correctly guess the color of the card that will be revealed. If they guess correctly, their winnings will be doubled. However if they guess incorrectly, their winnings will be lost. At any point, players can use the "Take Win" button to collect and add them to their main balance.
+          </div>
+          {/* Gamble card illustration */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{
+              border: "2px solid #c9a84c", borderRadius: 14, overflow: "hidden",
+              display: "inline-flex", flexDirection: "column",
+            }}>
+              {[
+                { v: "1x", mid: false, cfg: MUL_COLORS[1]! },
+                { v: "2x", mid: true,  cfg: MUL_COLORS[2]! },
+                { v: "5x", mid: false, cfg: MUL_COLORS[5]! },
+              ].map(({ v, mid, cfg }) => (
+                <div key={v} style={{
+                  width: 100, height: 80,
+                  background: mid
+                    ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.4))`
+                    : "rgba(0,0,0,0.35)",
+                  border: mid ? `2px solid ${cfg.border}` : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: mid ? `0 0 16px ${cfg.border}55` : "none",
+                }}>
+                  <span style={{
+                    fontFamily: "Arial Black, Impact, sans-serif",
+                    fontSize: mid ? 30 : 20,
+                    fontWeight: 900,
+                    color: mid ? cfg.text : "rgba(255,255,255,0.18)",
+                    textShadow: mid ? `0 0 14px ${cfg.text}99` : "none",
+                  }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 export default function SlotsScreen() {
-  const [reels, setReels] = useState<SlotSymbol[][]>(INIT);
+  const [reels, setReels] = useState<SlotSymbol[][]>(INIT_SAFE);
   const [mul, setMul] = useState(1);
   const [spinning, setSpinning] = useState(false);
   const [betIdx, setBetIdx] = useState(0);
-  const [balance, setBalance] = useState<number|null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
   const [wins, setWins] = useState<PaylineWin[]>([]);
-  const [totalWin, setTotalWin] = useState<number|null>(null);
-  const [error, setError] = useState<string|null>(null);
+  const [totalWin, setTotalWin] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [auto, setAuto] = useState(false);
   const [spinCount, setSpinCount] = useState(0);
+  const [showRules, setShowRules] = useState(false);
 
   const lock = useRef(false);
   const autoRef = useRef(false);
   const betRef = useRef(0);
-  const timer = useRef<ReturnType<typeof setInterval>|null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [showGamble, setShowGamble] = useState(false);
-  const [gambleId, setGambleId] = useState<string|null>(null);
+  const [gambleId, setGambleId] = useState<string | null>(null);
   const [gambleWin, setGambleWin] = useState(0);
-  const [gambleResult, setGambleResult] = useState<{won:boolean,actual:"red"|"black",payout:number}|null>(null);
+  const [gambleResult, setGambleResult] = useState<{ won: boolean; actual: "red" | "black"; payout: number } | null>(null);
   const [gambleLoading, setGambleLoading] = useState(false);
 
-  useEffect(()=>{ betRef.current=betIdx; },[betIdx]);
-  useEffect(()=>{ getProfile().then(p=>setBalance(p.mainWallet.balance)).catch(()=>{}); },[]);
-  useEffect(()=>()=>{ if(timer.current) clearInterval(timer.current); },[]);
+  useEffect(() => { betRef.current = betIdx; }, [betIdx]);
+  useEffect(() => { getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {}); }, []);
+  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
 
   function startScramble() {
-    if(timer.current) clearInterval(timer.current);
-    timer.current = setInterval(()=>{
-      setReels([rndCol(),rndCol(),rndCol()]);
-      setMul(Math.ceil(Math.random()*5));
-    },90);
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => {
+      setReels([rndCol(), rndCol(), rndCol()]);
+      setMul(Math.ceil(Math.random() * 5));
+    }, 90);
   }
 
   function stopScramble(r: SlotSymbol[][], m: number) {
-    if(timer.current){ clearInterval(timer.current); timer.current=null; }
+    if (timer.current) { clearInterval(timer.current); timer.current = null; }
     setReels(r); setMul(m);
   }
 
-  const doSpin = useCallback(async(fromAuto=false): Promise<boolean>=>{
-    if(lock.current) return false;
-    lock.current=true;
+  const doSpin = useCallback(async (fromAuto = false): Promise<boolean> => {
+    if (lock.current) return false;
+    lock.current = true;
     setSpinning(true); setWins([]); setTotalWin(null); setError(null);
     startScramble();
 
@@ -256,277 +633,355 @@ export default function SlotsScreen() {
     let res: SpinResponse;
     try {
       res = await spinSlots(bet);
-    } catch(e:any) {
-      stopScramble(INIT,1);
-      lock.current=false; setSpinning(false);
-      setError(e?.message??"Spin failed — check your balance");
-      autoRef.current=false; setAuto(false);
+    } catch (e: any) {
+      stopScramble(INIT_SAFE, 1);
+      lock.current = false; setSpinning(false);
+      setError(e?.message ?? "Spin failed — check your balance");
+      autoRef.current = false; setAuto(false);
       return false;
     }
 
-    await new Promise(r=>setTimeout(r,650));
+    await new Promise(r => setTimeout(r, 650));
     stopScramble(res.reels, res.multiplierReel);
-    lock.current=false; setSpinning(false);
-    setSpinCount(c=>c+1);
+    lock.current = false; setSpinning(false);
+    setSpinCount(c => c + 1);
 
-    await new Promise(r=>setTimeout(r,100));
+    await new Promise(r => setTimeout(r, 100));
     setWins(res.paylineWins);
     setTotalWin(res.totalWin);
     setBalance(res.balance);
 
-    if(res.canGamble&&!fromAuto){
+    if (res.canGamble && !fromAuto) {
       setGambleId(res.spinId); setGambleWin(res.totalWin);
       setGambleResult(null); setShowGamble(true);
       return false;
     }
     return true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+  }, []);
 
-  useEffect(()=>{
-    autoRef.current=auto;
-    if(!auto) return;
-    let alive=true;
-    async function loop(){
-      while(autoRef.current&&alive){
-        const ok=await doSpin(true);
-        if(!ok||!autoRef.current) break;
-        await new Promise(r=>setTimeout(r,350));
+  useEffect(() => {
+    autoRef.current = auto;
+    if (!auto) return;
+    let alive = true;
+    async function loop() {
+      while (autoRef.current && alive) {
+        const ok = await doSpin(true);
+        if (!ok || !autoRef.current) break;
+        await new Promise(r => setTimeout(r, 350));
       }
-      if(alive) setAuto(false);
+      if (alive) setAuto(false);
     }
     void loop();
-    return ()=>{ alive=false; autoRef.current=false; };
-  },[auto,doSpin]);
+    return () => { alive = false; autoRef.current = false; };
+  }, [auto, doSpin]);
 
-  const handleGamble=async(guess:"red"|"black")=>{
-    if(!gambleId) return;
+  const handleGamble = async (guess: "red" | "black") => {
+    if (!gambleId) return;
     setGambleLoading(true);
     try {
-      const r=await gambleSlots(gambleId,guess);
-      setGambleResult({won:r.won,actual:r.actual,payout:r.payout});
-      setBalance(r.balance); setTotalWin(r.won?r.payout:0);
-      if(!r.won) setWins([]);
-    } catch(e:any){ setError(e?.message??"Gamble failed"); setShowGamble(false); }
+      const r = await gambleSlots(gambleId, guess);
+      setGambleResult({ won: r.won, actual: r.actual, payout: r.payout });
+      setBalance(r.balance); setTotalWin(r.won ? r.payout : 0);
+      if (!r.won) setWins([]);
+    } catch (e: any) { setError(e?.message ?? "Gamble failed"); setShowGamble(false); }
     finally { setGambleLoading(false); }
   };
 
   const bet = BETS[betIdx]!;
-  const ws = winCells(spinning?[]:wins);
+  const ws = winCells(spinning ? [] : wins);
+  const canGamble = !spinning && totalWin !== null && totalWin > 0 && !!gambleId && !showGamble;
 
   return (
-    <div className="slots-screen" style={{
-      minHeight:"100dvh",
-      background:"radial-gradient(circle at 50% -10%, rgba(245,158,11,0.12), transparent 34%), linear-gradient(180deg,#07111d 0%,#050912 55%,#03060b 100%)",
-      color:"#f8fafc",
-      display:"flex", flexDirection:"column",
-      maxWidth:480, margin:"0 auto",
-      padding:"0 0 88px",
+    <div style={{
+      minHeight: "100dvh",
+      background: "radial-gradient(ellipse at 50% 0%, #0d2e1a 0%, #061008 50%, #020804 100%)",
+      color: "#f8fafc",
+      display: "flex", flexDirection: "column",
+      maxWidth: 480, margin: "0 auto",
+      fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
 
-      {/* Header */}
+      {showRules && <RulesScreen bet={bet} onClose={() => setShowRules(false)} />}
+
+      {/* ── Top area: home icon + menu ── */}
       <div style={{
-        padding:"22px 20px 18px",
-        display:"flex", alignItems:"center", gap:12,
-        borderBottom:"1px solid rgba(255,255,255,0.07)",
-        background:"rgba(3,7,14,0.42)",
-        boxShadow:"0 12px 28px rgba(0,0,0,0.14)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 16px 8px",
       }}>
         <div style={{
-          width:46,height:46,borderRadius:15,
-          background:"linear-gradient(145deg,#ffd166 0%,#f59e0b 48%,#c2410c 100%)",
-          display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:23,boxShadow:"0 8px 24px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.45)",
-        }}>🎰</div>
-        <div>
-          <div style={{ fontSize:19,fontWeight:900,letterSpacing:"-0.7px" }}>Multi Hot 5</div>
-          <div style={{ fontSize:10,color:"#7c8da3",fontWeight:700,letterSpacing:"0.13em",marginTop:3 }}>
-            5 LINES <span style={{ color:"#d89b2b" }}>·</span> 96% RTP
-          </div>
-        </div>
-        <div style={{ marginLeft:"auto",textAlign:"right" }}>
-          <div style={{ fontSize:9,color:"#7c8da3",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.13em" }}>Available</div>
-          <div style={{ fontSize:21,fontWeight:900,color:"#fff7e6",letterSpacing:"-0.6px",marginTop:3 }}>
-            {balance!==null?balance.toFixed(2):"—"}
-            <span style={{ fontSize:10,color:"#d89b2b",fontWeight:800,marginLeft:4 }}>ETB</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Win banner */}
-      <div style={{ minHeight:60,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7,padding:"12px 20px" }}>
-        {totalWin!==null&&totalWin>0&&!spinning&&(
-          <div style={{ display:"flex",alignItems:"center",gap:10,animation:"winPop 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
-            <div style={{ fontSize:10,color:"#d89b2b",fontWeight:800,textTransform:"uppercase",letterSpacing:"0.16em" }}>WIN</div>
-            <div style={{ fontSize:30,fontWeight:900,color:"#ffd166",letterSpacing:"-1px",filter:"drop-shadow(0 0 16px rgba(245,158,11,0.7))" }}>
-              +{totalWin.toFixed(2)}
+          width: 42, height: 42, borderRadius: 12,
+          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 18, cursor: "pointer",
+        }}>🏠</div>
+        <div style={{ textAlign: "center" }}>
+          {/* win banner */}
+          {totalWin !== null && totalWin > 0 && !spinning && (
+            <div style={{ animation: "winPop 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
+              <div style={{ fontSize: 11, color: "#c9a84c", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em" }}>WIN</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "#ffd166", letterSpacing: "-1px", filter: "drop-shadow(0 0 12px rgba(245,158,11,0.7))" }}>
+                +{totalWin.toFixed(2)} <span style={{ fontSize: 14, color: "#c9a84c" }}>ETB</span>
+              </div>
             </div>
-            <div style={{ fontSize:11,color:"#64748b",fontWeight:700 }}>ETB</div>
-          </div>
-        )}
-        {wins.length>0&&!spinning&&(
-          <div style={{ display:"flex",gap:5,flexWrap:"wrap",justifyContent:"center" }}>
-            {wins.map(w=>(
-              <div key={w.line} style={{
-                padding:"2px 10px",borderRadius:20,
-                background:"rgba(245,158,11,0.12)",
-                border:"1px solid rgba(245,158,11,0.3)",
-                fontSize:11,fontWeight:700,color:"#fbbf24",
-              }}>L{w.line} +{w.payout.toFixed(2)}</div>
-            ))}
-          </div>
-        )}
-        {(!totalWin||totalWin===0)&&!spinning&&wins.length===0&&spinCount>0&&(
-          <div style={{ fontSize:13,color:"#334155",fontWeight:600 }}>No win this round</div>
-        )}
+          )}
+          {(!totalWin || totalWin === 0) && !spinning && spinCount > 0 && (
+            <div style={{ fontSize: 12, color: "#334155", fontWeight: 600 }}>No win this round</div>
+          )}
+        </div>
+        <div style={{
+          width: 42, height: 42, borderRadius: 12,
+          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", flexDirection: "column", gap: 4,
+        }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ width: 18, height: 2, background: "#fff", borderRadius: 1 }}/>
+          ))}
+        </div>
       </div>
 
-      {/* Slot machine */}
-      <div style={{ padding:"0 16px",marginBottom:16 }}>
+      {/* ── Labels row ── */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "4px 16px 8px",
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: "#c9a84c", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          MULTIPLIER
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 900, color: "#c9a84c", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          5 LINES FIXED
+        </div>
+      </div>
+
+      {/* ── Slot machine ── */}
+      <div style={{ padding: "0 12px" }}>
         <div style={{
-          background:"linear-gradient(145deg,#172331 0%,#0d1723 42%,#09111b 100%)",
-          border:"1px solid rgba(245,158,11,0.22)",
-          borderRadius:22,
-          padding:12,
-          boxShadow:"0 24px 56px rgba(0,0,0,0.52), 0 0 0 5px rgba(245,158,11,0.035), inset 0 1px 0 rgba(255,255,255,0.1)",
-          position:"relative",
-          overflow:"hidden",
+          background: "linear-gradient(160deg, #0e2e18 0%, #071810 40%, #030e08 100%)",
+          border: "2px solid #1a4d28",
+          borderRadius: 16,
+          padding: "10px 10px 8px",
+          boxShadow: "0 0 0 1px rgba(201,168,76,0.15), 0 20px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)",
+          position: "relative",
         }}>
-          {/* Top light strip */}
+          {/* Gold top bar */}
           <div style={{
-            position:"absolute",top:0,left:"20%",right:"20%",height:2,
-            background:"linear-gradient(90deg,transparent,rgba(255,209,102,0.9),transparent)",
-            borderRadius:2,
+            position: "absolute", top: 0, left: "15%", right: "15%", height: 2,
+            background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.8), transparent)",
+            borderRadius: 2,
           }}/>
 
-          <div style={{ display:"flex",gap:7,alignItems:"stretch" }}>
-            <MulBadge value={mul} spinning={spinning}/>
-            <div style={{ width:1,background:"rgba(255,255,255,0.05)",margin:"0 2px" }}/>
-            {reels.map((col,ci)=>(
-              <ReelCol key={ci} symbols={col} spinning={spinning} winSet={ws} colIdx={ci}/>
+          <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+            <MulReel value={mul} spinning={spinning} />
+            {/* vertical divider */}
+            <div style={{ width: 1, background: "rgba(201,168,76,0.15)", margin: "4px 0" }}/>
+            {reels.map((col, ci) => (
+              <ReelCol key={ci} symbols={col} spinning={spinning} winSet={ws} colIdx={ci} />
             ))}
           </div>
 
-          {/* Payline dots */}
-          <div style={{ display:"flex",justifyContent:"center",gap:8,marginTop:13 }}>
-            {[1,2,3,4,5].map(n=>{
-              const active=wins.some(w=>w.line===n);
-              return (
-                <div key={n} style={{
-                  width:24,height:24,borderRadius:8,
-                  background:active?"rgba(245,158,11,0.2)":"rgba(255,255,255,0.03)",
-                  border:active?"1px solid rgba(245,158,11,0.5)":"1px solid rgba(255,255,255,0.06)",
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:10,fontWeight:800,
-                  color:active?"#f59e0b":"#1e293b",
-                  boxShadow:active?"0 0 8px rgba(245,158,11,0.3)":"none",
-                  transition:"all 0.3s",
-                }}>{n}</div>
-              );
-            })}
+          {/* Stats bar */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-around",
+            marginTop: 8, padding: "6px 0",
+            borderTop: "1px solid rgba(201,168,76,0.15)",
+          }}>
+            {[
+              { icon: "💼", label: balance !== null ? balance.toFixed(2) : "—" },
+              { icon: "🏆", label: totalWin !== null && totalWin > 0 ? totalWin.toFixed(2) : "0.00" },
+              { icon: "🎖", label: "0.00" },
+            ].map(({ icon, label }, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 14 }}>{icon}</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#e2e8f0" }}>{label}</div>
+                  <div style={{ fontSize: 9, color: "#475569", fontWeight: 700 }}>ETB</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Error */}
-      {error&&(
-        <div style={{ margin:"0 16px 12px",padding:"12px 16px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:14,fontSize:13,color:"#f87171",fontWeight:600,display:"flex",alignItems:"center",gap:8 }}>
-          <span>⚠️</span>{error}
+      {/* error */}
+      {error && (
+        <div style={{ margin: "8px 12px 0", padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, fontSize: 12, color: "#f87171", fontWeight: 600 }}>
+          ⚠️ {error}
         </div>
       )}
 
-      {/* Controls */}
-      <div style={{ padding:"0 16px" }}>
+      {/* ── Controls area ── */}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        justifyContent: "flex-end", padding: "16px 12px 0",
+        gap: 14,
+      }}>
+        {/* Action buttons row: auto / 2x gamble / collect */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
+          <HexBtn
+            onClick={() => setAuto(a => !a)}
+            disabled={spinning}
+            color={auto ? "#0d4024" : "#0a2010"}
+            border={auto ? "#22c55e" : "#1a5c36"}
+            size={68}
+          >
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 20, lineHeight: 1 }}>↺</div>
+            </div>
+          </HexBtn>
+
+          <HexBtn
+            onClick={() => {
+              if (canGamble) setShowGamble(true);
+            }}
+            disabled={!canGamble}
+            color="#0a2010"
+            border="#1a5c36"
+            size={68}
+          >
+            <span style={{ fontSize: 14, fontWeight: 900, color: canGamble ? "#c9a84c" : "#1e3a22" }}>2x</span>
+          </HexBtn>
+
+          <HexBtn
+            onClick={() => {
+              if (totalWin && totalWin > 0) {
+                setTotalWin(null); setWins([]); setGambleId(null);
+              }
+            }}
+            disabled={!totalWin || totalWin === 0}
+            color="#0a2010"
+            border="#1a5c36"
+            size={68}
+          >
+            <div style={{ fontSize: 17, lineHeight: 1 }}>⬇</div>
+          </HexBtn>
+        </div>
+
+        {/* Bet selector + big spin button */}
         <div style={{
-          background:"linear-gradient(145deg,rgba(18,31,45,0.96),rgba(8,15,24,0.96))",
-          border:"1px solid rgba(148,163,184,0.14)",
-          borderRadius:20,padding:18,
-          boxShadow:"0 16px 34px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.07)",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 0,
+          position: "relative",
         }}>
-          {/* Bet + Auto row */}
-          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8 }}>Bet per spin</div>
-              <div style={{ display:"flex",alignItems:"center",gap:0,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,overflow:"hidden" }}>
-                <button onClick={()=>setBetIdx(i=>Math.max(0,i-1))} disabled={spinning||betIdx===0}
-                  style={{ width:44,height:48,background:"none",border:"none",color:spinning||betIdx===0?"#1e293b":"#94a3b8",fontSize:22,cursor:spinning||betIdx===0?"default":"pointer",fontWeight:700,flexShrink:0 }}>−</button>
-                <div style={{ flex:1,textAlign:"center",fontSize:20,fontWeight:900,color:"#f8fafc",letterSpacing:"-0.5px" }}>
-                  {bet}<span style={{ fontSize:11,color:"#475569",marginLeft:3,fontWeight:600 }}>ETB</span>
-                </div>
-                <button onClick={()=>setBetIdx(i=>Math.min(BETS.length-1,i+1))} disabled={spinning||betIdx===BETS.length-1}
-                  style={{ width:44,height:48,background:"none",border:"none",color:spinning||betIdx===BETS.length-1?"#1e293b":"#94a3b8",fontSize:22,cursor:spinning||betIdx===BETS.length-1?"default":"pointer",fontWeight:700,flexShrink:0 }}>+</button>
-              </div>
-            </div>
-
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:6 }}>
-              <div style={{ fontSize:10,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em" }}>Auto</div>
-              <button onClick={()=>setAuto(a=>!a)} style={{
-                width:48,height:48,borderRadius:14,border:"none",
-                background:auto?"linear-gradient(135deg,#22c55e,#16a34a)":"rgba(255,255,255,0.04)",
-                color:auto?"#fff":"#334155",
-                fontSize:20,cursor:"pointer",
-                boxShadow:auto?"0 4px 16px rgba(34,197,94,0.35)":"none",
-                transition:"all 0.2s",
-              }}>⟳</button>
-            </div>
-          </div>
-
-          {/* Spin button */}
+          {/* Prev bet */}
           <button
-            onClick={()=>{ if(!lock.current&&!auto) void doSpin(false); }}
-            disabled={spinning||auto}
+            onClick={() => setBetIdx(i => Math.max(0, i - 1))}
+            disabled={spinning || betIdx === 0}
             style={{
-              width:"100%",height:60,borderRadius:18,border:"none",
-              background: spinning||auto
-                ? "rgba(255,255,255,0.04)"
-                : "linear-gradient(135deg,#ffd166 0%,#f59e0b 52%,#ea580c 100%)",
-              color: spinning||auto?"#334155":"#000",
-              fontSize:17,fontWeight:900,letterSpacing:"0.04em",
-              cursor:spinning||auto?"default":"pointer",
-              boxShadow: spinning||auto?"none":"0 10px 30px rgba(245,158,11,0.34), inset 0 1px 0 rgba(255,255,255,0.45)",
-              transition:"all 0.2s",
-              position:"relative",overflow:"hidden",
+              background: "linear-gradient(145deg, #0e4422, #072510)",
+              border: "2px solid #1a6632",
+              borderRadius: "14px 0 0 14px",
+              color: spinning || betIdx === 0 ? "#1a3d20" : "#4ade80",
+              padding: "14px 18px",
+              fontSize: 13, fontWeight: 800,
+              cursor: spinning || betIdx === 0 ? "default" : "pointer",
+              minWidth: 64,
+              textAlign: "center",
             }}
           >
-            {spinning?(
-              <span style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-                <span style={{ display:"inline-block",animation:"spin 0.8s linear infinite" }}>⟳</span>
-                Spinning...
-              </span>
-            ):auto?"Auto Spin Active":"▶  SPIN"}
+            <div style={{ fontSize: 11, color: "inherit", marginBottom: 2 }}>{BETS[betIdx - 1] ?? "—"}</div>
+            <div style={{ fontSize: 10, color: spinning || betIdx === 0 ? "#1a3d20" : "#1e6e33", fontWeight: 600 }}>ETB</div>
+          </button>
+
+          {/* Center spin pentagon */}
+          <div style={{ position: "relative", zIndex: 2 }}>
+            <button
+              onClick={() => { if (!lock.current && !auto) void doSpin(false); }}
+              disabled={spinning || auto}
+              style={{
+                width: 110, height: 110,
+                clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
+                background: spinning || auto
+                  ? "linear-gradient(145deg, #1a2a1a, #0f1a0f)"
+                  : "linear-gradient(145deg, #c9507a, #8b1a3a)",
+                border: "none",
+                cursor: spinning || auto ? "default" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexDirection: "column",
+                outline: "none", padding: 0,
+                transition: "all 0.2s",
+                boxShadow: spinning || auto ? "none" : "0 0 24px rgba(201,80,122,0.5)",
+              }}
+            >
+              {/* outer gold ring */}
+              <div style={{
+                position: "absolute", inset: -3,
+                clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
+                background: "linear-gradient(145deg, #c9a84c, #7a6010)",
+                zIndex: -1,
+              }}/>
+              <div style={{ textAlign: "center", position: "relative" }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: spinning || auto ? "#334155" : "#ffd166", letterSpacing: "0.02em" }}>
+                  {spinning ? "..." : auto ? "AUTO" : bet.toString()}
+                </div>
+                <div style={{ fontSize: 11, color: spinning || auto ? "#2d3d2d" : "#e8c45a", fontWeight: 700 }}>
+                  {spinning ? "" : "ETB"}
+                </div>
+                {!spinning && !auto && (
+                  <div style={{ fontSize: 9, color: "#e8c45a80", marginTop: 2 }}>▼</div>
+                )}
+              </div>
+            </button>
+          </div>
+
+          {/* Next bet */}
+          <button
+            onClick={() => setBetIdx(i => Math.min(BETS.length - 1, i + 1))}
+            disabled={spinning || betIdx === BETS.length - 1}
+            style={{
+              background: "linear-gradient(145deg, #0e4422, #072510)",
+              border: "2px solid #1a6632",
+              borderRadius: "0 14px 14px 0",
+              color: spinning || betIdx === BETS.length - 1 ? "#1a3d20" : "#4ade80",
+              padding: "14px 18px",
+              fontSize: 13, fontWeight: 800,
+              cursor: spinning || betIdx === BETS.length - 1 ? "default" : "pointer",
+              minWidth: 64,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "inherit", marginBottom: 2 }}>{BETS[betIdx + 1] ?? "—"}</div>
+            <div style={{ fontSize: 10, color: spinning || betIdx === BETS.length - 1 ? "#1a3d20" : "#1e6e33", fontWeight: 600 }}>ETB</div>
           </button>
         </div>
       </div>
 
-      {/* Paytable */}
-      <div style={{ padding:"16px 16px 0" }}>
-        <div style={{ fontSize:10,color:"#334155",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:10 }}>
-          Paytable at {bet} ETB
-        </div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6 }}>
-          {(["seven","double_dollar","bell","lemon","orange","watermelon","cherry"] as SlotSymbol[]).slice(0,6).map(sym=>{
-            const p=((bet*PAYOUTS[sym])/333).toFixed(2);
-            return (
-              <div key={sym} style={{
-                padding:"8px 10px",
-                background:"rgba(255,255,255,0.02)",
-                border:"1px solid rgba(255,255,255,0.04)",
-                borderRadius:12,
-                display:"flex",flexDirection:"column",alignItems:"center",gap:3,
-              }}>
-                <span style={{ fontSize:20 }}>{EMOJI[sym]}{EMOJI[sym]}{EMOJI[sym]}</span>
-                <span style={{ fontSize:12,fontWeight:800,color:GLOW[sym] }}>{p}</span>
-              </div>
-            );
-          })}
-        </div>
+      {/* ── Bottom nav ── */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-around",
+        padding: "14px 24px 20px",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        marginTop: 14,
+      }}>
+        <button onClick={() => setShowRules(true)} style={{
+          background: "none", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 7,
+          color: "#64748b", fontSize: 13, fontWeight: 700,
+        }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: "50%",
+            border: "2px solid #475569",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, color: "#475569", fontWeight: 900,
+          }}>?</div>
+          Rules
+        </button>
+        <button style={{
+          background: "none", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#475569",
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="3" stroke="#475569" strokeWidth="2"/>
+            <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="#475569" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>
 
-      {showGamble&&(
+      {showGamble && (
         <GambleModal
           win={gambleWin}
           onGuess={handleGamble}
-          onCollect={()=>{ setShowGamble(false);setGambleId(null);setGambleResult(null); }}
+          onCollect={() => { setShowGamble(false); setGambleId(null); setGambleResult(null); }}
           result={gambleResult}
           loading={gambleLoading}
         />
@@ -534,17 +989,13 @@ export default function SlotsScreen() {
 
       <style>{`
         @keyframes winPop {
-          0%   { transform: scale(0.5); opacity:0; }
+          0%   { transform: scale(0.5); opacity: 0; }
           60%  { transform: scale(1.08); }
-          100% { transform: scale(1); opacity:1; }
+          100% { transform: scale(1); opacity: 1; }
         }
         @keyframes pulse {
-          0%,100% { opacity:0.6; }
-          50%      { opacity:1; }
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
+          0%, 100% { opacity: 0.6; }
+          50%       { opacity: 1; }
         }
       `}</style>
     </div>
