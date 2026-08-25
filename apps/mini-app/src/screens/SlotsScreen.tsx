@@ -257,7 +257,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
 
 // ─── Hexagon button ───────────────────────────────────────────────────────────
 function HexBtn({
-  children, onClick, disabled, color = "#1a5c36", border = "#2d8a52", size = 72,
+  children, onClick, disabled, color = "linear-gradient(145deg,#1e3a2a,#0f2018)", border = "#2d6a42", size = 72,
 }: {
   children: React.ReactNode; onClick?: () => void; disabled?: boolean;
   color?: string; border?: string; size?: number;
@@ -269,13 +269,13 @@ function HexBtn({
       style={{
         width: size, height: size,
         clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-        background: disabled ? "#1a2a1a" : color,
+        background: disabled ? "linear-gradient(145deg,#161e16,#0d140d)" : color,
         border: "none",
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: disabled ? "default" : "pointer",
         position: "relative",
         padding: 0,
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? 0.5 : 1,
         transition: "opacity 0.2s",
         outline: "none",
       }}
@@ -283,8 +283,9 @@ function HexBtn({
       <div style={{
         position: "absolute", inset: 0,
         clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-        border: `2px solid ${border}`,
+        border: `2px solid ${disabled ? "#1e2e1e" : border}`,
         pointerEvents: "none",
+        boxShadow: disabled ? "none" : `inset 0 1px 0 rgba(255,255,255,0.08)`,
       }}/>
       {children}
     </button>
@@ -838,12 +839,15 @@ export default function SlotsScreen() {
           <HexBtn
             onClick={() => setAuto(a => !a)}
             disabled={spinning}
-            color={auto ? "#0d4024" : "#0a2010"}
-            border={auto ? "#22c55e" : "#1a5c36"}
+            color={auto ? "linear-gradient(145deg,#065f25,#043d18)" : "linear-gradient(145deg,#1e3a2a,#0f2018)"}
+            border={auto ? "#22c55e" : "#2d6a42"}
             size={68}
           >
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, lineHeight: 1 }}>↺</div>
+              <div style={{ fontSize: 20, lineHeight: 1, color: auto ? "#4ade80" : "#6ee7a0" }}>↺</div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: auto ? "#4ade80" : "#4d9965", marginTop: 2, letterSpacing: "0.05em" }}>
+                {auto ? "ON" : "AUTO"}
+              </div>
             </div>
           </HexBtn>
 
@@ -852,11 +856,11 @@ export default function SlotsScreen() {
               if (canGamble) setShowGamble(true);
             }}
             disabled={!canGamble}
-            color="#0a2010"
-            border="#1a5c36"
+            color={canGamble ? "linear-gradient(145deg,#7c3a00,#4a2000)" : "linear-gradient(145deg,#1e2a1e,#0f180f)"}
+            border={canGamble ? "#f59e0b" : "#2d4a2d"}
             size={68}
           >
-            <span style={{ fontSize: 14, fontWeight: 900, color: canGamble ? "#c9a84c" : "#1e3a22" }}>2x</span>
+            <span style={{ fontSize: 15, fontWeight: 900, color: canGamble ? "#fbbf24" : "#2d4a2d" }}>2x</span>
           </HexBtn>
 
           <HexBtn
@@ -866,11 +870,11 @@ export default function SlotsScreen() {
               }
             }}
             disabled={!totalWin || totalWin === 0}
-            color="#0a2010"
-            border="#1a5c36"
+            color={totalWin && totalWin > 0 ? "linear-gradient(145deg,#1a4a6e,#0d2a45)" : "linear-gradient(145deg,#1e2a1e,#0f180f)"}
+            border={totalWin && totalWin > 0 ? "#38bdf8" : "#2d4a2d"}
             size={68}
           >
-            <div style={{ fontSize: 17, lineHeight: 1 }}>⬇</div>
+            <div style={{ fontSize: 17, lineHeight: 1, color: totalWin && totalWin > 0 ? "#7dd3fc" : "#2d4a2d" }}>⬇</div>
           </HexBtn>
         </div>
 
