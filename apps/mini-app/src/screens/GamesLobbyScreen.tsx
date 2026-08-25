@@ -281,6 +281,7 @@ export default function GamesLobbyScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isAgent, setIsAgent] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -292,6 +293,7 @@ export default function GamesLobbyScreen() {
           setBalance(profile.mainWallet.balance);
           setUsername(profile.username ?? null);
           setIsAgent(!!getAgentJwt());
+          setIsSuspended(profile.is_suspended);
         }
       } catch {
         // ignore — auth may not be ready yet
@@ -300,6 +302,34 @@ export default function GamesLobbyScreen() {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  if (isSuspended) {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        background: 'linear-gradient(180deg,#07111e 0%,#050b18 50%,#030710 100%)',
+        color: '#f8fafc',
+        maxWidth: 480,
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 24px',
+        textAlign: 'center',
+        gap: 16,
+      }}>
+        <div style={{ fontSize: 56 }}>🚫</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: '#f87171', letterSpacing: '-0.4px' }}>
+          Account Suspended
+        </div>
+        <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, maxWidth: 300 }}>
+          መለያዎ ታግዷል። እባክዎ ድጋፍ ያግኙ።{'\n'}
+          Your account has been suspended. Please contact support.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{

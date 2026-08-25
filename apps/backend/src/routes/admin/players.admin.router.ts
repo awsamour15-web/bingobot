@@ -24,17 +24,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       }
     : {};
 
-  const orderBy =
-    sortBy === 'balance'
-      ? { wallets: { _sum: { balance: 'desc' as const } } }
-      : { created_at: 'desc' as const };
-
   const [players, total] = await Promise.all([
     prisma.player.findMany({
       where,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      orderBy,
+      skip: sortBy === 'balance' ? 0 : (page - 1) * pageSize,
+      take: sortBy === 'balance' ? undefined : pageSize,
+      orderBy: { created_at: 'desc' as const },
       include: {
         wallets: { select: { type: true, balance: true } },
         _count: { select: { round_entries: true, referrals: true } },
@@ -43,7 +38,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     prisma.player.count({ where }),
   ]);
 
-  const items = players.map((p) => ({
+  let mapped = players.map((p) => ({
     id: p.id,
     username: p.username,
     telegram_id: String(p.telegram_id),
@@ -56,6 +51,13 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     total_games: p._count.round_entries,
     total_referrals: p._count.referrals,
   }));
+
+  if (sortBy === 'balance') {
+    mapped.sort((a, b) => (b.main_wallet_balance + b.play_wallet_balance) - (a.main_wallet_balance + a.play_wallet_balance));
+    mapped = mapped.slice((page - 1) * pageSize, page * pageSize);
+  }
+
+  const items = mapped;
 
   res.json({ items, total, page, pageSize });
 });
