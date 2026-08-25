@@ -31,7 +31,7 @@ function SeedCard({ onSeeded }: { onSeeded: () => void }) {
 
   return (
     <Card style={{ marginBottom: 20 }}>
-      <CardHeader title="Setup" subtitle="Create the 10 mock players in the database if they don't exist yet" />
+      <CardHeader title="Setup" subtitle="Create up to 50 mock players in the database if they don't exist yet" />
       {err && <Alert type="error">{err}</Alert>}
       {msg && <Alert type="success">{msg}</Alert>}
       <Btn onClick={handleSeed} disabled={loading}>{loading ? 'Seeding…' : '🌱 Seed Mock Players'}</Btn>
@@ -380,8 +380,8 @@ function BotConfigCard() {
             Guaranteed Win (one mock player wins each round)
           </label>
         </div>
-        <Field label="Players per round (1–10)">
-          <input style={inputCss} type="number" min="1" max="10" value={count}
+        <Field label="Players per round (1–50)">
+          <input style={inputCss} type="number" min="1" max="50" value={count}
             onChange={(e) => setCount(e.target.value)} />
         </Field>
         <Field label="Balance per player (0 = auto-cover stake)">

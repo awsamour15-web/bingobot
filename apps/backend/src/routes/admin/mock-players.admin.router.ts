@@ -9,14 +9,11 @@ import { GameRoundService } from '../../services/game-round.service.js';
 
 const router: RouterType = Router();
 
-const MOCK_PLAYER_COUNT = 10;
+const MOCK_PLAYER_COUNT = 50;
 
 // Fixed telegram IDs for mock players (use negative range to avoid collisions)
 const MOCK_TELEGRAM_IDS = Array.from({ length: MOCK_PLAYER_COUNT }, (_, i) => BigInt(-(i + 1)));
-const MOCK_USERNAMES = [
-  'mock_player_1', 'mock_player_2', 'mock_player_3', 'mock_player_4', 'mock_player_5',
-  'mock_player_6', 'mock_player_7', 'mock_player_8', 'mock_player_9', 'mock_player_10',
-];
+const MOCK_USERNAMES = Array.from({ length: MOCK_PLAYER_COUNT }, (_, i) => `mock_player_${i + 1}`);
 
 // POST /api/admin/mock-players/seed
 // Creates the 10 mock players if they don't exist yet
@@ -293,7 +290,7 @@ router.patch('/bot-config', async (req: Request, res: Response): Promise<void> =
   const updates: Array<{ key: string; value: string }> = [];
   if (enabled !== undefined) updates.push({ key: 'mock_bot_enabled', value: String(enabled) });
   if (winEnabled !== undefined) updates.push({ key: 'mock_bot_win_enabled', value: String(winEnabled) });
-  if (count !== undefined) updates.push({ key: 'mock_bot_count', value: String(Math.max(1, Math.min(10, count))) });
+  if (count !== undefined) updates.push({ key: 'mock_bot_count', value: String(Math.max(1, Math.min(50, count))) });
   if (balance !== undefined) updates.push({ key: 'mock_bot_balance', value: String(Math.max(0, balance)) });
   if (stakes !== undefined) {
     const valid = stakes.filter((s) => [10, 20, 50].includes(s));
