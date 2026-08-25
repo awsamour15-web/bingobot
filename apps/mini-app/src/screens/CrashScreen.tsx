@@ -25,51 +25,79 @@ function PlaneSVG({ crashed, tilt }: { crashed: boolean; tilt: number }) {
   return (
     <div style={{
       transform: `rotate(${tilt}deg)`,
-      transition: crashed ? 'transform 0.4s ease-in' : 'transform 0.25s ease-out',
+      transition: crashed ? 'transform 0.5s ease-in' : 'transform 0.2s ease-out',
       filter: crashed
-        ? 'drop-shadow(0 0 16px #e8073f) drop-shadow(0 0 6px #ff0000)'
-        : 'drop-shadow(0 0 12px rgba(232,7,63,0.85)) drop-shadow(0 0 4px rgba(255,80,80,0.5))',
+        ? 'drop-shadow(0 0 18px #e8073f) drop-shadow(0 0 8px #ff0000)'
+        : 'drop-shadow(0 0 14px rgba(232,7,63,0.9)) drop-shadow(0 0 5px rgba(255,120,80,0.6))',
     }}>
-      {/* Aviator-style propeller plane facing right */}
-      <svg width="96" height="56" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Propeller */}
-        {!crashed && (
+      <svg width="110" height="64" viewBox="0 0 220 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+        {/* ── Spinning propeller (CSS animation) ── */}
+        {!crashed ? (
+          <g style={{ transformOrigin: '198px 52px', animation: 'propSpin 0.12s linear infinite' }}>
+            {/* blade 1 */}
+            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#c0052e" opacity="0.95" />
+            {/* blade 2 — 60° */}
+            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#c0052e" opacity="0.95" transform="rotate(60 198 52)" />
+            {/* blade 3 — 120° */}
+            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#c0052e" opacity="0.95" transform="rotate(120 198 52)" />
+          </g>
+        ) : (
+          /* stopped propeller on crash */
           <g>
-            <ellipse cx="178" cy="44" rx="5" ry="22" fill="#e8073f" opacity="0.9" transform="rotate(-15 178 44)" />
-            <ellipse cx="178" cy="44" rx="5" ry="22" fill="#e8073f" opacity="0.9" transform="rotate(75 178 44)" />
-            <circle cx="178" cy="44" r="6" fill="#c0052e" />
+            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#7f0020" opacity="0.7" />
+            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#7f0020" opacity="0.7" transform="rotate(60 198 52)" />
           </g>
         )}
-        {/* Engine cowl */}
-        <ellipse cx="168" cy="52" rx="14" ry="11" fill="#c0052e" />
-        {/* Main fuselage */}
-        <path d="M22 70 Q50 62 90 58 L155 42 L168 46 L168 58 L155 62 L90 68 Q50 74 28 78 Z" fill="#e8073f" />
-        {/* Cockpit outline */}
-        <path d="M110 42 L140 34 L148 38 L148 50 L118 54 Z" fill="#c0052e" />
-        {/* Cockpit window */}
-        <path d="M116 44 L136 37 L142 40 L142 48 L120 51 Z" fill="#1a0008" opacity="0.85" />
-        {/* Z marking on fuselage */}
-        <path d="M95 47 L108 47 L97 57 L110 57" stroke="#c0052e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        {/* Top fin / dorsal */}
-        <path d="M130 42 L120 28 L112 30 L118 44 Z" fill="#e8073f" />
-        <path d="M122 42 L114 31 L116 30 L120 42 Z" fill="#c0052e" />
-        {/* Main wing */}
-        <path d="M80 60 L100 22 L118 28 L104 64 Z" fill="#e8073f" />
-        <path d="M86 60 L104 26 L110 28 L96 63 Z" fill="#c0052e" />
-        {/* Tail section */}
-        <path d="M22 70 L10 62 L18 58 L36 66 Z" fill="#e8073f" />
-        {/* Tail vertical fin */}
-        <path d="M26 70 L20 56 L30 58 L34 70 Z" fill="#e8073f" />
-        {/* Tail horizontal stabilizers */}
-        <path d="M16 68 L6 74 L10 78 L26 74 Z" fill="#e8073f" />
-        <path d="M14 64 L4 58 L8 55 L22 62 Z" fill="#e8073f" />
-        {/* Bottom hull */}
-        <path d="M30 78 Q80 82 155 70 L168 66 L155 72 Q80 86 28 82 Z" fill="#c0052e" />
-        {/* Outline strokes for depth */}
-        <path d="M22 70 Q50 62 90 58 L155 42 L168 46 L168 58 L155 62 L90 68 Q50 74 28 78 Z"
-          stroke="#000" strokeWidth="2.5" strokeLinejoin="round" fill="none" />
-        <path d="M80 60 L100 22 L118 28 L104 64 Z" stroke="#000" strokeWidth="2" strokeLinejoin="round" fill="none" />
-        <path d="M130 42 L120 28 L112 30 L118 44 Z" stroke="#000" strokeWidth="2" strokeLinejoin="round" fill="none" />
+
+        {/* ── Propeller hub ── */}
+        <circle cx="198" cy="52" r="7" fill="#8b0020" stroke="#000" strokeWidth="1.5" />
+
+        {/* ── Engine cowl / nose ── */}
+        <path d="M180 40 Q198 40 205 52 Q198 64 180 64 Z" fill="#a00428" stroke="#000" strokeWidth="1.5" />
+
+        {/* ── Main fuselage ── */}
+        <path d="M18 72 Q55 60 105 55 L172 40 L180 44 L180 60 L172 64 L105 69 Q55 76 22 82 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+
+        {/* ── Bottom hull / belly ── */}
+        <path d="M22 82 Q70 88 172 70 L180 66 L172 74 Q70 92 26 86 Z"
+          fill="#b00530" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+        {/* ── Main wing (top) ── */}
+        <path d="M88 62 L108 14 L126 20 L110 66 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
+        {/* wing shading */}
+        <path d="M96 61 L112 18 L118 20 L104 65 Z" fill="#c0052e" />
+
+        {/* ── Dorsal fin ── */}
+        <path d="M138 54 L126 30 L116 33 L124 56 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M132 54 L122 34 L118 35 L122 56 Z" fill="#c0052e" />
+
+        {/* ── Cockpit canopy ── */}
+        <path d="M118 55 L148 44 L156 48 L156 60 L126 65 Z"
+          fill="#b00530" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        {/* window glass */}
+        <path d="M124 57 L146 47 L152 50 L152 58 L130 62 Z"
+          fill="#0d0010" opacity="0.88" />
+        {/* window glint */}
+        <path d="M128 57 L138 50 L140 52 L131 59 Z" fill="rgba(255,255,255,0.18)" />
+
+        {/* ── Tail fuselage taper ── */}
+        <path d="M18 72 L6 65 L14 60 L34 68 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+        {/* ── Tail vertical fin ── */}
+        <path d="M22 72 L16 52 L28 56 L32 72 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
+        {/* ── Tail horizontal stabilisers ── */}
+        <path d="M14 70 L2 78 L8 83 L26 76 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M12 65 L2 56 L8 52 L22 62 Z"
+          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
+
       </svg>
     </div>
   );
@@ -85,6 +113,14 @@ interface Particle {
   size: number;
 }
 
+interface Star {
+  x: number;
+  y: number;
+  speed: number; // px/s scrolling left
+  size: number;
+  alpha: number;
+}
+
 // ─── Graph canvas ─────────────────────────────────────────────────────────────
 
 function CrashGraph({ phase, multiplier, crashPoint }: {
@@ -98,12 +134,26 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
   const rafRef = useRef<number>(0);
   const particlesRef = useRef<Particle[]>([]);
   const particleIdRef = useRef(0);
+  // Stars initialised once
+  const starsRef = useRef<Star[]>([]);
 
   const [planePct, setPlanePct] = useState<{ x: number; y: number } | null>(null);
   const [planeTilt, setPlaneTilt] = useState(-12);
 
   const isCrashed = phase === 'crashed';
   const displayVal = isCrashed ? (crashPoint ?? multiplier) : multiplier;
+
+  // Initialise stars once
+  useEffect(() => {
+    if (starsRef.current.length) return;
+    starsRef.current = Array.from({ length: 80 }, () => ({
+      x: Math.random() * 420,
+      y: Math.random() * 210,
+      speed: 20 + Math.random() * 60,
+      size: 0.5 + Math.random() * 1.5,
+      alpha: 0.3 + Math.random() * 0.7,
+    }));
+  }, []);
 
   useEffect(() => {
     if (phase === 'waiting' || phase === 'idle') {
@@ -147,6 +197,38 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
 
       ctx.clearRect(0, 0, W, H);
 
+      // ── Deep space background gradient ──
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+      if (isCrashed) {
+        bgGrad.addColorStop(0, 'rgba(40,0,8,1)');
+        bgGrad.addColorStop(1, 'rgba(15,0,4,1)');
+      } else {
+        bgGrad.addColorStop(0, 'rgba(8,10,28,1)');
+        bgGrad.addColorStop(1, 'rgba(5,7,18,1)');
+      }
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── Animated stars (scroll left when running) ──
+      const starSpeed = phase === 'running' ? 1 : 0;
+      starsRef.current.forEach(s => {
+        if (starSpeed) {
+          s.x -= s.speed * dt;
+          if (s.x < 0) {
+            s.x = W + Math.random() * 20;
+            s.y = Math.random() * H;
+          }
+        }
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        // Twinkle: oscillate alpha
+        const twinkle = s.alpha * (0.7 + 0.3 * Math.sin(now / 600 + s.x));
+        ctx.fillStyle = isCrashed
+          ? `rgba(255,120,120,${twinkle * 0.6})`
+          : `rgba(200,220,255,${twinkle})`;
+        ctx.fill();
+      });
+
       // ── Conic ray background ──
       const rays = 18;
       for (let i = 0; i < rays; i++) {
@@ -158,7 +240,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
         ctx.lineTo(Math.cos(a1) * r, H + Math.sin(a1) * r);
         ctx.lineTo(Math.cos(a2) * r, H + Math.sin(a2) * r);
         ctx.closePath();
-        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.022)' : 'rgba(0,0,0,0)';
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(0,0,0,0)';
         ctx.fill();
       }
 
@@ -167,8 +249,8 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       for (let i = 0; i <= 6; i++) {
         const y = padY + (i / 6) * (H - padY - 10);
         ctx.beginPath();
-        ctx.arc(10, y, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(99,140,255,0.45)';
+        ctx.arc(10, y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(99,140,255,0.35)';
         ctx.fill();
       }
 
@@ -190,9 +272,13 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
 
       // ── Filled area under curve ──
       const grad = ctx.createLinearGradient(0, tipY, 0, H);
-      grad.addColorStop(0, isCrashed ? 'rgba(239,68,68,0.35)' : 'rgba(239,68,68,0.22)');
-      grad.addColorStop(1, 'rgba(239,68,68,0.02)');
-
+      if (isCrashed) {
+        grad.addColorStop(0, 'rgba(239,68,68,0.4)');
+        grad.addColorStop(1, 'rgba(239,68,68,0.03)');
+      } else {
+        grad.addColorStop(0, 'rgba(232,7,63,0.28)');
+        grad.addColorStop(1, 'rgba(232,7,63,0.02)');
+      }
       ctx.beginPath();
       ctx.moveTo(toX(pts[0]!.x), H - 10);
       pts.forEach(p => ctx.lineTo(toX(p.x), toY(p.y)));
@@ -207,11 +293,11 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
         const x = toX(p.x), y = toY(p.y);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
-      ctx.strokeStyle = isCrashed ? '#ef4444' : '#ef4444';
+      ctx.strokeStyle = '#e8073f';
       ctx.lineWidth = 2.5;
       ctx.lineJoin = 'round';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = isCrashed ? 0 : 6;
+      ctx.shadowColor = '#e8073f';
+      ctx.shadowBlur = isCrashed ? 4 : 8;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
@@ -219,61 +305,61 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       if (!isCrashed) {
         ctx.beginPath();
         ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ef4444';
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 14;
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#e8073f';
+        ctx.shadowBlur = 16;
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      // ── Smoke trail particles ──
+      // ── Smoke / exhaust trail particles ──
       if (!isCrashed && pts.length >= 2) {
-        // spawn new particle at tip
         particlesRef.current.push({
           id: particleIdRef.current++,
-          x: tipX,
-          y: tipY,
+          x: tipX - 8,
+          y: tipY + 4,
           age: 0,
-          size: 4 + Math.random() * 3,
+          size: 3 + Math.random() * 4,
         });
-        if (particlesRef.current.length > 60) particlesRef.current.shift();
+        if (particlesRef.current.length > 80) particlesRef.current.shift();
       }
 
-      // age and draw particles
       particlesRef.current = particlesRef.current.filter(p => p.age < 1);
       particlesRef.current.forEach(p => {
-        p.age += dt * 0.9;
-        p.x -= dt * 28; // drift left
-        p.y += dt * 8;  // drift down slightly
-        const alpha = (1 - p.age) * 0.35;
-        const r = p.size * (1 + p.age * 1.5);
+        p.age += dt * 0.7;
+        p.x -= dt * 35;
+        p.y += dt * 6;
+        const alpha = (1 - p.age) * 0.3;
+        const r = p.size * (1 + p.age * 2);
         ctx.beginPath();
         ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(200,200,200,${alpha})`;
+        ctx.fillStyle = `rgba(220,200,200,${alpha})`;
         ctx.fill();
       });
 
-      // Compute tilt from last two visible points
+      // ── Compute tilt from last two curve points ──
       if (pts.length >= 2) {
         const prev = pts[pts.length - 2]!;
         const dx = toX(lastPt.x) - toX(prev.x);
         const dy = toY(lastPt.y) - toY(prev.y);
         const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
         if (!isCrashed) {
-          setPlaneTilt(Math.max(-35, Math.min(0, angleDeg)));
+          setPlaneTilt(Math.max(-40, Math.min(5, angleDeg)));
         } else {
-          setPlaneTilt(50); // nose dive on crash
+          setPlaneTilt(60);
         }
       }
 
-      // Update plane overlay position
+      // Update plane overlay position — offset left so nose is at tip
       setPlanePct({ x: (tipX / W) * 100, y: (tipY / H) * 100 });
 
       if (phase === 'running') rafRef.current = requestAnimationFrame(draw);
+      // One final frame on crash to render crashed state
+      if (phase === 'crashed' && !rafRef.current) rafRef.current = requestAnimationFrame(draw);
     };
 
     rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => { cancelAnimationFrame(rafRef.current); rafRef.current = 0; };
   }, [phase, isCrashed]);
 
   return (
@@ -893,7 +979,7 @@ export default function CrashScreen() {
       </div>
 
       {/* Crash graph */}
-      <div style={{ background: '#111320', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', background: '#080a1c' }}>
         <CrashGraph phase={phase} multiplier={multiplier} crashPoint={crashPoint} />
         <div style={{ display: 'flex', gap: 4, justifyContent: 'center', padding: '4px 0 8px' }}>
           {Array.from({ length: 14 }).map((_, i) => (
@@ -969,6 +1055,10 @@ export default function CrashScreen() {
       </div>
 
       <style>{`
+        @keyframes propSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
         @keyframes cashoutPulse {
           0%, 100% { transform: scale(1); box-shadow: 0 0 16px rgba(34,197,94,0.4); }
           50% { transform: scale(1.02); box-shadow: 0 0 28px rgba(34,197,94,0.7); }
