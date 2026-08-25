@@ -84,9 +84,15 @@ class ErrorBoundary extends React.Component<
 
 // ─── Bottom navigation ───────────────────────────────────────────────────────
 
+const FULLSCREEN_ROUTES = ['/cartela', '/game', '/crash', '/slots', '/bingo'];
+
+function isFullscreenRoute(pathname: string) {
+  return FULLSCREEN_ROUTES.some(r => pathname.includes(r));
+}
+
 function BottomNav() {
   const location = useLocation();
-  if (location.pathname.includes('/cartela') || location.pathname.includes('/game')) return null;
+  if (isFullscreenRoute(location.pathname)) return null;
 
   const tabs = [
     { to: '/', icon: '🎮', label: 'Games' },
@@ -231,7 +237,7 @@ function BottomNav() {
 
 function AppInner() {
   const location = useLocation();
-  const isSubPage = location.pathname.includes('/cartela') || location.pathname.includes('/game');
+  const isSubPage = isFullscreenRoute(location.pathname);
 
   // Keep socket connected globally
   useEffect(() => {
