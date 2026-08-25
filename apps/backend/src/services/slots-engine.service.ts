@@ -11,16 +11,15 @@ export const SYMBOLS = ['cherry', 'watermelon', 'orange', 'lemon', 'bell', 'doub
 export type Symbol = typeof SYMBOLS[number];
 
 // Payout multipliers per symbol (3-of-a-kind on a payline, before reel multiplier)
-// Paytable (at 5 ETB bet): 77=75, $$=50, Bell=25, Watermelon/Grape=20, Orange/Plum/Cherry=10
-// → divide by 5 → base multipliers below
+// Reduced to keep RTP reasonable even when wins land
 export const PAYOUTS: Record<Symbol, number> = {
-  seven:         15,
-  double_dollar: 10,
-  bell:           5,
-  watermelon:     4,
-  orange:         2,
-  lemon:          2,
-  cherry:         2,
+  seven:         8,
+  double_dollar: 5,
+  bell:           3,
+  watermelon:     2,
+  orange:         1,
+  lemon:          1,
+  cherry:         1,
 };
 
 // Reel strips per column — weighted for controlled hit frequency
@@ -51,8 +50,8 @@ const REEL_2: Symbol[] = [
 
 const REELS = [REEL_0, REEL_1, REEL_2] as const;
 
-// Multiplier reel: 5 possible values (1x–5x). 1x most common, 5x rare.
-const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 1, 1, 1, 5, 1];
+// Multiplier reel: mostly 1x, max 3x
+const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 3, 1];
 
 // ─── Paylines ─────────────────────────────────────────────────────────────────
 // 5 fixed paylines. Each payline is [col0_row, col1_row, col2_row]
@@ -149,12 +148,13 @@ export function spin(betAmount: number, houseEdgePct = 35): SpinResult {
       paylineWins.length = 0;
       totalWin = 0;
     } else {
-      // Cap win at 50× bet
-      const maxWin = betAmount * 50;
+      // Cap win at 20× bet
+      const maxWin = betAmount * 20;
       if (totalWin > maxWin) {
+        // Compute ratio BEFORE overwriting totalWin
+        const ratio = maxWin / totalWin;
         totalWin = maxWin;
         // Reduce individual payline amounts proportionally
-        const ratio = maxWin / totalWin;
         for (const w of paylineWins) w.payout = parseFloat((w.payout * ratio).toFixed(2));
       }
     }
