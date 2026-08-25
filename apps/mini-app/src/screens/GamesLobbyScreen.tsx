@@ -112,7 +112,7 @@ const GAMES: Game[] = [
 ];
 
 // Only these usernames can access Multi Hot 5 while it's under maintenance
-const SLOTS_WHITELIST = ['fidel', 'fidelAdmin']; // ← add your username here
+const SLOTS_WHITELIST = ['kanu_1921', 'fidelAdmin']; // ← add your username here
 
 function GameCard({ game, balance, username }: { game: Game; balance: number | null; username: string | null }) {
   const navigate = useNavigate();
