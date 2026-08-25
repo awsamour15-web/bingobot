@@ -363,7 +363,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
   }, [phase, isCrashed]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 210 }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 160 }}>
       <canvas
         ref={canvasRef}
         width={420}
@@ -405,7 +405,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
         {(phase === 'running' || phase === 'crashed') && (
           <>
             <div style={{
-              fontSize: 62,
+              fontSize: 'clamp(38px, 11vw, 62px)',
               fontWeight: 900,
               color: isCrashed ? '#ef4444' : '#ffffff',
               lineHeight: 1,
@@ -928,43 +928,37 @@ export default function CrashScreen() {
 
   return (
     <div style={{
-      minHeight: '100dvh',
+      height: '100dvh',
       background: '#0d0f1a',
       color: '#f8fafc',
       display: 'flex',
       flexDirection: 'column',
-      maxWidth: 480,
+      width: '100%',
+      maxWidth: 520,
       margin: '0 auto',
       fontFamily: "'Inter', sans-serif",
+      overflow: 'hidden',
     }}>
 
       {/* Header */}
       <div style={{
+        flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 16px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '10px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Aviator logo — matches brand font style */}
-          <svg width="120" height="32" viewBox="0 0 340 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* "A" */}
+          <svg width="110" height="28" viewBox="0 0 340 80" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M8 72 L28 8 L48 8 L68 72 L54 72 L50 58 L26 58 L22 72 Z M30 46 L46 46 L38 18 Z" fill="#e8073f"/>
-            {/* "v" */}
             <path d="M72 22 L86 62 L100 22 L114 22 L94 72 L78 72 L58 22 Z" fill="#e8073f"/>
-            {/* "i" dot */}
             <circle cx="126" cy="10" r="7" fill="#e8073f"/>
-            {/* "i" stem */}
             <rect x="120" y="22" width="12" height="50" rx="6" fill="#e8073f"/>
-            {/* "a" */}
             <path d="M148 34 Q162 20 178 22 Q196 22 200 36 L200 72 L188 72 L188 66 Q180 74 168 74 Q152 74 148 62 Q144 48 156 40 Q164 34 188 36 Q186 26 174 26 Q164 26 158 34 Z M188 46 Q164 42 160 52 Q158 62 168 64 Q180 66 188 58 Z" fill="#e8073f"/>
-            {/* "t" */}
             <path d="M210 8 L222 8 L222 22 L236 22 L236 34 L222 34 L222 60 Q222 68 230 68 L236 68 L236 72 Q228 76 220 74 Q208 70 208 60 L208 34 L200 34 L200 22 L210 22 Z" fill="#e8073f"/>
-            {/* "o" */}
             <path d="M244 47 Q244 22 268 22 Q292 22 292 47 Q292 72 268 72 Q244 72 244 47 Z M256 47 Q256 62 268 62 Q280 62 280 47 Q280 32 268 32 Q256 32 256 47 Z" fill="#e8073f"/>
-            {/* "r" */}
             <path d="M298 22 L310 22 L310 32 Q316 20 330 22 L330 34 Q314 30 312 44 L312 72 L298 72 Z" fill="#e8073f"/>
           </svg>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
             {balance !== null ? balance.toFixed(2) : '—'} ETB
           </span>
@@ -974,83 +968,81 @@ export default function CrashScreen() {
       </div>
 
       {/* History chips */}
-      <div style={{ padding: '8px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ flexShrink: 0, padding: '6px 0 4px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <HistoryChips items={history} />
       </div>
 
-      {/* Crash graph */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: '#080a1c' }}>
+      {/* Crash graph — flex-grows to fill available space */}
+      <div style={{ flex: '1 1 0', position: 'relative', overflow: 'hidden', background: '#080a1c', minHeight: 140 }}>
         <CrashGraph phase={phase} multiplier={multiplier} crashPoint={crashPoint} />
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'center', padding: '4px 0 8px' }}>
-          {Array.from({ length: 14 }).map((_, i) => (
-            <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: i === 6 ? '#fff' : 'rgba(255,255,255,0.25)' }} />
-          ))}
-        </div>
       </div>
 
-      {/* Bet panels */}
-      <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <BetPanel
-          phase={phase} multiplier={multiplier}
-          myBet={myBet1} onBet={(a) => handleBet(1, a)} onCashout={() => handleCashout(1)}
-          placing={placing1} cashingOut={cashingOut1}
-        />
-        <BetPanel
-          phase={phase} multiplier={multiplier}
-          myBet={myBet2} onBet={(a) => handleBet(2, a)} onCashout={() => handleCashout(2)}
-          placing={placing2} cashingOut={cashingOut2}
-        />
-      </div>
-
-      {/* Bets section */}
-      <div style={{ padding: '0 12px 8px' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 8 }}>
-          {(['all', 'previous', 'top'] as const).map(t => (
-            <button key={t} onClick={() => setBetTab(t)} style={{
-              flex: 1, padding: '9px 0', border: 'none', background: 'transparent',
-              color: betTab === t ? '#fff' : '#64748b', fontWeight: 700, fontSize: 13,
-              cursor: 'pointer', textTransform: 'capitalize',
-              borderBottom: betTab === t ? '2px solid #ef4444' : '2px solid transparent',
-            }}>
-              {t === 'all' ? 'All Bets' : t === 'previous' ? 'Previous' : 'Top'}
-            </button>
-          ))}
+      {/* Scrollable bottom section */}
+      <div style={{ flexShrink: 0, overflowY: 'auto', maxHeight: '52vh' }}>
+        {/* Bet panels */}
+        <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <BetPanel
+            phase={phase} multiplier={multiplier}
+            myBet={myBet1} onBet={(a) => handleBet(1, a)} onCashout={() => handleCashout(1)}
+            placing={placing1} cashingOut={cashingOut1}
+          />
+          <BetPanel
+            phase={phase} multiplier={multiplier}
+            myBet={myBet2} onBet={(a) => handleBet(2, a)} onCashout={() => handleCashout(2)}
+            placing={placing2} cashingOut={cashingOut2}
+          />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex' }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: ['#ef4444','#3b82f6','#8b5cf6'][i],
-                  marginLeft: i > 0 ? -6 : 0,
-                  border: '2px solid #0d0f1a',
-                  fontSize: 9, color: '#fff', fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }} />
-              ))}
+        {/* Bets section */}
+        <div style={{ padding: '0 10px 10px' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 8 }}>
+            {(['all', 'previous', 'top'] as const).map(t => (
+              <button key={t} onClick={() => setBetTab(t)} style={{
+                flex: 1, padding: '8px 0', border: 'none', background: 'transparent',
+                color: betTab === t ? '#fff' : '#64748b', fontWeight: 700, fontSize: 12,
+                cursor: 'pointer', textTransform: 'capitalize',
+                borderBottom: betTab === t ? '2px solid #ef4444' : '2px solid transparent',
+              }}>
+                {t === 'all' ? 'All Bets' : t === 'previous' ? 'Previous' : 'Top'}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex' }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: ['#ef4444','#3b82f6','#8b5cf6'][i],
+                    marginLeft: i > 0 ? -6 : 0,
+                    border: '2px solid #0d0f1a',
+                    fontSize: 9, color: '#fff', fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }} />
+                ))}
+              </div>
+              <span style={{ fontSize: 12, color: '#64748b' }}>{bets.length}/118 Bets</span>
             </div>
-            <span style={{ fontSize: 12, color: '#64748b' }}>{bets.length}/118 Bets</span>
+            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>Total win ETB</span>
           </div>
-          <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>Total win ETB</span>
-        </div>
 
-        <div style={{
-          background: '#1a1d2e', borderRadius: 12, overflow: 'hidden',
-          border: '1px solid rgba(255,255,255,0.06)', maxHeight: 200, overflowY: 'auto',
-        }}>
-          <div style={{ display: 'flex', padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#14172a' }}>
-            <div style={{ flex: 1, fontSize: 11, color: '#475569', fontWeight: 700 }}>User</div>
-            <div style={{ minWidth: 48, textAlign: 'right', fontSize: 11, color: '#475569', fontWeight: 700 }}>Bet</div>
-            <div style={{ minWidth: 48, textAlign: 'right', fontSize: 11, color: '#475569', fontWeight: 700 }}>Out @</div>
-            <div style={{ minWidth: 58, textAlign: 'right', fontSize: 11, color: '#475569', fontWeight: 700 }}>Profit</div>
+          <div style={{
+            background: '#1a1d2e', borderRadius: 12, overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <div style={{ display: 'flex', padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#14172a' }}>
+              <div style={{ flex: 1, fontSize: 11, color: '#475569', fontWeight: 700 }}>User</div>
+              <div style={{ minWidth: 48, textAlign: 'right', fontSize: 11, color: '#475569', fontWeight: 700 }}>Bet</div>
+              <div style={{ minWidth: 48, textAlign: 'right', fontSize: 11, color: '#475569', fontWeight: 700 }}>Out @</div>
+              <div style={{ minWidth: 58, textAlign: 'right', fontSize: 11, color: '#475569', fontWeight: 700 }}>Profit</div>
+            </div>
+            {bets.length === 0 ? (
+              <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 13, color: '#334155' }}>No bets this round</div>
+            ) : bets.map((b, i) => (
+              <BetRow key={i} bet={b} isMe={b.username === myUsername} />
+            ))}
           </div>
-          {bets.length === 0 ? (
-            <div style={{ padding: '20px 0', textAlign: 'center', fontSize: 13, color: '#334155' }}>No bets this round</div>
-          ) : bets.map((b, i) => (
-            <BetRow key={i} bet={b} isMe={b.username === myUsername} />
-          ))}
         </div>
       </div>
 
