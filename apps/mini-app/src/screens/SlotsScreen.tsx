@@ -141,12 +141,12 @@ const INIT_SAFE: SlotSymbol[][] = [
   ["double_dollar","cherry","bell"],
 ];
 
-const MUL_COLORS: Record<number, { text: string; border: string; bg: string }> = {
-  1: { text: "#7c9cbf", border: "#4a7090", bg: "rgba(74,112,144,0.2)" },
-  2: { text: "#4ade80", border: "#16a34a", bg: "rgba(22,163,74,0.2)" },
-  3: { text: "#c9a84c", border: "#a07828", bg: "rgba(160,120,40,0.2)" },
-  4: { text: "#e879f9", border: "#a855f7", bg: "rgba(168,85,247,0.2)" },
-  5: { text: "#ff6b6b", border: "#dc2626", bg: "rgba(220,38,38,0.2)" },
+const MUL_COLORS: Record<number, { text: string; border: string; bg: string; glow: string }> = {
+  1: { text: "#94a3b8", border: "#475569",  bg: "rgba(71,85,105,0.18)",   glow: "rgba(71,85,105,0.35)"  },
+  2: { text: "#34d399", border: "#059669",  bg: "rgba(5,150,105,0.22)",   glow: "rgba(52,211,153,0.45)" },
+  3: { text: "#fbbf24", border: "#d97706",  bg: "rgba(217,119,6,0.22)",   glow: "rgba(251,191,36,0.5)"  },
+  4: { text: "#c084fc", border: "#9333ea",  bg: "rgba(147,51,234,0.22)",  glow: "rgba(192,132,252,0.5)" },
+  5: { text: "#fb923c", border: "#ea580c",  bg: "rgba(234,88,12,0.22)",   glow: "rgba(251,146,60,0.55)" },
 };
 
 function rnd() { return SYMS[Math.floor(Math.random() * SYMS.length)]!; }
@@ -175,30 +175,34 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
           <div key={off} style={{
             height: 72,
             borderRadius: 10,
-            border: isMid ? `2px solid ${cfg.border}` : "1.5px solid rgba(255,255,255,0.06)",
+            border: isMid ? `2px solid ${cfg.border}` : "1.5px solid rgba(255,255,255,0.05)",
             background: isMid
-              ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.3))`
-              : "rgba(0,0,0,0.25)",
+              ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.45))`
+              : "rgba(0,0,0,0.22)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: isMid ? `0 0 12px ${cfg.border}66, inset 0 1px 0 rgba(255,255,255,0.1)` : "none",
+            boxShadow: isMid
+              ? `0 0 18px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.3)`
+              : "none",
             transition: spinning ? "none" : "all 0.35s cubic-bezier(0.22,1,0.36,1)",
             position: "relative",
             overflow: "hidden",
           }}>
+            {/* inner radial highlight */}
             {isMid && (
               <div style={{
                 position: "absolute", inset: 0,
-                background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.08), transparent 60%)`,
+                background: `radial-gradient(ellipse at 40% 30%, rgba(255,255,255,0.12), transparent 65%)`,
+                pointerEvents: "none",
               }}/>
             )}
             {valid && (
               <span style={{
                 fontFamily: "Arial Black, Impact, sans-serif",
-                fontSize: isMid ? 22 : 15,
+                fontSize: isMid ? 23 : 14,
                 fontWeight: 900,
-                color: isMid ? cfg.text : "rgba(255,255,255,0.15)",
+                color: isMid ? cfg.text : "rgba(255,255,255,0.12)",
                 letterSpacing: "-0.5px",
-                textShadow: isMid ? `0 0 12px ${cfg.text}88` : "none",
+                textShadow: isMid ? `0 0 14px ${cfg.glow}, 0 1px 2px rgba(0,0,0,0.6)` : "none",
                 position: "relative",
               }}>{v}x</span>
             )}
@@ -317,25 +321,28 @@ function GambleModal({ win, onGuess, onCollect, result, loading }: {
 
         {/* Multiplier card visual */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 28, flexDirection: "column", alignItems: "center", gap: 6 }}>
-          {[{v:"1x",mid:false},{v:"2x",mid:true},{v:"5x",mid:false}].map(({v, mid}) => (
-            <div key={v} style={{
-              width: 100, height: 72, borderRadius: 12,
-              background: mid
-                ? "linear-gradient(145deg, rgba(22,163,74,0.3), rgba(0,0,0,0.4))"
-                : "rgba(0,0,0,0.3)",
-              border: mid ? "2px solid #e91e8c" : "1.5px solid rgba(255,255,255,0.08)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: mid ? "0 0 16px rgba(233,30,140,0.4)" : "none",
-            }}>
-              <span style={{
-                fontFamily: "Arial Black, Impact, sans-serif",
-                fontSize: mid ? 28 : 20,
-                fontWeight: 900,
-                color: mid ? "#4ade80" : "rgba(255,255,255,0.2)",
-                textShadow: mid ? "0 0 12px #4ade8088" : "none",
-              }}>{v}</span>
-            </div>
-          ))}
+          {[{v:"1x",val:1,mid:false},{v:"2x",val:2,mid:true},{v:"5x",val:5,mid:false}].map(({v, val, mid}) => {
+            const cfg = MUL_COLORS[val]!;
+            return (
+              <div key={v} style={{
+                width: 100, height: 72, borderRadius: 12,
+                background: mid
+                  ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.5))`
+                  : "rgba(0,0,0,0.3)",
+                border: mid ? `2px solid ${cfg.border}` : "1.5px solid rgba(255,255,255,0.06)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: mid ? `0 0 20px ${cfg.glow}` : "none",
+              }}>
+                <span style={{
+                  fontFamily: "Arial Black, Impact, sans-serif",
+                  fontSize: mid ? 28 : 20,
+                  fontWeight: 900,
+                  color: mid ? cfg.text : "rgba(255,255,255,0.15)",
+                  textShadow: mid ? `0 0 16px ${cfg.glow}` : "none",
+                }}>{v}</span>
+              </div>
+            );
+          })}
         </div>
 
         {result ? (
@@ -511,28 +518,31 @@ function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
               border: "2px solid #c9a84c", borderRadius: 14, overflow: "hidden",
               display: "inline-flex", flexDirection: "column",
             }}>
-              {[
-                { v: "1x", mid: false, cfg: MUL_COLORS[1]! },
-                { v: "2x", mid: true,  cfg: MUL_COLORS[2]! },
-              ].map(({ v, mid, cfg }) => (
-                <div key={v} style={{
-                  width: 100, height: 80,
-                  background: mid
-                    ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.4))`
-                    : "rgba(0,0,0,0.35)",
-                  border: mid ? `2px solid ${cfg.border}` : "none",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: mid ? `0 0 16px ${cfg.border}55` : "none",
-                }}>
-                  <span style={{
-                    fontFamily: "Arial Black, Impact, sans-serif",
-                    fontSize: mid ? 30 : 20,
-                    fontWeight: 900,
-                    color: mid ? cfg.text : "rgba(255,255,255,0.18)",
-                    textShadow: mid ? `0 0 14px ${cfg.text}99` : "none",
-                  }}>{v}</span>
-                </div>
-              ))}
+              {([
+                { v: "1x", val: 1, mid: false },
+                { v: "2x", val: 2, mid: true  },
+              ] as const).map(({ v, val, mid }) => {
+                const cfg = MUL_COLORS[val]!;
+                return (
+                  <div key={v} style={{
+                    width: 100, height: 80,
+                    background: mid
+                      ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.5))`
+                      : "rgba(0,0,0,0.35)",
+                    border: mid ? `2px solid ${cfg.border}` : "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: mid ? `0 0 18px ${cfg.glow}` : "none",
+                  }}>
+                    <span style={{
+                      fontFamily: "Arial Black, Impact, sans-serif",
+                      fontSize: mid ? 30 : 20,
+                      fontWeight: 900,
+                      color: mid ? cfg.text : "rgba(255,255,255,0.15)",
+                      textShadow: mid ? `0 0 16px ${cfg.glow}` : "none",
+                    }}>{v}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -551,29 +561,32 @@ function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
               border: "2px solid #c9a84c", borderRadius: 14, overflow: "hidden",
               display: "inline-flex", flexDirection: "column",
             }}>
-              {[
-                { v: "1x", mid: false, cfg: MUL_COLORS[1]! },
-                { v: "2x", mid: true,  cfg: MUL_COLORS[2]! },
-                { v: "5x", mid: false, cfg: MUL_COLORS[5]! },
-              ].map(({ v, mid, cfg }) => (
-                <div key={v} style={{
-                  width: 100, height: 80,
-                  background: mid
-                    ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.4))`
-                    : "rgba(0,0,0,0.35)",
-                  border: mid ? `2px solid ${cfg.border}` : "none",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: mid ? `0 0 16px ${cfg.border}55` : "none",
-                }}>
-                  <span style={{
-                    fontFamily: "Arial Black, Impact, sans-serif",
-                    fontSize: mid ? 30 : 20,
-                    fontWeight: 900,
-                    color: mid ? cfg.text : "rgba(255,255,255,0.18)",
-                    textShadow: mid ? `0 0 14px ${cfg.text}99` : "none",
-                  }}>{v}</span>
-                </div>
-              ))}
+              {([
+                { v: "1x", val: 1, mid: false },
+                { v: "2x", val: 2, mid: true  },
+                { v: "5x", val: 5, mid: false },
+              ] as const).map(({ v, val, mid }) => {
+                const cfg = MUL_COLORS[val]!;
+                return (
+                  <div key={v} style={{
+                    width: 100, height: 80,
+                    background: mid
+                      ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.5))`
+                      : "rgba(0,0,0,0.35)",
+                    border: mid ? `2px solid ${cfg.border}` : "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: mid ? `0 0 18px ${cfg.glow}` : "none",
+                  }}>
+                    <span style={{
+                      fontFamily: "Arial Black, Impact, sans-serif",
+                      fontSize: mid ? 30 : 20,
+                      fontWeight: 900,
+                      color: mid ? cfg.text : "rgba(255,255,255,0.15)",
+                      textShadow: mid ? `0 0 16px ${cfg.glow}` : "none",
+                    }}>{v}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
