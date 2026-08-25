@@ -131,7 +131,7 @@ const BETS = [5, 8, 10, 20, 50, 100, 200, 500];
 const SYMS: SlotSymbol[] = ["cherry","watermelon","orange","lemon","bell","double_dollar","seven"];
 const PAYOUTS: Record<SlotSymbol, number> = {
   cherry: 10, watermelon: 20, orange: 20, lemon: 25,
-  bell: 25, double_dollar: 50, seven: 75,
+  bell: 40, double_dollar: 100, seven: 333,
 };
 const LINES: [number,number,number][] = [[1,1,1],[0,0,0],[2,2,2],[0,1,2],[2,1,0]];
 const INIT_SAFE: SlotSymbol[][] = [
@@ -387,13 +387,13 @@ function GambleModal({ win, onGuess, onCollect, result, loading }: {
 // ─── Rules / Paytable screen ──────────────────────────────────────────────────
 function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
   const PAYTABLE: { sym: SlotSymbol; payout: number }[] = [
-    { sym: "seven",         payout: 75 },
-    { sym: "double_dollar", payout: 50 },
-    { sym: "bell",          payout: 25 },
-    { sym: "watermelon",    payout: 20 },
-    { sym: "lemon",         payout: 25 },
-    { sym: "orange",        payout: 20 },
-    { sym: "cherry",        payout: 10 },
+    { sym: "seven",         payout: 333 },
+    { sym: "double_dollar", payout: 100 },
+    { sym: "bell",          payout: 40  },
+    { sym: "lemon",         payout: 25  },
+    { sym: "watermelon",    payout: 20  },
+    { sym: "orange",        payout: 20  },
+    { sym: "cherry",        payout: 10  },
   ];
 
   return (

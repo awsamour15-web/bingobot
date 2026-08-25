@@ -10,15 +10,15 @@ import crypto from 'node:crypto';
 export const SYMBOLS = ['cherry', 'watermelon', 'orange', 'lemon', 'bell', 'double_dollar', 'seven'] as const;
 export type Symbol = typeof SYMBOLS[number];
 
-// Base payouts for 3-of-a-kind on a payline (at 1x bet)
-// Matches Multi Hot 5 ratios
+// Payout multipliers: win = betAmount × PAYOUTS[symbol] × reelMultiplier
+// Multi Hot 5 paytable — 3-of-a-kind per payline
 export const PAYOUTS: Record<Symbol, number> = {
-  cherry:        44,
-  watermelon:    44,
-  orange:        88,
-  lemon:         88,
-  bell:          111,
-  double_dollar: 222,
+  cherry:        10,
+  watermelon:    20,
+  orange:        20,
+  lemon:         25,
+  bell:          40,
+  double_dollar: 100,
   seven:         333,
 };
 
@@ -103,7 +103,8 @@ export function spin(betAmount: number): SpinResult {
 
     if (s0 === s1 && s1 === s2) {
       const basePayout = PAYOUTS[s0];
-      const linePayout = parseFloat((betAmount * basePayout * multiplierReel / 333).toFixed(2));
+      // win = bet × symbol_multiplier × reel_multiplier
+      const linePayout = parseFloat((betAmount * basePayout * multiplierReel).toFixed(2));
       paylineWins.push({
         line: i + 1,
         symbols: [s0, s1, s2],
