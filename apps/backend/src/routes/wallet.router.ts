@@ -183,6 +183,56 @@ router.post('/deposit/manual', async (req: Request, res: Response): Promise<void
     return;
   }
 
+  // ── Deposits over 50 ETB require admin approval ─────────────────────────
+  if (amount > 50) {
+    // Check if this tx_number is already registered
+    let existing = await prisma.pendingDeposit.findUnique({ where: { tx_number: validation.txNumber } });
+
+    if (!existing) {
+      try {
+        existing = await prisma.pendingDeposit.create({
+          data: {
+            tx_number: validation.txNumber,
+            amount,
+            status: 'pending',
+            player_id: playerId,
+          },
+        });
+      } catch {
+        // Race condition — already exists, fetch it
+        existing = await prisma.pendingDeposit.findUnique({ where: { tx_number: validation.txNumber } });
+      }
+    }
+
+    if (existing?.status === 'claimed') {
+      res.status(409).json({ error: 'CLAIMED', message: 'This transaction has already been claimed.' });
+      return;
+    }
+
+    if (existing?.status === 'cancelled') {
+      res.status(409).json({ error: 'CANCELLED', message: 'This transaction was cancelled. Please contact support.' });
+      return;
+    }
+
+    // Link this player to the pending deposit so admin can approve it
+    if (existing && !existing.player_id) {
+      await prisma.pendingDeposit.update({
+        where: { id: existing.id },
+        data: { player_id: playerId },
+      });
+    }
+
+    res.status(202).json({
+      success: true,
+      pending_approval: true,
+      amount,
+      txNumber: validation.txNumber,
+      message: `⏳ Your deposit of ${amount} ETB has been received and is pending admin approval. You will be notified once it is approved.`,
+    });
+    return;
+  }
+
+  // ── Deposits ≤ 50 ETB — auto-approve ────────────────────────────────────
   let result = await processDepositClaim(playerId, validation.txNumber);
 
   if (!result.success && result.reason === 'NOT_FOUND') {

@@ -1366,36 +1366,48 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         try {
-          let result = await processDepositClaim(player.id, parsed.txNumber);
-
-          // Auto-create the pending deposit when admin hasn't pre-registered it.
-          // Use the SMS-parsed amount if available, otherwise fall back to the
-          // amount the player entered in step 1.
           // Guard: txNumber must look like a real Telebirr ID (alphanumeric, contains letters).
           // Pure-digit strings are phone numbers, not transaction IDs — reject them.
           const isTelebirrTxId = /^[A-Z0-9]{6,20}$/.test(parsed.txNumber) && /[A-Z]/.test(parsed.txNumber);
-          if (!result.success && result.reason === 'NOT_FOUND') {
-            if (!isTelebirrTxId) {
-              depositSessions.delete(telegramId);
-              await ctx.reply(
-                '❌ ደረሰኙ ትክክለኛ የTelebirr ደረሰኝ አይደለም። እባክዎ ትክክለኛ ደረሰኝ ያጋሩ።\n\n❌ Invalid receipt. Please share a valid Telebirr receipt.',
-              );
-              return;
-            }
-            const depositAmount = parsed.amount ?? depositSession.amount;
+          const depositAmount = parsed.amount ?? depositSession.amount;
+
+          // Ensure the pending deposit record exists
+          if (isTelebirrTxId) {
             try {
               await prisma.pendingDeposit.create({
                 data: {
                   tx_number: parsed.txNumber,
                   amount: depositAmount,
                   status: 'pending',
+                  player_id: player.id,
                 },
               });
             } catch {
-              // Duplicate tx_number (race condition) — deposit already exists, just claim it
+              // Already exists — link this player if not yet linked
+              await prisma.pendingDeposit.updateMany({
+                where: { tx_number: parsed.txNumber, player_id: null },
+                data: { player_id: player.id },
+              });
             }
-            result = await processDepositClaim(player.id, parsed.txNumber);
+          } else {
+            depositSessions.delete(telegramId);
+            await ctx.reply(
+              '❌ ደረሰኙ ትክክለኛ የTelebirr ደረሰኝ አይደለም። እባክዎ ትክክለኛ ደረሰኝ ያጋሩ።\n\n❌ Invalid receipt. Please share a valid Telebirr receipt.',
+            );
+            return;
           }
+
+          // ── Deposits > 50 ETB require admin approval ──────────────────────
+          if (depositAmount > 50) {
+            depositSessions.delete(telegramId);
+            await ctx.reply(
+              `⏳ ትዕዛዝዎ ተቀብሏል።\n\nየ ${depositAmount} ብር ማስያዣ ለአስተዳዳሪ ማረጋገጫ ቀርቧል። ከጥቂት ጊዜ ገደማ ሂሳቡ ይጨምርልዎታል።\n\n✅ Deposit of ${depositAmount} ETB received and is pending admin approval.\n\nRef: ${parsed.txNumber}`,
+            );
+            return;
+          }
+
+          // ── Auto-approve for ≤ 50 ETB ─────────────────────────────────────
+          let result = await processDepositClaim(player.id, parsed.txNumber);
 
           depositSessions.delete(telegramId);
 

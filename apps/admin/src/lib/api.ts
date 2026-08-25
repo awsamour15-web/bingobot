@@ -268,6 +268,10 @@ export function cancelDeposit(id: string): Promise<{ success: boolean }> {
   return adminApiRequest<{ success: boolean }>('POST', `/api/admin/deposits/${id}/cancel`);
 }
 
+export function approveDeposit(id: string): Promise<{ success: boolean; amount: number }> {
+  return adminApiRequest<{ success: boolean; amount: number }>('POST', `/api/admin/deposits/${id}/approve`);
+}
+
 // ---------------------------------------------------------------------------
 // Admin accounts
 // ---------------------------------------------------------------------------
