@@ -1,4 +1,5 @@
 ﻿import { useState, useRef, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { spinSlots, gambleSlots, getProfile } from "../lib/api";
 import type { SlotSymbol, PaylineWin, SpinResponse } from "../lib/api";
 
@@ -595,6 +596,7 @@ export default function SlotsScreen() {
   const [spinCount, setSpinCount] = useState(0);
   const [showRules, setShowRules] = useState(false);
 
+  const navigate = useNavigate();
   const lock = useRef(false);
   const autoRef = useRef(false);
   const betRef = useRef(0);
@@ -709,7 +711,9 @@ export default function SlotsScreen() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "14px 16px 8px",
       }}>
-        <div style={{
+        <div
+          onClick={() => navigate('/')}
+          style={{
           width: 42, height: 42, borderRadius: 12,
           background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
           display: "flex", alignItems: "center", justifyContent: "center",

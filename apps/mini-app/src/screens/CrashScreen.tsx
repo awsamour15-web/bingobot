@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { socket } from '../lib/socket';
 import { getCrashState, placeCrashBet, getCrashHistory, getProfile } from '../lib/api';
 import type { CrashBetEntry, CrashHistoryEntry } from '../lib/api';
@@ -804,6 +805,7 @@ function BetRow({ bet, isMe }: { bet: CrashBetEntry; isMe: boolean }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function CrashScreen() {
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>('idle');
   const [multiplier, setMultiplier] = useState(1.0);
   const [crashPoint, setCrashPoint] = useState<number | null>(null);
@@ -946,7 +948,16 @@ export default function CrashScreen() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            onClick={() => navigate('/')}
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, cursor: 'pointer', flexShrink: 0,
+            }}
+          >🏠</div>
           <svg width="110" height="28" viewBox="0 0 340 80" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M8 72 L28 8 L48 8 L68 72 L54 72 L50 58 L26 58 L22 72 Z M30 46 L46 46 L38 18 Z" fill="#e8073f"/>
             <path d="M72 22 L86 62 L100 22 L114 22 L94 72 L78 72 L58 22 Z" fill="#e8073f"/>
