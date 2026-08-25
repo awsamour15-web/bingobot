@@ -22,33 +22,54 @@ function fmtMul(v: number): string {
 // ─── Animated plane ───────────────────────────────────────────────────────────
 
 function PlaneSVG({ crashed, tilt }: { crashed: boolean; tilt: number }) {
-  // tilt: degrees, positive = nose up, negative = nose down / crash dive
   return (
     <div style={{
       transform: `rotate(${tilt}deg)`,
       transition: crashed ? 'transform 0.4s ease-in' : 'transform 0.25s ease-out',
       filter: crashed
-        ? 'drop-shadow(0 0 14px #ef4444) drop-shadow(0 0 6px #ff0000)'
-        : 'drop-shadow(0 0 10px rgba(239,68,68,0.9)) drop-shadow(0 0 4px rgba(255,200,100,0.6))',
+        ? 'drop-shadow(0 0 16px #e8073f) drop-shadow(0 0 6px #ff0000)'
+        : 'drop-shadow(0 0 12px rgba(232,7,63,0.85)) drop-shadow(0 0 4px rgba(255,80,80,0.5))',
     }}>
-      <svg width="72" height="40" viewBox="0 0 72 40" fill="none">
-        {/* Engine flame */}
+      {/* Aviator-style propeller plane facing right */}
+      <svg width="96" height="56" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Propeller */}
         {!crashed && (
           <g>
-            <ellipse cx="7" cy="22" rx="6" ry="3" fill="rgba(255,140,0,0.7)" />
-            <ellipse cx="4" cy="22" rx="4" ry="2" fill="rgba(255,200,50,0.9)" />
+            <ellipse cx="178" cy="44" rx="5" ry="22" fill="#e8073f" opacity="0.9" transform="rotate(-15 178 44)" />
+            <ellipse cx="178" cy="44" rx="5" ry="22" fill="#e8073f" opacity="0.9" transform="rotate(75 178 44)" />
+            <circle cx="178" cy="44" r="6" fill="#c0052e" />
           </g>
         )}
-        {/* Fuselage */}
-        <path d="M10 22 Q22 14 40 18 L62 10 L68 14 L44 22 L40 28 Q22 32 12 26 Z" fill="#c0392b" />
-        {/* Wing top shine */}
-        <path d="M20 18 L38 8 L42 12 L26 22 Z" fill="#e74c3c" />
-        <path d="M24 17 L36 10 L38 11 L27 20 Z" fill="rgba(255,100,80,0.4)" />
-        {/* Tail fin */}
-        <path d="M12 22 L8 13 L14 18 Z" fill="#e74c3c" />
+        {/* Engine cowl */}
+        <ellipse cx="168" cy="52" rx="14" ry="11" fill="#c0052e" />
+        {/* Main fuselage */}
+        <path d="M22 70 Q50 62 90 58 L155 42 L168 46 L168 58 L155 62 L90 68 Q50 74 28 78 Z" fill="#e8073f" />
+        {/* Cockpit outline */}
+        <path d="M110 42 L140 34 L148 38 L148 50 L118 54 Z" fill="#c0052e" />
         {/* Cockpit window */}
-        <ellipse cx="51" cy="16" rx="4" ry="3" fill="#fff" opacity="0.9" />
-        <ellipse cx="51" cy="16" rx="2.5" ry="1.8" fill="#bfefff" opacity="0.7" />
+        <path d="M116 44 L136 37 L142 40 L142 48 L120 51 Z" fill="#1a0008" opacity="0.85" />
+        {/* Z marking on fuselage */}
+        <path d="M95 47 L108 47 L97 57 L110 57" stroke="#c0052e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        {/* Top fin / dorsal */}
+        <path d="M130 42 L120 28 L112 30 L118 44 Z" fill="#e8073f" />
+        <path d="M122 42 L114 31 L116 30 L120 42 Z" fill="#c0052e" />
+        {/* Main wing */}
+        <path d="M80 60 L100 22 L118 28 L104 64 Z" fill="#e8073f" />
+        <path d="M86 60 L104 26 L110 28 L96 63 Z" fill="#c0052e" />
+        {/* Tail section */}
+        <path d="M22 70 L10 62 L18 58 L36 66 Z" fill="#e8073f" />
+        {/* Tail vertical fin */}
+        <path d="M26 70 L20 56 L30 58 L34 70 Z" fill="#e8073f" />
+        {/* Tail horizontal stabilizers */}
+        <path d="M16 68 L6 74 L10 78 L26 74 Z" fill="#e8073f" />
+        <path d="M14 64 L4 58 L8 55 L22 62 Z" fill="#e8073f" />
+        {/* Bottom hull */}
+        <path d="M30 78 Q80 82 155 70 L168 66 L155 72 Q80 86 28 82 Z" fill="#c0052e" />
+        {/* Outline strokes for depth */}
+        <path d="M22 70 Q50 62 90 58 L155 42 L168 46 L168 58 L155 62 L90 68 Q50 74 28 78 Z"
+          stroke="#000" strokeWidth="2.5" strokeLinejoin="round" fill="none" />
+        <path d="M80 60 L100 22 L118 28 L104 64 Z" stroke="#000" strokeWidth="2" strokeLinejoin="round" fill="none" />
+        <path d="M130 42 L120 28 L112 30 L118 44 Z" stroke="#000" strokeWidth="2" strokeLinejoin="round" fill="none" />
       </svg>
     </div>
   );
@@ -268,7 +289,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       {(phase === 'running' || phase === 'crashed') && planePct && (
         <div style={{
           position: 'absolute',
-          left: `${Math.min(planePct.x, 86)}%`,
+          left: `${Math.min(planePct.x, 80)}%`,
           top: `${Math.max(planePct.y - 14, 1)}%`,
           transition: isCrashed
             ? 'left 0.4s ease-in, top 0.4s ease-in'
@@ -709,6 +730,9 @@ export default function CrashScreen() {
   const [placing2, setPlacing2] = useState(false);
   const [cashingOut1, setCashingOut1] = useState(false);
   const [cashingOut2, setCashingOut2] = useState(false);
+  // Sync refs prevent double-submit before React re-renders
+  const placingRef1 = useRef(false);
+  const placingRef2 = useRef(false);
   const [betTab, setBetTab] = useState<'all' | 'previous' | 'top'>('all');
   const [myUsername, setMyUsername] = useState('');
   const [balance, setBalance] = useState<number | null>(null);
@@ -779,7 +803,10 @@ export default function CrashScreen() {
     const setPlacing = slotIdx === 1 ? setPlacing1 : setPlacing2;
     const setMyBet = slotIdx === 1 ? setMyBet1 : setMyBet2;
     const currentBet = slotIdx === 1 ? myBet1 : myBet2;
-    if (currentBet) return;
+    const placingRef = slotIdx === 1 ? placingRef1 : placingRef2;
+    // Sync guard — prevents double-submit before React re-renders
+    if (currentBet || placingRef.current) return;
+    placingRef.current = true;
     setPlacing(true);
     try {
       const res = await placeCrashBet(amount, slotIdx);
@@ -794,6 +821,7 @@ export default function CrashScreen() {
         alert(msg || 'Failed to place bet');
       }
     } finally {
+      placingRef.current = false;
       setPlacing(false);
     }
   }, [myUsername, myBet1, myBet2]);
@@ -829,16 +857,26 @@ export default function CrashScreen() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '14px 16px 8px', borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M2 16 Q8 8 16 12 L22 6 L23 9 L16 14 L14 20 Q8 22 4 18 Z" fill="#ef4444" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Aviator logo — matches brand font style */}
+          <svg width="120" height="32" viewBox="0 0 340 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* "A" */}
+            <path d="M8 72 L28 8 L48 8 L68 72 L54 72 L50 58 L26 58 L22 72 Z M30 46 L46 46 L38 18 Z" fill="#e8073f"/>
+            {/* "v" */}
+            <path d="M72 22 L86 62 L100 22 L114 22 L94 72 L78 72 L58 22 Z" fill="#e8073f"/>
+            {/* "i" dot */}
+            <circle cx="126" cy="10" r="7" fill="#e8073f"/>
+            {/* "i" stem */}
+            <rect x="120" y="22" width="12" height="50" rx="6" fill="#e8073f"/>
+            {/* "a" */}
+            <path d="M148 34 Q162 20 178 22 Q196 22 200 36 L200 72 L188 72 L188 66 Q180 74 168 74 Q152 74 148 62 Q144 48 156 40 Q164 34 188 36 Q186 26 174 26 Q164 26 158 34 Z M188 46 Q164 42 160 52 Q158 62 168 64 Q180 66 188 58 Z" fill="#e8073f"/>
+            {/* "t" */}
+            <path d="M210 8 L222 8 L222 22 L236 22 L236 34 L222 34 L222 60 Q222 68 230 68 L236 68 L236 72 Q228 76 220 74 Q208 70 208 60 L208 34 L200 34 L200 22 L210 22 Z" fill="#e8073f"/>
+            {/* "o" */}
+            <path d="M244 47 Q244 22 268 22 Q292 22 292 47 Q292 72 268 72 Q244 72 244 47 Z M256 47 Q256 62 268 62 Q280 62 280 47 Q280 32 268 32 Q256 32 256 47 Z" fill="#e8073f"/>
+            {/* "r" */}
+            <path d="M298 22 L310 22 L310 32 Q316 20 330 22 L330 34 Q314 30 312 44 L312 72 L298 72 Z" fill="#e8073f"/>
           </svg>
-          <span style={{
-            fontSize: 20, fontWeight: 900, fontStyle: 'italic',
-            background: 'linear-gradient(90deg, #ef4444, #f87171)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            letterSpacing: '-0.5px',
-          }}>Aviator</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>

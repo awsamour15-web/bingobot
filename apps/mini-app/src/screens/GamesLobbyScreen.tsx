@@ -55,7 +55,7 @@ const GAMES: Game[] = [
   },
   {
     id: 'crash',
-    title: 'Crash',
+    title: 'Aviator',
     subtitle: 'Cash out before it crashes',
     emoji: '🚀',
     gradient: 'linear-gradient(135deg, #1a0533 0%, #0d0220 55%, #060010 100%)',
