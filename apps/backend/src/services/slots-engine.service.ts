@@ -10,16 +10,17 @@ import crypto from 'node:crypto';
 export const SYMBOLS = ['cherry', 'watermelon', 'orange', 'lemon', 'bell', 'double_dollar', 'seven'] as const;
 export type Symbol = typeof SYMBOLS[number];
 
-// Payout multipliers: win = betAmount × PAYOUTS[symbol] × reelMultiplier
-// Multi Hot 5 paytable — 3-of-a-kind per payline
+// Payout multipliers per symbol (3-of-a-kind on a payline, before reel multiplier)
+// Paytable (at 5 ETB bet): 77=75, $$=50, Bell=25, Watermelon/Grape=20, Orange/Plum/Cherry=10
+// → divide by 5 → base multipliers below
 export const PAYOUTS: Record<Symbol, number> = {
-  cherry:        10,
-  watermelon:    20,
-  orange:        20,
-  lemon:         25,
-  bell:          40,
-  double_dollar: 100,
-  seven:         333,
+  seven:         15,
+  double_dollar: 10,
+  bell:           5,
+  watermelon:     4,
+  orange:         2,
+  lemon:          2,
+  cherry:         2,
 };
 
 // Reel strips — weighted for ~85% RTP (15% house edge)
@@ -37,8 +38,8 @@ const REEL_STRIP: Symbol[] = [
   'cherry',  'lemon',   'orange',  'lemon',   'cherry',
 ];
 
-// Multiplier reel strip: 1x appears most (85%), higher values very rare
-const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 3, 1];
+// Multiplier reel: 5 possible values (1x–5x). 1x most common, 5x rare.
+const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 1, 1, 1, 5, 1];
 
 // ─── Paylines ─────────────────────────────────────────────────────────────────
 // 5 fixed paylines. Each payline is [col0_row, col1_row, col2_row]
