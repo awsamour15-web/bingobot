@@ -10,7 +10,7 @@ import { TxType, WalletType } from '@fidel/shared';
 
 const BETTING_WINDOW_MS = 10_000; // 10s for players to place bets
 const TICK_INTERVAL_MS = 100;     // broadcast multiplier every 100ms
-const HOUSE_EDGE = 0.05;          // 5% house edge baked into crash point distribution
+const DEFAULT_HOUSE_EDGE = 0.15;  // default 15% — overridden by DB config
 
 // ─── Callbacks ───────────────────────────────────────────────────────────────
 
@@ -70,8 +70,10 @@ export class CrashEngine {
     const round = await prisma.crashRound.create({ data: { status: 'waiting' } });
     const roundId = round.id;
 
-    // 2. Generate crash point (provably fair)
-    const crashPoint = this.generateCrashPoint();
+    // 2. Generate crash point (provably fair) using DB-configured house edge
+    const edgeConfig = await prisma.config.findUnique({ where: { key: 'house_edge_crash' } });
+    const houseEdge = Math.min(0.50, Math.max(0.05, parseInt(edgeConfig?.value ?? '15', 10) / 100));
+    const crashPoint = this.generateCrashPoint(houseEdge);
 
     // 3. Open betting window
     this.onBettingOpen?.(roundId, BETTING_WINDOW_MS);
@@ -177,13 +179,11 @@ export class CrashEngine {
 
   // ─── Provably fair crash point ────────────────────────────────────────────
 
-  private generateCrashPoint(): number {
-    // Provably fair: uses crypto random to pick a crash multiplier
-    // Distribution: P(crash ≥ x) = (1 - houseEdge) / x
-    // This gives the expected house edge built into the distribution
+  private generateCrashPoint(houseEdge = DEFAULT_HOUSE_EDGE): number {
+    // Provably fair: P(crash ≥ x) = (1 - houseEdge) / x
     const rand = crypto.randomInt(1, 1_000_000) / 1_000_000;
-    if (rand < HOUSE_EDGE) return 1.0; // instant crash (house edge floor)
-    const raw = (1 - HOUSE_EDGE) / (1 - rand);
+    if (rand < houseEdge) return 1.0; // instant crash (house edge floor)
+    const raw = (1 - houseEdge) / (1 - rand);
     return Math.max(1.0, parseFloat(raw.toFixed(2)));
   }
 

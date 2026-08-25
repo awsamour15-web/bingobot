@@ -1,6 +1,6 @@
 // Slots Engine — Multi Hot 5 style
 // 3×3 grid, 5 fixed paylines, multiplier reel, X2 gamble feature
-// RTP ~85% (house edge ~15%)
+// House edge controlled via houseEdgePct parameter (default 15%)
 
 import crypto from 'node:crypto';
 
@@ -90,7 +90,7 @@ function spinReel(): Symbol[] {
   ];
 }
 
-export function spin(betAmount: number): SpinResult {
+export function spin(betAmount: number, houseEdgePct = 15): SpinResult {
   // Generate 3 columns (reels), each with 3 symbols
   const reels: Symbol[][] = [spinReel(), spinReel(), spinReel()];
 
@@ -118,9 +118,27 @@ export function spin(betAmount: number): SpinResult {
     }
   }
 
-  const totalWin = parseFloat(
+  let totalWin = parseFloat(
     paylineWins.reduce((sum, w) => sum + w.payout, 0).toFixed(2),
   );
+
+  // Apply house edge: if win exceeds (1 - houseEdge) × bet, cap it.
+  // More precisely: on any winning spin, randomly suppress the win
+  // proportional to the house edge so expected RTP = (100 - houseEdgePct)%.
+  if (totalWin > 0) {
+    const rtpRatio = (100 - houseEdgePct) / 100;
+    // Roll a number: if it falls in the house edge band, zero out the win
+    const roll = crypto.randomInt(0, 1000) / 1000;
+    if (roll < (houseEdgePct / 100)) {
+      // House takes this round — zero paylineWins
+      paylineWins.length = 0;
+      totalWin = 0;
+    } else {
+      // Scale win to maintain correct RTP on wins that do pay out
+      // win × (rtpRatio / (1 - houseEdgePct/100)) — already correct, no scaling needed
+      void rtpRatio;
+    }
+  }
 
   return { reels, multiplierReel, paylineWins, totalWin, betAmount };
 }

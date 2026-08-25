@@ -10,6 +10,103 @@ import {
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, selectCss,
 } from '../components/ui';
 
+// ── House Edge Settings ────────────────────────────────────────────────────────
+function HouseEdgeSection() {
+  const [crash, setCrash] = useState('15');
+  const [slots, setSlots] = useState('15');
+  const [loading, setLoading] = useState(true);
+  const [savingCrash, setSavingCrash] = useState(false);
+  const [savingSlots, setSavingSlots] = useState(false);
+  const [fbCrash, setFbCrash] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [fbSlots, setFbSlots] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getConfig()
+      .then((data) => {
+        setCrash(data.find(e => e.key === 'house_edge_crash')?.value ?? '15');
+        setSlots(data.find(e => e.key === 'house_edge_slots')?.value ?? '15');
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function save(game: 'crash' | 'slots') {
+    const val = game === 'crash' ? crash : slots;
+    const n = parseInt(val, 10);
+    const setFb = game === 'crash' ? setFbCrash : setFbSlots;
+    const setSaving = game === 'crash' ? setSavingCrash : setSavingSlots;
+    if (isNaN(n) || n < 5 || n > 50) {
+      setFb({ type: 'error', msg: 'Must be between 5 and 50' });
+      return;
+    }
+    setSaving(true); setFb(null);
+    try {
+      await updateConfig(`house_edge_${game}`, String(n));
+      setFb({ type: 'success', msg: `House edge set to ${n}% (RTP ${100 - n}%)` });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally { setSaving(false); }
+  }
+
+  const edgeRow = (
+    label: string,
+    icon: string,
+    value: string,
+    onChange: (v: string) => void,
+    saving: boolean,
+    fb: { type: 'success' | 'error'; msg: string } | null,
+    onSave: () => void,
+  ) => (
+    <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 4 }}>
+        {icon} {label}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 10 }}>
+        House edge: <strong style={{ color: 'var(--c-text)' }}>{value || '?'}%</strong>
+        {'  '}→{'  '}
+        Player RTP: <strong style={{ color: '#4ade80' }}>{100 - (parseInt(value, 10) || 0)}%</strong>
+      </div>
+      {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <input
+          type="range" min={5} max={50} step={1}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={saving}
+          style={{ flex: 1, accentColor: '#ef4444' }}
+        />
+        <input
+          type="number" min={5} max={50}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={saving}
+          style={{ ...inputCss, width: 70 }}
+        />
+        <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>%</span>
+        <Btn onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader
+        title="🎰 Game House Edge"
+        subtitle="Control the profit percentage for each game (5–50%). Takes effect immediately on next round/spin."
+      />
+      {loading ? (
+        <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {edgeRow('Aviator (Crash)', '✈️', crash, setCrash, savingCrash, fbCrash, () => save('crash'))}
+          {edgeRow('Multi Hot (Slots)', '🎰', slots, setSlots, savingSlots, fbSlots, () => save('slots'))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // ── Cartela Limit Settings ─────────────────────────────────────────────────────
 function CartelaLimitSection() {
   const [limit, setLimit] = useState('2');
@@ -635,6 +732,7 @@ export function SettingsPage() {
   return (
     <div className="fade-in">
       <PageHeader title="Settings" />
+      <HouseEdgeSection />
       <CartelaLimitSection />
       <ChannelSettingsSection />
       <DepositAccountsSection />

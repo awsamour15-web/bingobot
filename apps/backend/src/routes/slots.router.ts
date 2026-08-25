@@ -39,8 +39,12 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
     throw err;
   }
 
+  // Load house edge from config (default 15%)
+  const edgeConfig = await prisma.config.findUnique({ where: { key: 'house_edge_slots' } });
+  const houseEdgePct = Math.min(50, Math.max(5, parseInt(edgeConfig?.value ?? '15', 10)));
+
   // Spin
-  const result = spin(betAmount);
+  const result = spin(betAmount, houseEdgePct);
 
   // Credit win if any
   if (result.totalWin > 0) {
