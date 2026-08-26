@@ -64,6 +64,7 @@ router.get('/:id/transactions', async (req: Request, res: Response): Promise<voi
   const id = req.params['id'] as string;
   const page = Math.max(1, parseInt(req.query['page'] as string) || 1);
   const pageSize = Math.min(100, parseInt(req.query['pageSize'] as string) || 30);
+  const typeFilter = req.query['type'] as string | undefined;
 
   const wallets = await prisma.wallet.findMany({
     where: { player_id: id },
@@ -78,14 +79,26 @@ router.get('/:id/transactions', async (req: Request, res: Response): Promise<voi
   const walletIds = wallets.map((w) => w.id);
   const walletTypeMap = new Map(wallets.map((w) => [w.id, w.type]));
 
+  // Map filter to transaction types
+  let typeCondition: object | undefined;
+  if (typeFilter === 'deposit') {
+    typeCondition = { type: 'deposit' };
+  } else if (typeFilter === 'withdrawal') {
+    typeCondition = { type: 'withdrawal' };
+  } else if (typeFilter === 'game') {
+    typeCondition = { type: { in: ['game_entry', 'game_win'] } };
+  }
+
+  const where = { wallet_id: { in: walletIds }, ...typeCondition };
+
   const [transactions, total] = await Promise.all([
     prisma.transaction.findMany({
-      where: { wallet_id: { in: walletIds } },
+      where,
       orderBy: { created_at: 'desc' },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.transaction.count({ where: { wallet_id: { in: walletIds } } }),
+    prisma.transaction.count({ where }),
   ]);
 
   const items = transactions.map((tx) => ({

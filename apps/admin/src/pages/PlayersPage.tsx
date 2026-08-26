@@ -22,6 +22,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
   const [txData, setTxData] = useState<{ items: AdminTransaction[]; total: number; page: number; pageSize: number } | null>(null);
   const [txPage, setTxPage] = useState(1);
   const [txLoading, setTxLoading] = useState(false);
+  const [txFilter, setTxFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'game'>('all');
 
   useEffect(() => {
     setLoading(true); setError(null);
@@ -32,10 +33,10 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
   useEffect(() => {
     setTxLoading(true);
-    getPlayerTransactions(playerId, txPage)
+    getPlayerTransactions(playerId, txPage, txFilter === 'all' ? undefined : txFilter)
       .then((d) => { setTxData(d); setTxLoading(false); })
       .catch(() => setTxLoading(false));
-  }, [playerId, txPage]);
+  }, [playerId, txPage, txFilter]);
 
   async function handleSuspendToggle() {
     if (!player) return;
@@ -175,7 +176,30 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
       {/* Transaction History */}
       <Card style={{ marginTop: 16 }}>
-        <CardHeader title="Transaction History" subtitle={`${txData?.total ?? 0} total transactions`} />
+        <CardHeader
+          title="Transaction History"
+          subtitle={`${txData?.total ?? 0} total transactions`}
+          action={
+            <div style={{ display: 'flex', gap: 4, background: 'var(--c-bg)', borderRadius: 8, padding: 3, border: '1px solid var(--c-border)' }}>
+              {(['all', 'deposit', 'withdrawal', 'game'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => { setTxFilter(f); setTxPage(1); }}
+                  style={{
+                    padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12,
+                    fontWeight: txFilter === f ? 700 : 500,
+                    background: txFilter === f ? 'rgba(99,102,241,0.18)' : 'transparent',
+                    color: txFilter === f ? '#a5b4fc' : 'var(--c-text-secondary)',
+                    transition: 'all 0.12s',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {f === 'all' ? '📋 All' : f === 'deposit' ? '💰 Deposits' : f === 'withdrawal' ? '💸 Withdrawals' : '🎮 Game'}
+                </button>
+              ))}
+            </div>
+          }
+        />
         <Table>
           <thead>
             <tr>

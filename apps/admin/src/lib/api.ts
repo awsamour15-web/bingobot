@@ -291,10 +291,13 @@ export interface AdminTransaction {
 export function getPlayerTransactions(
   playerId: string,
   page = 1,
+  type?: 'deposit' | 'withdrawal' | 'game',
 ): Promise<PaginatedResponse<AdminTransaction>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: '30' });
+  if (type) params.set('type', type);
   return adminApiRequest<PaginatedResponse<AdminTransaction>>(
     'GET',
-    `/api/admin/players/${playerId}/transactions?page=${page}&pageSize=30`,
+    `/api/admin/players/${playerId}/transactions?${params}`,
   );
 }
 
