@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminDeposit, DepositsResponse, FinanceSummary } from '../lib/api';
 import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
-import { getDeposits, createDeposit, cancelDeposit, getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue, getFinanceSummary } from '../lib/api';
+import { getDeposits, createDeposit, cancelDeposit, approveDeposit, getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue, getFinanceSummary } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, StatCard, Table, Th, Td,
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
@@ -134,6 +134,7 @@ function DepositsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const fetchDeposits = useCallback(async () => {
@@ -144,6 +145,19 @@ function DepositsTab() {
   }, []);
 
   useEffect(() => { void fetchDeposits(); }, [fetchDeposits]);
+
+  async function handleApprove(id: string) {
+    const d = data?.items.find((x) => x.id === id);
+    if (!window.confirm(`Approve deposit ${d?.tx_number ?? id} (${Number(d?.amount).toFixed(2)} ETB)?`)) return;
+    setApprovingId(id); setActionMsg(null);
+    try {
+      const res = await approveDeposit(id);
+      setActionMsg({ type: 'success', text: `Deposit approved — ${res.amount.toFixed(2)} ETB credited.` });
+      await fetchDeposits();
+    } catch (err: unknown) {
+      setActionMsg({ type: 'error', text: (err as Error).message ?? 'Failed to approve deposit' });
+    } finally { setApprovingId(null); }
+  }
 
   async function handleCancel(id: string) {
     const d = data?.items.find((x) => x.id === id);
@@ -205,9 +219,16 @@ function DepositsTab() {
                 <Td muted>{d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}</Td>
                 <Td style={{ textAlign: 'right' }}>
                   {d.status === 'pending' && (
-                    <Btn size="sm" variant="danger" onClick={() => handleCancel(d.id)} disabled={cancellingId === d.id}>
-                      {cancellingId === d.id ? '…' : 'Cancel'}
-                    </Btn>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      {d.player_username && (
+                        <Btn size="sm" variant="primary" onClick={() => handleApprove(d.id)} disabled={approvingId === d.id || cancellingId === d.id}>
+                          {approvingId === d.id ? '…' : 'Approve'}
+                        </Btn>
+                      )}
+                      <Btn size="sm" variant="danger" onClick={() => handleCancel(d.id)} disabled={cancellingId === d.id || approvingId === d.id}>
+                        {cancellingId === d.id ? '…' : 'Cancel'}
+                      </Btn>
+                    </div>
                   )}
                 </Td>
               </tr>

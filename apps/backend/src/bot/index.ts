@@ -1397,8 +1397,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             return;
           }
 
-          // ── Deposits > 50 ETB require admin approval ──────────────────────
-          if (depositAmount > 50) {
+          // ── Deposits > 100 ETB require admin approval ─────────────────────
+          if (depositAmount > 100) {
             depositSessions.delete(telegramId);
             await ctx.reply(
               `⏳ ትዕዛዝዎ ተቀብሏል።\n\nየ ${depositAmount} ብር ማስያዣ ለአስተዳዳሪ ማረጋገጫ ቀርቧል። ከጥቂት ጊዜ ገደማ ሂሳቡ ይጨምርልዎታል።\n\n✅ Deposit of ${depositAmount} ETB received and is pending admin approval.\n\nRef: ${parsed.txNumber}`,
@@ -1406,7 +1406,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             return;
           }
 
-          // ── Auto-approve for ≤ 50 ETB ─────────────────────────────────────
+          // ── Auto-approve for ≤ 100 ETB ────────────────────────────────────
           let result = await processDepositClaim(player.id, parsed.txNumber);
 
           depositSessions.delete(telegramId);
