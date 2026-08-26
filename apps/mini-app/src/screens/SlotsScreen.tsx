@@ -654,7 +654,11 @@ export default function SlotsScreen() {
       stopScramble(INIT_SAFE, 1);
       lock.current = false; setSpinning(false);
       const msg: string = e?.message ?? '';
-      if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('deposit')) {
+      const isInsufficientFunds = e?.status === 402
+        || msg.includes('ቀሪ ሂሳብ')
+        || msg.toLowerCase().includes('insufficient')
+        || msg.toLowerCase().includes('deposit');
+      if (isInsufficientFunds) {
         setDepositModal(true);
       } else {
         setError(msg || "Spin failed — check your balance");

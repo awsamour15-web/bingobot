@@ -33,7 +33,7 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
     await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, undefined, 'Slots spin');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
-      res.status(402).json({ error: err.message });
+      res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
       return;
     }
     throw err;
