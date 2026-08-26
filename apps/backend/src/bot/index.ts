@@ -1011,28 +1011,39 @@ if (BOT_TOKEN) {
         }
       }
 
-      // Run all DB updates in parallel inside a transaction
-      await prisma.$transaction([
-        prisma.player.update({
-          where: { telegram_id: telegramId },
+      // Run all DB updates atomically — use updateMany with phone_verified: false
+      // to guard against race conditions (double-tap) granting the bonus twice.
+      const alreadyClaimed = await prisma.$transaction(async (tx) => {
+        const { count } = await tx.player.updateMany({
+          where: { telegram_id: telegramId, phone_verified: false },
           data: { phone, phone_verified: true },
-        }),
-        prisma.wallet.update({
+        });
+        // count === 0 means another request already verified this player
+        if (count === 0) return true;
+
+        await tx.wallet.update({
           where: { id: playWalletId },
           data: { balance: { increment: 20 } },
-        }),
-        prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
             wallet_id: playWalletId,
             type: 'admin_credit',
-            amount: 10,
+            amount: 20,
+            reference_id: `welcome_bonus_phone_${player.id}`,
             note: 'Welcome bonus',
           },
-        }),
-      ]);
+        });
+        return false;
+      });
+
+      if (alreadyClaimed) {
+        await ctx.reply('✅ You are already registered!', { reply_markup: await getMenuForUser(telegramId) });
+        return;
+      }
 
       await ctx.reply(
-        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
+        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 20 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: await getMenuForUser(telegramId) },
       );
 
