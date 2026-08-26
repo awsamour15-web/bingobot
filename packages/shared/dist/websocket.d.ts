@@ -41,6 +41,35 @@ export interface CartelaReservedPayload {
 export interface WinRejectedPayload {
     reason: string;
 }
+export interface CrashBettingOpenPayload {
+    roundId: string;
+    countdownMs: number;
+}
+export interface CrashStartedPayload {
+    roundId: string;
+    startedAt: number;
+}
+export interface CrashTickPayload {
+    multiplier: number;
+}
+export interface CrashCashedOutPayload {
+    playerId: string;
+    username: string;
+    multiplier: number;
+    payout: number;
+}
+export interface CrashEndedPayload {
+    roundId: string;
+    crashPoint: number;
+}
+export interface CrashBetPlacedPayload {
+    playerId: string;
+    betAmount: number;
+}
+export interface CrashCashoutAckPayload {
+    multiplier: number;
+    payout: number;
+}
 export interface JoinRoundEvent {
     roundId: string;
     token: string;
@@ -61,6 +90,13 @@ export interface ServerToClientEvents {
     CARTELA_RESERVED: (payload: CartelaReservedPayload) => void;
     CARTELA_UNRESERVED: (payload: CartelaReservedPayload) => void;
     WIN_REJECTED: (payload: WinRejectedPayload) => void;
+    CRASH_BETTING_OPEN: (payload: CrashBettingOpenPayload) => void;
+    CRASH_STARTED: (payload: CrashStartedPayload) => void;
+    CRASH_TICK: (payload: CrashTickPayload) => void;
+    CRASH_CASHED_OUT: (payload: CrashCashedOutPayload) => void;
+    CRASH_ENDED: (payload: CrashEndedPayload) => void;
+    CRASH_BET_PLACED: (payload: CrashBetPlacedPayload) => void;
+    CRASH_CASHOUT_ACK: (payload: CrashCashoutAckPayload) => void;
 }
 /** Events emitted by the client and received by the server */
 export interface ClientToServerEvents {
@@ -76,6 +112,13 @@ export interface ClientToServerEvents {
     CARTELA_UNRESERVE: (event: {
         roundId: string;
         cartelaNumbers: number[];
+    }) => void;
+    CRASH_BET: (event: {
+        roundId: string;
+        betAmount: number;
+    }) => void;
+    CRASH_CASHOUT: (event: {
+        roundId: string;
     }) => void;
 }
 //# sourceMappingURL=websocket.d.ts.map

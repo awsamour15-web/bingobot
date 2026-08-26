@@ -5,6 +5,32 @@ import { Router, type Request, type Response, type Router as RouterType } from '
 import { TxType, WalletType } from '@fidel/shared';
 import prisma from '../../lib/prisma.js';
 import { WalletService } from '../../services/wallet.service.js';
+import { bot } from '../../bot/index.js';
+
+/** Broadcast withdrawal proof to all active channel targets (non-blocking) */
+async function broadcastWithdrawalProof(username: string, amount: number, phone: string, txNumber: string): Promise<void> {
+  try {
+    if (!bot) return;
+    const targets = await prisma.broadcastTarget.findMany({ where: { is_active: true, type: 'channel' } });
+    if (targets.length === 0) return;
+
+    const maskedPhone = phone.slice(0, 4) + '****' + phone.slice(-2);
+    const message =
+      `✅ *ክፍያ ተፈጸመ!*\n\n` +
+      `👤 ተጠቃሚ: @${username}\n` +
+      `💵 መጠን: ${amount} ብር\n` +
+      `📱 ስልክ: ${maskedPhone}\n` +
+      `🔖 Tx: \`${txNumber}\``;
+
+    await Promise.allSettled(
+      targets
+        .filter((t) => t.channel_id)
+        .map((t) => bot!.api.sendMessage(t.channel_id!, message, { parse_mode: 'Markdown' })),
+    );
+  } catch (err) {
+    console.error('[Finance] Failed to broadcast withdrawal proof:', err);
+  }
+}
 
 const router: RouterType = Router();
 
@@ -62,7 +88,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
 
   const withdrawal = await prisma.pendingWithdrawal.findUnique({
     where: { id },
-    include: { player: { select: { id: true } } },
+    include: { player: { select: { id: true, username: true } } },
   });
 
   if (!withdrawal || withdrawal.status !== 'pending') {
@@ -83,10 +109,13 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
       data: { status: 'approved', tx_number: txNumber },
     });
 
-    // Notify player via Telegram (non-blocking)
+    // Notify player via Telegram DM (non-blocking)
     import('../../bot/notifications.js').then(({ notifyWithdrawalApproved }) => {
       void notifyWithdrawalApproved(withdrawal.player.id, Number(withdrawal.amount), withdrawal.phone);
     }).catch(() => {});
+
+    // Broadcast withdrawal proof to all active group/channel targets (non-blocking)
+    void broadcastWithdrawalProof(withdrawal.player.username, Number(withdrawal.amount), withdrawal.phone, txNumber);
 
     res.json({ success: true, tx_number: txNumber });
   } catch (err) {
