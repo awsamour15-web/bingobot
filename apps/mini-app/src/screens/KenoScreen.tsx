@@ -510,8 +510,8 @@ export default function KenoScreen() {
         </button>
       </div>
 
-      {/* ── Countdown — hidden during draw with no bet ── */}
-      {!((state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0) && (
+      {/* ── Countdown — only show during betting phase ── */}
+      {state.phase === 'betting' && (
       <div style={{ textAlign: 'center', padding: '4px 0 2px', background: '#0d1120', flexShrink: 0 }}>
         <div style={{
           display: 'inline-block',
@@ -520,11 +520,11 @@ export default function KenoScreen() {
           padding: '2px 18px',
           fontSize: 18,
           fontWeight: 900,
-          color: countdownSec <= 5 && state.phase === 'betting' ? '#ef4444' : '#fff',
+          color: countdownSec <= 5 ? '#ef4444' : '#fff',
           letterSpacing: 4,
           fontVariantNumeric: 'tabular-nums',
         }}>
-          {state.phase === 'betting' || state.phase === 'drawing' ? `${cdMins} : ${cdSecs}` : '00 : 00'}
+          {cdMins} : {cdSecs}
         </div>
       </div>
       )}
@@ -586,45 +586,6 @@ export default function KenoScreen() {
               ))}
             </div>
           </div>
-          {/* If player has a bet, show their matched numbers panel */}
-          {activePicked.size > 0 && (
-            <div style={{
-              background: '#1a2340', margin: '4px 6px', borderRadius: 8,
-              padding: '7px 10px', flexShrink: 0,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{liveMatched}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>Possible win</span>
-                  <span style={{ fontSize: 15, fontWeight: 900, color: '#22c55e' }}>
-                    {Math.round(activeBetAmount * getMultiplier(activePicked.size, liveMatched))}
-                  </span>
-                </div>
-                <div style={{
-                  width: 24, height: 24, borderRadius: '50%',
-                  background: '#1a3a2a', border: '1px solid rgba(34,197,94,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, color: '#22c55e',
-                }}>?</div>
-              </div>
-              <div style={{ display: 'flex', gap: 10, marginBottom: 5, fontSize: 11, color: '#64748b' }}>
-                <span>Match <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{liveMatched}</span></span>
-                <span>Pays <span style={{ color: '#e2e8f0', fontWeight: 700 }}>x{getMultiplier(activePicked.size, liveMatched)}</span></span>
-              </div>
-              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                {Array.from(activePicked).sort((a,b)=>a-b).map(n => (
-                  <span key={n} style={{
-                    width: 28, height: 26, borderRadius: 5,
-                    background: drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.1)',
-                    border: `1px solid ${drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.15)'}`,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 800,
-                    color: drawnSet.has(n) ? '#fff' : '#cbd5e1',
-                  }}>{n}</span>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -959,7 +920,7 @@ function DrawingMachine({
       position: 'relative',
       background: 'radial-gradient(ellipse at 50% 55%, rgba(34,197,94,0.07) 0%, #0a1208 55%, #0d1120 100%)',
       flexShrink: 0,
-      height: 150,
+      height: 200,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
