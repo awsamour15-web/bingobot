@@ -550,13 +550,6 @@ export default function KenoScreen() {
             lastDrawn={lastDrawn}
             totalDraw={TOTAL_DRAW}
           />
-          <div style={{ padding: '2px 6px', flexShrink: 0 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
-              {Array.from({ length: 80 }, (_, i) => i + 1).map(n => (
-                <NumberCell key={n} num={n} picked={false} drawn={drawnSet.has(n)} justDrawn={lastDrawn === n} onClick={() => {}} />
-              ))}
-            </div>
-          </div>
           <div style={{ padding: '5px 6px 4px', background: '#0d1120', flexShrink: 0 }}>
             <button disabled style={{
               width: '100%', padding: '14px 0',
