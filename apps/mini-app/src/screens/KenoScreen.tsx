@@ -254,6 +254,9 @@ export default function KenoScreen() {
   const [error, setError] = useState<string | null>(null);
   const [winFlash, setWinFlash] = useState<{ amount: number } | null>(null);
   const lastDrawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Progressive reveal: how many drawn numbers to actually show in the grid
+  const [revealedCount, setRevealedCount] = useState<number>(0);
+  const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const endsAt = state.round?.bettingEndsAt ? new Date(state.round.bettingEndsAt).getTime() : null;
   const countdown = useCountdown(endsAt);
@@ -263,6 +266,28 @@ export default function KenoScreen() {
     try {
       const s = await apiRequest<KenoRoundState>('GET', '/api/keno/state');
       setState(s);
+      // If we join mid-draw, progressively reveal the already-drawn numbers
+      if (s.phase === 'drawing' && s.round && s.round.drawnNumbers.length > 0) {
+        const nums = s.round.drawnNumbers;
+        setRevealedCount(0);
+        if (revealIntervalRef.current) clearInterval(revealIntervalRef.current);
+        let idx = 0;
+        revealIntervalRef.current = setInterval(() => {
+          idx++;
+          setLastDrawn(nums[idx - 1] ?? null);
+          setRevealedCount(idx);
+          if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
+          lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 500);
+          if (idx >= nums.length) {
+            clearInterval(revealIntervalRef.current!);
+            revealIntervalRef.current = null;
+          }
+        }, 300);
+      } else if (s.phase === 'finished') {
+        setRevealedCount(s.round?.drawnNumbers.length ?? 0);
+      } else {
+        setRevealedCount(0);
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -283,6 +308,10 @@ export default function KenoScreen() {
   useEffect(() => {
     fetchState();
     fetchBalance();
+    return () => {
+      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current);
+      if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
+    };
   }, [fetchState, fetchBalance]);
 
   useEffect(() => {
@@ -306,12 +335,15 @@ export default function KenoScreen() {
       }));
       setPicked(new Set());
       setLastDrawn(null);
+      setRevealedCount(0);
+      if (revealIntervalRef.current) { clearInterval(revealIntervalRef.current); revealIntervalRef.current = null; }
       setWinFlash(null);
       fetchBalance();
     };
 
     const onNumberDrawn = (data: { roundId: string; number: number; drawnSoFar: number[] }) => {
       setLastDrawn(data.number);
+      setRevealedCount(data.drawnSoFar.length);
       if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
       lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 900);
 
@@ -326,6 +358,8 @@ export default function KenoScreen() {
     };
 
     const onRoundFinished = (data: { roundId: string; drawnNumbers: number[] }) => {
+      if (revealIntervalRef.current) { clearInterval(revealIntervalRef.current); revealIntervalRef.current = null; }
+      setRevealedCount(data.drawnNumbers.length);
       setState(prev => {
         if (!prev.round || prev.round.id !== data.roundId) return prev;
         return {
@@ -389,7 +423,10 @@ export default function KenoScreen() {
     }
   };
 
-  const drawnSet = new Set(state.round?.drawnNumbers ?? []);
+  const allDrawnNumbers = state.round?.drawnNumbers ?? [];
+  // Only show numbers that have been progressively revealed so far
+  const visibleDrawnNumbers = allDrawnNumbers.slice(0, revealedCount);
+  const drawnSet = new Set(visibleDrawnNumbers);
   // For display purposes use the first bet's picks when in draw/finished, otherwise current picks
   const activePicked: Set<number> = (state.myBets.length > 0 && state.phase !== 'betting')
     ? new Set(state.myBets.flatMap(b => b.pickedNumbers))
@@ -507,7 +544,7 @@ export default function KenoScreen() {
           {/* ── Top panel: Drawing machine OR info panel ── */}
           {(state.phase === 'drawing' || state.phase === 'finished') ? (
             <DrawingMachine
-              drawnNumbers={state.round?.drawnNumbers ?? []}
+              drawnNumbers={visibleDrawnNumbers}
               lastDrawn={lastDrawn}
               totalDraw={TOTAL_DRAW}
             />
