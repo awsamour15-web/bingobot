@@ -20,16 +20,17 @@ const MIN_PICKS = 1;
 const MAX_PICKS = 10;
 
 // ─── Keno access gate ─────────────────────────────────────────────────────────
-// If config key `keno_allowed_ids` is set, only those telegram IDs can access.
+// Keno is restricted by default. Only players whose telegram IDs are listed in
+// the config key `keno_allowed_ids` can access it.
 // Value format: comma-separated telegram IDs, e.g. "123456789,987654321"
-// If key is missing or empty → game is open to everyone.
+// If key is missing or empty → game is closed to everyone.
 
 async function isKenoAllowed(playerId: string): Promise<boolean> {
   const cfg = await prisma.config.findUnique({ where: { key: 'keno_allowed_ids' } });
-  if (!cfg?.value?.trim()) return true; // not configured = open to all
+  if (!cfg?.value?.trim()) return false; // not configured = closed to all
 
   const allowedIds = cfg.value.split(',').map((s) => s.trim()).filter(Boolean);
-  if (allowedIds.length === 0) return true;
+  if (allowedIds.length === 0) return false;
 
   const player = await prisma.player.findUnique({
     where: { id: playerId },
