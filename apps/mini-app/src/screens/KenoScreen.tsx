@@ -792,25 +792,7 @@ export default function KenoScreen() {
       {tab === 'history' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
           {history.length === 0 ? (
-            /* Fairness / empty state matching screenshot */
-            <div style={{
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              paddingTop: 40, gap: 12,
-            }}>
-              {/* Shield icon */}
-              <div style={{
-                width: 64, height: 64,
-                background: 'radial-gradient(circle at 50% 40%, rgba(34,197,94,0.15), transparent)',
-                border: '2px solid rgba(34,197,94,0.3)',
-                borderRadius: '45% 45% 50% 50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28,
-              }}>✔</div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', letterSpacing: 2 }}>FAIRNESS</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', letterSpacing: 3 }}>ATLAS-V</div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#475569', letterSpacing: 4 }}>GAMING</div>
-            </div>
+            <FairnessEmptyState />
           ) : (
             history.map(r => <HistoryCard key={r.id} round={r} />)
           )}
@@ -821,7 +803,7 @@ export default function KenoScreen() {
       {tab === 'results' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
           {history.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>No results yet</div>
+            <FairnessEmptyState />
           ) : (
             history.slice(0, 20).map(r => {
               const date = new Date(r.finishedAt);
@@ -928,6 +910,43 @@ const ctrlBtn: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
 };
+
+function FairnessEmptyState() {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      paddingTop: 60, gap: 14,
+    }}>
+      {/* Shield */}
+      <div style={{
+        width: 70, height: 75,
+        position: 'relative',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {/* Outer shield shape */}
+        <svg width="70" height="75" viewBox="0 0 70 75" fill="none">
+          <path d="M35 2L5 14V38C5 54 18 68 35 73C52 68 65 54 65 38V14L35 2Z"
+            fill="rgba(34,197,94,0.08)"
+            stroke="rgba(34,197,94,0.5)"
+            strokeWidth="1.5"
+          />
+          <path d="M35 8L11 18V38C11 51 21 63 35 67C49 63 59 51 59 38V18L35 8Z"
+            fill="rgba(34,197,94,0.12)"
+          />
+          <text x="35" y="46" textAnchor="middle" fontSize="22" fontWeight="900" fill="#22c55e">✔</text>
+        </svg>
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: 3 }}>FAIRNESS</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 900, color: '#e2e8f0', letterSpacing: 4 }}>ATLAS-V</div>
+        <div style={{ fontSize: 9, fontWeight: 600, color: '#64748b', letterSpacing: 6 }}>GAMING</div>
+      </div>
+    </div>
+  );
+}
 
 function HistoryCard({ round }: { round: HistoryRound }) {
   const myBets = round.myBets ?? (round.myBet ? [round.myBet] : []);
