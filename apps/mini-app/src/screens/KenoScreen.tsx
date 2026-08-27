@@ -477,15 +477,19 @@ export default function KenoScreen() {
             color: '#fff',
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
-            <span style={{ fontSize: 11, color: '#64748b' }}>0</span>
+            <span style={{ fontSize: 11, color: '#fff', fontWeight: 700 }}>
+              {balance !== null ? balance.toFixed(2) : '0.00'}
+            </span>
             <span style={{ fontSize: 10, color: '#64748b' }}>ETB</span>
           </div>
-          {playerId && (
+          {(state.round?.id || playerId) && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 4,
               fontSize: 11, fontWeight: 700, color: '#94a3b8',
             }}>
-              <span>ID: {playerId}</span>
+              <span>ID: {state.round?.id
+                ? state.round.id.replace(/\D/g, '').slice(-8).padStart(8, '0')
+                : playerId}</span>
               <span style={{
                 width: 16, height: 16, borderRadius: '50%',
                 background: '#22c55e',
@@ -718,7 +722,7 @@ export default function KenoScreen() {
                 <NumberCell
                   key={n}
                   num={n}
-                  picked={activePicked.has(n)}
+                  picked={picked.has(n)}
                   drawn={drawnSet.has(n)}
                   justDrawn={lastDrawn === n}
                   onClick={() => togglePick(n)}
