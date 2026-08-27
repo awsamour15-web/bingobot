@@ -413,7 +413,7 @@ export default function KenoScreen() {
         betAmount,
         pickedNumbers: Array.from(picked),
       });
-      setPicked(new Set()); // clear picks so player can place another
+      // Keep picks visible so player can see their numbers during drawing
       await fetchState();
       await fetchBalance();
     } catch (e: any) {
@@ -539,7 +539,7 @@ export default function KenoScreen() {
       )}
 
       {/* ── GAME TAB CONTENT ─────────────────────────────────────────── */}
-      {tab === 'game' && !winFlash && (
+      {tab === 'game' && (
         <>
           {/* ── Top panel: Drawing machine OR info panel ── */}
           {(state.phase === 'drawing' || state.phase === 'finished') ? (
