@@ -510,7 +510,8 @@ export default function KenoScreen() {
         </button>
       </div>
 
-      {/* ── Countdown ── */}
+      {/* ── Countdown — hidden during draw with no bet ── */}
+      {!((state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0) && (
       <div style={{ textAlign: 'center', padding: '4px 0 2px', background: '#0d1120', flexShrink: 0 }}>
         <div style={{
           display: 'inline-block',
@@ -526,6 +527,7 @@ export default function KenoScreen() {
           {state.phase === 'betting' || state.phase === 'drawing' ? `${cdMins} : ${cdSecs}` : '00 : 00'}
         </div>
       </div>
+      )}
 
       {/* ── Win flash ── */}
       {winFlash && (
@@ -543,21 +545,55 @@ export default function KenoScreen() {
 
       {/* ── GAME TAB ── */}
       {tab === 'game' && (state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0 && (
-        /* No bet placed — show drawing machine + grid */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        /* No bet placed — drawing machine + called numbers as balls in 2 rows */
+        <div style={{ flex: 'none', display: 'flex', flexDirection: 'column' }}>
           <DrawingMachine
             drawnNumbers={visibleDrawnNumbers}
             lastDrawn={lastDrawn}
             totalDraw={TOTAL_DRAW}
           />
-          <div style={{ padding: '5px 6px 4px', background: '#0d1120', flexShrink: 0 }}>
-            <button disabled style={{
-              width: '100%', padding: '14px 0',
-              background: 'linear-gradient(180deg, #1a6b2e 0%, #145524 100%)',
-              border: 'none', borderRadius: 8,
-              color: 'rgba(34,197,94,0.35)', fontSize: 18, fontWeight: 900,
-              letterSpacing: '0.12em', opacity: 0.7, cursor: 'not-allowed',
-            }}>BET</button>
+          {/* Called numbers: two rows of balls */}
+          <div style={{ padding: '6px 10px 4px', background: '#0d1120' }}>
+            {/* Row 1: numbers 1–10 drawn */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'nowrap' }}>
+              {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i] ?? null).map((n, i) => (
+                <div key={i} style={{
+                  flex: 1,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: n !== null
+                    ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #5a6578, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
+                    : 'transparent',
+                  border: n !== null ? '1.5px solid rgba(255,255,255,0.18)' : 'none',
+                  boxShadow: n === lastDrawn ? '0 0 10px rgba(34,197,94,0.5)' : n !== null ? 'inset 0 1px 3px rgba(255,255,255,0.1)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 900,
+                  color: n !== null ? '#e2e8f0' : 'transparent',
+                  transition: 'background 0.2s',
+                  minWidth: 0,
+                }}>{n ?? ''}</div>
+              ))}
+            </div>
+            {/* Row 2: numbers 11–20 drawn */}
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
+              {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i + 10] ?? null).map((n, i) => (
+                <div key={i} style={{
+                  flex: 1,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: n !== null
+                    ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #5a6578, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
+                    : 'transparent',
+                  border: n !== null ? '1.5px solid rgba(255,255,255,0.18)' : 'none',
+                  boxShadow: n === lastDrawn ? '0 0 10px rgba(34,197,94,0.5)' : n !== null ? 'inset 0 1px 3px rgba(255,255,255,0.1)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 900,
+                  color: n !== null ? '#e2e8f0' : 'transparent',
+                  transition: 'background 0.2s',
+                  minWidth: 0,
+                }}>{n ?? ''}</div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -943,9 +979,9 @@ function DrawingMachine({
   return (
     <div style={{
       position: 'relative',
-      background: 'radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0.08) 0%, #0a1208 60%, #0d1120 100%)',
+      background: 'radial-gradient(ellipse at 50% 55%, rgba(34,197,94,0.07) 0%, #0a1208 55%, #0d1120 100%)',
       flexShrink: 0,
-      height: 170,
+      height: 150,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -957,50 +993,36 @@ function DrawingMachine({
         {drawnNumbers.length} / {totalDraw}
       </div>
       {/* Circular rings */}
-      {[130, 100, 70].map((size, i) => (
+      {[160, 120, 85].map((size, i) => (
         <div key={i} style={{
           position: 'absolute',
           width: size, height: size,
           borderRadius: '50%',
-          border: `1px solid rgba(34,197,94,${0.06 - i * 0.015})`,
+          border: `1px solid rgba(34,197,94,${0.07 - i * 0.02})`,
         }} />
       ))}
       {/* Main ball */}
       {current !== null ? (
         <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, #4a5568, #1a202c)',
-          border: '2px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 0 30px rgba(34,197,94,0.3), inset 0 2px 4px rgba(255,255,255,0.15)',
+          width: 90, height: 90, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 28%, #5a6a80, #1a2535)',
+          border: '2px solid rgba(255,255,255,0.2)',
+          boxShadow: '0 0 24px rgba(34,197,94,0.25), inset 0 2px 6px rgba(255,255,255,0.18)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 32, fontWeight: 900, color: '#fff',
+          fontSize: 36, fontWeight: 900, color: '#fff',
           zIndex: 2,
-          transform: lastDrawn !== null ? 'scale(1.08)' : 'scale(1)',
+          transform: lastDrawn !== null ? 'scale(1.06)' : 'scale(1)',
           transition: 'transform 0.15s ease-out',
         }}>
           {current}
         </div>
       ) : (
         <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, rgba(34,197,94,0.15), rgba(34,197,94,0.03))',
-          border: '2px solid rgba(34,197,94,0.1)',
+          width: 90, height: 90, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, rgba(34,197,94,0.1), rgba(34,197,94,0.02))',
+          border: '2px solid rgba(34,197,94,0.08)',
           zIndex: 2,
         }} />
-      )}
-      {/* Previous balls */}
-      {drawnNumbers.length > 1 && (
-        <div style={{ position: 'absolute', bottom: 12, left: 10, display: 'flex', gap: 5 }}>
-          {drawnNumbers.slice(-5, -1).map((n, i) => (
-            <div key={`${n}-${i}`} style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 30%, #3a4555, #1a2030)',
-              border: '1.5px solid rgba(255,255,255,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 800, color: '#94a3b8',
-            }}>{n}</div>
-          ))}
-        </div>
       )}
     </div>
   );
