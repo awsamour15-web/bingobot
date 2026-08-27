@@ -275,7 +275,7 @@ export default function KenoScreen() {
           setLastDrawn(nums[idx - 1] ?? null);
           setRevealedCount(idx);
           if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
-          lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 500);
+          lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 1500);
           if (idx >= nums.length) {
             clearInterval(revealIntervalRef.current!);
             revealIntervalRef.current = null;
@@ -345,7 +345,7 @@ export default function KenoScreen() {
       setLastDrawn(data.number);
       setRevealedCount(data.drawnSoFar.length);
       if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
-      lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 900);
+      lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 1500);
       setState(prev => {
         if (!prev.round || prev.round.id !== data.roundId) return prev;
         return {
