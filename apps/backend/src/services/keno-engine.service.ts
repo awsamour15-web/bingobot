@@ -130,10 +130,17 @@ export class KenoEngine {
     const drawnSet = new Set(drawnNumbers);
     const bets = await prisma.kenoBet.findMany({ where: { round_id: roundId } });
 
+    // Read house edge from config (default 15%)
+    const edgeCfg = await prisma.config.findUnique({ where: { key: 'house_edge_keno' } });
+    const houseEdgePct = Math.min(50, Math.max(5, parseInt(edgeCfg?.value ?? '15', 10)));
+    const rtpFactor = 1 - houseEdgePct / 100;
+
     for (const bet of bets) {
       const matched = bet.picked_numbers.filter((n) => drawnSet.has(n)).length;
       const picked = bet.picked_numbers.length;
-      const multiplier = getKenoMultiplier(picked, matched);
+      const baseMultiplier = getKenoMultiplier(picked, matched);
+      // Apply house edge: scale non-zero payouts by RTP factor
+      const multiplier = baseMultiplier > 0 ? baseMultiplier * rtpFactor : 0;
       const payout = multiplier > 0 ? Math.round(Number(bet.bet_amount) * multiplier * 100) / 100 : 0;
 
       await prisma.kenoBet.update({
@@ -148,7 +155,7 @@ export class KenoEngine {
           payout,
           TxType.game_win,
           roundId,
-          `Keno win: ${matched}/${picked} match x${multiplier}`,
+          `Keno win: ${matched}/${picked} match x${baseMultiplier}`,
         );
       }
     }

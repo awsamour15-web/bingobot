@@ -14,11 +14,14 @@ import {
 function HouseEdgeSection() {
   const [crash, setCrash] = useState('15');
   const [slots, setSlots] = useState('15');
+  const [keno, setKeno] = useState('15');
   const [loading, setLoading] = useState(true);
   const [savingCrash, setSavingCrash] = useState(false);
   const [savingSlots, setSavingSlots] = useState(false);
+  const [savingKeno, setSavingKeno] = useState(false);
   const [fbCrash, setFbCrash] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [fbSlots, setFbSlots] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [fbKeno, setFbKeno] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -26,16 +29,17 @@ function HouseEdgeSection() {
       .then((data) => {
         setCrash(data.find(e => e.key === 'house_edge_crash')?.value ?? '15');
         setSlots(data.find(e => e.key === 'house_edge_slots')?.value ?? '15');
+        setKeno(data.find(e => e.key === 'house_edge_keno')?.value ?? '15');
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  async function save(game: 'crash' | 'slots') {
-    const val = game === 'crash' ? crash : slots;
+  async function save(game: 'crash' | 'slots' | 'keno') {
+    const val = game === 'crash' ? crash : game === 'slots' ? slots : keno;
     const n = parseInt(val, 10);
-    const setFb = game === 'crash' ? setFbCrash : setFbSlots;
-    const setSaving = game === 'crash' ? setSavingCrash : setSavingSlots;
+    const setFb = game === 'crash' ? setFbCrash : game === 'slots' ? setFbSlots : setFbKeno;
+    const setSaving = game === 'crash' ? setSavingCrash : game === 'slots' ? setSavingSlots : setSavingKeno;
     if (isNaN(n) || n < 5 || n > 50) {
       setFb({ type: 'error', msg: 'Must be between 5 and 50' });
       return;
@@ -101,6 +105,7 @@ function HouseEdgeSection() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {edgeRow('Aviator (Crash)', '✈️', crash, setCrash, savingCrash, fbCrash, () => save('crash'))}
           {edgeRow('Multi Hot (Slots)', '🎰', slots, setSlots, savingSlots, fbSlots, () => save('slots'))}
+          {edgeRow('Keno', '🎱', keno, setKeno, savingKeno, fbKeno, () => save('keno'))}
         </div>
       )}
     </Card>
