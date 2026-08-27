@@ -274,6 +274,23 @@ export function approveDeposit(id: string): Promise<{ success: boolean; amount: 
   return adminApiRequest<{ success: boolean; amount: number }>('POST', `/api/admin/deposits/${id}/approve`);
 }
 
+export interface DepositAttempt {
+  id: string;
+  player_username: string | null;
+  tx_number_parsed: string | null;
+  outcome: 'success' | 'failure' | 'pending_approval';
+  failure_reason: string | null;
+  amount_expected: number | null;
+  amount_parsed: number | null;
+  raw_sms: string | null;
+  source: string;
+  created_at: string;
+}
+
+export function getDepositAttempts(depositId: string): Promise<DepositAttempt[]> {
+  return adminApiRequest<DepositAttempt[]>('GET', `/api/admin/deposits/${depositId}/attempts`);
+}
+
 // ---------------------------------------------------------------------------
 // Player Transactions
 // ---------------------------------------------------------------------------

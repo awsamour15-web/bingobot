@@ -533,18 +533,77 @@ async function ocrImage(_imageBuffer: Buffer): Promise<string | null> {
 }
 
 /**
+ * Logs a deposit attempt for audit purposes.
+ * Fire-and-forget — never throws so it cannot break the deposit flow.
+ */
+export async function logDepositAttempt(params: {
+  depositId?: string | null | undefined;
+  playerId?: string | null | undefined;
+  txNumberParsed?: string | null | undefined;
+  rawSms?: string | null | undefined;
+  outcome: 'success' | 'failure' | 'pending_approval';
+  failureReason?: string | null | undefined;
+  amountExpected?: number | null | undefined;
+  amountParsed?: number | null | undefined;
+  source?: 'bot' | 'admin';
+}): Promise<void> {
+  try {
+    await (prisma as any).depositAttempt.create({
+      data: {
+        deposit_id:       params.depositId       ?? null,
+        player_id:        params.playerId        ?? null,
+        tx_number_parsed: params.txNumberParsed  ?? null,
+        raw_sms:          params.rawSms          ?? null,
+        outcome:          params.outcome,
+        failure_reason:   params.failureReason   ?? null,
+        amount_expected:  params.amountExpected  ?? null,
+        amount_parsed:    params.amountParsed    ?? null,
+        source:           params.source          ?? 'bot',
+      },
+    });
+  } catch (err) {
+    console.error('[DepositAudit] Failed to log deposit attempt:', err);
+  }
+}
+
+
+/**
  * Shared deposit claim logic — used by both text receipt and photo OCR handlers.
  * Returns the credited amount on success, or throws/returns null for specific error cases.
  */
 export async function processDepositClaim(
   playerId: string,
   txNumber: string,
+  auditCtx?: { rawSms?: string; amountParsed?: number | undefined; source?: 'bot' | 'admin' },
 ): Promise<{ success: true; amount: number; bonusAmount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
   const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
 
-  if (!deposit) return { success: false, reason: 'NOT_FOUND' };
-  if (deposit.status === 'claimed') return { success: false, reason: 'CLAIMED' };
-  if (deposit.status === 'cancelled') return { success: false, reason: 'CANCELLED' };
+  if (!deposit) {
+    void logDepositAttempt({
+      playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: 'NOT_FOUND',
+      amountParsed: auditCtx?.amountParsed, source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'NOT_FOUND' };
+  }
+  if (deposit.status === 'claimed') {
+    void logDepositAttempt({
+      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: 'CLAIMED',
+      amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+      source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'CLAIMED' };
+  }
+  if (deposit.status === 'cancelled') {
+    void logDepositAttempt({
+      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: 'CANCELLED',
+      amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+      source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'CANCELLED' };
+  }
 
   const amount = Number(deposit.amount);
 
@@ -629,9 +688,14 @@ export async function processDepositClaim(
     throw err;
   }
 
+  void logDepositAttempt({
+    depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+    outcome: 'success', amountExpected: amount, amountParsed: auditCtx?.amountParsed ?? amount,
+    source: auditCtx?.source ?? 'bot',
+  });
+
   return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : 0 };
 }
-
 
 /**
  * Returns the required channel username/id from config (key: required_channel).
@@ -731,6 +795,27 @@ if (BOT_TOKEN) {
   });
 
   console.log('[Bot] ✅ Bot instance created successfully');
+
+  /**
+   * ─── Suspension gate middleware ──────────────────────────────────────────────
+   * Blocked players cannot use any bot menu button or command.
+   */
+  bot.use(async (ctx, next) => {
+    if (!ctx.from) return next();
+
+    const telegramId = BigInt(ctx.from.id);
+    const player = await prisma.player.findUnique({
+      where: { telegram_id: telegramId },
+      select: { is_suspended: true },
+    });
+
+    if (player?.is_suspended) {
+      await ctx.reply('🚫 Your account has been suspended. Please contact support.').catch(() => {});
+      return; // stop processing — don't call next()
+    }
+
+    return next();
+  });
 
   /**
    * ─── Channel membership gate middleware ─────────────────────────────────────
@@ -1300,8 +1385,16 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
       // ── Step 2: awaiting receipt paste ────────────────────────────────────────
       if (depositSession.step === 'awaiting_receipt') {
+        // Resolve player early so we can attach player_id to all audit log entries
+        const receiptPlayer = await getRegisteredPlayerWithWallets(telegramId);
+        const auditPlayerId = receiptPlayer?.id ?? null;
+
         const parsed = parseTelebirrReceipt(text);
         if (!parsed) {
+          void logDepositAttempt({
+            playerId: auditPlayerId, rawSms: text, outcome: 'failure',
+            failureReason: 'NO_RECEIPT', amountExpected: depositSession.amount,
+          });
           await ctx.reply('⚠️ ደረሰኙን ማግኘት አልተቻለም። እባክዎ የቴሌብር ደረሰኝ SMS ን ሙሉ በሙሉ ይለጥፉ።');
           return;
         }
@@ -1314,12 +1407,22 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           // Fall back to legacy config if no deposit accounts exist yet
           if (activeAccounts.length === 0) {
             if (!phoneMatches(parsed.receiverPhone, depositSession.telebirrNumber)) {
+              void logDepositAttempt({
+                playerId: auditPlayerId, txNumberParsed: parsed.txNumber, rawSms: text,
+                outcome: 'failure', failureReason: 'PHONE_MISMATCH',
+                amountExpected: depositSession.amount, amountParsed: parsed.amount,
+              });
               await ctx.reply(
                 `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ መላክ ያለበት ወደ ${depositSession.telebirrNumber} ነው።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
               );
               return;
             }
           } else if (!matchedAccount) {
+            void logDepositAttempt({
+              playerId: auditPlayerId, txNumberParsed: parsed.txNumber, rawSms: text,
+              outcome: 'failure', failureReason: 'PHONE_MISMATCH',
+              amountExpected: depositSession.amount, amountParsed: parsed.amount,
+            });
             await ctx.reply(
               `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nብሩ ወደ ትክክለኛ አካውንት አልተላከም።\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
             );
@@ -1338,6 +1441,11 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
               return smsName.includes(configName) || configName.includes(smsName);
             });
             if (!nameMatched) {
+              void logDepositAttempt({
+                playerId: auditPlayerId, txNumberParsed: parsed.txNumber, rawSms: text,
+                outcome: 'failure', failureReason: 'NAME_MISMATCH',
+                amountExpected: depositSession.amount, amountParsed: parsed.amount,
+              });
               await ctx.reply(
                 `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nተቀባዩ ስም አይዛመድም። እባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
               );
@@ -1349,6 +1457,11 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             const smsName = normalize(parsed.receiverName);
             const configName = normalize(depositSession.receiverName);
             if (!smsName.includes(configName) && !configName.includes(smsName)) {
+              void logDepositAttempt({
+                playerId: auditPlayerId, txNumberParsed: parsed.txNumber, rawSms: text,
+                outcome: 'failure', failureReason: 'NAME_MISMATCH',
+                amountExpected: depositSession.amount, amountParsed: parsed.amount,
+              });
               await ctx.reply(
                 `❌ ደረሰኙ ትክክለኛ አይደለም።\n\nተቀባዩ ስም አይዛመድም። እባክዎ ትክክለኛ ደረሰኝ ይለጥፉ ወይም ድጋፍ ያግኙ።`,
               );
@@ -1362,6 +1475,11 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         if (parsed.amount !== null) {
           const tolerance = 1;
           if (Math.abs(parsed.amount - depositSession.amount) > tolerance) {
+            void logDepositAttempt({
+              playerId: auditPlayerId, txNumberParsed: parsed.txNumber, rawSms: text,
+              outcome: 'failure', failureReason: 'AMOUNT_MISMATCH',
+              amountExpected: depositSession.amount, amountParsed: parsed.amount,
+            });
             await ctx.reply(
               `❌ የደረሰኙ መጠን አይዛመድም።\n\nያስገቡት መጠን: ${depositSession.amount} ብር\nደረሰኙ ላይ ያለው: ${parsed.amount} ብር\n\nእባክዎ ትክክለኛ ደረሰኝ ይለጥፉ።`,
             );
@@ -1369,7 +1487,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           }
         }
 
-        const player = await getRegisteredPlayerWithWallets(telegramId);
+        const player = receiptPlayer;
         if (!player) {
           depositSessions.delete(telegramId);
           await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
@@ -1377,12 +1495,9 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         try {
-          // Guard: txNumber must look like a real Telebirr ID (alphanumeric, contains letters).
-          // Pure-digit strings are phone numbers, not transaction IDs — reject them.
           const isTelebirrTxId = /^[A-Z0-9]{6,20}$/.test(parsed.txNumber) && /[A-Z]/.test(parsed.txNumber);
           const depositAmount = parsed.amount ?? depositSession.amount;
 
-          // Ensure the pending deposit record exists
           if (isTelebirrTxId) {
             try {
               await prisma.pendingDeposit.create({
@@ -1394,7 +1509,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
                 },
               });
             } catch {
-              // Already exists — link this player if not yet linked
               await prisma.pendingDeposit.updateMany({
                 where: { tx_number: parsed.txNumber, player_id: null },
                 data: { player_id: player.id },
@@ -1402,6 +1516,11 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             }
           } else {
             depositSessions.delete(telegramId);
+            void logDepositAttempt({
+              playerId: player.id, txNumberParsed: parsed.txNumber, rawSms: text,
+              outcome: 'failure', failureReason: 'INVALID_TX_ID',
+              amountExpected: depositSession.amount, amountParsed: parsed.amount,
+            });
             await ctx.reply(
               '❌ ደረሰኙ ትክክለኛ የTelebirr ደረሰኝ አይደለም። እባክዎ ትክክለኛ ደረሰኝ ያጋሩ።\n\n❌ Invalid receipt. Please share a valid Telebirr receipt.',
             );
@@ -1411,6 +1530,11 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           // ── Deposits > 100 ETB require admin approval ─────────────────────
           if (depositAmount > 100) {
             depositSessions.delete(telegramId);
+            const pendingRecord = await prisma.pendingDeposit.findUnique({ where: { tx_number: parsed.txNumber } });
+            void logDepositAttempt({
+              depositId: pendingRecord?.id ?? null, playerId: player.id, txNumberParsed: parsed.txNumber, rawSms: text,
+              outcome: 'pending_approval', amountExpected: depositAmount, amountParsed: parsed.amount,
+            });
             await ctx.reply(
               `⏳ ትዕዛዝዎ ተቀብሏል።\n\nየ ${depositAmount} ብር ማስያዣ ለአስተዳዳሪ ማረጋገጫ ቀርቧል። ከጥቂት ጊዜ ገደማ ሂሳቡ ይጨምርልዎታል።\n\n✅ Deposit of ${depositAmount} ETB received and is pending admin approval.\n\nRef: ${parsed.txNumber}`,
             );
@@ -1418,7 +1542,9 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           }
 
           // ── Auto-approve for ≤ 100 ETB ────────────────────────────────────
-          let result = await processDepositClaim(player.id, parsed.txNumber);
+          const result = await processDepositClaim(player.id, parsed.txNumber, {
+            rawSms: text, amountParsed: parsed.amount ?? undefined,
+          });
 
           depositSessions.delete(telegramId);
 

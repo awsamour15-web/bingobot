@@ -13,6 +13,7 @@ import { RoundScheduler } from '../services/round-scheduler.service.js';
 import { MockPlayerBotService } from '../services/mock-player-bot.service.js';
 import { GameStatus } from '@fidel/shared';
 import { crashEngine } from '../services/crash-engine.service.js';
+import { kenoEngine } from '../services/keno-engine.service.js';
 
 // ─── Module-level io reference for crash routes ───────────────────────────────
 let _crashIo: InstanceType<typeof SocketIOServer> | null = null;
@@ -272,6 +273,19 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   };
 
   crashEngine.start();
+
+  // ── Wire Keno Engine callbacks ─────────────────────────────────────────────
+  kenoEngine.onBettingOpen = (roundId, endsAt) => {
+    io.emit('KENO_BETTING_OPEN', { roundId, endsAt });
+  };
+  kenoEngine.onNumberDrawn = (roundId, number, drawnSoFar, drawIndex) => {
+    io.emit('KENO_NUMBER_DRAWN', { roundId, number, drawnSoFar, drawIndex });
+  };
+  kenoEngine.onRoundFinished = (roundId, drawnNumbers) => {
+    io.emit('KENO_ROUND_FINISHED', { roundId, drawnNumbers });
+  };
+
+  kenoEngine.start();
 
   // ── Connection handler ─────────────────────────────────────────────────────
 

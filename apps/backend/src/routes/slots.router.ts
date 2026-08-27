@@ -28,6 +28,13 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  // Check suspension
+  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
+  if (player?.is_suspended) {
+    res.status(403).json({ error: 'PLAYER_SUSPENDED', message: 'Your account has been suspended.' });
+    return;
+  }
+
   // Debit wallet first
   try {
     await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, undefined, 'Slots spin');

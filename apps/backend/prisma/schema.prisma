@@ -33,6 +33,8 @@ model Player {
   bonus_distributions     PromotionBonusDistribution[]
   crash_bets              CrashBet[]
   slot_spins              SlotSpin[]
+  keno_bets               KenoBet[]
+  deposit_attempts        DepositAttempt[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -166,19 +168,48 @@ model Config {
 }
 
 model PendingDeposit {
-  id         String        @id @default(uuid())
-  tx_number  String        @unique
-  amount     Decimal       @db.Decimal(14, 2)
-  status     DepositStatus @default(pending)
+  id         String           @id @default(uuid())
+  tx_number  String           @unique
+  amount     Decimal          @db.Decimal(14, 2)
+  status     DepositStatus    @default(pending)
   player_id  String?
   claimed_at DateTime?
-  created_at DateTime      @default(now())
-  updated_at DateTime      @updatedAt
-  player     Player?       @relation(fields: [player_id], references: [id])
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
+  player     Player?          @relation(fields: [player_id], references: [id])
+  attempts   DepositAttempt[]
 
   @@index([status])
   @@index([player_id])
   @@map("pending_deposits")
+}
+
+model DepositAttempt {
+  id                String              @id @default(uuid())
+  deposit_id        String?             // null when tx_number not found in DB
+  player_id         String?
+  tx_number_parsed  String?             // tx number extracted from SMS (may differ from deposit)
+  raw_sms           String?             // full SMS text the player submitted
+  outcome           DepositAttemptOutcome
+  failure_reason    String?             // e.g. PHONE_MISMATCH, AMOUNT_MISMATCH, NOT_FOUND, etc.
+  amount_expected   Decimal?            @db.Decimal(14, 2)
+  amount_parsed     Decimal?            @db.Decimal(14, 2)
+  source            String              @default("bot") // "bot" | "admin"
+  created_at        DateTime            @default(now())
+  deposit           PendingDeposit?     @relation(fields: [deposit_id], references: [id])
+  player            Player?             @relation(fields: [player_id], references: [id])
+
+  @@index([deposit_id])
+  @@index([player_id])
+  @@index([outcome])
+  @@index([created_at])
+  @@map("deposit_attempts")
+}
+
+enum DepositAttemptOutcome {
+  success
+  failure
+  pending_approval
 }
 
 model Agent {
@@ -489,4 +520,44 @@ model SlotSpin {
   @@index([player_id])
   @@index([created_at])
   @@map("slot_spins")
+}
+
+// ─── Keno Game ─────────────────────────────────────────────────────────────
+
+enum KenoStatus {
+  betting
+  drawing
+  finished
+}
+
+model KenoRound {
+  id              String     @id @default(uuid())
+  status          KenoStatus @default(betting)
+  drawn_numbers   Int[]
+  betting_ends_at DateTime
+  started_at      DateTime?
+  finished_at     DateTime?
+  created_at      DateTime   @default(now())
+  bets            KenoBet[]
+
+  @@index([status])
+  @@index([created_at])
+  @@map("keno_rounds")
+}
+
+model KenoBet {
+  id              String    @id @default(uuid())
+  round_id        String
+  player_id       String
+  picked_numbers  Int[]
+  bet_amount      Decimal   @db.Decimal(14, 2)
+  matched         Int?
+  payout          Decimal?  @db.Decimal(14, 2)
+  created_at      DateTime  @default(now())
+  round           KenoRound @relation(fields: [round_id], references: [id])
+  player          Player    @relation(fields: [player_id], references: [id])
+
+  @@index([round_id])
+  @@index([player_id])
+  @@map("keno_bets")
 }

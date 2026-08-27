@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { AdminDeposit, DepositsResponse } from '../lib/api';
-import { getDeposits, createDeposit, cancelDeposit, approveDeposit } from '../lib/api';
+import type { AdminDeposit, DepositsResponse, DepositAttempt } from '../lib/api';
+import { getDeposits, createDeposit, cancelDeposit, approveDeposit, getDepositAttempts } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, StatCard, Table, Th, Td,
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss,
@@ -63,6 +63,88 @@ function AddDepositForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+function outcomeColor(o: DepositAttempt['outcome']): string {
+  if (o === 'success') return 'var(--c-success)';
+  if (o === 'pending_approval') return 'var(--c-warning)';
+  return 'var(--c-danger, #e74c3c)';
+}
+
+function AttemptsDrawer({ deposit, onClose }: { deposit: AdminDeposit; onClose: () => void }) {
+  const [attempts, setAttempts] = useState<DepositAttempt[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expandedSms, setExpandedSms] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getDepositAttempts(deposit.id).then((data) => {
+      setAttempts(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [deposit.id]);
+
+  const overlayStyle: React.CSSProperties = {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+    display: 'flex', justifyContent: 'flex-end',
+  };
+  const panelStyle: React.CSSProperties = {
+    background: 'var(--c-card)', width: 'min(620px, 100vw)', height: '100%',
+    overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16,
+  };
+
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={panelStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>Audit Trail</div>
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
+              {deposit.tx_number} · {Number(deposit.amount).toFixed(2)} ETB
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--c-muted)' }}>✕</button>
+        </div>
+
+        {loading && <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</div>}
+        {!loading && attempts?.length === 0 && (
+          <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>No attempts recorded for this deposit.</div>
+        )}
+        {attempts?.map((a) => (
+          <div key={a.id} style={{ border: '1px solid var(--c-border)', borderRadius: 8, padding: 14, fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, color: outcomeColor(a.outcome), textTransform: 'uppercase', fontSize: 11, letterSpacing: 1 }}>
+                {a.outcome.replace('_', ' ')}
+              </span>
+              <span style={{ color: 'var(--c-muted)', fontSize: 11 }}>{new Date(a.created_at).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', color: 'var(--c-text)' }}>
+              {a.player_username && <div><span style={{ color: 'var(--c-muted)' }}>Player: </span>@{a.player_username}</div>}
+              {a.tx_number_parsed && <div><span style={{ color: 'var(--c-muted)' }}>TX Parsed: </span>{a.tx_number_parsed}</div>}
+              {a.failure_reason && <div><span style={{ color: 'var(--c-muted)' }}>Reason: </span>{a.failure_reason}</div>}
+              {a.amount_expected != null && <div><span style={{ color: 'var(--c-muted)' }}>Expected: </span>{a.amount_expected} ETB</div>}
+              {a.amount_parsed != null && <div><span style={{ color: 'var(--c-muted)' }}>Parsed: </span>{a.amount_parsed} ETB</div>}
+              <div><span style={{ color: 'var(--c-muted)' }}>Source: </span>{a.source}</div>
+            </div>
+            {a.raw_sms && (
+              <div style={{ marginTop: 8 }}>
+                <button
+                  onClick={() => setExpandedSms(expandedSms === a.id ? null : a.id)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-primary)', fontSize: 12, padding: 0 }}
+                >
+                  {expandedSms === a.id ? '▲ Hide SMS' : '▼ Show raw SMS'}
+                </button>
+                {expandedSms === a.id && (
+                  <pre style={{ marginTop: 6, padding: 10, background: 'var(--c-bg)', borderRadius: 6, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--c-muted)' }}>
+                    {a.raw_sms}
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DepositsPage() {
   const [data, setData] = useState<DepositsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +152,7 @@ export function DepositsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [selectedDeposit, setSelectedDeposit] = useState<AdminDeposit | null>(null);
 
   const fetchDeposits = useCallback(async () => {
     setLoading(true); setError(null);
@@ -110,6 +193,7 @@ export function DepositsPage() {
 
   return (
     <div className="fade-in">
+      {selectedDeposit && <AttemptsDrawer deposit={selectedDeposit} onClose={() => setSelectedDeposit(null)} />}
       <PageHeader
         title="Deposits"
         action={
@@ -156,18 +240,21 @@ export function DepositsPage() {
                 <Td muted>{new Date(d.created_at).toLocaleString()}</Td>
                 <Td muted>{d.claimed_at ? new Date(d.claimed_at).toLocaleString() : '—'}</Td>
                 <Td style={{ textAlign: 'right' }}>
-                  {d.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      {d.player_username && (
-                        <Btn size="sm" variant="primary" onClick={() => handleApprove(d.id)} disabled={approvingId === d.id}>
-                          {approvingId === d.id ? '…' : '✓ Approve'}
-                        </Btn>
-                      )}
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    {d.status === 'pending' && d.player_username && (
+                      <Btn size="sm" variant="primary" onClick={() => handleApprove(d.id)} disabled={approvingId === d.id}>
+                        {approvingId === d.id ? '…' : '✓ Approve'}
+                      </Btn>
+                    )}
+                    {d.status === 'pending' && (
                       <Btn size="sm" variant="danger" onClick={() => handleCancel(d.id)} disabled={cancellingId === d.id}>
                         {cancellingId === d.id ? '…' : 'Cancel'}
                       </Btn>
-                    </div>
-                  )}
+                    )}
+                    <Btn size="sm" variant="ghost" onClick={() => setSelectedDeposit(d)}>
+                      🔍 Audit
+                    </Btn>
+                  </div>
                 </Td>
               </tr>
             ))}

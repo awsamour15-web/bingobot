@@ -614,3 +614,52 @@ export function gambleSlots(spinId: string, guess: 'red' | 'black'): Promise<Gam
 export function getSlotsHistory(): Promise<SlotHistoryEntry[]> {
   return apiRequest<SlotHistoryEntry[]>('GET', '/api/slots/history');
 }
+
+// ---------------------------------------------------------------------------
+// Keno Game
+// ---------------------------------------------------------------------------
+
+export interface KenoState {
+  phase: 'betting' | 'drawing' | 'finished' | 'idle';
+  round: {
+    id: string;
+    status: string;
+    bettingEndsAt: string;
+    drawnNumbers: number[];
+  } | null;
+  myBet: {
+    id: string;
+    pickedNumbers: number[];
+    betAmount: number;
+    matched: number | null;
+    payout: number | null;
+  } | null;
+  bets: {
+    username: string;
+    pickedCount: number;
+    betAmount: number;
+    matched: number | null;
+    payout: number | null;
+  }[];
+}
+
+export function getKenoState(): Promise<KenoState> {
+  return apiRequest<KenoState>('GET', '/api/keno/state');
+}
+
+export function placeKenoBet(betAmount: number, pickedNumbers: number[]): Promise<{ betId: string; roundId: string; bettingEndsAt: string }> {
+  return apiRequest('POST', '/api/keno/bet', { betAmount, pickedNumbers });
+}
+
+export function getKenoHistory(): Promise<{
+  id: string;
+  drawnNumbers: number[];
+  finishedAt: string;
+  myBet: { pickedNumbers: number[]; betAmount: number; matched: number | null; payout: number | null } | null;
+}[]> {
+  return apiRequest('GET', '/api/keno/history');
+}
+
+export function checkKenoAccess(): Promise<{ allowed: boolean }> {
+  return apiRequest<{ allowed: boolean }>('GET', '/api/keno/access');
+}

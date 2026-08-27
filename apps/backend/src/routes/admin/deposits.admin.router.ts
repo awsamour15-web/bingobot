@@ -3,7 +3,7 @@
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
-import { processDepositClaim } from '../../bot/index.js';
+import { processDepositClaim, logDepositAttempt } from '../../bot/index.js';
 
 const router: RouterType = Router();
 
@@ -100,7 +100,7 @@ router.post('/:id/approve', async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  const result = await processDepositClaim(deposit.player_id, deposit.tx_number);
+  const result = await processDepositClaim(deposit.player_id, deposit.tx_number, { source: 'admin' });
 
   if (!result.success) {
     const messageMap = {
@@ -108,6 +108,7 @@ router.post('/:id/approve', async (req: Request, res: Response): Promise<void> =
       CLAIMED: 'This deposit has already been claimed.',
       CANCELLED: 'This deposit has been cancelled.',
     } as const;
+    // logDepositAttempt already called inside processDepositClaim
     res.status(409).json({ error: result.reason, message: messageMap[result.reason] });
     return;
   }
@@ -138,6 +139,31 @@ router.post('/:id/cancel', async (req: Request, res: Response): Promise<void> =>
   });
 
   res.json({ success: true });
+});
+
+// ─── GET /api/admin/deposits/:id/attempts ────────────────────────────────────
+
+router.get('/:id/attempts', async (req: Request, res: Response): Promise<void> => {
+  const id = req.params['id'] as string;
+
+  const attempts = await prisma.depositAttempt.findMany({
+    where: { deposit_id: id },
+    orderBy: { created_at: 'desc' },
+    include: { player: { select: { username: true } } },
+  });
+
+  res.json(attempts.map((a) => ({
+    id:               a.id,
+    player_username:  a.player?.username ?? null,
+    tx_number_parsed: a.tx_number_parsed,
+    outcome:          a.outcome,
+    failure_reason:   a.failure_reason,
+    amount_expected:  a.amount_expected !== null ? Number(a.amount_expected) : null,
+    amount_parsed:    a.amount_parsed   !== null ? Number(a.amount_parsed)   : null,
+    raw_sms:          a.raw_sms,
+    source:           a.source,
+    created_at:       a.created_at.toISOString(),
+  })));
 });
 
 export default router;

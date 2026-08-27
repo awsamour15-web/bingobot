@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initAuth, getAgentJwt } from '../lib/auth';
-import { getProfile } from '../lib/api';
+import { getProfile, checkKenoAccess } from '../lib/api';
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -75,15 +75,17 @@ const GAMES: Game[] = [
   },
   {
     id: 'keno',
-    title: 'Keno',
-    subtitle: 'Pick your numbers • Big odds',
+    title: 'Fast Keno',
+    subtitle: 'Pick 1–10 numbers • Draw every 45s',
     emoji: '🔢',
     gradient: 'linear-gradient(135deg, #003322 0%, #001a11 55%, #000d09 100%)',
-    glowColor: 'rgba(16,185,129,0.25)',
+    glowColor: 'rgba(34,197,94,0.3)',
     route: '/keno',
-    tag: 'SOON',
-    tagColor: '#64748b',
-    available: false,
+    tag: 'NEW',
+    tagColor: '#22c55e',
+    available: true,
+    bonusNote: '💳 Deposit required',
+    bonusNoteColor: '#f59e0b',
   },
   {
     id: 'dice',
@@ -259,18 +261,20 @@ export default function GamesLobbyScreen() {
   const [username, setUsername] = useState<string | null>(null);
   const [isAgent, setIsAgent] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
+  const [kenoAllowed, setKenoAllowed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         await initAuth();
-        const profile = await getProfile();
+        const [profile, kenoAccess] = await Promise.all([getProfile(), checkKenoAccess().catch(() => ({ allowed: false }))]);
         if (!cancelled) {
           setBalance(profile.mainWallet.balance);
           setUsername(profile.username ?? null);
           setIsAgent(!!getAgentJwt());
           setIsSuspended(profile.is_suspended);
+          setKenoAllowed(kenoAccess.allowed);
         }
       } catch {
         // ignore — auth may not be ready yet
@@ -443,7 +447,7 @@ export default function GamesLobbyScreen() {
 
       {/* ── Game grid ────────────────────────────────────────────── */}
       <div style={{ padding:'0 16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        {GAMES.map((game, i) => (
+        {GAMES.filter((g) => g.id !== 'keno' || kenoAllowed).map((game, i) => (
           <div
             key={game.id}
             style={{ animation: `lobbySlideUp 0.38s cubic-bezier(0.22,1,0.36,1) ${i * 0.06}s both` }}

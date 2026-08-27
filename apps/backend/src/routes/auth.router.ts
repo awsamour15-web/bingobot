@@ -108,7 +108,10 @@ router.post(
       referrerId = referrer?.id;
     }
 
-    const { player, isNew } = await prisma.$transaction(async (tx: PrismaTx) => {
+    let player: { id: string };
+    let isNew: boolean;
+    try {
+    ({ player, isNew } = await prisma.$transaction(async (tx: PrismaTx) => {
       // Try to find existing player
       const existing = await tx.player.findUnique({
         where: { telegram_id: telegramId },
@@ -116,6 +119,14 @@ router.post(
       });
 
       if (existing) {
+        // Check suspension before allowing login
+        const fullPlayer = await tx.player.findUnique({
+          where: { telegram_id: telegramId },
+          select: { id: true, is_suspended: true },
+        });
+        if (fullPlayer?.is_suspended) {
+          throw Object.assign(new Error('Account is suspended'), { code: 'PLAYER_SUSPENDED' });
+        }
         // Update username in case it changed in Telegram
         await tx.player.update({
           where: { telegram_id: telegramId },
@@ -160,7 +171,15 @@ router.post(
       }
 
       return { player: newPlayer, isNew: true };
-    });
+    }));
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      if (e.code === 'PLAYER_SUSPENDED') {
+        res.status(403).json({ error: 'PLAYER_SUSPENDED', message: 'Your account has been suspended.' });
+        return;
+      }
+      throw err;
+    }
 
     // Credit 5 ETB invite bonus to the referrer (non-blocking)
     if (isNew && referrerId) {
