@@ -732,6 +732,84 @@ function DepositAccountsSection() {
   );
 }
 
+// ── Keno Access Control ───────────────────────────────────────────────────────
+function KenoAccessSection() {
+  const [mode, setMode] = useState<'all' | 'allowlist'>('all');
+  const [ids, setIds] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fb, setFb] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getConfig()
+      .then((data) => {
+        const val = data.find((e) => e.key === 'keno_allowed_ids')?.value ?? '';
+        if (val.trim()) {
+          setMode('allowlist');
+          setIds(val);
+        } else {
+          setMode('all');
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true); setFb(null);
+    try {
+      const value = mode === 'all' ? '' : ids.trim();
+      await updateConfig('keno_allowed_ids', value);
+      setFb({ type: 'success', msg: mode === 'all' ? 'Keno is now open to all players.' : 'Allowlist saved. Only listed Telegram IDs can access Keno.' });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader
+        title="🔢 Keno Access Control"
+        subtitle="Limit who can see and play Keno. Useful for testing before a full rollout."
+      />
+      {loading ? <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+          <div style={{ display: 'flex', gap: 24 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} />
+              Open to all players
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="radio" checked={mode === 'allowlist'} onChange={() => setMode('allowlist')} />
+              Allowlist only (testing)
+            </label>
+          </div>
+          {mode === 'allowlist' && (
+            <Field label="Telegram IDs (comma-separated)">
+              <input
+                style={inputCss}
+                type="text"
+                placeholder="e.g. 123456789, 987654321"
+                value={ids}
+                onChange={(e) => setIds(e.target.value)}
+                disabled={saving}
+              />
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 4 }}>
+                Only players with these Telegram IDs will see and play Keno.
+                To find your ID, message @userinfobot on Telegram.
+              </div>
+            </Field>
+          )}
+          <div>
+            <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 export function SettingsPage() {
   return (
@@ -740,9 +818,87 @@ export function SettingsPage() {
       <HouseEdgeSection />
       <CartelaLimitSection />
       <ChannelSettingsSection />
+      <KenoAccessSection />
       <DepositAccountsSection />
       <ConfigSection />
       <AdminAccountsSection />
     </div>
+  );
+}
+// ── Keno Access Control ───────────────────────────────────────────────────────
+function KenoAccessSection() {
+  const [mode, setMode] = useState<'all' | 'allowlist'>('all');
+  const [ids, setIds] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fb, setFb] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getConfig()
+      .then((data) => {
+        const val = data.find((e) => e.key === 'keno_allowed_ids')?.value ?? '';
+        if (val.trim()) {
+          setMode('allowlist');
+          setIds(val);
+        } else {
+          setMode('all');
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true); setFb(null);
+    try {
+      const value = mode === 'all' ? '' : ids.trim();
+      await updateConfig('keno_allowed_ids', value);
+      setFb({ type: 'success', msg: mode === 'all' ? 'Keno is now open to all players.' : 'Allowlist saved. Only listed Telegram IDs can access Keno.' });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader
+        title="🔢 Keno Access Control"
+        subtitle="Limit who can see and play Keno. Useful for testing before a full rollout."
+      />
+      {loading ? <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} />
+              Open to all players
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="radio" checked={mode === 'allowlist'} onChange={() => setMode('allowlist')} />
+              Allowlist only (testing)
+            </label>
+          </div>
+          {mode === 'allowlist' && (
+            <Field label="Telegram IDs (comma-separated)">
+              <input
+                style={inputCss}
+                type="text"
+                placeholder="e.g. 123456789, 987654321"
+                value={ids}
+                onChange={(e) => setIds(e.target.value)}
+                disabled={saving}
+              />
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 4 }}>
+                Only players with these Telegram IDs will see the Keno game card.
+              </div>
+            </Field>
+          )}
+          <div>
+            <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
