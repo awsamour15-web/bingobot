@@ -547,8 +547,8 @@ export default function KenoScreen() {
         </div>
       )}
 
-      {/* ── GAME TAB: drawing/finished — always show machine + called balls ── */}
-      {tab === 'game' && (state.phase === 'drawing' || state.phase === 'finished') && (
+      {/* ── Drawing/finished phase — always visible on all tabs ── */}
+      {(state.phase === 'drawing' || state.phase === 'finished') && (
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
           <DrawingMachine
             drawnNumbers={visibleDrawnNumbers}
@@ -593,8 +593,8 @@ export default function KenoScreen() {
         </div>
       )}
 
-      {/* ── GAME TAB: betting/idle — number grid + bet controls ── */}
-      {tab === 'game' && (state.phase === 'betting' || state.phase === 'idle') && (
+      {/* ── Betting/idle phase — always visible on all tabs ── */}
+      {(state.phase === 'betting' || state.phase === 'idle') && (
         <>
           {/* Info panel */}
           <div style={{ background: '#1a2340', margin: '4px 6px', borderRadius: 8, padding: '7px 8px', flexShrink: 0 }}>
