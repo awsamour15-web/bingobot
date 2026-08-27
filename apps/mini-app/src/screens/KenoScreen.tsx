@@ -245,7 +245,7 @@ export default function KenoScreen() {
   const navigate = useNavigate();
   const [state, setState] = useState<KenoRoundState>({ phase: 'idle', round: null, myBets: [], myBet: null, bets: [] });
   const [picked, setPicked] = useState<Set<number>>(new Set());
-  const [betAmount, setBetAmount] = useState(4);
+  const [betAmount, setBetAmount] = useState(MIN_BET);
   const [placing, setPlacing] = useState(false);
   const [tab, setTab] = useState<Tab>('game');
   const [history, setHistory] = useState<HistoryRound[]>([]);
