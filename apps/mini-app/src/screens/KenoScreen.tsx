@@ -13,6 +13,13 @@ interface KenoRoundState {
     bettingEndsAt: string;
     drawnNumbers: number[];
   } | null;
+  myBets: {
+    id: string;
+    pickedNumbers: number[];
+    betAmount: number;
+    matched: number | null;
+    payout: number | null;
+  }[];
   myBet: {
     id: string;
     pickedNumbers: number[];
@@ -33,6 +40,12 @@ interface HistoryRound {
   id: string;
   drawnNumbers: number[];
   finishedAt: string;
+  myBets: {
+    pickedNumbers: number[];
+    betAmount: number;
+    matched: number | null;
+    payout: number | null;
+  }[];
   myBet: {
     pickedNumbers: number[];
     betAmount: number;
@@ -229,7 +242,7 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 
 export default function KenoScreen() {
   const navigate = useNavigate();
-  const [state, setState] = useState<KenoRoundState>({ phase: 'idle', round: null, myBet: null, bets: [] });
+  const [state, setState] = useState<KenoRoundState>({ phase: 'idle', round: null, myBets: [], myBet: null, bets: [] });
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [betAmount, setBetAmount] = useState(4);
   const [placing, setPlacing] = useState(false);
@@ -286,6 +299,7 @@ export default function KenoScreen() {
           bettingEndsAt: new Date(data.endsAt).toISOString(),
           drawnNumbers: [],
         },
+        myBets: [],
         myBet: null,
         bets: [],
       }));
@@ -321,9 +335,12 @@ export default function KenoScreen() {
       });
       setTimeout(async () => {
         const s = await apiRequest<KenoRoundState>('GET', '/api/keno/state').catch(() => null);
-        if (s?.myBet?.payout && s.myBet.payout > 0) {
-          setWinFlash({ amount: s.myBet.payout });
-          setTimeout(() => setWinFlash(null), 4000);
+        if (s?.myBets && s.myBets.length > 0) {
+          const totalPayout = s.myBets.reduce((sum, b) => sum + (b.payout ?? 0), 0);
+          if (totalPayout > 0) {
+            setWinFlash({ amount: totalPayout });
+            setTimeout(() => setWinFlash(null), 4000);
+          }
         }
         fetchBalance();
         if (tab === 'history' || tab === 'results') fetchHistory();
@@ -342,7 +359,7 @@ export default function KenoScreen() {
   }, [tab, fetchBalance, fetchHistory]);
 
   const togglePick = (n: number) => {
-    if (state.phase !== 'betting' || state.myBet) return;
+    if (state.phase !== 'betting') return;
     setPicked(prev => {
       const next = new Set(prev);
       if (next.has(n)) { next.delete(n); return next; }
@@ -361,6 +378,7 @@ export default function KenoScreen() {
         betAmount,
         pickedNumbers: Array.from(picked),
       });
+      setPicked(new Set()); // clear picks so player can place another
       await fetchState();
       await fetchBalance();
     } catch (e: any) {
@@ -371,15 +389,18 @@ export default function KenoScreen() {
   };
 
   const drawnSet = new Set(state.round?.drawnNumbers ?? []);
-  const activePicked: Set<number> = state.myBet ? new Set(state.myBet.pickedNumbers) : picked;
+  // For display purposes use the first bet's picks when in draw/finished, otherwise current picks
+  const activePicked: Set<number> = (state.myBets.length > 0 && state.phase !== 'betting')
+    ? new Set(state.myBets.flatMap(b => b.pickedNumbers))
+    : picked;
   const activePickedArr = Array.from(activePicked);
-  const activeBetAmount = state.myBet ? state.myBet.betAmount : betAmount;
-  const liveMatched = state.myBet
-    ? state.myBet.pickedNumbers.filter(n => drawnSet.has(n)).length
+  const activeBetAmount = state.myBets.length > 0 ? state.myBets[0]!.betAmount : betAmount;
+  const liveMatched = state.myBets.length > 0
+    ? state.myBets[0]!.pickedNumbers.filter(n => drawnSet.has(n)).length
     : activePickedArr.filter(n => drawnSet.has(n)).length;
 
-  const possibleWins = getPossibleWins(activePicked.size, activeBetAmount);
-  const bestWin = getBestPossibleWin(activePicked.size, activeBetAmount);
+  const possibleWins = getPossibleWins(picked.size > 0 ? picked.size : (state.myBets[0]?.pickedNumbers.length ?? 0), betAmount);
+  const bestWin = getBestPossibleWin(picked.size > 0 ? picked.size : (state.myBets[0]?.pickedNumbers.length ?? 0), betAmount);
 
   // Countdown display
   const cdMins = String(Math.floor(countdownSec / 60)).padStart(2, '0');
@@ -498,7 +519,7 @@ export default function KenoScreen() {
             flexShrink: 0,
             minHeight: 68,
           }}>
-            {activePicked.size === 0 ? (
+            {picked.size === 0 ? (
               /* No picks yet – show "Choose X numbers" guide */
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -653,26 +674,26 @@ export default function KenoScreen() {
             {/* BET button */}
             <button
               onClick={placeBet}
-              disabled={placing || (state.phase === 'betting' && !state.myBet && picked.size === 0) || state.phase !== 'betting' || !!state.myBet}
+              disabled={placing || picked.size === 0 || state.phase !== 'betting'}
               style={{
                 width: '100%',
                 padding: '15px 0',
-                background: (state.phase === 'betting' && !state.myBet && picked.size > 0 && !placing)
+                background: (state.phase === 'betting' && picked.size > 0 && !placing)
                   ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
                   : 'rgba(255,255,255,0.06)',
                 border: 'none',
                 borderRadius: 12,
-                color: (state.phase === 'betting' && !state.myBet && picked.size > 0 && !placing)
+                color: (state.phase === 'betting' && picked.size > 0 && !placing)
                   ? '#fff'
                   : 'rgba(255,255,255,0.3)',
                 fontSize: 18,
                 fontWeight: 900,
-                cursor: (state.phase === 'betting' && !state.myBet && picked.size > 0 && !placing) ? 'pointer' : 'not-allowed',
+                cursor: (state.phase === 'betting' && picked.size > 0 && !placing) ? 'pointer' : 'not-allowed',
                 letterSpacing: '0.06em',
                 marginBottom: 4,
               }}
             >
-              {placing ? 'Placing...' : 'BET'}
+              {placing ? 'Placing...' : state.myBets.length > 0 ? `BET #${state.myBets.length + 1}` : 'BET'}
             </button>
           </div>
         </>
@@ -708,7 +729,8 @@ export default function KenoScreen() {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                   {r.drawnNumbers.map(n => {
-                    const isMyPick = r.myBet?.pickedNumbers.includes(n);
+                    const rMyBets = r.myBets ?? (r.myBet ? [r.myBet] : []);
+                    const isMyPick = rMyBets.some(b => b.pickedNumbers.includes(n));
                     return (
                       <span key={n} style={{
                         width: 24, height: 24, borderRadius: '50%',
@@ -738,7 +760,7 @@ export default function KenoScreen() {
       <TabBar tab={tab} onChange={setTab} />
 
       {/* ── Bottom bets feed ─────────────────────────────────────────── */}
-      <BetsFeed bets={state.bets} myBet={state.myBet} drawnSet={drawnSet} phase={state.phase} />
+      <BetsFeed bets={state.bets} myBets={state.myBets} drawnSet={drawnSet} phase={state.phase} />
     </div>
   );
 }
@@ -762,6 +784,7 @@ const ctrlBtn: React.CSSProperties = {
 };
 
 function HistoryCard({ round }: { round: HistoryRound }) {
+  const myBets = round.myBets ?? (round.myBet ? [round.myBet] : []);
   return (
     <div style={{
       background: '#111827',
@@ -772,7 +795,7 @@ function HistoryCard({ round }: { round: HistoryRound }) {
     }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 8 }}>
         {round.drawnNumbers.map(n => {
-          const isMyPick = round.myBet?.pickedNumbers.includes(n);
+          const isMyPick = myBets.some(b => b.pickedNumbers.includes(n));
           return (
             <span key={n} style={{
               width: 26, height: 26, borderRadius: '50%',
@@ -785,16 +808,16 @@ function HistoryCard({ round }: { round: HistoryRound }) {
           );
         })}
       </div>
-      {round.myBet && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+      {myBets.map((b, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
           <span style={{ color: '#64748b' }}>
-            Matched {round.myBet.matched ?? 0}/{round.myBet.pickedNumbers.length} · {round.myBet.betAmount} ETB
+            Bet #{i + 1} · {b.betAmount} ETB · Matched {b.matched ?? 0}/{b.pickedNumbers.length}
           </span>
-          <span style={{ fontWeight: 800, color: (round.myBet.payout ?? 0) > 0 ? '#22c55e' : '#f87171' }}>
-            {(round.myBet.payout ?? 0) > 0 ? `+${round.myBet.payout!.toFixed(2)}` : 'Lost'}
+          <span style={{ fontWeight: 800, color: (b.payout ?? 0) > 0 ? '#22c55e' : '#f87171' }}>
+            {(b.payout ?? 0) > 0 ? `+${b.payout!.toFixed(2)}` : 'Lost'}
           </span>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -891,19 +914,13 @@ function DrawingMachine({
 
 // ─── Bets feed with per-player number cells ────────────────────────────────────
 function BetsFeed({
-  bets, myBet, drawnSet, phase,
+  bets, myBets, drawnSet, phase,
 }: {
   bets: KenoRoundState['bets'];
-  myBet: KenoRoundState['myBet'];
+  myBets: KenoRoundState['myBets'];
   drawnSet: Set<number>;
   phase: string;
 }) {
-  // We need pickedNumbers per bet but the bets array only has pickedCount.
-  // During betting phase we don't have drawn numbers so we just show empty slots.
-  // We'll render pickedCount empty slots during betting, or use drawnSet to highlight.
-  // NOTE: the backend bets array doesn't expose pickedNumbers for privacy —
-  // we show slots as placeholders, highlighting matched count via b.matched.
-
   const isDrawingOrFinished = phase === 'drawing' || phase === 'finished';
 
   return (
@@ -922,8 +939,8 @@ function BetsFeed({
         borderBottom: '1px solid rgba(255,255,255,0.04)',
       }}>
         <span>All {bets.length}</span>
-        <span>My Tickets {myBet ? 1 : 0}</span>
-        <span>My Bets {myBet ? 1 : 0}</span>
+        <span>My Tickets {myBets.length}</span>
+        <span>My Bets {myBets.length}</span>
       </div>
 
       {/* Each bet row */}

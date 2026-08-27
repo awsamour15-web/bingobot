@@ -96,7 +96,7 @@ router.get('/state', kenoAccessMiddleware, async (req: Request, res: Response): 
     return;
   }
 
-  const myBet = round.bets.find((b) => b.player_id === playerId) ?? null;
+  const myBets = round.bets.filter((b) => b.player_id === playerId);
 
   res.json({
     phase: round.status,
@@ -106,13 +106,21 @@ router.get('/state', kenoAccessMiddleware, async (req: Request, res: Response): 
       bettingEndsAt: round.betting_ends_at,
       drawnNumbers: round.drawn_numbers,
     },
-    myBet: myBet
+    myBets: myBets.map((b) => ({
+      id: b.id,
+      pickedNumbers: b.picked_numbers,
+      betAmount: Number(b.bet_amount),
+      matched: b.matched,
+      payout: b.payout ? Number(b.payout) : null,
+    })),
+    // keep legacy field for backwards compat
+    myBet: myBets[0]
       ? {
-          id: myBet.id,
-          pickedNumbers: myBet.picked_numbers,
-          betAmount: Number(myBet.bet_amount),
-          matched: myBet.matched,
-          payout: myBet.payout ? Number(myBet.payout) : null,
+          id: myBets[0].id,
+          pickedNumbers: myBets[0].picked_numbers,
+          betAmount: Number(myBets[0].bet_amount),
+          matched: myBets[0].matched,
+          payout: myBets[0].payout ? Number(myBets[0].payout) : null,
         }
       : null,
     bets: round.bets.map((b) => ({
@@ -164,15 +172,6 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
 
   if (!round) {
     res.status(409).json({ error: 'No round open for betting right now' });
-    return;
-  }
-
-  // One bet per player per round
-  const existing = await prisma.kenoBet.findFirst({
-    where: { round_id: round.id, player_id: playerId },
-  });
-  if (existing) {
-    res.status(409).json({ error: 'You already placed a bet in this round' });
     return;
   }
 
@@ -228,6 +227,13 @@ router.get('/history', kenoAccessMiddleware, async (req: Request, res: Response)
       id: r.id,
       drawnNumbers: r.drawn_numbers,
       finishedAt: r.finished_at,
+      myBets: r.bets.map((b) => ({
+        pickedNumbers: b.picked_numbers,
+        betAmount: Number(b.bet_amount),
+        matched: b.matched,
+        payout: b.payout ? Number(b.payout) : null,
+      })),
+      // legacy compat
       myBet: r.bets[0]
         ? {
             pickedNumbers: r.bets[0].picked_numbers,
