@@ -29,7 +29,12 @@ async function isKenoAllowed(playerId: string): Promise<boolean> {
   const cfg = await prisma.config.findUnique({ where: { key: 'keno_allowed_ids' } });
   if (!cfg?.value?.trim()) return false; // not configured = closed to all
 
-  const allowedIds = cfg.value.split(',').map((s) => s.trim()).filter(Boolean);
+  const raw = cfg.value.trim();
+
+  // Special value "all" means open to everyone
+  if (raw === 'all') return true;
+
+  const allowedIds = raw.split(',').map((s) => s.trim()).filter(Boolean);
   if (allowedIds.length === 0) return false;
 
   const player = await prisma.player.findUnique({
