@@ -298,10 +298,9 @@ export default function KenoScreen() {
 
   const fetchBalance = useCallback(async () => {
     try {
-      const p = await apiRequest<{ mainBalance: number; id?: string }>('GET', '/api/players/me');
-      setBalance((p as any).mainBalance ?? (p as any).balance ?? null);
-      const rawId = (p as any).id ?? (p as any).playerId ?? null;
-      if (rawId) setPlayerId(String(rawId).slice(-8).toUpperCase());
+      const p = await apiRequest<{ mainWallet: { balance: number }; id: string }>('GET', '/api/players/me');
+      setBalance(p.mainWallet?.balance ?? null);
+      if (p.id) setPlayerId(String(p.id).slice(-8).toUpperCase());
     } catch { /* ignore */ }
   }, []);
 
@@ -446,9 +445,10 @@ export default function KenoScreen() {
       fontFamily: "'Inter', sans-serif",
       display: 'flex',
       flexDirection: 'column',
-      maxWidth: 480,
-      margin: '0 auto',
+      width: '100%',
+      maxWidth: '100vw',
       overflow: 'hidden',
+      position: 'relative',
     }}>
       {/* ── Top header ── */}
       <div style={{
@@ -787,107 +787,104 @@ export default function KenoScreen() {
         </>
       )}
 
-      {/* ── HISTORY TAB ── */}
-      {tab === 'history' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
-          {history.length === 0 ? (
-            <FairnessEmptyState />
-          ) : (
-            history.map(r => <HistoryCard key={r.id} round={r} />)
-          )}
-        </div>
-      )}
-
-      {/* ── RESULTS TAB ── */}
-      {tab === 'results' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
-          {history.length === 0 ? (
-            <FairnessEmptyState />
-          ) : (
-            history.slice(0, 20).map(r => {
-              const date = new Date(r.finishedAt);
-              const dateStr = `${date.getDate().toString().padStart(2,'0')}/${(date.getMonth()+1).toString().padStart(2,'0')}/${date.getFullYear().toString().slice(-2)} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}:${date.getSeconds().toString().padStart(2,'0')}`;
-              const shortId = r.id.slice(-8).toUpperCase();
-              const myBetsR = r.myBets ?? (r.myBet ? [r.myBet] : []);
-              const firstRow = r.drawnNumbers.slice(0, 10);
-              const secondRow = r.drawnNumbers.slice(10, 20);
-              return (
-                <div key={r.id} style={{
-                  background: '#111827',
-                  borderRadius: 8,
-                  padding: '8px 10px',
-                  marginBottom: 6,
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  {/* Header row: checkmark + id + date + Combination */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{
-                        width: 18, height: 18, borderRadius: '50%',
-                        background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, color: '#22c55e',
-                      }}>✔</div>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0' }}>{shortId}</div>
-                        <div style={{ fontSize: 9, color: '#475569' }}>{dateStr}</div>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 9, color: '#475569', fontWeight: 600 }}>Combination</span>
-                  </div>
-                  {/* First row of 10 */}
-                  <div style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
-                    {firstRow.map(n => {
-                      const isMyPick = myBetsR.some(b => b.pickedNumbers.includes(n));
-                      return (
-                        <div key={n} style={{
-                          flex: 1, height: 22,
-                          background: isMyPick ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
-                          border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                          borderRadius: 3,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 800,
-                          color: isMyPick ? '#4ade80' : '#64748b',
-                        }}>{n}</div>
-                      );
-                    })}
-                  </div>
-                  {/* Second row of 10 */}
-                  <div style={{ display: 'flex', gap: 2 }}>
-                    {secondRow.map(n => {
-                      const isMyPick = myBetsR.some(b => b.pickedNumbers.includes(n));
-                      return (
-                        <div key={n} style={{
-                          flex: 1, height: 22,
-                          background: isMyPick ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
-                          border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                          borderRadius: 3,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 800,
-                          color: isMyPick ? '#4ade80' : '#64748b',
-                        }}>{n}</div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* ── STATISTICS TAB ── */}
-      {tab === 'statistics' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
-          <StatisticsView history={history} />
-        </div>
-      )}
-
       {/* ── Tab bar ── */}
       <TabBar tab={tab} onChange={setTab} />
 
-      {/* ── Bottom bets feed ── */}
-      <BetsFeed bets={state.bets} myBets={state.myBets} drawnSet={drawnSet} phase={state.phase} />
+      {/* ── Content below tab bar ── */}
+      {tab === 'game' && (
+        <BetsFeed bets={state.bets} myBets={state.myBets} drawnSet={drawnSet} phase={state.phase} />
+      )}
+
+      {tab === 'history' && (
+        <div style={{ flex: 1, overflowY: 'auto', background: '#0d1120', minHeight: 0 }}>
+          {history.length === 0 ? (
+            <FairnessEmptyState />
+          ) : (
+            <div style={{ padding: '8px 10px 16px' }}>
+              {history.map(r => <HistoryCard key={r.id} round={r} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'results' && (
+        <div style={{ flex: 1, overflowY: 'auto', background: '#0d1120', minHeight: 0 }}>
+          {history.length === 0 ? (
+            <FairnessEmptyState />
+          ) : (
+            <div style={{ padding: '8px 8px 16px' }}>
+              {history.slice(0, 20).map(r => {
+                const date = new Date(r.finishedAt);
+                const dateStr = `${date.getDate().toString().padStart(2,'0')}/${(date.getMonth()+1).toString().padStart(2,'0')}/${date.getFullYear().toString().slice(-2)} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}:${date.getSeconds().toString().padStart(2,'0')}`;
+                const shortId = r.id.slice(-8).toUpperCase();
+                const myBetsR = r.myBets ?? (r.myBet ? [r.myBet] : []);
+                const firstRow = r.drawnNumbers.slice(0, 10);
+                const secondRow = r.drawnNumbers.slice(10, 20);
+                return (
+                  <div key={r.id} style={{
+                    background: '#111827', borderRadius: 8, padding: '8px 10px',
+                    marginBottom: 6, border: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{
+                          width: 18, height: 18, borderRadius: '50%',
+                          background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, color: '#22c55e',
+                        }}>✔</div>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0' }}>{shortId}</div>
+                          <div style={{ fontSize: 9, color: '#475569' }}>{dateStr}</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, color: '#475569', fontWeight: 600 }}>Combination</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+                      {firstRow.map(n => {
+                        const isMyPick = myBetsR.some(b => b.pickedNumbers.includes(n));
+                        return (
+                          <div key={n} style={{
+                            flex: 1, height: 22,
+                            background: isMyPick ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
+                            border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: 3,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 9, fontWeight: 800,
+                            color: isMyPick ? '#4ade80' : '#64748b',
+                          }}>{n}</div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {secondRow.map(n => {
+                        const isMyPick = myBetsR.some(b => b.pickedNumbers.includes(n));
+                        return (
+                          <div key={n} style={{
+                            flex: 1, height: 22,
+                            background: isMyPick ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
+                            border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: 3,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 9, fontWeight: 800,
+                            color: isMyPick ? '#4ade80' : '#64748b',
+                          }}>{n}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'statistics' && (
+        <div style={{ flex: 1, overflowY: 'auto', background: '#0d1120', padding: '8px 8px 16px', minHeight: 0 }}>
+          <StatisticsView history={history} />
+        </div>
+      )}
     </div>
   );
 }
@@ -1010,39 +1007,37 @@ function FairnessEmptyState() {
 
 function HistoryCard({ round }: { round: HistoryRound }) {
   const myBets = round.myBets ?? (round.myBet ? [round.myBet] : []);
+  if (myBets.length === 0) return null;
+
+  const date = new Date(round.finishedAt);
+  const dateStr = `${date.getDate().toString().padStart(2,'0')}/${(date.getMonth()+1).toString().padStart(2,'0')}/${date.getFullYear().toString().slice(-2)} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}:${date.getSeconds().toString().padStart(2,'0')}`;
+
   return (
     <div style={{
-      background: '#111827',
-      borderRadius: 10,
-      padding: '10px 12px',
-      marginBottom: 8,
-      border: '1px solid rgba(255,255,255,0.06)',
+      background: '#111827', borderRadius: 10, padding: '10px 12px',
+      marginBottom: 8, border: '1px solid rgba(255,255,255,0.06)',
     }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
-        {round.drawnNumbers.map(n => {
-          const isMyPick = myBets.some(b => b.pickedNumbers.includes(n));
-          return (
-            <span key={n} style={{
-              width: 24, height: 24, borderRadius: '50%',
-              background: isMyPick ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)',
-              border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: 700,
-              color: isMyPick ? '#4ade80' : '#64748b',
-            }}>{n}</span>
-          );
-        })}
-      </div>
-      {myBets.map((b, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 3 }}>
-          <span style={{ color: '#64748b' }}>
-            Bet #{i + 1} · {b.betAmount} ETB · Matched {b.matched ?? 0}/{b.pickedNumbers.length}
-          </span>
-          <span style={{ fontWeight: 800, color: (b.payout ?? 0) > 0 ? '#22c55e' : '#f87171' }}>
-            {(b.payout ?? 0) > 0 ? `+${b.payout!.toFixed(2)}` : 'Lost'}
-          </span>
-        </div>
-      ))}
+      <div style={{ fontSize: 10, color: '#475569', marginBottom: 6 }}>{dateStr}</div>
+      {myBets.map((b, i) => {
+        const won = (b.payout ?? 0) > 0;
+        return (
+          <div key={i} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '5px 0',
+            borderBottom: i < myBets.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+          }}>
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>
+              Bet #{i + 1} · {b.betAmount} ETB · Matched {b.matched ?? 0}/{b.pickedNumbers.length}
+            </div>
+            <div style={{
+              fontSize: 13, fontWeight: 800,
+              color: won ? '#22c55e' : '#f87171',
+            }}>
+              {won ? `+${b.payout!.toFixed(2)}` : 'Lost'}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
