@@ -549,7 +549,7 @@ export default function KenoScreen() {
 
       {/* ── GAME TAB: drawing/finished — always show machine + called balls ── */}
       {tab === 'game' && (state.phase === 'drawing' || state.phase === 'finished') && (
-        <div style={{ flex: 'none', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
           <DrawingMachine
             drawnNumbers={visibleDrawnNumbers}
             lastDrawn={lastDrawn}
@@ -1063,9 +1063,9 @@ function BetsFeed({
     <div style={{
       background: '#0d1120',
       borderTop: '1px solid rgba(255,255,255,0.06)',
-      flexShrink: 0,
-      maxHeight: 150,
+      flex: 1,
       overflowY: 'auto',
+      minHeight: 0,
     }}>
       {/* Counts row */}
       <div style={{
