@@ -64,7 +64,6 @@ function getMultiplier(picked: number, matched: number): number {
   return PAYOUT_TABLE[picked]?.[matched] ?? 0;
 }
 
-// ─── Possible win calculator ──────────────────────────────────────────────────
 function getPossibleWins(picked: number, betAmount: number): { matched: number; pay: number }[] {
   if (picked < 1) return [];
   const table = PAYOUT_TABLE[picked] ?? {};
@@ -74,7 +73,13 @@ function getPossibleWins(picked: number, betAmount: number): { matched: number; 
     .sort((a, b) => a.matched - b.matched);
 }
 
-// ─── Countdown ────────────────────────────────────────────────────────────────
+// best possible payout from current picks
+function getBestPossibleWin(picked: number, betAmount: number): number {
+  const wins = getPossibleWins(picked, betAmount);
+  if (wins.length === 0) return 0;
+  return wins[wins.length - 1]!.pay;
+}
+
 function useCountdown(endsAt: number | null) {
   const [remaining, setRemaining] = useState(0);
   useEffect(() => {
@@ -87,77 +92,133 @@ function useCountdown(endsAt: number | null) {
   return remaining;
 }
 
-// ─── Number ball ─────────────────────────────────────────────────────────────
-function Ball({
-  num, picked, drawn, justDrawn,
+// ─── Dot indicator helper – small coloured dot in corner of each number cell ─
+// These are decorative random dots like in the reference screenshot
+const DOT_NUMBERS = new Set([3, 6, 10, 11, 18, 27, 36, 42, 49, 50, 65, 71, 78]);
+
+// ─── Number cell ──────────────────────────────────────────────────────────────
+function NumberCell({
+  num, picked, drawn, justDrawn, onClick,
 }: {
   num: number;
   picked: boolean;
   drawn: boolean;
   justDrawn: boolean;
+  onClick: () => void;
 }) {
-  const bg = justDrawn
-    ? '#f59e0b'
-    : picked && drawn
-    ? '#22c55e'
-    : picked
-    ? '#3b82f6'
-    : drawn
-    ? 'rgba(245,158,11,0.25)'
-    : 'rgba(255,255,255,0.07)';
+  let bg = 'transparent';
+  let color = '#94a3b8';
+  let borderColor = 'rgba(255,255,255,0.08)';
+  let fontWeight = 600;
 
-  const color = picked || drawn || justDrawn ? '#fff' : '#94a3b8';
-  const border = justDrawn
-    ? '2px solid #f59e0b'
-    : picked && drawn
-    ? '2px solid #22c55e'
-    : picked
-    ? '2px solid #3b82f6'
-    : drawn
-    ? '1.5px solid rgba(245,158,11,0.4)'
-    : '1px solid rgba(255,255,255,0.1)';
+  if (justDrawn) {
+    bg = '#22c55e';
+    color = '#fff';
+    borderColor = '#22c55e';
+    fontWeight = 900;
+  } else if (picked && drawn) {
+    bg = '#22c55e';
+    color = '#fff';
+    borderColor = '#22c55e';
+    fontWeight = 900;
+  } else if (picked) {
+    bg = 'rgba(34,197,94,0.25)';
+    color = '#fff';
+    borderColor = '#22c55e';
+    fontWeight = 800;
+  } else if (drawn) {
+    bg = 'rgba(255,255,255,0.08)';
+    color = '#e2e8f0';
+    borderColor = 'rgba(255,255,255,0.15)';
+    fontWeight = 700;
+  }
+
+  const hasDot = DOT_NUMBERS.has(num);
 
   return (
-    <div style={{
-      width: 34, height: 34, borderRadius: '50%',
-      background: bg, border, color,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 12, fontWeight: 800,
-      transition: 'background 0.3s, border 0.3s',
-      transform: justDrawn ? 'scale(1.2)' : 'scale(1)',
-      boxShadow: justDrawn ? '0 0 12px rgba(245,158,11,0.7)' : picked && drawn ? '0 0 8px rgba(34,197,94,0.5)' : 'none',
-      cursor: 'pointer',
-      userSelect: 'none',
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        aspectRatio: '1',
+        background: bg,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 6,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 13,
+        fontWeight,
+        color,
+        cursor: 'pointer',
+        userSelect: 'none',
+        transition: 'background 0.2s, border-color 0.2s',
+        transform: justDrawn ? 'scale(1.15)' : 'scale(1)',
+        boxShadow: justDrawn
+          ? '0 0 10px rgba(34,197,94,0.7)'
+          : picked && drawn
+          ? '0 0 6px rgba(34,197,94,0.4)'
+          : 'none',
+      }}
+    >
       {num}
+      {hasDot && (
+        <div style={{
+          position: 'absolute',
+          top: 2,
+          right: 3,
+          width: 4,
+          height: 4,
+          borderRadius: '50%',
+          background: drawn ? '#22c55e' : '#3b82f6',
+          opacity: 0.8,
+        }} />
+      )}
     </div>
   );
 }
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
-type Tab = 'game' | 'history' | 'payouts';
+type Tab = 'game' | 'history' | 'results' | 'statistics';
+
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: 'game',       label: 'GAME',       icon: '▶' },
+  { key: 'history',    label: 'HISTORY',    icon: '↺' },
+  { key: 'results',    label: 'RESULTS',    icon: '✔' },
+  { key: 'statistics', label: 'STATISTICS', icon: '📊' },
+];
 
 function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'game', label: 'GAME', icon: '▶' },
-    { key: 'history', label: 'HISTORY', icon: '⟳' },
-    { key: 'payouts', label: 'PAYS', icon: '💰' },
-  ];
   return (
     <div style={{
-      display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)',
+      display: 'flex',
+      borderTop: '1px solid rgba(255,255,255,0.08)',
       background: '#0d1120',
+      flexShrink: 0,
     }}>
-      {tabs.map(t => (
-        <button key={t.key} onClick={() => onChange(t.key)} style={{
-          flex: 1, padding: '10px 0', border: 'none', background: 'transparent',
-          color: tab === t.key ? '#22c55e' : '#64748b',
-          fontWeight: 700, fontSize: 12, cursor: 'pointer',
-          borderBottom: tab === t.key ? '2px solid #22c55e' : '2px solid transparent',
-          letterSpacing: '0.06em',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        }}>
-          <span>{t.icon}</span> {t.label}
+      {TABS.map(t => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          style={{
+            flex: 1,
+            padding: '10px 0',
+            border: 'none',
+            background: 'transparent',
+            color: tab === t.key ? '#22c55e' : '#475569',
+            fontWeight: 700,
+            fontSize: 10,
+            cursor: 'pointer',
+            borderTop: tab === t.key ? '2px solid #22c55e' : '2px solid transparent',
+            letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3,
+          }}
+        >
+          <span style={{ fontSize: 12 }}>{t.icon}</span>
+          <span>{t.label}</span>
         </button>
       ))}
     </div>
@@ -170,7 +231,7 @@ export default function KenoScreen() {
   const navigate = useNavigate();
   const [state, setState] = useState<KenoRoundState>({ phase: 'idle', round: null, myBet: null, bets: [] });
   const [picked, setPicked] = useState<Set<number>>(new Set());
-  const [betAmount, setBetAmount] = useState(10);
+  const [betAmount, setBetAmount] = useState(4);
   const [placing, setPlacing] = useState(false);
   const [tab, setTab] = useState<Tab>('game');
   const [history, setHistory] = useState<HistoryRound[]>([]);
@@ -184,7 +245,6 @@ export default function KenoScreen() {
   const countdown = useCountdown(endsAt);
   const countdownSec = Math.ceil(countdown / 1000);
 
-  // ── Fetch initial state ───────────────────────────────────────────────────
   const fetchState = useCallback(async () => {
     try {
       const s = await apiRequest<KenoRoundState>('GET', '/api/keno/state');
@@ -212,10 +272,9 @@ export default function KenoScreen() {
   }, [fetchState, fetchBalance]);
 
   useEffect(() => {
-    if (tab === 'history') fetchHistory();
+    if (tab === 'history' || tab === 'results') fetchHistory();
   }, [tab, fetchHistory]);
 
-  // ── Socket events ─────────────────────────────────────────────────────────
   useEffect(() => {
     const onBettingOpen = (data: { roundId: string; endsAt: number }) => {
       setState(prev => ({
@@ -239,7 +298,7 @@ export default function KenoScreen() {
     const onNumberDrawn = (data: { roundId: string; number: number; drawnSoFar: number[] }) => {
       setLastDrawn(data.number);
       if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
-      lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 800);
+      lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 900);
 
       setState(prev => {
         if (!prev.round || prev.round.id !== data.roundId) return prev;
@@ -254,14 +313,12 @@ export default function KenoScreen() {
     const onRoundFinished = (data: { roundId: string; drawnNumbers: number[] }) => {
       setState(prev => {
         if (!prev.round || prev.round.id !== data.roundId) return prev;
-        const newState = {
+        return {
           ...prev,
           phase: 'finished' as const,
           round: { ...prev.round, drawnNumbers: data.drawnNumbers, status: 'finished' },
         };
-        return newState;
       });
-      // Refresh to get payout info, then flash win
       setTimeout(async () => {
         const s = await apiRequest<KenoRoundState>('GET', '/api/keno/state').catch(() => null);
         if (s?.myBet?.payout && s.myBet.payout > 0) {
@@ -269,7 +326,7 @@ export default function KenoScreen() {
           setTimeout(() => setWinFlash(null), 4000);
         }
         fetchBalance();
-        if (tab === 'history') fetchHistory();
+        if (tab === 'history' || tab === 'results') fetchHistory();
       }, 1500);
     };
 
@@ -284,7 +341,6 @@ export default function KenoScreen() {
     };
   }, [tab, fetchBalance, fetchHistory]);
 
-  // ── Pick toggle ───────────────────────────────────────────────────────────
   const togglePick = (n: number) => {
     if (state.phase !== 'betting' || state.myBet) return;
     setPicked(prev => {
@@ -296,7 +352,6 @@ export default function KenoScreen() {
     });
   };
 
-  // ── Place bet ─────────────────────────────────────────────────────────────
   const placeBet = async () => {
     if (placing || picked.size === 0) return;
     setError(null);
@@ -316,443 +371,403 @@ export default function KenoScreen() {
   };
 
   const drawnSet = new Set(state.round?.drawnNumbers ?? []);
-  const pickedArr = Array.from(picked);
-  const possibleWins = getPossibleWins(
-    state.myBet ? state.myBet.pickedNumbers.length : picked.size,
-    state.myBet ? state.myBet.betAmount : betAmount,
-  );
-
-  // ── Derived: matched count live ───────────────────────────────────────────
-  const liveMatched = state.myBet
-    ? state.myBet.pickedNumbers.filter((n) => drawnSet.has(n)).length
-    : pickedArr.filter((n) => drawnSet.has(n)).length;
-
   const activePicked: Set<number> = state.myBet ? new Set(state.myBet.pickedNumbers) : picked;
+  const activePickedArr = Array.from(activePicked);
+  const activeBetAmount = state.myBet ? state.myBet.betAmount : betAmount;
+  const liveMatched = state.myBet
+    ? state.myBet.pickedNumbers.filter(n => drawnSet.has(n)).length
+    : activePickedArr.filter(n => drawnSet.has(n)).length;
+
+  const possibleWins = getPossibleWins(activePicked.size, activeBetAmount);
+  const bestWin = getBestPossibleWin(activePicked.size, activeBetAmount);
+
+  // Countdown display
+  const cdMins = String(Math.floor(countdownSec / 60)).padStart(2, '0');
+  const cdSecs = String(countdownSec % 60).padStart(2, '0');
 
   return (
     <div style={{
-      minHeight: '100dvh', background: '#070c1a', color: '#fff',
-      fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column',
-      maxWidth: 480, margin: '0 auto',
+      height: '100dvh',
+      background: '#131a2e',
+      color: '#fff',
+      fontFamily: "'Inter', sans-serif",
+      display: 'flex',
+      flexDirection: 'column',
+      maxWidth: 480,
+      margin: '0 auto',
+      overflow: 'hidden',
     }}>
-      {/* ── Header ── */}
+      {/* ── Top header ───────────────────────────────────────────────── */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 16px',
-        background: 'linear-gradient(135deg, #0d1f0d 0%, #0a1628 100%)',
-        borderBottom: '1px solid rgba(34,197,94,0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 14px 6px',
+        background: '#0d1120',
+        flexShrink: 0,
       }}>
-        <button onClick={() => navigate(-1)} style={{
-          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-          color: '#94a3b8', borderRadius: 10, padding: '6px 12px', cursor: 'pointer', fontSize: 13,
-        }}>← Back</button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 22, fontWeight: 900, color: '#22c55e', letterSpacing: '-1px' }}>FAST</span>
-          <span style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-1px' }}>KENO</span>
+        {/* Logo + balance */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: 20,
+              cursor: 'pointer',
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >←</button>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+            <span style={{ fontSize: 11, fontWeight: 900, color: '#22c55e', letterSpacing: 1 }}>FAST</span>
+            <span style={{ fontSize: 11, fontWeight: 900, color: '#fff', letterSpacing: 1 }}>KENO</span>
+          </div>
         </div>
 
+        {/* Balance */}
         <div style={{
-          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
-          borderRadius: 10, padding: '5px 10px', fontSize: 12, fontWeight: 700, color: '#22c55e',
+          background: 'rgba(34,197,94,0.08)',
+          border: '1px solid rgba(34,197,94,0.2)',
+          borderRadius: 8,
+          padding: '4px 10px',
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#22c55e',
         }}>
-          {balance !== null ? `${balance.toFixed(2)} ETB` : '—'}
+          {balance !== null ? `${balance.toFixed(2)} ETB` : '0.00 ETB'}
         </div>
       </div>
 
-      {/* ── Phase banner ── */}
-      <PhaseBanner
-        phase={state.phase}
-        countdownSec={countdownSec}
-        drawnCount={state.round?.drawnNumbers.length ?? 0}
-        lastDrawn={lastDrawn}
-        liveMatched={liveMatched}
-        totalPicked={activePicked.size}
-        winFlash={winFlash}
-        myBet={state.myBet}
-      />
+      {/* ── Countdown ────────────────────────────────────────────────── */}
+      <div style={{
+        textAlign: 'center',
+        padding: '6px 0 4px',
+        background: '#0d1120',
+        flexShrink: 0,
+      }}>
+        <div style={{
+          display: 'inline-block',
+          background: '#1a2340',
+          borderRadius: 8,
+          padding: '3px 18px',
+          fontSize: 20,
+          fontWeight: 900,
+          color: countdownSec <= 5 && state.phase === 'betting' ? '#ef4444' : '#fff',
+          letterSpacing: 2,
+          fontVariantNumeric: 'tabular-nums',
+          minWidth: 90,
+          textAlign: 'center',
+        }}>
+          {state.phase === 'betting' || state.phase === 'drawing'
+            ? `${cdMins} : ${cdSecs}`
+            : '00 : 00'}
+        </div>
+      </div>
 
-      <TabBar tab={tab} onChange={setTab} />
+      {/* ── Win flash overlay ─────────────────────────────────────────── */}
+      {winFlash && (
+        <div style={{
+          background: 'linear-gradient(135deg, #14532d, #166534)',
+          padding: '10px 16px',
+          textAlign: 'center',
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 12, color: '#86efac', fontWeight: 700 }}>🎉 YOU WON!</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: '#22c55e' }}>+{winFlash.amount.toFixed(2)} ETB</div>
+        </div>
+      )}
 
-      {/* ── GAME tab ── */}
-      {tab === 'game' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 90px' }}>
-          {/* Possible win row */}
-          {possibleWins.length > 0 && (
-            <div style={{
-              background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
-              borderRadius: 12, padding: '8px 12px', marginBottom: 10,
-              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>POSSIBLE WIN</span>
-              {possibleWins.map(pw => (
-                <span key={pw.matched} style={{
-                  fontSize: 12, fontWeight: 800,
-                  color: pw.matched === liveMatched && (state.phase === 'drawing' || state.phase === 'finished') ? '#22c55e' : '#f59e0b',
-                  background: pw.matched === liveMatched && (state.phase === 'drawing' || state.phase === 'finished') ? 'rgba(34,197,94,0.15)' : 'transparent',
-                  borderRadius: 6, padding: '2px 6px',
-                }}>
-                  Match {pw.matched} → {pw.pay.toFixed(2)}
-                </span>
-              ))}
-            </div>
+      {/* ── GAME TAB CONTENT ─────────────────────────────────────────── */}
+      {tab === 'game' && !winFlash && (
+        <>
+          {/* ── Top panel: Drawing machine OR info panel ── */}
+          {(state.phase === 'drawing' || state.phase === 'finished') ? (
+            <DrawingMachine
+              drawnNumbers={state.round?.drawnNumbers ?? []}
+              lastDrawn={lastDrawn}
+              totalDraw={TOTAL_DRAW}
+            />
+          ) : (
+          <div style={{
+            background: '#1a2340',
+            margin: '6px 10px',
+            borderRadius: 10,
+            padding: '10px 12px',
+            flexShrink: 0,
+            minHeight: 68,
+          }}>
+            {activePicked.size === 0 ? (
+              /* No picks yet – show "Choose X numbers" guide */
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                  {[MAX_PICKS, MAX_PICKS - 1].map(n => (
+                    <div key={n} style={{
+                      width: 30, height: 30, borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, color: '#94a3b8',
+                    }}>{n}</div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16, fontWeight: 900, flexShrink: 0,
+                    boxShadow: '0 0 12px rgba(34,197,94,0.5)',
+                  }}>1</div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Choose {MAX_PICKS} numbers</div>
+                    <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 700 }}>From 1 to 80</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
+                  <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 600 }}>Possible win</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: '#22c55e' }}>{bestWin.toFixed(0)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginRight: 16 }}>
+                    <span style={{ fontSize: 10, color: '#64748b' }}>Match</span>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      {possibleWins.map(pw => (
+                        <span key={pw.matched} style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{pw.matched}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <span style={{ fontSize: 10, color: '#64748b' }}>Pays</span>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      {possibleWins.map(pw => (
+                        <span key={pw.matched} style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>
+                          x{PAYOUT_TABLE[activePicked.size]?.[pw.matched] ?? 0}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {state.myBet && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                    {state.myBet.pickedNumbers.sort((a, b) => a - b).map(n => (
+                      <span key={n} style={{
+                        background: drawnSet.has(n) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.1)',
+                        border: `1px solid ${drawnSet.has(n) ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.15)'}`,
+                        borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 700,
+                        color: drawnSet.has(n) ? '#4ade80' : '#fff',
+                      }}>{n}</span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
           )}
 
           {/* Number grid 1–80 */}
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)',
-            gap: 4, marginBottom: 14,
+            flex: 1,
+            padding: '2px 10px 0',
+            overflowY: 'auto',
           }}>
-            {Array.from({ length: 80 }, (_, i) => i + 1).map(n => (
-              <div key={n} onClick={() => togglePick(n)} style={{ display: 'flex', justifyContent: 'center' }}>
-                <Ball
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(10, 1fr)',
+              gap: 3,
+            }}>
+              {Array.from({ length: 80 }, (_, i) => i + 1).map(n => (
+                <NumberCell
+                  key={n}
                   num={n}
                   picked={activePicked.has(n)}
                   drawn={drawnSet.has(n)}
                   justDrawn={lastDrawn === n}
+                  onClick={() => togglePick(n)}
                 />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          {/* Bet controls — only show while in betting phase and no bet placed yet */}
-          {!state.myBet && state.phase === 'betting' && (
-            <BetControls
-              betAmount={betAmount}
-              onBetAmount={setBetAmount}
-              picked={picked}
-              onClearPicks={() => setPicked(new Set())}
-              onBet={placeBet}
-              placing={placing}
-              error={error}
-            />
-          )}
+          {/* ── Bet controls ── */}
+          <div style={{
+            padding: '8px 10px 4px',
+            background: '#0d1120',
+            flexShrink: 0,
+          }}>
+            {error && (
+              <div style={{ color: '#f87171', fontSize: 12, marginBottom: 6, textAlign: 'center' }}>{error}</div>
+            )}
+            {/* Amount row */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 8,
+            }}>
+              <button
+                onClick={() => setBetAmount(v => Math.max(MIN_BET, v - 1))}
+                style={ctrlBtn}
+              >−</button>
 
-          {/* Already bet info */}
-          {state.myBet && (
-            <BetInfo myBet={state.myBet} liveMatched={liveMatched} drawnSet={drawnSet} phase={state.phase} />
-          )}
+              <div style={{
+                flex: 1,
+                background: '#1a2340',
+                borderRadius: 10,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                fontWeight: 900,
+                color: '#fff',
+              }}>
+                {betAmount.toFixed(2)}
+              </div>
 
-          {/* Live bets list */}
-          {state.bets.length > 0 && (
-            <BetsList bets={state.bets} />
-          )}
-        </div>
+              <button
+                onClick={() => setBetAmount(v => Math.min(MAX_BET, v + 1))}
+                style={ctrlBtn}
+              >+</button>
+
+              <button
+                onClick={() => setBetAmount(v => Math.min(MAX_BET, v * 2))}
+                style={{ ...ctrlBtn, color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)', minWidth: 38 }}
+              >X2</button>
+
+              <button
+                onClick={() => setBetAmount(MAX_BET)}
+                style={{ ...ctrlBtn, color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)', minWidth: 44 }}
+              >MAX</button>
+
+              <button
+                style={{ ...ctrlBtn, fontSize: 14, color: '#64748b' }}
+                title="Settings"
+              >⚙</button>
+            </div>
+
+            {/* BET button */}
+            <button
+              onClick={placeBet}
+              disabled={placing || (state.phase === 'betting' && !state.myBet && picked.size === 0) || state.phase !== 'betting' || !!state.myBet}
+              style={{
+                width: '100%',
+                padding: '15px 0',
+                background: (state.phase === 'betting' && !state.myBet && picked.size > 0 && !placing)
+                  ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
+                  : 'rgba(255,255,255,0.06)',
+                border: 'none',
+                borderRadius: 12,
+                color: (state.phase === 'betting' && !state.myBet && picked.size > 0 && !placing)
+                  ? '#fff'
+                  : 'rgba(255,255,255,0.3)',
+                fontSize: 18,
+                fontWeight: 900,
+                cursor: (state.phase === 'betting' && !state.myBet && picked.size > 0 && !placing) ? 'pointer' : 'not-allowed',
+                letterSpacing: '0.06em',
+                marginBottom: 4,
+              }}
+            >
+              {placing ? 'Placing...' : 'BET'}
+            </button>
+          </div>
+        </>
       )}
 
-      {/* ── HISTORY tab ── */}
+      {/* ── HISTORY TAB ──────────────────────────────────────────────── */}
       {tab === 'history' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 24px' }}>
-          {history.length === 0 && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
+          {history.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>No history yet</div>
+          ) : (
+            history.map(r => <HistoryCard key={r.id} round={r} />)
           )}
-          {history.map(r => <HistoryCard key={r.id} round={r} />)}
         </div>
       )}
 
-      {/* ── PAYOUTS tab ── */}
-      {tab === 'payouts' && <PayoutsTable />}
+      {/* ── RESULTS TAB ──────────────────────────────────────────────── */}
+      {tab === 'results' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
+          {history.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>No results yet</div>
+          ) : (
+            history.slice(0, 10).map(r => (
+              <div key={r.id} style={{
+                background: '#111827',
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginBottom: 8,
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>
+                  {new Date(r.finishedAt).toLocaleString()}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {r.drawnNumbers.map(n => {
+                    const isMyPick = r.myBet?.pickedNumbers.includes(n);
+                    return (
+                      <span key={n} style={{
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: isMyPick ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9, fontWeight: 700,
+                        color: isMyPick ? '#4ade80' : '#64748b',
+                      }}>{n}</span>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── STATISTICS TAB ───────────────────────────────────────────── */}
+      {tab === 'statistics' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
+          <StatisticsView history={history} />
+        </div>
+      )}
+
+      {/* ── Tab bar ──────────────────────────────────────────────────── */}
+      <TabBar tab={tab} onChange={setTab} />
+
+      {/* ── Bottom bets feed ─────────────────────────────────────────── */}
+      <BetsFeed bets={state.bets} myBet={state.myBet} drawnSet={drawnSet} phase={state.phase} />
     </div>
   );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function PhaseBanner({
-  phase, countdownSec, drawnCount, lastDrawn, liveMatched, totalPicked, winFlash, myBet,
-}: {
-  phase: string;
-  countdownSec: number;
-  drawnCount: number;
-  lastDrawn: number | null;
-  liveMatched: number;
-  totalPicked: number;
-  winFlash: { amount: number } | null;
-  myBet: KenoRoundState['myBet'];
-}) {
-  if (winFlash) {
-    return (
-      <div style={{
-        background: 'linear-gradient(135deg, #14532d, #166534)',
-        padding: '14px 16px', textAlign: 'center',
-        borderBottom: '1px solid rgba(34,197,94,0.3)',
-        animation: 'pulse 0.5s ease-out',
-      }}>
-        <div style={{ fontSize: 13, color: '#86efac', fontWeight: 700 }}>🎉 YOU WON!</div>
-        <div style={{ fontSize: 28, fontWeight: 900, color: '#22c55e' }}>+{winFlash.amount.toFixed(2)} ETB</div>
-      </div>
-    );
-  }
-
-  if (phase === 'betting') {
-    return (
-      <div style={{
-        background: 'rgba(59,130,246,0.08)', padding: '10px 16px',
-        borderBottom: '1px solid rgba(59,130,246,0.2)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>PICK UP TO {MAX_PICKS} NUMBERS</div>
-          <div style={{ fontSize: 13, color: '#93c5fd', fontWeight: 700 }}>
-            {totalPicked > 0 ? `${totalPicked} selected` : 'Choose your numbers'}
-          </div>
-        </div>
-        <div style={{
-          background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.4)',
-          borderRadius: 10, padding: '6px 14px', textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 11, color: '#64748b' }}>CLOSES IN</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: countdownSec <= 5 ? '#ef4444' : '#60a5fa',
-            fontVariantNumeric: 'tabular-nums' }}>
-            {String(Math.floor(countdownSec / 60)).padStart(2, '0')}:{String(countdownSec % 60).padStart(2, '0')}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === 'drawing') {
-    return (
-      <div style={{
-        background: 'rgba(245,158,11,0.08)', padding: '10px 16px',
-        borderBottom: '1px solid rgba(245,158,11,0.2)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>DRAWING NUMBERS</div>
-          {totalPicked > 0 && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80' }}>
-              Matched: {liveMatched}/{totalPicked}
-            </div>
-          )}
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          {lastDrawn ? (
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 20, fontWeight: 900, boxShadow: '0 0 20px rgba(245,158,11,0.6)',
-            }}>{lastDrawn}</div>
-          ) : (
-            <div style={{ fontSize: 11, color: '#64748b' }}>{drawnCount}/{TOTAL_DRAW}</div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === 'finished') {
-    const payout = myBet?.payout;
-    return (
-      <div style={{
-        background: payout && payout > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.06)',
-        padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>ROUND FINISHED</div>
-          {myBet && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: payout && payout > 0 ? '#22c55e' : '#f87171' }}>
-              {payout && payout > 0 ? `Won ${payout.toFixed(2)} ETB` : `Matched ${myBet.matched ?? 0}/${myBet.pickedNumbers.length}`}
-            </div>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: '#475569' }}>Next round starting...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{
-      background: 'rgba(255,255,255,0.03)', padding: '10px 16px',
-      borderBottom: '1px solid rgba(255,255,255,0.07)',
-      textAlign: 'center', color: '#475569', fontSize: 13,
-    }}>
-      Waiting for next round...
-    </div>
-  );
-}
-
-function BetControls({
-  betAmount, onBetAmount, picked, onClearPicks, onBet, placing, error,
-}: {
-  betAmount: number;
-  onBetAmount: (v: number) => void;
-  picked: Set<number>;
-  onClearPicks: () => void;
-  onBet: () => void;
-  placing: boolean;
-  error: string | null;
-}) {
-  const QUICK = [5, 10, 50, 100, 200];
-  const adj = (d: number) => onBetAmount(Math.max(MIN_BET, Math.min(MAX_BET, betAmount + d)));
-
-  return (
-    <div style={{
-      background: '#111827', borderRadius: 14, padding: '12px',
-      border: '1px solid rgba(255,255,255,0.07)', marginBottom: 12,
-    }}>
-      {/* Bet amount row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <button onClick={() => adj(-10)} style={adjBtn}>−</button>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 22, fontWeight: 900, color: '#fff' }}>
-          {betAmount.toFixed(2)}
-        </div>
-        <button onClick={() => adj(10)} style={adjBtn}>+</button>
-        <button onClick={() => onBetAmount(MAX_BET)} style={{
-          ...adjBtn, fontSize: 10, padding: '6px 8px', color: '#f59e0b',
-        }}>MAX</button>
-      </div>
-
-      {/* Quick picks */}
-      <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
-        {QUICK.map(q => (
-          <button key={q} onClick={() => onBetAmount(q)} style={{
-            flex: 1, padding: '5px 0', background: betAmount === q ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${betAmount === q ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.08)'}`,
-            borderRadius: 8, color: betAmount === q ? '#22c55e' : '#94a3b8',
-            fontSize: 11, fontWeight: 700, cursor: 'pointer',
-          }}>{q}</button>
-        ))}
-      </div>
-
-      {/* Picks summary */}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {picked.size === 0
-            ? <span style={{ fontSize: 12, color: '#475569' }}>Tap numbers above to pick</span>
-            : Array.from(picked).sort((a, b) => a - b).map(n => (
-                <span key={n} style={{
-                  background: '#1e40af', borderRadius: 6, padding: '2px 8px',
-                  fontSize: 12, fontWeight: 700, color: '#93c5fd',
-                }}>{n}</span>
-              ))}
-        </div>
-        {picked.size > 0 && (
-          <button onClick={onClearPicks} style={{
-            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
-            color: '#f87171', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer',
-          }}>Clear</button>
-        )}
-      </div>
-
-      {error && <div style={{ color: '#f87171', fontSize: 12, marginBottom: 8 }}>{error}</div>}
-
-      {/* BET button */}
-      <button
-        onClick={onBet}
-        disabled={placing || picked.size === 0}
-        style={{
-          width: '100%', padding: '14px 0',
-          background: picked.size === 0 || placing
-            ? 'rgba(255,255,255,0.05)'
-            : 'linear-gradient(135deg, #16a34a, #15803d)',
-          border: 'none', borderRadius: 12,
-          color: picked.size === 0 || placing ? '#475569' : '#fff',
-          fontSize: 16, fontWeight: 900, cursor: picked.size === 0 || placing ? 'not-allowed' : 'pointer',
-          letterSpacing: '0.05em',
-        }}
-      >
-        {placing ? 'Placing...' : picked.size === 0 ? 'Select numbers to bet' : `BET ${betAmount} ETB`}
-      </button>
-    </div>
-  );
-}
-
-const adjBtn: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: 10,
-  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-  color: '#fff', fontSize: 18, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+const ctrlBtn: React.CSSProperties = {
+  width: 40,
+  height: 44,
+  borderRadius: 10,
+  background: '#1a2340',
+  border: '1px solid rgba(255,255,255,0.1)',
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: 700,
+  cursor: 'pointer',
+  flexShrink: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
-
-function BetInfo({
-  myBet, liveMatched, drawnSet, phase,
-}: {
-  myBet: NonNullable<KenoRoundState['myBet']>;
-  liveMatched: number;
-  drawnSet: Set<number>;
-  phase: string;
-}) {
-  const multiplier = getMultiplier(myBet.pickedNumbers.length, liveMatched);
-  return (
-    <div style={{
-      background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)',
-      borderRadius: 14, padding: '12px', marginBottom: 12,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>YOUR BET</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: '#22c55e' }}>{myBet.betAmount.toFixed(2)} ETB</span>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-        {myBet.pickedNumbers.sort((a, b) => a - b).map(n => (
-          <span key={n} style={{
-            borderRadius: 8, padding: '3px 8px', fontSize: 12, fontWeight: 800,
-            background: drawnSet.has(n) ? 'rgba(34,197,94,0.2)' : 'rgba(59,130,246,0.2)',
-            color: drawnSet.has(n) ? '#4ade80' : '#93c5fd',
-            border: drawnSet.has(n) ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(59,130,246,0.3)',
-          }}>{n}</span>
-        ))}
-      </div>
-
-      {(phase === 'drawing' || phase === 'finished') && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-          <span style={{ color: '#64748b' }}>Matched: <strong style={{ color: '#fff' }}>{liveMatched}/{myBet.pickedNumbers.length}</strong></span>
-          {multiplier > 0 && (
-            <span style={{ color: '#f59e0b', fontWeight: 800 }}>
-              x{multiplier} → {(myBet.betAmount * multiplier).toFixed(2)} ETB
-            </span>
-          )}
-        </div>
-      )}
-
-      {phase === 'finished' && myBet.payout !== null && (
-        <div style={{
-          marginTop: 8, textAlign: 'center', fontWeight: 900, fontSize: 16,
-          color: myBet.payout > 0 ? '#22c55e' : '#f87171',
-        }}>
-          {myBet.payout > 0 ? `+${myBet.payout.toFixed(2)} ETB` : 'No win this round'}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BetsList({ bets }: { bets: KenoRoundState['bets'] }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: '#475569', fontWeight: 700, marginBottom: 6 }}>
-        ALL BETS ({bets.length})
-      </div>
-      {bets.map((b, i) => (
-        <div key={i} style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '7px 10px', borderRadius: 8,
-          background: i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'transparent',
-          fontSize: 12,
-        }}>
-          <span style={{ color: '#94a3b8', fontWeight: 700 }}>
-            {b.username.substring(0, 8).replace(/./g, (c, i2) => i2 > 1 && i2 < b.username.length - 1 ? '*' : c)}
-          </span>
-          <span style={{ color: '#64748b' }}>{b.pickedCount} picks</span>
-          <span style={{ color: '#f59e0b', fontWeight: 700 }}>{b.betAmount.toFixed(0)} ETB</span>
-          {b.payout !== null && (
-            <span style={{ fontWeight: 800, color: b.payout > 0 ? '#22c55e' : '#475569' }}>
-              {b.payout > 0 ? `+${b.payout.toFixed(0)}` : '—'}
-            </span>
-          )}
-          {b.payout === null && <span style={{ color: '#64748b' }}>Waiting</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function HistoryCard({ round }: { round: HistoryRound }) {
   return (
     <div style={{
-      background: '#111827', borderRadius: 12, padding: '12px', marginBottom: 10,
+      background: '#111827',
+      borderRadius: 12,
+      padding: '12px',
+      marginBottom: 10,
       border: '1px solid rgba(255,255,255,0.06)',
     }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 8 }}>
@@ -762,7 +777,7 @@ function HistoryCard({ round }: { round: HistoryRound }) {
             <span key={n} style={{
               width: 26, height: 26, borderRadius: '50%',
               background: isMyPick ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)',
-              border: isMyPick ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,255,255,0.1)',
+              border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 10, fontWeight: 700,
               color: isMyPick ? '#4ade80' : '#64748b',
@@ -784,37 +799,272 @@ function HistoryCard({ round }: { round: HistoryRound }) {
   );
 }
 
-function PayoutsTable() {
+// ─── Drawing machine visual ───────────────────────────────────────────────────
+function DrawingMachine({
+  drawnNumbers, lastDrawn, totalDraw,
+}: {
+  drawnNumbers: number[];
+  lastDrawn: number | null;
+  totalDraw: number;
+}) {
+  const current = lastDrawn ?? drawnNumbers[drawnNumbers.length - 1] ?? null;
+  const previous = drawnNumbers.slice(0, -1).slice(-6); // last few before current
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 24px' }}>
-      <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginBottom: 12 }}>
-        Multiplier applied to your bet amount
+    <div style={{
+      position: 'relative',
+      background: 'radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0.08) 0%, #0d1a0d 60%, #0d1120 100%)',
+      flexShrink: 0,
+      height: 160,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    }}>
+      {/* Counter top-right */}
+      <div style={{
+        position: 'absolute', top: 8, right: 12,
+        fontSize: 11, fontWeight: 700, color: '#475569',
+      }}>
+        {drawnNumbers.length} / {totalDraw}
       </div>
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(picked => {
-        const table = PAYOUT_TABLE[picked] ?? {};
-        const entries = Object.entries(table).filter(([, m]) => m > 0);
+
+      {/* Circular glow backdrop */}
+      <div style={{
+        position: 'absolute',
+        width: 140, height: 140,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)',
+        border: '1px solid rgba(34,197,94,0.08)',
+      }} />
+
+      {/* Main ball */}
+      {current !== null ? (
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, #4a5568, #1a202c)',
+          border: '2px solid rgba(255,255,255,0.15)',
+          boxShadow: '0 0 30px rgba(34,197,94,0.3), inset 0 2px 4px rgba(255,255,255,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 32, fontWeight: 900, color: '#fff',
+          zIndex: 2,
+          transition: 'transform 0.15s ease-out',
+          transform: lastDrawn !== null ? 'scale(1.08)' : 'scale(1)',
+        }}>
+          {current}
+        </div>
+      ) : (
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, rgba(34,197,94,0.15), rgba(34,197,94,0.03))',
+          border: '2px solid rgba(34,197,94,0.1)',
+          zIndex: 2,
+        }} />
+      )}
+
+      {/* Previous balls row */}
+      {previous.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          bottom: 14,
+          left: 10,
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center',
+        }}>
+          {previous.slice(-4).map((n, i) => (
+            <div key={`${n}-${i}`} style={{
+              width: 30, height: 30, borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 30%, #3a4555, #1a2030)',
+              border: '1.5px solid rgba(255,255,255,0.12)',
+              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 800, color: '#94a3b8',
+            }}>{n}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Bets feed with per-player number cells ────────────────────────────────────
+function BetsFeed({
+  bets, myBet, drawnSet, phase,
+}: {
+  bets: KenoRoundState['bets'];
+  myBet: KenoRoundState['myBet'];
+  drawnSet: Set<number>;
+  phase: string;
+}) {
+  // We need pickedNumbers per bet but the bets array only has pickedCount.
+  // During betting phase we don't have drawn numbers so we just show empty slots.
+  // We'll render pickedCount empty slots during betting, or use drawnSet to highlight.
+  // NOTE: the backend bets array doesn't expose pickedNumbers for privacy —
+  // we show slots as placeholders, highlighting matched count via b.matched.
+
+  const isDrawingOrFinished = phase === 'drawing' || phase === 'finished';
+
+  return (
+    <div style={{
+      background: '#0d1120',
+      borderTop: '1px solid rgba(255,255,255,0.06)',
+      flexShrink: 0,
+      maxHeight: 180,
+      overflowY: 'auto',
+    }}>
+      {/* Counts row */}
+      <div style={{
+        display: 'flex', gap: 20,
+        padding: '6px 14px 4px',
+        fontSize: 11, color: '#64748b', fontWeight: 700,
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <span>All {bets.length}</span>
+        <span>My Tickets {myBet ? 1 : 0}</span>
+        <span>My Bets {myBet ? 1 : 0}</span>
+      </div>
+
+      {/* Each bet row */}
+      {bets.slice(0, 8).map((b, i) => {
+        const masked = b.username.length > 2
+          ? b.username[0] + '***' + b.username[b.username.length - 1]
+          : b.username;
+
         return (
-          <div key={picked} style={{
-            background: '#111827', borderRadius: 12, padding: '10px 12px', marginBottom: 8,
-            border: '1px solid rgba(255,255,255,0.07)',
+          <div key={i} style={{
+            padding: '6px 10px',
+            borderBottom: '1px solid rgba(255,255,255,0.03)',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#22c55e', marginBottom: 6 }}>
-              Pick {picked}
+            {/* Username */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>
+              {masked}
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {entries.map(([m, mul]) => (
-                <div key={m} style={{
-                  background: 'rgba(255,255,255,0.04)', borderRadius: 8,
-                  padding: '4px 10px', fontSize: 11, fontWeight: 700,
+            {/* Number slots row */}
+            <div style={{ display: 'flex', gap: 3, marginBottom: 4, flexWrap: 'wrap' }}>
+              {Array.from({ length: b.pickedCount }).map((_, j) => (
+                <div key={j} style={{
+                  width: 28, height: 28,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, color: '#475569',
                 }}>
-                  <span style={{ color: '#64748b' }}>Match {m}: </span>
-                  <span style={{ color: '#f59e0b' }}>x{mul}</span>
+                  {/* We don't expose picks for other players */}
                 </div>
               ))}
+              {/* Empty filler slots to always show 10 columns */}
+              {Array.from({ length: Math.max(0, 10 - b.pickedCount) }).map((_, j) => (
+                <div key={`e-${j}`} style={{
+                  width: 28, height: 28,
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  borderRadius: 4,
+                }} />
+              ))}
+            </div>
+            {/* Bet amount + status */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+              <span style={{ color: '#475569' }}>Bet {b.betAmount.toFixed(0)}</span>
+              {isDrawingOrFinished && b.matched !== null ? (
+                <span style={{ fontWeight: 700, color: (b.payout ?? 0) > 0 ? '#22c55e' : '#f59e0b' }}>
+                  {(b.payout ?? 0) > 0 ? `+${b.payout!.toFixed(0)}` : `${b.matched} matched`}
+                </span>
+              ) : (
+                <span style={{ color: '#f59e0b', fontWeight: 700 }}>Waiting</span>
+              )}
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function StatisticsView({ history }: { history: HistoryRound[] }) {
+  if (history.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>
+        No data yet
+      </div>
+    );
+  }
+
+  const myBets = history.filter(r => r.myBet);
+  const totalWagered = myBets.reduce((s, r) => s + (r.myBet?.betAmount ?? 0), 0);
+  const totalWon = myBets.reduce((s, r) => s + (r.myBet?.payout ?? 0), 0);
+  const wins = myBets.filter(r => (r.myBet?.payout ?? 0) > 0).length;
+
+  // Frequency: how many times each number was drawn
+  const freq: Record<number, number> = {};
+  for (const r of history) {
+    for (const n of r.drawnNumbers) {
+      freq[n] = (freq[n] ?? 0) + 1;
+    }
+  }
+  const hot = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n]) => Number(n));
+  const cold = Object.entries(freq).sort((a, b) => a[1] - b[1]).slice(0, 5).map(([n]) => Number(n));
+
+  return (
+    <div>
+      {myBets.length > 0 && (
+        <div style={{
+          background: '#111827',
+          borderRadius: 12,
+          padding: '12px 14px',
+          marginBottom: 10,
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', marginBottom: 8 }}>My Performance</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+            {[
+              { label: 'Bets', value: myBets.length },
+              { label: 'Wins', value: wins },
+              { label: 'Wagered', value: `${totalWagered.toFixed(0)} ETB` },
+            ].map(s => (
+              <div key={s.label}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: '#475569' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 8, textAlign: 'center', fontSize: 13, fontWeight: 800, color: totalWon > totalWagered ? '#22c55e' : '#f87171' }}>
+            Net: {(totalWon - totalWagered) >= 0 ? '+' : ''}{(totalWon - totalWagered).toFixed(2)} ETB
+          </div>
+        </div>
+      )}
+
+      <div style={{
+        background: '#111827',
+        borderRadius: 12,
+        padding: '12px 14px',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', marginBottom: 8 }}>Hot Numbers</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          {hot.map(n => (
+            <span key={n} style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 800, color: '#fca5a5',
+            }}>{n}</span>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Cold Numbers</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {cold.map(n => (
+            <span key={n} style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 800, color: '#93c5fd',
+            }}>{n}</span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
