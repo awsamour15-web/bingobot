@@ -60,7 +60,7 @@ const MAX_BET = 5000;
 const MAX_PICKS = 10;
 const TOTAL_DRAW = 20;
 
-// ─── Payout table (mirrors backend) ──────────────────────────────────────────
+// ─── Payout table ─────────────────────────────────────────────────────────────
 const PAYOUT_TABLE: Record<number, Record<number, number>> = {
   1:  { 1: 3.5 },
   2:  { 2: 9 },
@@ -87,7 +87,6 @@ function getPossibleWins(picked: number, betAmount: number): { matched: number; 
     .sort((a, b) => a.matched - b.matched);
 }
 
-// best possible payout from current picks
 function getBestPossibleWin(picked: number, betAmount: number): number {
   const wins = getPossibleWins(picked, betAmount);
   if (wins.length === 0) return 0;
@@ -106,9 +105,8 @@ function useCountdown(endsAt: number | null) {
   return remaining;
 }
 
-// ─── Dot indicator helper – small coloured dot in corner of each number cell ─
-// These are decorative random dots like in the reference screenshot
-const DOT_NUMBERS = new Set([3, 6, 10, 11, 18, 27, 36, 42, 49, 50, 65, 71, 78]);
+// Decorative dots matching reference screenshots
+const DOT_NUMBERS = new Set([3, 6, 10, 11, 18, 24, 27, 29, 33, 36, 48, 56, 57, 65, 68, 71, 74, 78]);
 
 // ─── Number cell ──────────────────────────────────────────────────────────────
 function NumberCell({
@@ -148,6 +146,7 @@ function NumberCell({
   }
 
   const hasDot = DOT_NUMBERS.has(num);
+  const dotColor = drawn ? '#22c55e' : picked ? '#f87171' : '#3b82f6';
 
   return (
     <div
@@ -157,20 +156,20 @@ function NumberCell({
         aspectRatio: '1',
         background: bg,
         border: `1px solid ${borderColor}`,
-        borderRadius: 6,
+        borderRadius: 5,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 13,
+        fontSize: 12,
         fontWeight,
         color,
         cursor: 'pointer',
         userSelect: 'none',
         transition: 'background 0.2s, border-color 0.2s',
-        transform: justDrawn ? 'scale(1.15)' : 'scale(1)',
+        transform: justDrawn ? 'scale(1.12)' : 'scale(1)',
         boxShadow: justDrawn
           ? '0 0 10px rgba(34,197,94,0.7)'
-          : picked && drawn
+          : (picked && drawn)
           ? '0 0 6px rgba(34,197,94,0.4)'
           : 'none',
       }}
@@ -180,12 +179,12 @@ function NumberCell({
         <div style={{
           position: 'absolute',
           top: 2,
-          right: 3,
+          right: 2,
           width: 4,
           height: 4,
           borderRadius: '50%',
-          background: drawn ? '#22c55e' : '#3b82f6',
-          opacity: 0.8,
+          background: dotColor,
+          opacity: 0.85,
         }} />
       )}
     </div>
@@ -223,7 +222,8 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
             fontWeight: 700,
             fontSize: 10,
             cursor: 'pointer',
-            borderTop: tab === t.key ? '2px solid #22c55e' : '2px solid transparent',
+            borderBottom: tab === t.key ? '2px solid #22c55e' : '2px solid transparent',
+            borderTop: 'none',
             letterSpacing: '0.04em',
             display: 'flex',
             alignItems: 'center',
@@ -231,7 +231,7 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
             gap: 3,
           }}
         >
-          <span style={{ fontSize: 12 }}>{t.icon}</span>
+          <span style={{ fontSize: 11 }}>{t.icon}</span>
           <span>{t.label}</span>
         </button>
       ))}
@@ -240,7 +240,6 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
-
 export default function KenoScreen() {
   const navigate = useNavigate();
   const [state, setState] = useState<KenoRoundState>({ phase: 'idle', round: null, myBets: [], myBet: null, bets: [] });
@@ -251,10 +250,10 @@ export default function KenoScreen() {
   const [history, setHistory] = useState<HistoryRound[]>([]);
   const [lastDrawn, setLastDrawn] = useState<number | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
+  const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [winFlash, setWinFlash] = useState<{ amount: number } | null>(null);
   const lastDrawnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Progressive reveal: how many drawn numbers to actually show in the grid
   const [revealedCount, setRevealedCount] = useState<number>(0);
   const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -266,7 +265,6 @@ export default function KenoScreen() {
     try {
       const s = await apiRequest<KenoRoundState>('GET', '/api/keno/state');
       setState(s);
-      // If we join mid-draw, progressively reveal the already-drawn numbers
       if (s.phase === 'drawing' && s.round && s.round.drawnNumbers.length > 0) {
         const nums = s.round.drawnNumbers;
         setRevealedCount(0);
@@ -300,8 +298,10 @@ export default function KenoScreen() {
 
   const fetchBalance = useCallback(async () => {
     try {
-      const p = await apiRequest<{ mainBalance: number }>('GET', '/api/players/me');
+      const p = await apiRequest<{ mainBalance: number; id?: string }>('GET', '/api/players/me');
       setBalance((p as any).mainBalance ?? (p as any).balance ?? null);
+      const rawId = (p as any).id ?? (p as any).playerId ?? null;
+      if (rawId) setPlayerId(String(rawId).slice(-8).toUpperCase());
     } catch { /* ignore */ }
   }, []);
 
@@ -315,7 +315,7 @@ export default function KenoScreen() {
   }, [fetchState, fetchBalance]);
 
   useEffect(() => {
-    if (tab === 'history' || tab === 'results') fetchHistory();
+    if (tab === 'history' || tab === 'results' || tab === 'statistics') fetchHistory();
   }, [tab, fetchHistory]);
 
   useEffect(() => {
@@ -346,7 +346,6 @@ export default function KenoScreen() {
       setRevealedCount(data.drawnSoFar.length);
       if (lastDrawnTimerRef.current) clearTimeout(lastDrawnTimerRef.current);
       lastDrawnTimerRef.current = setTimeout(() => setLastDrawn(null), 900);
-
       setState(prev => {
         if (!prev.round || prev.round.id !== data.roundId) return prev;
         return {
@@ -385,7 +384,6 @@ export default function KenoScreen() {
     socket.on('KENO_BETTING_OPEN', onBettingOpen);
     socket.on('KENO_NUMBER_DRAWN', onNumberDrawn);
     socket.on('KENO_ROUND_FINISHED', onRoundFinished);
-
     return () => {
       socket.off('KENO_BETTING_OPEN', onBettingOpen);
       socket.off('KENO_NUMBER_DRAWN', onNumberDrawn);
@@ -424,10 +422,8 @@ export default function KenoScreen() {
   };
 
   const allDrawnNumbers = state.round?.drawnNumbers ?? [];
-  // Only show numbers that have been progressively revealed so far
   const visibleDrawnNumbers = allDrawnNumbers.slice(0, revealedCount);
   const drawnSet = new Set(visibleDrawnNumbers);
-  // For display purposes use the first bet's picks when in draw/finished, otherwise current picks
   const activePicked: Set<number> = (state.myBets.length > 0 && state.phase !== 'betting')
     ? new Set(state.myBets.flatMap(b => b.pickedNumbers))
     : picked;
@@ -436,11 +432,9 @@ export default function KenoScreen() {
   const liveMatched = state.myBets.length > 0
     ? state.myBets[0]!.pickedNumbers.filter(n => drawnSet.has(n)).length
     : activePickedArr.filter(n => drawnSet.has(n)).length;
-
   const possibleWins = getPossibleWins(picked.size > 0 ? picked.size : (state.myBets[0]?.pickedNumbers.length ?? 0), betAmount);
   const bestWin = getBestPossibleWin(picked.size > 0 ? picked.size : (state.myBets[0]?.pickedNumbers.length ?? 0), betAmount);
 
-  // Countdown display
   const cdMins = String(Math.floor(countdownSec / 60)).padStart(2, '0');
   const cdSecs = String(countdownSec % 60).padStart(2, '0');
 
@@ -456,60 +450,88 @@ export default function KenoScreen() {
       margin: '0 auto',
       overflow: 'hidden',
     }}>
-      {/* ── Top header ───────────────────────────────────────────────── */}
+      {/* ── Top header ── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '6px 10px 4px',
+        padding: '6px 10px',
         background: '#0d1120',
         flexShrink: 0,
+        minHeight: 42,
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-          <span style={{ fontSize: 12, fontWeight: 900, color: '#22c55e', letterSpacing: 1 }}>FAST</span>
-          <span style={{ fontSize: 12, fontWeight: 900, color: '#fff', letterSpacing: 1 }}>KENO</span>
+        {/* FAST KENO logo */}
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, minWidth: 50 }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: '#22c55e', letterSpacing: 1 }}>FAST</span>
+          <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', letterSpacing: 1 }}>KENO</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+        {/* Balance + ID */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{
-            background: 'rgba(34,197,94,0.08)',
-            border: '1px solid rgba(34,197,94,0.2)',
-            borderRadius: 6,
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: 5,
             padding: '3px 8px',
             fontSize: 12,
             fontWeight: 700,
-            color: '#22c55e',
+            color: '#fff',
+            display: 'flex', alignItems: 'center', gap: 4,
           }}>
-            {balance !== null ? `${balance.toFixed(2)} ETB` : '0.00 ETB'}
+            <span style={{ fontSize: 11, color: '#64748b' }}>0</span>
+            <span style={{ fontSize: 10, color: '#64748b' }}>ETB</span>
           </div>
-          <button
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 18, cursor: 'pointer', padding: 0 }}
-          >✕</button>
+          {playerId && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 11, fontWeight: 700, color: '#94a3b8',
+            }}>
+              <span>ID: {playerId}</span>
+              <span style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: '#22c55e',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, color: '#fff', fontWeight: 900,
+              }}>✔</span>
+            </div>
+          )}
         </div>
+
+        {/* Hamburger */}
+        <button
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', gap: 3.5, padding: '2px 4px',
+          }}
+          title="Menu"
+        >
+          <span style={{ display: 'block', width: 18, height: 2, background: '#22c55e', borderRadius: 2 }} />
+          <span style={{ display: 'block', width: 18, height: 2, background: '#22c55e', borderRadius: 2 }} />
+          <span style={{ display: 'block', width: 18, height: 2, background: '#22c55e', borderRadius: 2 }} />
+        </button>
       </div>
 
-      {/* ── Countdown ────────────────────────────────────────────────── */}
+      {/* ── Countdown ── */}
       <div style={{ textAlign: 'center', padding: '4px 0 2px', background: '#0d1120', flexShrink: 0 }}>
         <div style={{
           display: 'inline-block',
           background: '#1a2340',
-          borderRadius: 6,
-          padding: '2px 16px',
+          borderRadius: 5,
+          padding: '2px 18px',
           fontSize: 18,
           fontWeight: 900,
           color: countdownSec <= 5 && state.phase === 'betting' ? '#ef4444' : '#fff',
-          letterSpacing: 2,
+          letterSpacing: 4,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {state.phase === 'betting' || state.phase === 'drawing' ? `${cdMins} : ${cdSecs}` : '00 : 00'}
         </div>
       </div>
 
-      {/* ── Win flash ─────────────────────────────────────────────────── */}
+      {/* ── Win flash ── */}
       {winFlash && (
         <div style={{
           background: 'linear-gradient(135deg, #14532d, #166534)',
-          padding: '6px 12px',
+          padding: '5px 12px',
           textAlign: 'center',
           flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -519,101 +541,179 @@ export default function KenoScreen() {
         </div>
       )}
 
-      {/* ── GAME TAB CONTENT ─────────────────────────────────────────── */}
+      {/* ── GAME TAB ── */}
       {tab === 'game' && (
         <>
-          {/* ── Info panel: Possible win / Match / Pays / picked numbers ── */}
+          {/* Info panel */}
           <div style={{
             background: '#1a2340',
-            margin: '4px 8px',
+            margin: '4px 6px',
             borderRadius: 8,
-            padding: '8px 10px',
+            padding: '7px 8px',
             flexShrink: 0,
           }}>
-            {(state.phase === 'drawing' || state.phase === 'finished') ? (
-              /* Drawing phase: show draw progress + matched picks */
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {(state.myBets[0]?.pickedNumbers ?? Array.from(activePicked)).sort((a,b)=>a-b).map(n => (
+            {(state.phase === 'drawing' || state.phase === 'finished') && activePicked.size > 0 ? (
+              /* Drawing phase: "N Possible win X / Match / Pays" */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{liveMatched}</span>
+                    <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Possible win</span>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: '#22c55e' }}>
+                      {Math.round(activeBetAmount * getMultiplier(activePicked.size, liveMatched))}
+                    </span>
+                  </div>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: '#1a3a2a',
+                    border: '1px solid rgba(34,197,94,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, color: '#22c55e', cursor: 'pointer',
+                  }}>?</div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 5, fontSize: 11, color: '#64748b' }}>
+                  <span>Match <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{liveMatched}</span></span>
+                  <span>Pays <span style={{ color: '#e2e8f0', fontWeight: 700 }}>x{getMultiplier(activePicked.size, liveMatched)}</span></span>
+                </div>
+                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  {Array.from(activePicked).sort((a,b)=>a-b).map(n => (
                     <span key={n} style={{
-                      width: 28, height: 28, borderRadius: 6,
-                      background: drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.12)',
-                      border: `1px solid ${drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.2)'}`,
+                      width: 28, height: 26,
+                      background: drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                      border: `1px solid ${drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.15)'}`,
+                      borderRadius: 5,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 800,
+                      fontSize: 11, fontWeight: 800,
                       color: drawnSet.has(n) ? '#fff' : '#cbd5e1',
-                      transition: 'background 0.2s',
                     }}>{n}</span>
                   ))}
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Matched</div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#22c55e' }}>
-                    {liveMatched}/{state.myBets[0]?.pickedNumbers.length ?? activePicked.size}
-                  </div>
-                  <div style={{ fontSize: 10, color: '#475569' }}>{visibleDrawnNumbers.length}/{TOTAL_DRAW} drawn</div>
-                </div>
               </div>
             ) : activePicked.size === 0 ? (
-              /* No picks yet */
+              /* No picks */
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Two stacked balls */}
+                <div style={{ position: 'relative', width: 46, height: 32, flexShrink: 0 }}>
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0,
+                    width: 26, height: 26, borderRadius: '50%',
+                    background: 'radial-gradient(circle at 35% 30%, #4a5568, #1e293b)',
+                    border: '1.5px solid rgba(255,255,255,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 9, fontWeight: 900, color: '#cbd5e1',
+                  }}>80</div>
+                  <div style={{
+                    position: 'absolute', top: 4, left: 16,
+                    width: 26, height: 26, borderRadius: '50%',
+                    background: 'radial-gradient(circle at 35% 30%, #374151, #1e293b)',
+                    border: '1.5px solid rgba(255,255,255,0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 900, color: '#e2e8f0',
+                  }}>10</div>
+                </div>
+                {/* Green ball with "1" */}
                 <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 35% 30%, #22c55e, #15803d)',
+                  border: '2px solid rgba(34,197,94,0.4)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15, fontWeight: 900, flexShrink: 0,
+                  fontSize: 16, fontWeight: 900, color: '#fff', flexShrink: 0,
+                  boxShadow: '0 0 8px rgba(34,197,94,0.4)',
                 }}>1</div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Choose up to {MAX_PICKS} numbers</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Choose {MAX_PICKS} numbers</div>
                   <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>From 1 to 80</div>
                 </div>
+                <div style={{
+                  marginLeft: 'auto',
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: '#1a3a2a', border: '1px solid rgba(34,197,94,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, color: '#22c55e', cursor: 'pointer', flexShrink: 0,
+                }}>?</div>
               </div>
             ) : (
-              /* Has picks: show Possible win + Match/Pays table + selected numbers */
-              <>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>Possible win</span>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: '#22c55e' }}>{bestWin.toFixed(0)}</span>
+              /* Has picks: show possible win + payout table + picked numbers */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {/* Small balls indicator */}
+                    <div style={{ position: 'relative', width: 40, height: 28, flexShrink: 0 }}>
+                      <div style={{
+                        position: 'absolute', top: 0, left: 0,
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: 'radial-gradient(circle at 35% 30%, #4a5568, #1e293b)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 8, fontWeight: 900, color: '#cbd5e1',
+                      }}>80</div>
+                      <div style={{
+                        position: 'absolute', top: 3, left: 13,
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: 'radial-gradient(circle at 35% 30%, #374151, #1e293b)',
+                        border: '1px solid rgba(255,255,255,0.25)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 8, fontWeight: 900, color: '#e2e8f0',
+                      }}>10</div>
+                    </div>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: '50%',
+                      background: 'radial-gradient(circle at 35% 30%, #22c55e, #15803d)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0,
+                    }}>{picked.size}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>Choose {MAX_PICKS} numbers</div>
+                      <div style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>From 1 to 80</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: '#1a3a2a', border: '1px solid rgba(34,197,94,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, color: '#22c55e', cursor: 'pointer', flexShrink: 0,
+                  }}>?</div>
                 </div>
-                <div style={{ display: 'flex', gap: 16, marginBottom: 5 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{picked.size}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>Possible win</span>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: '#22c55e' }}>{Math.round(bestWin)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 14, marginBottom: 4 }}>
                   <div>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Match</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ fontSize: 9, color: '#64748b', marginBottom: 1 }}>Match</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       {possibleWins.map(pw => (
-                        <span key={pw.matched} style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{pw.matched}</span>
+                        <span key={pw.matched} style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0' }}>{pw.matched}</span>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Pays</div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ fontSize: 9, color: '#64748b', marginBottom: 1 }}>Pays</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       {possibleWins.map(pw => (
-                        <span key={pw.matched} style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>
+                        <span key={pw.matched} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>
                           x{PAYOUT_TABLE[activePicked.size]?.[pw.matched] ?? 0}
                         </span>
                       ))}
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                   {Array.from(activePicked).sort((a,b)=>a-b).map(n => (
                     <span key={n} style={{
-                      background: drawnSet.has(n) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.12)',
-                      border: `1px solid ${drawnSet.has(n) ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.18)'}`,
-                      borderRadius: 5, padding: '2px 7px', fontSize: 12, fontWeight: 700,
-                      color: drawnSet.has(n) ? '#4ade80' : '#fff',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 4, padding: '2px 6px', fontSize: 11, fontWeight: 700, color: '#fff',
                     }}>{n}</span>
                   ))}
                 </div>
-              </>
+              </div>
             )}
           </div>
 
-          {/* Number grid 1–80 — fixed height, no scroll */}
-          <div style={{
-            padding: '2px 8px',
-            flexShrink: 0,
-          }}>
+          {/* Number grid 1–80 */}
+          <div style={{ padding: '2px 6px', flexShrink: 0 }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(10, 1fr)',
@@ -633,28 +733,33 @@ export default function KenoScreen() {
           </div>
 
           {/* ── Bet controls ── */}
-          <div style={{
-            padding: '6px 8px 4px',
-            background: '#0d1120',
-            flexShrink: 0,
-          }}>
+          <div style={{ padding: '5px 6px 4px', background: '#0d1120', flexShrink: 0 }}>
             {error && (
-              <div style={{ color: '#f87171', fontSize: 12, marginBottom: 4, textAlign: 'center' }}>{error}</div>
+              <div style={{ color: '#f87171', fontSize: 11, marginBottom: 3, textAlign: 'center' }}>{error}</div>
             )}
-            {/* Amount row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
+              {/* − button */}
               <button onClick={() => setBetAmount(v => Math.max(MIN_BET, v - 1))} style={ctrlBtn}>−</button>
+              {/* Amount */}
               <div style={{
                 flex: 1, background: '#1a2340', borderRadius: 8, height: 42,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 900, color: '#fff',
+                fontSize: 22, fontWeight: 900, color: '#fff',
               }}>
-                {betAmount.toFixed(2)}
+                {betAmount}
               </div>
+              {/* + button */}
               <button onClick={() => setBetAmount(v => Math.min(MAX_BET, v + 1))} style={ctrlBtn}>+</button>
-              <button onClick={() => setBetAmount(v => Math.min(MAX_BET, v * 2))} style={{ ...ctrlBtn, color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)' }}>X2</button>
-              <button onClick={() => setBetAmount(MAX_BET)} style={{ ...ctrlBtn, color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)' }}>MAX</button>
-              <button style={{ ...ctrlBtn, fontSize: 14, color: '#64748b' }} title="Settings">⚙</button>
+              {/* X2 */}
+              <button
+                onClick={() => setBetAmount(v => Math.min(MAX_BET, v * 2))}
+                style={{ ...ctrlBtn, color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)', background: '#0d1a14', width: 46 }}
+              >X2</button>
+              {/* MAX */}
+              <button
+                onClick={() => setBetAmount(MAX_BET)}
+                style={{ ...ctrlBtn, color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)', background: '#0d1a14', width: 46 }}
+              >MAX</button>
             </div>
 
             {/* BET button */}
@@ -663,17 +768,18 @@ export default function KenoScreen() {
               disabled={placing || picked.size === 0 || state.phase !== 'betting'}
               style={{
                 width: '100%',
-                padding: '13px 0',
-                background: (state.phase === 'betting' && picked.size > 0 && !placing)
-                  ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
-                  : 'rgba(255,255,255,0.06)',
+                padding: '14px 0',
+                background: 'linear-gradient(180deg, #1a6b2e 0%, #145524 100%)',
                 border: 'none',
-                borderRadius: 10,
-                color: (state.phase === 'betting' && picked.size > 0 && !placing) ? '#fff' : 'rgba(255,255,255,0.3)',
-                fontSize: 17,
+                borderRadius: 8,
+                color: (state.phase === 'betting' && picked.size > 0 && !placing)
+                  ? '#22c55e'
+                  : 'rgba(34,197,94,0.35)',
+                fontSize: 18,
                 fontWeight: 900,
                 cursor: (state.phase === 'betting' && picked.size > 0 && !placing) ? 'pointer' : 'not-allowed',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.12em',
+                opacity: (state.phase === 'betting' && picked.size > 0 && !placing) ? 1 : 0.7,
               }}
             >
               {placing ? 'Placing...' : state.myBets.length > 0 ? `BET #${state.myBets.length + 1}` : 'BET'}
@@ -682,67 +788,124 @@ export default function KenoScreen() {
         </>
       )}
 
-      {/* ── HISTORY TAB ──────────────────────────────────────────────── */}
+      {/* ── HISTORY TAB ── */}
       {tab === 'history' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
           {history.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>No history yet</div>
+            /* Fairness / empty state matching screenshot */
+            <div style={{
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              paddingTop: 40, gap: 12,
+            }}>
+              {/* Shield icon */}
+              <div style={{
+                width: 64, height: 64,
+                background: 'radial-gradient(circle at 50% 40%, rgba(34,197,94,0.15), transparent)',
+                border: '2px solid rgba(34,197,94,0.3)',
+                borderRadius: '45% 45% 50% 50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 28,
+              }}>✔</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', letterSpacing: 2 }}>FAIRNESS</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', letterSpacing: 3 }}>ATLAS-V</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#475569', letterSpacing: 4 }}>GAMING</div>
+            </div>
           ) : (
             history.map(r => <HistoryCard key={r.id} round={r} />)
           )}
         </div>
       )}
 
-      {/* ── RESULTS TAB ──────────────────────────────────────────────── */}
+      {/* ── RESULTS TAB ── */}
       {tab === 'results' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
           {history.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>No results yet</div>
           ) : (
-            history.slice(0, 10).map(r => (
-              <div key={r.id} style={{
-                background: '#111827',
-                borderRadius: 10,
-                padding: '10px 12px',
-                marginBottom: 8,
-                border: '1px solid rgba(255,255,255,0.06)',
-              }}>
-                <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>
-                  {new Date(r.finishedAt).toLocaleString()}
+            history.slice(0, 20).map(r => {
+              const date = new Date(r.finishedAt);
+              const dateStr = `${date.getDate().toString().padStart(2,'0')}/${(date.getMonth()+1).toString().padStart(2,'0')}/${date.getFullYear().toString().slice(-2)} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}:${date.getSeconds().toString().padStart(2,'0')}`;
+              const shortId = r.id.slice(-8).toUpperCase();
+              const myBetsR = r.myBets ?? (r.myBet ? [r.myBet] : []);
+              const firstRow = r.drawnNumbers.slice(0, 10);
+              const secondRow = r.drawnNumbers.slice(10, 20);
+              return (
+                <div key={r.id} style={{
+                  background: '#111827',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  marginBottom: 6,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  {/* Header row: checkmark + id + date + Combination */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: '50%',
+                        background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, color: '#22c55e',
+                      }}>✔</div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0' }}>{shortId}</div>
+                        <div style={{ fontSize: 9, color: '#475569' }}>{dateStr}</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 9, color: '#475569', fontWeight: 600 }}>Combination</span>
+                  </div>
+                  {/* First row of 10 */}
+                  <div style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+                    {firstRow.map(n => {
+                      const isMyPick = myBetsR.some(b => b.pickedNumbers.includes(n));
+                      return (
+                        <div key={n} style={{
+                          flex: 1, height: 22,
+                          background: isMyPick ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                          borderRadius: 3,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 800,
+                          color: isMyPick ? '#4ade80' : '#64748b',
+                        }}>{n}</div>
+                      );
+                    })}
+                  </div>
+                  {/* Second row of 10 */}
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {secondRow.map(n => {
+                      const isMyPick = myBetsR.some(b => b.pickedNumbers.includes(n));
+                      return (
+                        <div key={n} style={{
+                          flex: 1, height: 22,
+                          background: isMyPick ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                          borderRadius: 3,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 800,
+                          color: isMyPick ? '#4ade80' : '#64748b',
+                        }}>{n}</div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                  {r.drawnNumbers.map(n => {
-                    const rMyBets = r.myBets ?? (r.myBet ? [r.myBet] : []);
-                    const isMyPick = rMyBets.some(b => b.pickedNumbers.includes(n));
-                    return (
-                      <span key={n} style={{
-                        width: 24, height: 24, borderRadius: '50%',
-                        background: isMyPick ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 9, fontWeight: 700,
-                        color: isMyPick ? '#4ade80' : '#64748b',
-                      }}>{n}</span>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
 
-      {/* ── STATISTICS TAB ───────────────────────────────────────────── */}
+      {/* ── STATISTICS TAB ── */}
       {tab === 'statistics' && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 16px' }}>
           <StatisticsView history={history} />
         </div>
       )}
 
-      {/* ── Tab bar ──────────────────────────────────────────────────── */}
+      {/* ── Tab bar ── */}
       <TabBar tab={tab} onChange={setTab} />
 
-      {/* ── Bottom bets feed ─────────────────────────────────────────── */}
+      {/* ── Bottom bets feed ── */}
       <BetsFeed bets={state.bets} myBets={state.myBets} drawnSet={drawnSet} phase={state.phase} />
     </div>
   );
@@ -752,12 +915,12 @@ export default function KenoScreen() {
 
 const ctrlBtn: React.CSSProperties = {
   width: 40,
-  height: 44,
-  borderRadius: 10,
+  height: 42,
+  borderRadius: 8,
   background: '#1a2340',
   border: '1px solid rgba(255,255,255,0.1)',
   color: '#fff',
-  fontSize: 16,
+  fontSize: 18,
   fontWeight: 700,
   cursor: 'pointer',
   flexShrink: 0,
@@ -771,28 +934,28 @@ function HistoryCard({ round }: { round: HistoryRound }) {
   return (
     <div style={{
       background: '#111827',
-      borderRadius: 12,
-      padding: '12px',
-      marginBottom: 10,
+      borderRadius: 10,
+      padding: '10px 12px',
+      marginBottom: 8,
       border: '1px solid rgba(255,255,255,0.06)',
     }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
         {round.drawnNumbers.map(n => {
           const isMyPick = myBets.some(b => b.pickedNumbers.includes(n));
           return (
             <span key={n} style={{
-              width: 26, height: 26, borderRadius: '50%',
+              width: 24, height: 24, borderRadius: '50%',
               background: isMyPick ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)',
               border: `1px solid ${isMyPick ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 700,
+              fontSize: 9, fontWeight: 700,
               color: isMyPick ? '#4ade80' : '#64748b',
             }}>{n}</span>
           );
         })}
       </div>
       {myBets.map((b, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 3 }}>
           <span style={{ color: '#64748b' }}>
             Bet #{i + 1} · {b.betAmount} ETB · Matched {b.matched ?? 0}/{b.pickedNumbers.length}
           </span>
@@ -805,97 +968,7 @@ function HistoryCard({ round }: { round: HistoryRound }) {
   );
 }
 
-// ─── Drawing machine visual ───────────────────────────────────────────────────
-function DrawingMachine({
-  drawnNumbers, lastDrawn, totalDraw,
-}: {
-  drawnNumbers: number[];
-  lastDrawn: number | null;
-  totalDraw: number;
-}) {
-  const current = lastDrawn ?? drawnNumbers[drawnNumbers.length - 1] ?? null;
-  const previous = drawnNumbers.slice(0, -1).slice(-6); // last few before current
-
-  return (
-    <div style={{
-      position: 'relative',
-      background: 'radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0.08) 0%, #0d1a0d 60%, #0d1120 100%)',
-      flexShrink: 0,
-      height: 160,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-    }}>
-      {/* Counter top-right */}
-      <div style={{
-        position: 'absolute', top: 8, right: 12,
-        fontSize: 11, fontWeight: 700, color: '#475569',
-      }}>
-        {drawnNumbers.length} / {totalDraw}
-      </div>
-
-      {/* Circular glow backdrop */}
-      <div style={{
-        position: 'absolute',
-        width: 140, height: 140,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)',
-        border: '1px solid rgba(34,197,94,0.08)',
-      }} />
-
-      {/* Main ball */}
-      {current !== null ? (
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, #4a5568, #1a202c)',
-          border: '2px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 0 30px rgba(34,197,94,0.3), inset 0 2px 4px rgba(255,255,255,0.15)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 32, fontWeight: 900, color: '#fff',
-          zIndex: 2,
-          transition: 'transform 0.15s ease-out',
-          transform: lastDrawn !== null ? 'scale(1.08)' : 'scale(1)',
-        }}>
-          {current}
-        </div>
-      ) : (
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, rgba(34,197,94,0.15), rgba(34,197,94,0.03))',
-          border: '2px solid rgba(34,197,94,0.1)',
-          zIndex: 2,
-        }} />
-      )}
-
-      {/* Previous balls row */}
-      {previous.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          bottom: 14,
-          left: 10,
-          display: 'flex',
-          gap: 6,
-          alignItems: 'center',
-        }}>
-          {previous.slice(-4).map((n, i) => (
-            <div key={`${n}-${i}`} style={{
-              width: 30, height: 30, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 30%, #3a4555, #1a2030)',
-              border: '1.5px solid rgba(255,255,255,0.12)',
-              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: '#94a3b8',
-            }}>{n}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Bets feed with per-player number cells ────────────────────────────────────
+// ─── Bets feed ────────────────────────────────────────────────────────────────
 function BetsFeed({
   bets, myBets, drawnSet, phase,
 }: {
@@ -912,75 +985,52 @@ function BetsFeed({
       background: '#0d1120',
       borderTop: '1px solid rgba(255,255,255,0.06)',
       flexShrink: 0,
-      maxHeight: 140,
+      maxHeight: 150,
       overflowY: 'auto',
     }}>
       {/* Counts row */}
       <div style={{
-        display: 'flex', gap: 20,
-        padding: '6px 14px 5px',
+        display: 'flex', gap: 18,
+        padding: '5px 12px 4px',
         fontSize: 11, color: '#475569', fontWeight: 700,
         borderBottom: '1px solid rgba(255,255,255,0.04)',
       }}>
-        <span style={{ color: '#64748b' }}>All {bets.length}</span>
+        <span>All {bets.length}</span>
         <span>My Tickets {myBetCount}</span>
         <span>My Bets {myBetCount}</span>
       </div>
 
-      {/* Each bet row */}
       {bets.map((b, i) => {
-        const masked = b.username.length > 4
+        const masked = b.username.length > 2
           ? b.username[0] + '***' + b.username[b.username.length - 1]
           : b.username;
-
-        // slots: always show 10 cells, fill with actual numbers then empty
         const slots = Array.from({ length: 10 }, (_, j) => b.pickedNumbers[j] ?? null);
-
         return (
           <div key={i} style={{
-            padding: '7px 10px 6px',
+            padding: '6px 10px 5px',
             borderBottom: '1px solid rgba(255,255,255,0.03)',
           }}>
-            {/* Username */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 5 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 4 }}>
               {masked}
             </div>
-
-            {/* Number slots row */}
-            <div style={{ display: 'flex', gap: 3, marginBottom: 5 }}>
+            <div style={{ display: 'flex', gap: 3 }}>
               {slots.map((num, j) => {
                 const isMatched = num !== null && drawnSet.has(num) && isDrawingOrFinished;
                 const hasNum = num !== null;
                 return (
                   <div key={j} style={{
-                    width: 30, height: 28,
-                    background: isMatched
-                      ? '#22c55e'
-                      : hasNum
-                      ? 'rgba(255,255,255,0.1)'
-                      : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${isMatched ? '#22c55e' : hasNum ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'}`,
+                    flex: 1, height: 26,
+                    background: isMatched ? '#22c55e' : hasNum ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${isMatched ? '#22c55e' : hasNum ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)'}`,
                     borderRadius: 4,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 800,
+                    fontSize: 10, fontWeight: 800,
                     color: isMatched ? '#fff' : hasNum ? '#e2e8f0' : 'transparent',
                   }}>
                     {num ?? ''}
                   </div>
                 );
               })}
-            </div>
-
-            {/* Bet amount + status */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ color: '#64748b', fontWeight: 700 }}>Bet {b.betAmount.toFixed(0)}</span>
-              {isDrawingOrFinished && b.payout !== null ? (
-                <span style={{ fontWeight: 800, color: (b.payout ?? 0) > 0 ? '#22c55e' : '#f59e0b' }}>
-                  {(b.payout ?? 0) > 0 ? `+${b.payout.toFixed(0)}` : `${b.matched ?? 0} matched`}
-                </span>
-              ) : (
-                <span style={{ fontWeight: 700, color: '#f59e0b' }}>Waiting</span>
-              )}
             </div>
           </div>
         );
@@ -989,88 +1039,67 @@ function BetsFeed({
   );
 }
 
+// ─── Statistics view ──────────────────────────────────────────────────────────
 function StatisticsView({ history }: { history: HistoryRound[] }) {
-  if (history.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', color: '#475569', padding: 40, fontSize: 14 }}>
-        No data yet
-      </div>
-    );
-  }
-
-  const myBets = history.filter(r => r.myBet);
-  const totalWagered = myBets.reduce((s, r) => s + (r.myBet?.betAmount ?? 0), 0);
-  const totalWon = myBets.reduce((s, r) => s + (r.myBet?.payout ?? 0), 0);
-  const wins = myBets.filter(r => (r.myBet?.payout ?? 0) > 0).length;
-
-  // Frequency: how many times each number was drawn
+  // Frequency: how many times each number was drawn across all rounds
   const freq: Record<number, number> = {};
   for (const r of history) {
     for (const n of r.drawnNumbers) {
       freq[n] = (freq[n] ?? 0) + 1;
     }
   }
-  const hot = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n]) => Number(n));
-  const cold = Object.entries(freq).sort((a, b) => a[1] - b[1]).slice(0, 5).map(([n]) => Number(n));
+
+  // Build sorted list: number → count, sorted by number
+  const allNums = Array.from({ length: 80 }, (_, i) => i + 1);
+  const maxCount = Math.max(...allNums.map(n => freq[n] ?? 0), 1);
 
   return (
     <div>
-      {myBets.length > 0 && (
-        <div style={{
-          background: '#111827',
-          borderRadius: 12,
-          padding: '12px 14px',
-          marginBottom: 10,
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', marginBottom: 8 }}>My Performance</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
-            {[
-              { label: 'Bets', value: myBets.length },
-              { label: 'Wins', value: wins },
-              { label: 'Wagered', value: `${totalWagered.toFixed(0)} ETB` },
-            ].map(s => (
-              <div key={s.label}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{s.value}</div>
-                <div style={{ fontSize: 10, color: '#475569' }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 8, textAlign: 'center', fontSize: 13, fontWeight: 800, color: totalWon > totalWagered ? '#22c55e' : '#f87171' }}>
-            Net: {(totalWon - totalWagered) >= 0 ? '+' : ''}{(totalWon - totalWagered).toFixed(2)} ETB
-          </div>
-        </div>
-      )}
-
+      {/* Last N rounds header */}
       <div style={{
-        background: '#111827',
-        borderRadius: 12,
-        padding: '12px 14px',
-        border: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '4px 2px 8px',
       }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', marginBottom: 8 }}>Hot Numbers</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          {hot.map(n => (
-            <span key={n} style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: '#fca5a5',
-            }}>{n}</span>
-          ))}
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Cold Numbers</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {cold.map(n => (
-            <span key={n} style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: '#93c5fd',
-            }}>{n}</span>
-          ))}
-        </div>
+        <span style={{ fontSize: 11, color: '#475569', fontWeight: 600 }}>
+          Last {history.length} rounds
+        </span>
+        <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700, cursor: 'pointer' }}>
+          Sort
+        </span>
       </div>
+
+      {history.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#475569', padding: 30, fontSize: 13 }}>No data yet</div>
+      ) : (
+        /* Show frequency bar list matching screenshot style */
+        allNums.slice(0, 30).map(n => {
+          const count = freq[n] ?? 0;
+          const pct = (count / maxCount) * 100;
+          return (
+            <div key={n} style={{
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: 5,
+              padding: '5px 10px',
+              marginBottom: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', width: 18, textAlign: 'right', flexShrink: 0 }}>{n}</span>
+              <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${pct}%`,
+                  background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+                  borderRadius: 2,
+                  transition: 'width 0.3s',
+                }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', width: 22, textAlign: 'right', flexShrink: 0 }}>{count}</span>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
