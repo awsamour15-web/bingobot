@@ -210,7 +210,7 @@ router.get('/history', kenoAccessMiddleware, async (req: Request, res: Response)
     take: 30,
     include: {
       bets: {
-        where: { player_id: playerId },
+        where: playerId ? { player_id: playerId } : { player_id: '' },
         select: { picked_numbers: true, bet_amount: true, matched: true, payout: true },
       },
     },

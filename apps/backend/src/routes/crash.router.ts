@@ -98,8 +98,8 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   const slotIdx = slot === 2 ? 2 : 1;
 
   // Check suspension
-  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
-  if (player?.is_suspended) {
+  const suspensionCheck = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
+  if (suspensionCheck?.is_suspended) {
     res.status(403).json({ error: 'PLAYER_SUSPENDED', message: 'Your account has been suspended.' });
     return;
   }
