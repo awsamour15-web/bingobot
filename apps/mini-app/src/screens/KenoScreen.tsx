@@ -413,7 +413,7 @@ export default function KenoScreen() {
         betAmount,
         pickedNumbers: Array.from(picked),
       });
-      // Keep picks visible so player can see their numbers during drawing
+      setPicked(new Set());
       await fetchState();
       await fetchBalance();
     } catch (e: any) {
