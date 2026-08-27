@@ -97,6 +97,33 @@ export interface CrashCashoutAckPayload {
 }
 
 // ---------------------------------------------------------------------------
+// Keno game payloads
+// ---------------------------------------------------------------------------
+
+export interface KenoBettingOpenPayload {
+  roundId: string;
+  bettingEndsAt: string; // ISO timestamp
+  endsAt: number;        // unix ms — used by the countdown timer in KenoScreen
+}
+
+export interface KenoNumberDrawnPayload {
+  roundId: string;
+  number: number;
+  drawnSoFar: number[];
+}
+
+export interface KenoRoundFinishedPayload {
+  roundId: string;
+  drawnNumbers: number[];
+  results: Array<{
+    username: string;
+    picked: number;
+    matched: number;
+    payout: number;
+  }>;
+}
+
+// ---------------------------------------------------------------------------
 // Client → Server events
 // ---------------------------------------------------------------------------
 
@@ -134,6 +161,10 @@ export interface ServerToClientEvents {
   CRASH_ENDED: (payload: CrashEndedPayload) => void;
   CRASH_BET_PLACED: (payload: CrashBetPlacedPayload) => void;
   CRASH_CASHOUT_ACK: (payload: CrashCashoutAckPayload) => void;
+  // Keno game
+  KENO_BETTING_OPEN: (payload: KenoBettingOpenPayload) => void;
+  KENO_NUMBER_DRAWN: (payload: KenoNumberDrawnPayload) => void;
+  KENO_ROUND_FINISHED: (payload: KenoRoundFinishedPayload) => void;
 }
 
 /** Events emitted by the client and received by the server */
