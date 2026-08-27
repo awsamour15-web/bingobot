@@ -29,6 +29,7 @@ interface KenoRoundState {
   } | null;
   bets: {
     username: string;
+    pickedNumbers: number[];
     pickedCount: number;
     betAmount: number;
     matched: number | null;
@@ -922,75 +923,81 @@ function BetsFeed({
   phase: string;
 }) {
   const isDrawingOrFinished = phase === 'drawing' || phase === 'finished';
+  const myBetCount = myBets.length;
 
   return (
     <div style={{
       background: '#0d1120',
       borderTop: '1px solid rgba(255,255,255,0.06)',
       flexShrink: 0,
-      maxHeight: 180,
+      maxHeight: 260,
       overflowY: 'auto',
     }}>
       {/* Counts row */}
       <div style={{
         display: 'flex', gap: 20,
-        padding: '6px 14px 4px',
-        fontSize: 11, color: '#64748b', fontWeight: 700,
+        padding: '6px 14px 5px',
+        fontSize: 11, color: '#475569', fontWeight: 700,
         borderBottom: '1px solid rgba(255,255,255,0.04)',
       }}>
-        <span>All {bets.length}</span>
-        <span>My Tickets {myBets.length}</span>
-        <span>My Bets {myBets.length}</span>
+        <span style={{ color: '#64748b' }}>All {bets.length}</span>
+        <span>My Tickets {myBetCount}</span>
+        <span>My Bets {myBetCount}</span>
       </div>
 
       {/* Each bet row */}
-      {bets.slice(0, 8).map((b, i) => {
-        const masked = b.username.length > 2
+      {bets.map((b, i) => {
+        const masked = b.username.length > 4
           ? b.username[0] + '***' + b.username[b.username.length - 1]
           : b.username;
 
+        // slots: always show 10 cells, fill with actual numbers then empty
+        const slots = Array.from({ length: 10 }, (_, j) => b.pickedNumbers[j] ?? null);
+
         return (
           <div key={i} style={{
-            padding: '6px 10px',
+            padding: '7px 10px 6px',
             borderBottom: '1px solid rgba(255,255,255,0.03)',
           }}>
             {/* Username */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 5 }}>
               {masked}
             </div>
+
             {/* Number slots row */}
-            <div style={{ display: 'flex', gap: 3, marginBottom: 4, flexWrap: 'wrap' }}>
-              {Array.from({ length: b.pickedCount }).map((_, j) => (
-                <div key={j} style={{
-                  width: 28, height: 28,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 4,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#475569',
-                }}>
-                  {/* We don't expose picks for other players */}
-                </div>
-              ))}
-              {/* Empty filler slots to always show 10 columns */}
-              {Array.from({ length: Math.max(0, 10 - b.pickedCount) }).map((_, j) => (
-                <div key={`e-${j}`} style={{
-                  width: 28, height: 28,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  borderRadius: 4,
-                }} />
-              ))}
+            <div style={{ display: 'flex', gap: 3, marginBottom: 5 }}>
+              {slots.map((num, j) => {
+                const isMatched = num !== null && drawnSet.has(num) && isDrawingOrFinished;
+                const hasNum = num !== null;
+                return (
+                  <div key={j} style={{
+                    width: 30, height: 28,
+                    background: isMatched
+                      ? '#22c55e'
+                      : hasNum
+                      ? 'rgba(255,255,255,0.1)'
+                      : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isMatched ? '#22c55e' : hasNum ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'}`,
+                    borderRadius: 4,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 800,
+                    color: isMatched ? '#fff' : hasNum ? '#e2e8f0' : 'transparent',
+                  }}>
+                    {num ?? ''}
+                  </div>
+                );
+              })}
             </div>
+
             {/* Bet amount + status */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-              <span style={{ color: '#475569' }}>Bet {b.betAmount.toFixed(0)}</span>
-              {isDrawingOrFinished && b.matched !== null ? (
-                <span style={{ fontWeight: 700, color: (b.payout ?? 0) > 0 ? '#22c55e' : '#f59e0b' }}>
-                  {(b.payout ?? 0) > 0 ? `+${b.payout!.toFixed(0)}` : `${b.matched} matched`}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span style={{ color: '#64748b', fontWeight: 700 }}>Bet {b.betAmount.toFixed(0)}</span>
+              {isDrawingOrFinished && b.payout !== null ? (
+                <span style={{ fontWeight: 800, color: (b.payout ?? 0) > 0 ? '#22c55e' : '#f59e0b' }}>
+                  {(b.payout ?? 0) > 0 ? `+${b.payout.toFixed(0)}` : `${b.matched ?? 0} matched`}
                 </span>
               ) : (
-                <span style={{ color: '#f59e0b', fontWeight: 700 }}>Waiting</span>
+                <span style={{ fontWeight: 700, color: '#f59e0b' }}>Waiting</span>
               )}
             </div>
           </div>

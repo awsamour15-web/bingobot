@@ -125,6 +125,7 @@ router.get('/state', kenoAccessMiddleware, async (req: Request, res: Response): 
       : null,
     bets: round.bets.map((b) => ({
       username: b.player.username,
+      pickedNumbers: b.picked_numbers,
       pickedCount: b.picked_numbers.length,
       betAmount: Number(b.bet_amount),
       matched: b.matched,
