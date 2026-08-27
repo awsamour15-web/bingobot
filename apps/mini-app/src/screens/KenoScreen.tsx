@@ -542,7 +542,34 @@ export default function KenoScreen() {
       )}
 
       {/* ── GAME TAB ── */}
-      {tab === 'game' && (
+      {tab === 'game' && (state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0 && (
+        /* No bet placed — show drawing machine + grid */
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <DrawingMachine
+            drawnNumbers={visibleDrawnNumbers}
+            lastDrawn={lastDrawn}
+            totalDraw={TOTAL_DRAW}
+          />
+          <div style={{ padding: '2px 6px', flexShrink: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
+              {Array.from({ length: 80 }, (_, i) => i + 1).map(n => (
+                <NumberCell key={n} num={n} picked={false} drawn={drawnSet.has(n)} justDrawn={lastDrawn === n} onClick={() => {}} />
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: '5px 6px 4px', background: '#0d1120', flexShrink: 0 }}>
+            <button disabled style={{
+              width: '100%', padding: '14px 0',
+              background: 'linear-gradient(180deg, #1a6b2e 0%, #145524 100%)',
+              border: 'none', borderRadius: 8,
+              color: 'rgba(34,197,94,0.35)', fontSize: 18, fontWeight: 900,
+              letterSpacing: '0.12em', opacity: 0.7, cursor: 'not-allowed',
+            }}>BET</button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'game' && !((state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0) && (
         <>
           {/* Info panel */}
           <div style={{
@@ -910,6 +937,81 @@ const ctrlBtn: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
 };
+
+function DrawingMachine({
+  drawnNumbers, lastDrawn, totalDraw,
+}: {
+  drawnNumbers: number[];
+  lastDrawn: number | null;
+  totalDraw: number;
+}) {
+  const current = lastDrawn ?? drawnNumbers[drawnNumbers.length - 1] ?? null;
+
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0.08) 0%, #0a1208 60%, #0d1120 100%)',
+      flexShrink: 0,
+      height: 170,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    }}>
+      {/* Counter top-right */}
+      <div style={{ position: 'absolute', top: 8, right: 12, fontSize: 11, fontWeight: 700, color: '#475569' }}>
+        {drawnNumbers.length} / {totalDraw}
+      </div>
+      {/* Circular rings */}
+      {[130, 100, 70].map((size, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          width: size, height: size,
+          borderRadius: '50%',
+          border: `1px solid rgba(34,197,94,${0.06 - i * 0.015})`,
+        }} />
+      ))}
+      {/* Main ball */}
+      {current !== null ? (
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, #4a5568, #1a202c)',
+          border: '2px solid rgba(255,255,255,0.15)',
+          boxShadow: '0 0 30px rgba(34,197,94,0.3), inset 0 2px 4px rgba(255,255,255,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 32, fontWeight: 900, color: '#fff',
+          zIndex: 2,
+          transform: lastDrawn !== null ? 'scale(1.08)' : 'scale(1)',
+          transition: 'transform 0.15s ease-out',
+        }}>
+          {current}
+        </div>
+      ) : (
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, rgba(34,197,94,0.15), rgba(34,197,94,0.03))',
+          border: '2px solid rgba(34,197,94,0.1)',
+          zIndex: 2,
+        }} />
+      )}
+      {/* Previous balls */}
+      {drawnNumbers.length > 1 && (
+        <div style={{ position: 'absolute', bottom: 12, left: 10, display: 'flex', gap: 5 }}>
+          {drawnNumbers.slice(-5, -1).map((n, i) => (
+            <div key={`${n}-${i}`} style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 30%, #3a4555, #1a2030)',
+              border: '1.5px solid rgba(255,255,255,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800, color: '#94a3b8',
+            }}>{n}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FairnessEmptyState() {
   return (
