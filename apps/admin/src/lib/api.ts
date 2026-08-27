@@ -711,3 +711,43 @@ export function joinRoundWithMockPlayers(roundId: string, playerIds: string[], b
 export function renameMockPlayer(id: string, username: string): Promise<{ success: boolean; username: string }> {
   return adminApiRequest('PATCH', `/api/admin/mock-players/${id}/rename`, { username });
 }
+
+// ---------------------------------------------------------------------------
+// Games Stats
+// ---------------------------------------------------------------------------
+
+export interface GameStat {
+  key: string;
+  name: string;
+  icon: string;
+  totalRounds: number;
+  totalBets: number;
+  totalPaid: number;
+  profit: number;
+}
+
+export interface GameTx {
+  id: string;
+  type: string;
+  username?: string;
+  totalBet: number;
+  paid: number;
+  profit: number;
+  players: number;
+  crashPoint?: number | null;
+  date: string;
+}
+
+export interface GamesStatsResponse {
+  games: GameStat[];
+  transactions: {
+    bingo: GameTx[];
+    crash: GameTx[];
+    keno: GameTx[];
+    slots: GameTx[];
+  };
+}
+
+export function getGamesStats(): Promise<GamesStatsResponse> {
+  return adminApiRequest<GamesStatsResponse>('GET', '/api/admin/games/stats');
+}

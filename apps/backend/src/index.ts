@@ -32,6 +32,7 @@ import promotionsAdminRouter from './routes/admin/promotions.admin.router.js';
 import adminCartelasRouter from './routes/admin/cartelas.admin.router.js';
 import broadcastTargetsRouter from './routes/admin/broadcast-targets.admin.router.js';
 import adminMockPlayersRouter from './routes/admin/mock-players.admin.router.js';
+import adminGamesRouter from './routes/admin/games.admin.router.js';
 import crashRouter from './routes/crash.router.js';
 import slotsRouter from './routes/slots.router.js';
 import kenoRouter from './routes/keno.router.js';
@@ -41,6 +42,7 @@ import { bot } from './bot/index.js';
 import { RoundScheduler } from './services/round-scheduler.service.js';
 import { CleanupService } from './services/cleanup.service.js';
 import { PromotionScheduler } from './services/promotion-scheduler.service.js';
+import { kenoEngine } from './services/keno-engine.service.js';
 import { errorHandler, notFoundHandler, setupGlobalErrorHandlers } from './lib/error-handler.js';
 
 // Setup global error handlers for unhandled rejections and exceptions
@@ -115,6 +117,7 @@ app.use('/api/admin/promotions', jwtAdminMiddleware, promotionsAdminRouter);
 app.use('/api/admin/cartelas', jwtAdminMiddleware, adminCartelasRouter);
 app.use('/api/admin/broadcast-targets', jwtAdminMiddleware, broadcastTargetsRouter);
 app.use('/api/admin/mock-players', jwtAdminMiddleware, adminMockPlayersRouter);
+app.use('/api/admin/games', jwtAdminMiddleware, adminGamesRouter);
 // broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
