@@ -38,7 +38,8 @@ async function isKenoAllowed(playerId: string): Promise<boolean> {
   });
   if (!player) return false;
 
-  return allowedIds.includes(String(player.telegram_id));
+  // telegram_id is BigInt — convert safely without the 'n' suffix
+  return allowedIds.includes(player.telegram_id?.toString() ?? '');
 }
 
 async function kenoAccessMiddleware(req: Request, res: Response, next: () => void): Promise<void> {
