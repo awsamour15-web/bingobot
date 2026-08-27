@@ -543,9 +543,8 @@ export default function KenoScreen() {
         </div>
       )}
 
-      {/* ── GAME TAB ── */}
-      {tab === 'game' && (state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0 && (
-        /* No bet placed — drawing machine + called numbers as balls in 2 rows */
+      {/* ── GAME TAB: drawing/finished — always show machine + called balls ── */}
+      {tab === 'game' && (state.phase === 'drawing' || state.phase === 'finished') && (
         <div style={{ flex: 'none', display: 'flex', flexDirection: 'column' }}>
           <DrawingMachine
             drawnNumbers={visibleDrawnNumbers}
@@ -554,13 +553,10 @@ export default function KenoScreen() {
           />
           {/* Called numbers: two rows of balls */}
           <div style={{ padding: '6px 10px 4px', background: '#0d1120' }}>
-            {/* Row 1: numbers 1–10 drawn */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'nowrap' }}>
               {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i] ?? null).map((n, i) => (
                 <div key={i} style={{
-                  flex: 1,
-                  height: 32,
-                  borderRadius: '50%',
+                  flex: 1, height: 32, borderRadius: '50%',
                   background: n !== null
                     ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #5a6578, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
                     : 'transparent',
@@ -569,18 +565,14 @@ export default function KenoScreen() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 900,
                   color: n !== null ? '#e2e8f0' : 'transparent',
-                  transition: 'background 0.2s',
-                  minWidth: 0,
+                  transition: 'background 0.2s', minWidth: 0,
                 }}>{n ?? ''}</div>
               ))}
             </div>
-            {/* Row 2: numbers 11–20 drawn */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
               {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i + 10] ?? null).map((n, i) => (
                 <div key={i} style={{
-                  flex: 1,
-                  height: 32,
-                  borderRadius: '50%',
+                  flex: 1, height: 32, borderRadius: '50%',
                   background: n !== null
                     ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #5a6578, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
                     : 'transparent',
@@ -589,85 +581,77 @@ export default function KenoScreen() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 900,
                   color: n !== null ? '#e2e8f0' : 'transparent',
-                  transition: 'background 0.2s',
-                  minWidth: 0,
+                  transition: 'background 0.2s', minWidth: 0,
                 }}>{n ?? ''}</div>
               ))}
             </div>
           </div>
+          {/* If player has a bet, show their matched numbers panel */}
+          {activePicked.size > 0 && (
+            <div style={{
+              background: '#1a2340', margin: '4px 6px', borderRadius: 8,
+              padding: '7px 10px', flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{liveMatched}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>Possible win</span>
+                  <span style={{ fontSize: 15, fontWeight: 900, color: '#22c55e' }}>
+                    {Math.round(activeBetAmount * getMultiplier(activePicked.size, liveMatched))}
+                  </span>
+                </div>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: '#1a3a2a', border: '1px solid rgba(34,197,94,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, color: '#22c55e',
+                }}>?</div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 5, fontSize: 11, color: '#64748b' }}>
+                <span>Match <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{liveMatched}</span></span>
+                <span>Pays <span style={{ color: '#e2e8f0', fontWeight: 700 }}>x{getMultiplier(activePicked.size, liveMatched)}</span></span>
+              </div>
+              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                {Array.from(activePicked).sort((a,b)=>a-b).map(n => (
+                  <span key={n} style={{
+                    width: 28, height: 26, borderRadius: 5,
+                    background: drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                    border: `1px solid ${drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.15)'}`,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 800,
+                    color: drawnSet.has(n) ? '#fff' : '#cbd5e1',
+                  }}>{n}</span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {tab === 'game' && !((state.phase === 'drawing' || state.phase === 'finished') && activePicked.size === 0) && (
+      {/* ── GAME TAB: betting/idle — number grid + bet controls ── */}
+      {tab === 'game' && (state.phase === 'betting' || state.phase === 'idle') && (
         <>
           {/* Info panel */}
-          <div style={{
-            background: '#1a2340',
-            margin: '4px 6px',
-            borderRadius: 8,
-            padding: '7px 8px',
-            flexShrink: 0,
-          }}>
-            {(state.phase === 'drawing' || state.phase === 'finished') && activePicked.size > 0 ? (
-              /* Drawing phase: "N Possible win X / Match / Pays" */
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{liveMatched}</span>
-                    <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Possible win</span>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: '#22c55e' }}>
-                      {Math.round(activeBetAmount * getMultiplier(activePicked.size, liveMatched))}
-                    </span>
-                  </div>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: '#1a3a2a',
-                    border: '1px solid rgba(34,197,94,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, color: '#22c55e', cursor: 'pointer',
-                  }}>?</div>
-                </div>
-                <div style={{ display: 'flex', gap: 12, marginBottom: 5, fontSize: 11, color: '#64748b' }}>
-                  <span>Match <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{liveMatched}</span></span>
-                  <span>Pays <span style={{ color: '#e2e8f0', fontWeight: 700 }}>x{getMultiplier(activePicked.size, liveMatched)}</span></span>
-                </div>
-                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                  {Array.from(activePicked).sort((a,b)=>a-b).map(n => (
-                    <span key={n} style={{
-                      width: 28, height: 26,
-                      background: drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.1)',
-                      border: `1px solid ${drawnSet.has(n) ? '#22c55e' : 'rgba(255,255,255,0.15)'}`,
-                      borderRadius: 5,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 800,
-                      color: drawnSet.has(n) ? '#fff' : '#cbd5e1',
-                    }}>{n}</span>
-                  ))}
-                </div>
-              </div>
-            ) : activePicked.size === 0 ? (
-              /* No picks */
+          <div style={{ background: '#1a2340', margin: '4px 6px', borderRadius: 8, padding: '7px 8px', flexShrink: 0 }}>
+            {picked.size === 0 ? (
+              /* No picks yet */
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Two stacked balls */}
                 <div style={{ position: 'relative', width: 46, height: 32, flexShrink: 0 }}>
                   <div style={{
-                    position: 'absolute', top: 0, left: 0,
-                    width: 26, height: 26, borderRadius: '50%',
+                    position: 'absolute', top: 0, left: 0, width: 26, height: 26, borderRadius: '50%',
                     background: 'radial-gradient(circle at 35% 30%, #4a5568, #1e293b)',
                     border: '1.5px solid rgba(255,255,255,0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 9, fontWeight: 900, color: '#cbd5e1',
                   }}>80</div>
                   <div style={{
-                    position: 'absolute', top: 4, left: 16,
-                    width: 26, height: 26, borderRadius: '50%',
+                    position: 'absolute', top: 4, left: 16, width: 26, height: 26, borderRadius: '50%',
                     background: 'radial-gradient(circle at 35% 30%, #374151, #1e293b)',
                     border: '1.5px solid rgba(255,255,255,0.25)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 10, fontWeight: 900, color: '#e2e8f0',
                   }}>10</div>
                 </div>
-                {/* Green ball with "1" */}
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%',
                   background: 'radial-gradient(circle at 35% 30%, #22c55e, #15803d)',
@@ -681,31 +665,27 @@ export default function KenoScreen() {
                   <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>From 1 to 80</div>
                 </div>
                 <div style={{
-                  marginLeft: 'auto',
-                  width: 24, height: 24, borderRadius: '50%',
+                  marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%',
                   background: '#1a3a2a', border: '1px solid rgba(34,197,94,0.3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, color: '#22c55e', cursor: 'pointer', flexShrink: 0,
                 }}>?</div>
               </div>
             ) : (
-              /* Has picks: show possible win + payout table + picked numbers */
+              /* Has picks */
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {/* Small balls indicator */}
                     <div style={{ position: 'relative', width: 40, height: 28, flexShrink: 0 }}>
                       <div style={{
-                        position: 'absolute', top: 0, left: 0,
-                        width: 22, height: 22, borderRadius: '50%',
+                        position: 'absolute', top: 0, left: 0, width: 22, height: 22, borderRadius: '50%',
                         background: 'radial-gradient(circle at 35% 30%, #4a5568, #1e293b)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 8, fontWeight: 900, color: '#cbd5e1',
                       }}>80</div>
                       <div style={{
-                        position: 'absolute', top: 3, left: 13,
-                        width: 22, height: 22, borderRadius: '50%',
+                        position: 'absolute', top: 3, left: 13, width: 22, height: 22, borderRadius: '50%',
                         background: 'radial-gradient(circle at 35% 30%, #374151, #1e293b)',
                         border: '1px solid rgba(255,255,255,0.25)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -749,17 +729,16 @@ export default function KenoScreen() {
                     <div style={{ display: 'flex', gap: 6 }}>
                       {possibleWins.map(pw => (
                         <span key={pw.matched} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>
-                          x{PAYOUT_TABLE[activePicked.size]?.[pw.matched] ?? 0}
+                          x{PAYOUT_TABLE[picked.size]?.[pw.matched] ?? 0}
                         </span>
                       ))}
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                  {Array.from(activePicked).sort((a,b)=>a-b).map(n => (
+                  {Array.from(picked).sort((a,b)=>a-b).map(n => (
                     <span key={n} style={{
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.15)',
+                      background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
                       borderRadius: 4, padding: '2px 6px', fontSize: 11, fontWeight: 700, color: '#fff',
                     }}>{n}</span>
                   ))}
@@ -767,7 +746,6 @@ export default function KenoScreen() {
               </div>
             )}
           </div>
-
           {/* Number grid 1–80 */}
           <div style={{ padding: '2px 6px', flexShrink: 0 }}>
             <div style={{
