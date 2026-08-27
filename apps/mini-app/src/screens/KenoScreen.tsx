@@ -424,7 +424,7 @@ export default function KenoScreen() {
   const allDrawnNumbers = state.round?.drawnNumbers ?? [];
   const visibleDrawnNumbers = allDrawnNumbers.slice(0, revealedCount);
   const drawnSet = new Set(visibleDrawnNumbers);
-  const activePicked: Set<number> = (state.myBets.length > 0 && state.phase !== 'betting')
+  const activePicked: Set<number> = (state.myBets.length > 0)
     ? new Set(state.myBets.flatMap(b => b.pickedNumbers))
     : picked;
   const activePickedArr = Array.from(activePicked);
