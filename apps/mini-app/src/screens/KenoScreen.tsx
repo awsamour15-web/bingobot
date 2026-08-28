@@ -589,33 +589,35 @@ export default function KenoScreen() {
           <div style={{ padding: '6px 10px 4px', background: '#0d1120' }}>
             <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'nowrap' }}>
               {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i] ?? null).map((n, i) => (
-                <div key={i} style={{
+                <div key={n ?? `e${i}`} style={{
                   flex: 1, height: 32, borderRadius: '50%',
                   background: n !== null
-                    ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #5a6578, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
+                    ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #6a7a90, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
                     : 'transparent',
                   border: n !== null ? '1.5px solid rgba(255,255,255,0.18)' : 'none',
-                  boxShadow: n === lastDrawn ? '0 0 10px rgba(34,197,94,0.5)' : n !== null ? 'inset 0 1px 3px rgba(255,255,255,0.1)' : 'none',
+                  boxShadow: n === lastDrawn ? '0 0 12px rgba(34,197,94,0.6)' : n !== null ? 'inset 0 1px 3px rgba(255,255,255,0.1)' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 900,
                   color: n !== null ? '#e2e8f0' : 'transparent',
-                  transition: 'background 0.2s', minWidth: 0,
+                  animation: n === lastDrawn ? 'ballSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
+                  minWidth: 0,
                 }}>{n ?? ''}</div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
               {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i + 10] ?? null).map((n, i) => (
-                <div key={i} style={{
+                <div key={n ?? `e${i+10}`} style={{
                   flex: 1, height: 32, borderRadius: '50%',
                   background: n !== null
-                    ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #5a6578, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
+                    ? (n === lastDrawn ? 'radial-gradient(circle at 35% 30%, #6a7a90, #2a3545)' : 'radial-gradient(circle at 35% 30%, #4a5568, #1e2a3a)')
                     : 'transparent',
                   border: n !== null ? '1.5px solid rgba(255,255,255,0.18)' : 'none',
-                  boxShadow: n === lastDrawn ? '0 0 10px rgba(34,197,94,0.5)' : n !== null ? 'inset 0 1px 3px rgba(255,255,255,0.1)' : 'none',
+                  boxShadow: n === lastDrawn ? '0 0 12px rgba(34,197,94,0.6)' : n !== null ? 'inset 0 1px 3px rgba(255,255,255,0.1)' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 900,
                   color: n !== null ? '#e2e8f0' : 'transparent',
-                  transition: 'background 0.2s', minWidth: 0,
+                  animation: n === lastDrawn ? 'ballSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
+                  minWidth: 0,
                 }}>{n ?? ''}</div>
               ))}
             </div>
@@ -951,6 +953,8 @@ function DrawingMachine({
   totalDraw: number;
 }) {
   const current = lastDrawn ?? drawnNumbers[drawnNumbers.length - 1] ?? null;
+  // Key changes every time a new number is drawn so React remounts the ball div → triggers animation
+  const ballKey = drawnNumbers.length;
 
   return (
     <div style={{
@@ -964,32 +968,57 @@ function DrawingMachine({
       justifyContent: 'center',
       overflow: 'hidden',
     }}>
+      <style>{`
+        @keyframes ballDrop {
+          0%   { transform: translateY(-60px) scale(0.6); opacity: 0; }
+          55%  { transform: translateY(10px) scale(1.12); opacity: 1; }
+          75%  { transform: translateY(-6px) scale(0.97); }
+          90%  { transform: translateY(4px) scale(1.03); }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes ringPulse {
+          0%   { opacity: 0.08; transform: scale(1); }
+          50%  { opacity: 0.22; transform: scale(1.08); }
+          100% { opacity: 0.08; transform: scale(1); }
+        }
+        @keyframes ballSlideIn {
+          0%   { transform: translateX(30px) scale(0.7); opacity: 0; }
+          60%  { transform: translateX(-4px) scale(1.08); opacity: 1; }
+          100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+      `}</style>
+
       {/* Counter top-right */}
       <div style={{ position: 'absolute', top: 8, right: 12, fontSize: 11, fontWeight: 700, color: '#475569' }}>
         {drawnNumbers.length} / {totalDraw}
       </div>
-      {/* Circular rings */}
+
+      {/* Circular rings — pulse when new number */}
       {[160, 120, 85].map((size, i) => (
         <div key={i} style={{
           position: 'absolute',
           width: size, height: size,
           borderRadius: '50%',
           border: `1px solid rgba(34,197,94,${0.07 - i * 0.02})`,
+          animation: lastDrawn !== null ? `ringPulse 1.5s ease-in-out ${i * 0.15}s` : 'none',
         }} />
       ))}
-      {/* Main ball */}
+
+      {/* Main ball — remounts with key to retrigger animation */}
       {current !== null ? (
-        <div style={{
-          width: 90, height: 90, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 28%, #5a6a80, #1a2535)',
-          border: '2px solid rgba(255,255,255,0.2)',
-          boxShadow: '0 0 24px rgba(34,197,94,0.25), inset 0 2px 6px rgba(255,255,255,0.18)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 36, fontWeight: 900, color: '#fff',
-          zIndex: 2,
-          transform: lastDrawn !== null ? 'scale(1.06)' : 'scale(1)',
-          transition: 'transform 0.15s ease-out',
-        }}>
+        <div
+          key={ballKey}
+          style={{
+            width: 90, height: 90, borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 28%, #5a6a80, #1a2535)',
+            border: '2px solid rgba(255,255,255,0.2)',
+            boxShadow: '0 0 30px rgba(34,197,94,0.35), inset 0 2px 6px rgba(255,255,255,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 36, fontWeight: 900, color: '#fff',
+            zIndex: 2,
+            animation: 'ballDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+          }}
+        >
           {current}
         </div>
       ) : (
