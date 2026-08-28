@@ -155,6 +155,7 @@ export function Card({ children, style, accent }: {
       borderRadius: 16,
       padding: '24px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08)',
+      overflow: 'hidden',
       transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       ...style,
     }}>
@@ -165,7 +166,6 @@ export function Card({ children, style, accent }: {
           height: 3,
           background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4)',
           borderRadius: '16px 16px 0 0',
-          pointerEvents: 'none',
         }} />
       )}
       <div style={{ paddingTop: accent !== false ? 4 : 0 }}>{children}</div>
@@ -415,7 +415,7 @@ export function KpiCard({
 export function Table({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid var(--c-border)' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 520 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 640 }}>
         {children}
       </table>
     </div>
