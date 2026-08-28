@@ -586,7 +586,7 @@ export default function KenoScreen() {
             totalDraw={TOTAL_DRAW}
           />
           {/* Called numbers: two rows of balls */}
-          <div style={{ padding: '6px 10px 4px', background: '#0d1120' }}>
+          <div style={{ padding: '6px 10px 4px', background: '#0d1120', flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 4, marginBottom: 4, flexWrap: 'nowrap' }}>
               {Array.from({ length: 10 }, (_, i) => visibleDrawnNumbers[i] ?? null).map((n, i) => (
                 <div key={n ?? `e${i}`} style={{
@@ -628,8 +628,10 @@ export default function KenoScreen() {
       {/* ── Betting/idle phase — always visible on all tabs ── */}
       {(state.phase === 'betting' || state.phase === 'idle') && (
         <>
+          {/* Scrollable middle section: info panel + grid */}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {/* Info panel */}
-          <div style={{ background: 'linear-gradient(135deg, #1a2a40 0%, #162035 60%, #0f1a2e 100%)', margin: '4px 6px', borderRadius: 12, padding: '10px 12px', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
+          <div style={{ background: 'linear-gradient(135deg, #1a2a40 0%, #162035 60%, #0f1a2e 100%)', margin: '4px 6px', borderRadius: 12, padding: '10px 12px', overflow: 'hidden', position: 'relative' }}>
             {/* subtle wave lines */}
             <div style={{ position: 'absolute', right: -10, top: -10, width: 120, height: 120, borderRadius: '50%', border: '1.5px solid rgba(34,197,94,0.06)', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', right: 10, top: 10, width: 80, height: 80, borderRadius: '50%', border: '1.5px solid rgba(34,197,94,0.05)', pointerEvents: 'none' }} />
@@ -750,7 +752,7 @@ export default function KenoScreen() {
             )}
           </div>
           {/* Number grid 1–80 */}
-          <div style={{ padding: '4px 6px', flexShrink: 0 }}>
+          <div style={{ padding: '4px 6px' }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(10, 1fr)',
@@ -768,8 +770,9 @@ export default function KenoScreen() {
               ))}
             </div>
           </div>
+          </div>{/* end scrollable */}
 
-          {/* ── Bet controls ── */}
+          {/* ── Bet controls — sticky at bottom ── */}
           <div style={{ padding: '5px 6px 4px', background: '#0d1120', flexShrink: 0 }}>
             {error && (
               <div style={{ color: '#f87171', fontSize: 11, marginBottom: 3, textAlign: 'center' }}>{error}</div>
