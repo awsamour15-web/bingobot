@@ -477,6 +477,7 @@ export default function KenoScreen() {
       flexDirection: 'column',
       width: '100%',
       maxWidth: '100vw',
+      overflow: 'hidden',
       position: 'relative',
     }}>
       {/* ── Top header ── */}
@@ -575,9 +576,6 @@ export default function KenoScreen() {
           <span style={{ fontSize: 20, fontWeight: 900, color: '#22c55e' }}>+{winFlash.amount.toFixed(2)} ETB</span>
         </div>
       )}
-
-      {/* ── Scrollable middle content ── */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
 
       {/* ── Drawing/finished phase — always visible on all tabs ── */}
       {(state.phase === 'drawing' || state.phase === 'finished') && (
@@ -824,8 +822,6 @@ export default function KenoScreen() {
           </div>
         </>
       )}
-
-      </div>{/* end scrollable middle content */}
 
       {/* ── Tab bar ── */}
       <TabBar tab={tab} onChange={setTab} />
