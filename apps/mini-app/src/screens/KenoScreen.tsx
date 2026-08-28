@@ -106,7 +106,7 @@ function useCountdown(endsAt: number | null) {
 }
 
 // Decorative dots matching reference screenshots
-const DOT_NUMBERS = new Set([3, 6, 10, 11, 18, 24, 27, 29, 33, 36, 48, 56, 57, 65, 68, 71, 74, 78]);
+const DOT_NUMBERS = new Set([1, 4, 8, 14, 28, 38, 43, 58, 60, 64]);
 
 // ─── Number cell ──────────────────────────────────────────────────────────────
 const NumberCell = memo(function NumberCell({
@@ -118,9 +118,9 @@ const NumberCell = memo(function NumberCell({
   justDrawn: boolean;
   onClick: () => void;
 }) {
-  let bg = 'transparent';
-  let color = '#94a3b8';
-  let borderColor = 'rgba(255,255,255,0.08)';
+  let bg = '#1e2d42';
+  let color = '#8fa8c8';
+  let borderColor = 'rgba(255,255,255,0.06)';
   let fontWeight = 600;
 
   if (justDrawn) {
@@ -134,19 +134,20 @@ const NumberCell = memo(function NumberCell({
     borderColor = '#22c55e';
     fontWeight = 900;
   } else if (picked) {
-    bg = 'rgba(34,197,94,0.25)';
+    bg = 'rgba(34,197,94,0.3)';
     color = '#fff';
     borderColor = '#22c55e';
     fontWeight = 800;
   } else if (drawn) {
-    bg = 'rgba(255,255,255,0.08)';
+    bg = '#2a3a52';
     color = '#e2e8f0';
     borderColor = 'rgba(255,255,255,0.15)';
     fontWeight = 700;
   }
 
   const hasDot = DOT_NUMBERS.has(num);
-  const dotColor = drawn ? '#22c55e' : picked ? '#f87171' : '#3b82f6';
+  // Reference: blue dots on some numbers, red on others
+  const dotColor = drawn ? '#22c55e' : (num % 2 === 0 ? '#ef4444' : '#3b82f6');
 
   return (
     <div
@@ -156,21 +157,23 @@ const NumberCell = memo(function NumberCell({
         aspectRatio: '1',
         background: bg,
         border: `1px solid ${borderColor}`,
-        borderRadius: 5,
+        borderRadius: 7,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight,
         color,
         cursor: 'pointer',
         userSelect: 'none',
-        transition: 'background 0.2s, border-color 0.2s',
+        transition: 'background 0.15s, border-color 0.15s',
         transform: justDrawn ? 'scale(1.12)' : 'scale(1)',
         boxShadow: justDrawn
-          ? '0 0 10px rgba(34,197,94,0.7)'
+          ? '0 0 12px rgba(34,197,94,0.8)'
           : (picked && drawn)
-          ? '0 0 6px rgba(34,197,94,0.4)'
+          ? '0 0 8px rgba(34,197,94,0.5)'
+          : picked
+          ? '0 0 6px rgba(34,197,94,0.3)'
           : 'none',
       }}
     >
@@ -179,12 +182,12 @@ const NumberCell = memo(function NumberCell({
         <div style={{
           position: 'absolute',
           top: 2,
-          right: 2,
-          width: 4,
-          height: 4,
+          left: 3,
+          width: 5,
+          height: 5,
           borderRadius: '50%',
           background: dotColor,
-          opacity: 0.85,
+          opacity: 0.9,
         }} />
       )}
     </div>
@@ -626,43 +629,49 @@ export default function KenoScreen() {
       {(state.phase === 'betting' || state.phase === 'idle') && (
         <>
           {/* Info panel */}
-          <div style={{ background: '#1a2340', margin: '4px 6px', borderRadius: 8, padding: '7px 8px', flexShrink: 0 }}>
+          <div style={{ background: 'linear-gradient(135deg, #1a2a40 0%, #162035 60%, #0f1a2e 100%)', margin: '4px 6px', borderRadius: 12, padding: '10px 12px', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
+            {/* subtle wave lines */}
+            <div style={{ position: 'absolute', right: -10, top: -10, width: 120, height: 120, borderRadius: '50%', border: '1.5px solid rgba(34,197,94,0.06)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', right: 10, top: 10, width: 80, height: 80, borderRadius: '50%', border: '1.5px solid rgba(34,197,94,0.05)', pointerEvents: 'none' }} />
             {picked.size === 0 ? (
               /* No picks yet */
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ position: 'relative', width: 46, height: 32, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '4px 0' }}>
+                <div style={{ position: 'relative', width: 60, height: 42, flexShrink: 0, marginTop: 4 }}>
                   <div style={{
-                    position: 'absolute', top: 0, left: 0, width: 26, height: 26, borderRadius: '50%',
-                    background: 'radial-gradient(circle at 35% 30%, #4a5568, #1e293b)',
-                    border: '1.5px solid rgba(255,255,255,0.2)',
+                    position: 'absolute', top: 0, left: 0, width: 34, height: 34, borderRadius: '50%',
+                    background: 'radial-gradient(circle at 35% 30%, #5a6880, #1e2a3a)',
+                    border: '2px solid rgba(255,255,255,0.25)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, fontWeight: 900, color: '#cbd5e1',
+                    fontSize: 11, fontWeight: 900, color: '#cbd5e1',
+                    boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.1)',
                   }}>80</div>
                   <div style={{
-                    position: 'absolute', top: 4, left: 16, width: 26, height: 26, borderRadius: '50%',
-                    background: 'radial-gradient(circle at 35% 30%, #374151, #1e293b)',
-                    border: '1.5px solid rgba(255,255,255,0.25)',
+                    position: 'absolute', top: 6, left: 22, width: 34, height: 34, borderRadius: '50%',
+                    background: 'radial-gradient(circle at 35% 30%, #4a5a70, #1a2535)',
+                    border: '2px solid rgba(255,255,255,0.3)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 900, color: '#e2e8f0',
+                    fontSize: 12, fontWeight: 900, color: '#e2e8f0',
+                    boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.12)',
                   }}>10</div>
                 </div>
                 <div style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'radial-gradient(circle at 35% 30%, #22c55e, #15803d)',
-                  border: '2px solid rgba(34,197,94,0.4)',
+                  width: 52, height: 52, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 35% 28%, #34d058, #15803d)',
+                  border: '3px solid rgba(34,197,94,0.5)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 900, color: '#fff', flexShrink: 0,
-                  boxShadow: '0 0 8px rgba(34,197,94,0.4)',
+                  fontSize: 22, fontWeight: 900, color: '#fff', flexShrink: 0,
+                  boxShadow: '0 0 16px rgba(34,197,94,0.5)',
                 }}>1</div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Choose {MAX_PICKS} numbers</div>
-                  <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>From 1 to 80</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1.15 }}>Choose {MAX_PICKS}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1.15, marginBottom: 2 }}>numbers</div>
+                  <div style={{ fontSize: 16, color: '#22c55e', fontWeight: 700 }}>From 1 to 80</div>
                 </div>
                 <div style={{
-                  marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%',
-                  background: '#1a3a2a', border: '1px solid rgba(34,197,94,0.3)',
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: '#1a3a2a', border: '1.5px solid rgba(34,197,94,0.4)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, color: '#22c55e', cursor: 'pointer', flexShrink: 0,
+                  fontSize: 16, color: '#22c55e', cursor: 'pointer', flexShrink: 0, fontWeight: 900,
                 }}>?</div>
               </div>
             ) : (
@@ -741,11 +750,11 @@ export default function KenoScreen() {
             )}
           </div>
           {/* Number grid 1–80 */}
-          <div style={{ padding: '2px 6px', flexShrink: 0 }}>
+          <div style={{ padding: '4px 6px', flexShrink: 0 }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(10, 1fr)',
-              gap: 2,
+              gap: 3,
             }}>
               {Array.from({ length: 80 }, (_, i) => i + 1).map(n => (
                 <NumberCell
