@@ -74,7 +74,7 @@ export class KenoEngine {
   }
 
   private async runRound(): Promise<void> {
-    const BETTING_MS = 30_000;
+    const BETTING_MS = 10_000;
     const DRAW_INTERVAL_MS = 2_000; // one number every 2s → 20 numbers in 40s
     const TOTAL_DRAW = 20;
     const FINISH_PAUSE_MS = 2_000;

@@ -599,7 +599,7 @@ export default function KenoScreen() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 900,
                   color: n !== null ? '#e2e8f0' : 'transparent',
-                  animation: n === lastDrawn ? 'ballSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
+                  animation: n === lastDrawn ? 'ballSlideIn 0.3s ease-out forwards' : 'none',
                   minWidth: 0,
                 }}>{n ?? ''}</div>
               ))}
@@ -616,7 +616,7 @@ export default function KenoScreen() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 900,
                   color: n !== null ? '#e2e8f0' : 'transparent',
-                  animation: n === lastDrawn ? 'ballSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
+                  animation: n === lastDrawn ? 'ballSlideIn 0.3s ease-out forwards' : 'none',
                   minWidth: 0,
                 }}>{n ?? ''}</div>
               ))}
@@ -970,11 +970,10 @@ function DrawingMachine({
     }}>
       <style>{`
         @keyframes ballDrop {
-          0%   { transform: translateY(-60px) scale(0.6); opacity: 0; }
-          55%  { transform: translateY(10px) scale(1.12); opacity: 1; }
-          75%  { transform: translateY(-6px) scale(0.97); }
-          90%  { transform: translateY(4px) scale(1.03); }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
+          0%   { transform: scale(0.3); opacity: 0; }
+          60%  { transform: scale(1.15); opacity: 1; }
+          80%  { transform: scale(0.95); }
+          100% { transform: scale(1); opacity: 1; }
         }
         @keyframes ringPulse {
           0%   { opacity: 0.08; transform: scale(1); }
@@ -982,9 +981,10 @@ function DrawingMachine({
           100% { opacity: 0.08; transform: scale(1); }
         }
         @keyframes ballSlideIn {
-          0%   { transform: translateX(30px) scale(0.7); opacity: 0; }
-          60%  { transform: translateX(-4px) scale(1.08); opacity: 1; }
-          100% { transform: translateX(0) scale(1); opacity: 1; }
+          0%   { transform: scale(0.3); opacity: 0; }
+          60%  { transform: scale(1.15); opacity: 1; }
+          80%  { transform: scale(0.95); }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
 
@@ -1016,7 +1016,7 @@ function DrawingMachine({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 36, fontWeight: 900, color: '#fff',
             zIndex: 2,
-            animation: 'ballDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+            animation: 'ballDrop 0.35s ease-out forwards',
           }}
         >
           {current}
@@ -1242,3 +1242,4 @@ function StatisticsView({ history }: { history: HistoryRound[] }) {
     </div>
   );
 }
+
