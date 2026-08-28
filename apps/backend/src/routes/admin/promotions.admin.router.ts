@@ -82,6 +82,16 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
   res.json(promotion);
 });
 
+// DELETE /:id — delete a promotion
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    await PromotionService.deletePromotion(req.params['id'] as string);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: 'DELETE_FAILED', message: (err as Error).message });
+  }
+});
+
 // POST /:id/duplicate — clone a promotion
 router.post('/:id/duplicate', async (req: Request, res: Response): Promise<void> => {
   try {

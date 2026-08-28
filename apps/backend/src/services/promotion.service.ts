@@ -122,6 +122,14 @@ export const PromotionService = {
     return prisma.promotion.update({ where: { id }, data: { status } });
   },
 
+  async deletePromotion(id: string) {
+    // Delete related records first to avoid FK constraint errors
+    await prisma.promotionBonusDistribution.deleteMany({ where: { promotion_id: id } });
+    await prisma.promotionLog.deleteMany({ where: { promotion_id: id } });
+    await prisma.promotionSchedule.deleteMany({ where: { promotion_id: id } });
+    return prisma.promotion.delete({ where: { id } });
+  },
+
   /** Duplicate a promotion (without schedules or logs) */
   async duplicate(id: string) {
     const source = await prisma.promotion.findUniqueOrThrow({ where: { id } });

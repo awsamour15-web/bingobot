@@ -635,6 +635,10 @@ export function getBonusDistributions(promotionId: string): Promise<BonusDistrib
   return adminApiRequest('GET', `/api/admin/promotions/${promotionId}/bonus/distributions`);
 }
 
+export function deletePromotion(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest('DELETE', `/api/admin/promotions/${id}`);
+}
+
 // ---------------------------------------------------------------------------
 // Cartelas
 // ---------------------------------------------------------------------------

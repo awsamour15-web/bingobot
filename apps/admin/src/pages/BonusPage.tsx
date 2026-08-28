@@ -5,7 +5,7 @@ import {
   getPlayers, creditPlayer, listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
   createPromotion, getConfig, updateConfig,
-  updatePromotion, setPromotionStatus,
+  updatePromotion, setPromotionStatus, deletePromotion,
 } from '../lib/api';
 import {
   C, Btn, Card, CardHeader, Field, PageHeader, StatCard,
@@ -516,7 +516,7 @@ function BulkBonusPanel() {
 // Active Bonuses panel — view and manage all active bonuses with CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ActiveBonusesPanel() {
+function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -525,6 +525,7 @@ function ActiveBonusesPanel() {
   const [editAmount, setEditAmount] = useState('');
   const [editWallet, setEditWallet] = useState<WalletType>('play');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   async function loadBonuses() {
     setLoading(true); setError(null);
@@ -537,10 +538,10 @@ function ActiveBonusesPanel() {
 
   useEffect(() => { void loadBonuses(); }, []);
 
-  async function handleEdit(promo: Promotion) {
+  function handleEdit(promo: Promotion) {
     setEditing(promo.id);
     setEditAmount(String(promo.bonus_amount ?? 0));
-    setEditWallet(promo.bonus_wallet ?? 'play');
+    setEditWallet((promo.bonus_wallet as WalletType) ?? 'play');
     setError(null);
     setSuccess(null);
   }
@@ -569,6 +570,19 @@ function ActiveBonusesPanel() {
     } catch (err) { setError((err as Error).message); }
   }
 
+  async function handleDelete(promo: Promotion) {
+    if (!confirm(`Delete bonus "${promo.title}"? This cannot be undone.`)) return;
+    setDeleting(promo.id); setError(null); setSuccess(null);
+    try {
+      await deletePromotion(promo.id);
+      setSuccess(`Bonus "${promo.title}" deleted.`);
+      await loadBonuses();
+    } catch (err) { setError((err as Error).message); }
+    finally { setDeleting(null); }
+  }
+
+  const activeCount = promotions.filter(p => p.status === 'active').length;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {error && <Alert type="error">{error}</Alert>}
@@ -576,21 +590,27 @@ function ActiveBonusesPanel() {
 
       <Card>
         <CardHeader
-          title="Active Bonuses"
-          subtitle="View and manage all active bonuses in the system"
+          title="Bonus Promotions"
+          subtitle={`${activeCount} active · ${promotions.length - activeCount} inactive`}
           action={
-            <Btn size="sm" onClick={() => void loadBonuses()}>
-              ↻ Refresh
-            </Btn>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn size="sm" variant="outline" onClick={() => void loadBonuses()}>↻ Refresh</Btn>
+              <Btn size="sm" onClick={onCreateNew}>+ New Bonus</Btn>
+            </div>
           }
         />
 
         {loading ? (
-          <TrLoading cols={5} />
+          <Table>
+            <thead><tr><Th>Title</Th><Th>Amount</Th><Th>Wallet</Th><Th>Status</Th><Th>Actions</Th></tr></thead>
+            <tbody><TrLoading cols={5} /></tbody>
+          </Table>
         ) : promotions.length === 0 ? (
-          <Alert type="info">
-            No active bonuses found. Create a bonus promotion from the "Bulk Bonus" tab.
-          </Alert>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '28px 0' }}>
+            <div style={{ fontSize: 36 }}>🎁</div>
+            <div style={{ color: C.muted, fontSize: 14 }}>No bonus promotions yet.</div>
+            <Btn onClick={onCreateNew}>Create Your First Bonus</Btn>
+          </div>
         ) : (
           <Table>
             <thead>
@@ -605,6 +625,7 @@ function ActiveBonusesPanel() {
             <tbody>
               {promotions.map(promo => {
                 const isEditing = editing === promo.id;
+                const isDeleting = deleting === promo.id;
                 const criteriaCount = promo.bonus_criteria
                   ? Object.keys(promo.bonus_criteria as BonusCriteria).length
                   : 0;
@@ -615,7 +636,7 @@ function ActiveBonusesPanel() {
                       <div style={{ fontWeight: 600 }}>{promo.title}</div>
                       {criteriaCount > 0 && (
                         <div style={{ fontSize: 11, color: C.muted }}>
-                          {criteriaCount} eligibility {criteriaCount === 1 ? 'criterion' : 'criteria'}
+                          {criteriaCount} {criteriaCount === 1 ? 'criterion' : 'criteria'}
                         </div>
                       )}
                     </Td>
@@ -653,32 +674,19 @@ function ActiveBonusesPanel() {
                       </Badge>
                     </Td>
                     <Td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {isEditing ? (
                           <>
-                            <Btn
-                              size="sm"
-                              onClick={() => handleSaveEdit(promo.id)}
-                              disabled={saving}
-                            >
+                            <Btn size="sm" onClick={() => void handleSaveEdit(promo.id)} disabled={saving}>
                               {saving ? 'Saving…' : 'Save'}
                             </Btn>
-                            <Btn
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditing(null)}
-                              disabled={saving}
-                            >
+                            <Btn size="sm" variant="ghost" onClick={() => setEditing(null)} disabled={saving}>
                               Cancel
                             </Btn>
                           </>
                         ) : (
                           <>
-                            <Btn
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEdit(promo)}
-                            >
+                            <Btn size="sm" variant="outline" onClick={() => handleEdit(promo)}>
                               Edit
                             </Btn>
                             <Btn
@@ -687,6 +695,14 @@ function ActiveBonusesPanel() {
                               onClick={() => void handleToggleStatus(promo)}
                             >
                               {promo.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </Btn>
+                            <Btn
+                              size="sm"
+                              variant="danger"
+                              onClick={() => void handleDelete(promo)}
+                              disabled={isDeleting}
+                            >
+                              {isDeleting ? '…' : 'Delete'}
                             </Btn>
                           </>
                         )}
@@ -699,42 +715,10 @@ function ActiveBonusesPanel() {
           </Table>
         )}
       </Card>
-
-      <Card>
-        <CardHeader
-          title="💡 Bonus Management Tips"
-          subtitle="How to manage your bonus system effectively"
-        />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-          <div>
-            <strong style={{ color: 'var(--c-text)' }}>Edit Bonus:</strong>
-            <span style={{ color: C.muted, marginLeft: 6 }}>
-              Click "Edit" to modify the bonus amount or target wallet
-            </span>
-          </div>
-          <div>
-            <strong style={{ color: 'var(--c-text)' }}>Activate/Deactivate:</strong>
-            <span style={{ color: C.muted, marginLeft: 6 }}>
-              Control which bonuses are active without deleting them
-            </span>
-          </div>
-          <div>
-            <strong style={{ color: 'var(--c-text)' }}>Eligibility Criteria:</strong>
-            <span style={{ color: C.muted, marginLeft: 6 }}>
-              Edit criteria in the "Bulk Bonus" tab when creating or updating promotions
-            </span>
-          </div>
-          <div>
-            <strong style={{ color: 'var(--c-text)' }}>Distribution History:</strong>
-            <span style={{ color: C.muted, marginLeft: 6 }}>
-              View who received each bonus in the "Bulk Bonus" tab's history section
-            </span>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Deposit bonus config panel
@@ -882,7 +866,7 @@ export function BonusPage() {
         </Btn>
       </div>
 
-      {tab === 'active' ? <ActiveBonusesPanel /> : tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : <DepositBonusPanel />}
+      {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : <DepositBonusPanel />}
     </div>
   );
 }
