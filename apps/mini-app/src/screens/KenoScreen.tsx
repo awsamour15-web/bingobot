@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../lib/socket';
 import { apiRequest } from '../lib/api';
@@ -109,7 +109,7 @@ function useCountdown(endsAt: number | null) {
 const DOT_NUMBERS = new Set([3, 6, 10, 11, 18, 24, 27, 29, 33, 36, 48, 56, 57, 65, 68, 71, 74, 78]);
 
 // ─── Number cell ──────────────────────────────────────────────────────────────
-function NumberCell({
+const NumberCell = memo(function NumberCell({
   num, picked, drawn, justDrawn, onClick,
 }: {
   num: number;
@@ -189,7 +189,7 @@ function NumberCell({
       )}
     </div>
   );
-}
+});
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
 type Tab = 'game' | 'history' | 'results' | 'statistics';
@@ -390,7 +390,7 @@ export default function KenoScreen() {
     };
   }, [tab, fetchBalance, fetchHistory]);
 
-  const togglePick = (n: number) => {
+  const togglePick = useCallback((n: number) => {
     if (state.phase !== 'betting') return;
     setPicked(prev => {
       const next = new Set(prev);
@@ -399,26 +399,53 @@ export default function KenoScreen() {
       next.add(n);
       return next;
     });
-  };
+  }, [state.phase]);
 
   const placeBet = async () => {
     if (placing || picked.size === 0) return;
     setError(null);
     setPlacing(true);
+    const pickedArr = Array.from(picked);
+    // Optimistically clear picks immediately for snappy UX
+    setPicked(new Set());
     try {
-      await apiRequest('POST', '/api/keno/bet', {
+      const res = await apiRequest<{ betId: string; roundId: string; pickedNumbers: number[]; betAmount: number }>('POST', '/api/keno/bet', {
         betAmount,
-        pickedNumbers: Array.from(picked),
+        pickedNumbers: pickedArr,
       });
-      setPicked(new Set());
-      await fetchState();
-      await fetchBalance();
+      // Optimistically add the bet to state without waiting for fetchState
+      setState(prev => ({
+        ...prev,
+        myBets: [...prev.myBets, {
+          id: res.betId,
+          pickedNumbers: pickedArr,
+          betAmount,
+          matched: null,
+          payout: null,
+        }],
+      }));
+      // Refresh in background — no await
+      fetchState().catch(() => {});
+      fetchBalance().catch(() => {});
     } catch (e: any) {
+      // Restore picks on failure
+      setPicked(new Set(pickedArr));
       setError(e.message ?? 'Bet failed');
     } finally {
       setPlacing(false);
     }
   };
+
+  // Stable per-cell click handlers — use a ref to always call latest togglePick
+  const togglePickRef = useRef(togglePick);
+  useEffect(() => { togglePickRef.current = togglePick; }, [togglePick]);
+  const cellClickHandlers = useRef<Map<number, () => void>>(new Map());
+  const getCellHandler = useCallback((n: number) => {
+    if (!cellClickHandlers.current.has(n)) {
+      cellClickHandlers.current.set(n, () => togglePickRef.current(n));
+    }
+    return cellClickHandlers.current.get(n)!;
+  }, []);
 
   const allDrawnNumbers = state.round?.drawnNumbers ?? [];
   const visibleDrawnNumbers = allDrawnNumbers.slice(0, revealedCount);
@@ -725,7 +752,7 @@ export default function KenoScreen() {
                   picked={picked.has(n)}
                   drawn={drawnSet.has(n)}
                   justDrawn={lastDrawn === n}
-                  onClick={() => togglePick(n)}
+                  onClick={getCellHandler(n)}
                 />
               ))}
             </div>
