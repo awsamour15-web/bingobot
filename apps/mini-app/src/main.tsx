@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
+import './index.css';
 import App from './App';
 
 function Root() {
