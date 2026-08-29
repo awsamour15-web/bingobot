@@ -1238,68 +1238,87 @@ export default function CrashScreen() {
       )}
 
       <div style={{
-        height: 50,
+        height: 46,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: '#0a0b10',
+        background: '#070b12',
         borderBottom: '1px solid rgba(255,255,255,0.05)',
         padding: '0 12px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ color: '#f7c8d5', fontSize: 14, fontWeight: 900, letterSpacing: '-0.04em' }}>Aviator</div>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '4px 8px 4px 6px',
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
           <div style={{
-            width: 18, height: 18, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: '#dbeafe', fontSize: 11, fontWeight: 900,
+            width: 18, height: 18,
+            borderRadius: '50%',
+            background: 'linear-gradient(180deg, #4de2a1, #05a95c)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>?</div>
+            color: '#032916', fontWeight: 900, fontSize: 10,
+          }}>P</div>
+          <div style={{ color: '#f8fafc', fontSize: 12, fontWeight: 800 }}>Player</div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontWeight: 800, color: '#e5e7eb', fontSize: 16, letterSpacing: '-0.04em' }}>
-            {balance !== null ? balance.toFixed(2) : '3,000.00'} USD
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
-            width: 26, height: 18, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-            alignItems: 'center', cursor: 'pointer',
+            padding: '6px 10px',
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: '#f8fafc',
+            fontSize: 11,
+            fontWeight: 800,
           }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{ width: 16, height: 2, borderRadius: 2, background: '#f1f5f9' }} />
-            ))}
+            ${balance !== null ? balance.toFixed(2) : '2423.50'}
           </div>
+          <button style={{
+            border: 'none',
+            background: 'linear-gradient(135deg, #1dd3a5, #10b981)',
+            color: '#032916',
+            borderRadius: 999,
+            padding: '6px 12px',
+            fontSize: 11,
+            fontWeight: 900,
+            cursor: 'pointer',
+            boxShadow: '0 0 16px rgba(16,185,129,0.35)',
+          }}>Deposit</button>
         </div>
       </div>
 
       <div style={{
         position: 'relative',
-        height: 250,
-        background: '#0a0d13',
+        height: 220,
+        background: '#050a11',
         overflow: 'hidden',
         borderBottom: '1px solid rgba(255,255,255,0.05)',
       }}>
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(circle at 50% 8%, rgba(120,80,255,0.28), transparent 36%), linear-gradient(180deg, rgba(12,10,18,0.98), rgba(12,14,18,1))',
+          background: 'radial-gradient(circle at 50% 10%, rgba(140,92,255,0.18), transparent 34%), linear-gradient(180deg, rgba(8,10,18,0.92), rgba(5,8,14,1))',
         }} />
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'repeating-linear-gradient(120deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 18px)',
-          opacity: 0.95,
+          background: 'repeating-linear-gradient(120deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 2px, transparent 2px, transparent 16px)',
+          opacity: 0.9,
         }} />
 
         <div style={{
           position: 'absolute',
           left: '50%',
-          top: '42%',
+          top: '46%',
           transform: 'translate(-50%, -50%)',
-          fontSize: 'clamp(52px, 18vw, 98px)',
+          fontSize: 'clamp(52px, 17vw, 100px)',
           lineHeight: 1,
           fontWeight: 900,
           letterSpacing: '-0.08em',
-          color: '#fff',
-          textShadow: '0 0 30px rgba(255,255,255,0.35)',
+          color: '#f8fafc',
+          textShadow: '0 0 20px rgba(255,255,255,0.35)',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {fmtMul(multiplier)}
@@ -1308,130 +1327,88 @@ export default function CrashScreen() {
         <div style={{
           position: 'absolute',
           left: '50%',
-          top: '70%',
+          top: '65%',
           transform: 'translate(-50%, -50%)',
-          width: '120%',
-          height: 100,
+          width: '132%',
+          height: 110,
           pointerEvents: 'none',
         }}>
           <div style={{
             position: 'absolute',
-            left: '-8%',
-            right: '-8%',
-            bottom: '-10%',
-            height: 100,
-            background: 'linear-gradient(180deg, rgba(255, 0, 64, 0.02), rgba(255, 0, 64, 0.5))',
+            left: '-10%',
+            right: '-10%',
+            bottom: '-12%',
+            height: 95,
+            background: 'linear-gradient(180deg, rgba(255, 0, 64, 0.02), rgba(255, 0, 64, 0.42))',
             borderRadius: '50% 50% 0 0 / 100% 100% 0 0',
-            transform: 'skewY(-9deg)',
+            transform: 'skewY(-10deg)',
           }} />
         </div>
 
         <div style={{
           position: 'absolute',
           left: '50%',
-          top: '62%',
-          transform: 'translate(-50%, -50%) rotate(10deg) scale(1.18)',
+          top: '60%',
+          transform: 'translate(-50%, -50%) rotate(10deg) scale(1.12)',
           filter: 'drop-shadow(0 0 18px rgba(255, 80, 120, 0.85))',
         }}>
-          <img src={currentPlane} alt="Aviator plane" style={{ width: 124, height: 60, objectFit: 'contain' }} />
+          <img src={currentPlane} alt="Aviator plane" style={{ width: 110, height: 56, objectFit: 'contain' }} />
         </div>
 
         <div style={{
           position: 'absolute',
-          right: 10,
-          top: 12,
+          right: 12,
+          top: 18,
           borderRadius: 999,
-          background: 'rgba(12,16,22,0.82)',
+          background: 'rgba(15, 23, 42, 0.8)',
           border: '1px solid rgba(255,255,255,0.08)',
           color: '#f8fafc',
           fontWeight: 800,
-          fontSize: 12,
+          fontSize: 11,
           padding: '6px 10px',
+          letterSpacing: '0.03em',
         }}>1 Bets</div>
-
-        <div style={{ position: 'absolute', left: 12, top: 28, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-            <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.75)' }} />
-          ))}
-        </div>
       </div>
 
       <div style={{
         margin: '10px 12px 0',
-        background: '#191d23',
+        background: '#171b22',
         borderRadius: 16,
         overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.05)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          {['Bet', 'Auto'].map((label, index) => (
-            <button key={label} onClick={() => {}} style={{
-              flex: 1,
-              border: 'none',
-              background: index === 0 ? '#2f3339' : 'transparent',
-              color: index === 0 ? '#fff' : '#a4aebd',
-              fontWeight: 800,
-              fontSize: 15,
-              padding: '12px 0',
-              cursor: 'pointer',
-            }}>
-              {label}
-            </button>
-          ))}
-          <button style={{
-            width: 30, height: 30, borderRadius: 10,
-            marginRight: 8,
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.04)',
-            color: '#fff',
-            fontSize: 20,
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}>+</button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 0' }}>
+          <div style={{ color: '#f8fafc', fontSize: 12, fontWeight: 900, letterSpacing: '0.08em' }}>BET 1</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={() => setAmount(a => Math.max(MIN_BET, a - 1))} style={adjBtnStyle(true)}>−</button>
+            <button onClick={() => setAmount(a => Math.min(MAX_BET, a + 1))} style={adjBtnStyle(true)}>+</button>
+          </div>
         </div>
 
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          padding: '10px 12px 8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 10, padding: '8px 12px 10px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={() => setAmount(a => Math.max(MIN_BET, a - 1))} style={adjBtnStyle(true)}>-</button>
-            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: '-0.06em', color: '#fff' }}>10</div>
-            <button onClick={() => setAmount(a => Math.min(MAX_BET, a + 1))} style={adjBtnStyle(true)}>+</button>
+          <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: '-0.06em', color: '#fff' }}>
+            ${amount.toFixed(2)}
           </div>
-
-          <button onClick={placePrimaryBet} disabled={!canBet} style={{
-            width: 150,
-            minWidth: 150,
-            height: 58,
-            border: 'none',
-            borderRadius: 12,
-            background: canBet ? 'linear-gradient(135deg, #31ca74, #0eaf5d)' : 'rgba(255,255,255,0.08)',
-            color: canBet ? '#fff' : '#8a94a7',
-            fontSize: 16,
-            fontWeight: 900,
-            cursor: canBet ? 'pointer' : 'default',
-            boxShadow: canBet ? '0 0 18px rgba(49,202,116,0.35)' : 'none',
-          }}>
-            <div>BET</div>
-            <div style={{ fontSize: 10, opacity: 0.9 }}>10.00ETB</div>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setAmount(5)} style={{ ...adjBtnStyle(true), width: 34, height: 26, borderRadius: 8, fontSize: 12 }}>1x</button>
+            <button onClick={() => setAmount(10)} style={{ ...adjBtnStyle(true), width: 34, height: 26, borderRadius: 8, fontSize: 12 }}>2x</button>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, padding: '0 12px 10px' }}>
-          {[20, 50, 100, 1000].map((q) => (
-            <button key={q} onClick={() => {
-              if (!canBet) return;
-              setAmount(q);
-            }} style={{
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 6, padding: '0 12px 10px' }}>
+          {[5, 10, 25, 50, 100, 200].map((q) => (
+            <button key={q} onClick={() => setAmount(q)} style={{
               border: '1px solid rgba(255,255,255,0.08)',
               background: amount === q ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)',
               color: amount === q ? '#fff' : '#c2cbda',
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 800,
               padding: '8px 0',
-              borderRadius: 10,
-              cursor: canBet ? 'pointer' : 'default',
+              borderRadius: 8,
+              cursor: 'pointer',
             }}>{q}</button>
           ))}
         </div>
@@ -1443,21 +1420,17 @@ export default function CrashScreen() {
           padding: '0 12px 12px',
           gap: 8,
           color: '#dfe8fa',
-          fontSize: 12,
+          fontSize: 11,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Auto bet</span>
+            <span>Auto</span>
             <button style={{ width: 28, height: 18, borderRadius: 999, background: '#2a2f36', border: 'none', position: 'relative' }}>
               <span style={{ position: 'absolute', top: 3, left: 3, width: 12, height: 12, borderRadius: '50%', background: '#fff' }} />
             </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Auto Cash Out</span>
-            <button style={{ width: 28, height: 18, borderRadius: 999, background: '#2a2f36', border: 'none', position: 'relative' }}>
-              <span style={{ position: 'absolute', top: 3, left: 3, width: 12, height: 12, borderRadius: '50%', background: '#fff' }} />
-            </button>
-            <span style={{ fontWeight: 900, color: '#fff', fontSize: 15 }}>2.00</span>
-            <span>x</span>
+            <span>Cashout</span>
+            <span style={{ fontWeight: 900, color: '#fff', fontSize: 14 }}>1.2x</span>
           </div>
         </div>
       </div>
@@ -1478,29 +1451,52 @@ export default function CrashScreen() {
               borderBottom: betTab === tabKey ? '2px solid #ff3f65' : '2px solid transparent',
               color: betTab === tabKey ? '#fff' : '#8a94a7',
               padding: '10px 0',
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 800,
               cursor: 'pointer',
             }}>
-              {tabKey === 'all' ? 'All Bets' : tabKey === 'previous' ? 'My Bets' : 'Top'}
+              {tabKey === 'all' ? 'Live Bets' : tabKey === 'previous' ? 'My Bets' : 'Top'}
             </button>
           ))}
         </div>
 
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 14px',
-          fontSize: 12,
-          color: '#dfe8fa',
+          display: 'grid',
+          gridTemplateColumns: '1.3fr 0.7fr 0.9fr 0.9fr',
+          padding: '10px 12px 4px',
+          fontSize: 10,
+          fontWeight: 800,
+          color: '#64748b',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'linear-gradient(180deg,#f8d790,#b37b2d)', border: '2px solid rgba(0,0,0,0.55)' }} />
-            <span>0/1 Bets</span>
-          </div>
-          <div style={{ fontWeight: 900, color: '#f8fafc' }}>0.00</div>
-          <div style={{ color: '#8a94a7' }}>Total win ETB</div>
+          <span>Player</span>
+          <span style={{ textAlign: 'right' }}>Bet</span>
+          <span style={{ textAlign: 'right' }}>Cashout</span>
+          <span style={{ textAlign: 'right' }}>Payout</span>
+        </div>
+
+        <div style={{ paddingBottom: 8 }}>
+          {([
+            ['Alex K.', '$165.15', '—', '—'],
+            ['Maria S.', '$273.42', '1.86x', '+$509'],
+            ['JohnD*', '$86.77', '—', '—'],
+            ['Paul M.', '$126.79', '2.14x', '+$272'],
+          ] as Array<[string, string, string, string]>).map(([player, bet, cashout, payout], idx) => (
+            <div key={player + idx} style={{
+              display: 'grid',
+              gridTemplateColumns: '1.3fr 0.7fr 0.9fr 0.9fr',
+              padding: '8px 12px',
+              color: '#dfe8fa',
+              fontSize: 12,
+              borderTop: idx === 0 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+            }}>
+              <span style={{ color: idx % 2 === 0 ? '#dfe8fa' : '#f8fafc', fontWeight: 700 }}>{player}</span>
+              <span style={{ textAlign: 'right' }}>{bet}</span>
+              <span style={{ textAlign: 'right', color: cashout === '—' ? '#64748b' : '#25c684', fontWeight: 700 }}>{cashout}</span>
+              <span style={{ textAlign: 'right', color: payout === '—' ? '#64748b' : '#4ade80', fontWeight: 700 }}>{payout}</span>
+            </div>
+          ))}
         </div>
       </div>
 
