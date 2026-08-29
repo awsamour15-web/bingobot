@@ -97,7 +97,7 @@ function BottomNav() {
 
   const tabs = [
     { to: '/', icon: '🎮', label: 'Games' },
-    { to: '/crash', icon: '🚀', label: 'Crash' },
+    { to: '/rank', icon: '🏆', label: 'Rank' },
     { to: '/history', icon: '🧾', label: 'History' },
     { to: '/wallet', icon: '💳', label: 'Wallet' },
     { to: '/profile', icon: '◎', label: 'Profile' },
