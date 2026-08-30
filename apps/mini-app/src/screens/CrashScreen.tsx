@@ -11,6 +11,7 @@ import plane1 from '../assets/avi/plane-anim-1.svg';
 import plane2 from '../assets/avi/plane-anim-2.svg';
 import plane3 from '../assets/avi/plane-anim-3.svg';
 import crashSound from '../assets/avi/flew_away.mp3';
+import bgMusic from '../assets/avi/main-B_lEpEFg.wav';
 
 type Phase = 'waiting' | 'running' | 'crashed' | 'idle';
 
@@ -979,6 +980,25 @@ export default function CrashScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [depositModal, setDepositModal] = useState(false);
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Background music — loops forever, starts on first user interaction
+  useEffect(() => {
+    const audio = new Audio(bgMusic);
+    audio.loop = true;
+    audio.volume = 0.25;
+    bgAudioRef.current = audio;
+    const start = () => { void audio.play().catch(() => {}); };
+    // Try immediately (works if page was already interacted with)
+    void audio.play().catch(() => {
+      // Blocked by autoplay policy — wait for first tap
+      window.addEventListener('pointerdown', start, { once: true });
+    });
+    return () => {
+      audio.pause();
+      window.removeEventListener('pointerdown', start);
+    };
+  }, []);
   const playRoundSound = useCallback((kind: 'start' | 'finish') => {
     const audio = new Audio(crashSound);
     audio.volume = kind === 'finish' ? 0.85 : 0.55;
