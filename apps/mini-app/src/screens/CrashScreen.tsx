@@ -5,6 +5,11 @@ import { getCrashState, placeCrashBet, getCrashHistory, getProfile } from '../li
 import type { CrashBetEntry, CrashHistoryEntry } from '../lib/api';
 import { getJwtFromStorage } from '../lib/auth-storage';
 import aviatorLogo from '../assets/avi/aviator-logo.svg';
+import bgSun from '../assets/avi/bg-sun.svg';
+import plane0 from '../assets/avi/plane-anim-0.svg';
+import plane1 from '../assets/avi/plane-anim-1.svg';
+import plane2 from '../assets/avi/plane-anim-2.svg';
+import plane3 from '../assets/avi/plane-anim-3.svg';
 import crashSound from '../assets/avi/flew_away.mp3';
 
 type Phase = 'waiting' | 'running' | 'crashed' | 'idle';
@@ -172,84 +177,19 @@ function fmtMul(v: number): string {
 
 // ─── Animated plane ───────────────────────────────────────────────────────────
 
-function PlaneSVG({ crashed, tilt }: { crashed: boolean; tilt: number }) {
+const planeFrames = [plane0, plane1, plane2, plane3];
+
+function PlaneSVG({ crashed, tilt, frame }: { crashed: boolean; tilt: number; frame: number }) {
+  const src = planeFrames[frame % planeFrames.length]!;
   return (
     <div style={{
       transform: `rotate(${tilt}deg)`,
       transition: crashed ? 'transform 0.5s ease-in' : 'transform 0.2s ease-out',
       filter: crashed
-        ? 'drop-shadow(0 0 18px #e8073f) drop-shadow(0 0 8px #ff0000)'
+        ? 'drop-shadow(0 0 18px #e8073f) drop-shadow(0 0 8px #ff0000) brightness(0.7)'
         : 'drop-shadow(0 0 14px rgba(232,7,63,0.9)) drop-shadow(0 0 5px rgba(255,120,80,0.6))',
     }}>
-      <svg width="110" height="64" viewBox="0 0 220 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-
-        {/* ── Spinning propeller (CSS animation) ── */}
-        {!crashed ? (
-          <g style={{ transformOrigin: '198px 52px', animation: 'propSpin 0.12s linear infinite' }}>
-            {/* blade 1 */}
-            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#c0052e" opacity="0.95" />
-            {/* blade 2 — 60° */}
-            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#c0052e" opacity="0.95" transform="rotate(60 198 52)" />
-            {/* blade 3 — 120° */}
-            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#c0052e" opacity="0.95" transform="rotate(120 198 52)" />
-          </g>
-        ) : (
-          /* stopped propeller on crash */
-          <g>
-            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#7f0020" opacity="0.7" />
-            <ellipse cx="198" cy="52" rx="4" ry="24" fill="#7f0020" opacity="0.7" transform="rotate(60 198 52)" />
-          </g>
-        )}
-
-        {/* ── Propeller hub ── */}
-        <circle cx="198" cy="52" r="7" fill="#8b0020" stroke="#000" strokeWidth="1.5" />
-
-        {/* ── Engine cowl / nose ── */}
-        <path d="M180 40 Q198 40 205 52 Q198 64 180 64 Z" fill="#a00428" stroke="#000" strokeWidth="1.5" />
-
-        {/* ── Main fuselage ── */}
-        <path d="M18 72 Q55 60 105 55 L172 40 L180 44 L180 60 L172 64 L105 69 Q55 76 22 82 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-
-        {/* ── Bottom hull / belly ── */}
-        <path d="M22 82 Q70 88 172 70 L180 66 L172 74 Q70 92 26 86 Z"
-          fill="#b00530" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-        {/* ── Main wing (top) ── */}
-        <path d="M88 62 L108 14 L126 20 L110 66 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="2" strokeLinejoin="round" />
-        {/* wing shading */}
-        <path d="M96 61 L112 18 L118 20 L104 65 Z" fill="#c0052e" />
-
-        {/* ── Dorsal fin ── */}
-        <path d="M138 54 L126 30 L116 33 L124 56 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <path d="M132 54 L122 34 L118 35 L122 56 Z" fill="#c0052e" />
-
-        {/* ── Cockpit canopy ── */}
-        <path d="M118 55 L148 44 L156 48 L156 60 L126 65 Z"
-          fill="#b00530" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        {/* window glass */}
-        <path d="M124 57 L146 47 L152 50 L152 58 L130 62 Z"
-          fill="#0d0010" opacity="0.88" />
-        {/* window glint */}
-        <path d="M128 57 L138 50 L140 52 L131 59 Z" fill="rgba(255,255,255,0.18)" />
-
-        {/* ── Tail fuselage taper ── */}
-        <path d="M18 72 L6 65 L14 60 L34 68 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-        {/* ── Tail vertical fin ── */}
-        <path d="M22 72 L16 52 L28 56 L32 72 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-        {/* ── Tail horizontal stabilisers ── */}
-        <path d="M14 70 L2 78 L8 83 L26 76 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-        <path d="M12 65 L2 56 L8 52 L22 62 Z"
-          fill="#e8073f" stroke="#000" strokeWidth="1.5" strokeLinejoin="round" />
-
-      </svg>
+      <img src={src} alt="plane" width={110} height={64} style={{ display: 'block', objectFit: 'contain' }} />
     </div>
   );
 }
@@ -285,11 +225,12 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
   const rafRef = useRef<number>(0);
   const particlesRef = useRef<Particle[]>([]);
   const particleIdRef = useRef(0);
-  // Stars initialised once
   const starsRef = useRef<Star[]>([]);
 
   const [planePct, setPlanePct] = useState<{ x: number; y: number } | null>(null);
   const [planeTilt, setPlaneTilt] = useState(-12);
+  const [planeFrame, setPlaneFrame] = useState(0);
+  const frameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isCrashed = phase === 'crashed';
   const displayVal = isCrashed ? (crashPoint ?? multiplier) : multiplier;
@@ -305,6 +246,17 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       alpha: 0.3 + Math.random() * 0.7,
     }));
   }, []);
+
+  // Animate plane frames when running
+  useEffect(() => {
+    if (phase === 'running') {
+      frameTimerRef.current = setInterval(() => setPlaneFrame(f => (f + 1) % 4), 120);
+    } else {
+      if (frameTimerRef.current) { clearInterval(frameTimerRef.current); frameTimerRef.current = null; }
+      setPlaneFrame(0);
+    }
+    return () => { if (frameTimerRef.current) clearInterval(frameTimerRef.current); };
+  }, [phase]);
 
   useEffect(() => {
     if (phase === 'waiting' || phase === 'idle') {
@@ -515,11 +467,20 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 160 }}>
+      {/* Sunburst background */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `url(${bgSun})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        opacity: isCrashed ? 0.06 : 0.10,
+        transition: 'opacity 0.4s',
+      }} />
       <canvas
         ref={canvasRef}
         width={420}
         height={210}
-        style={{ width: '100%', height: '100%', display: 'block' }}
+        style={{ width: '100%', height: '100%', display: 'block', position: 'relative' }}
       />
 
       {/* Plane follows curve tip */}
@@ -534,7 +495,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
           pointerEvents: 'none',
           zIndex: 10,
         }}>
-          <PlaneSVG crashed={isCrashed} tilt={planeTilt} />
+          <PlaneSVG crashed={isCrashed} tilt={planeTilt} frame={planeFrame} />
         </div>
       )}
 
