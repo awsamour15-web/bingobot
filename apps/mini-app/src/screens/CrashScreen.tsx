@@ -289,198 +289,252 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let lastFrameTime = Date.now();
+    let animId = 0;
 
     const draw = () => {
       const now = Date.now();
-      const dt = (now - lastFrameTime) / 1000;
+      const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
       lastFrameTime = now;
 
       const ctx = canvas.getContext('2d')!;
       const W = canvas.width;
       const H = canvas.height;
-
       ctx.clearRect(0, 0, W, H);
 
-      // ── Deep space background gradient ──
+      // ── Background ──
       const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
       if (isCrashed) {
-        bgGrad.addColorStop(0, 'rgba(40,0,8,1)');
-        bgGrad.addColorStop(1, 'rgba(15,0,4,1)');
+        bgGrad.addColorStop(0, '#1a0408');
+        bgGrad.addColorStop(1, '#0d0204');
       } else {
-        bgGrad.addColorStop(0, 'rgba(8,10,28,1)');
-        bgGrad.addColorStop(1, 'rgba(5,7,18,1)');
+        bgGrad.addColorStop(0, '#0a0d1f');
+        bgGrad.addColorStop(1, '#060810');
       }
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // ── Animated stars (scroll left when running) ──
-      const starSpeed = phase === 'running' ? 1 : 0;
+      // ── Stars ──
       starsRef.current.forEach(s => {
-        if (starSpeed) {
+        if (phase === 'running') {
           s.x -= s.speed * dt;
-          if (s.x < 0) {
-            s.x = W + Math.random() * 20;
-            s.y = Math.random() * H;
-          }
+          if (s.x < 0) { s.x = W + 10; s.y = Math.random() * H; }
         }
+        const twinkle = s.alpha * (0.6 + 0.4 * Math.sin(now / 700 + s.x * 0.3));
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        // Twinkle: oscillate alpha
-        const twinkle = s.alpha * (0.7 + 0.3 * Math.sin(now / 600 + s.x));
         ctx.fillStyle = isCrashed
-          ? `rgba(255,120,120,${twinkle * 0.6})`
-          : `rgba(200,220,255,${twinkle})`;
+          ? `rgba(255,160,160,${twinkle * 0.5})`
+          : `rgba(180,210,255,${twinkle})`;
         ctx.fill();
       });
 
-      // ── Conic ray background ──
-      const rays = 18;
-      for (let i = 0; i < rays; i++) {
-        const a1 = (-Math.PI / 2) * (i / rays);
-        const a2 = (-Math.PI / 2) * ((i + 0.5) / rays);
-        const r = Math.max(W, H) * 2;
-        ctx.beginPath();
-        ctx.moveTo(0, H);
-        ctx.lineTo(Math.cos(a1) * r, H + Math.sin(a1) * r);
-        ctx.lineTo(Math.cos(a2) * r, H + Math.sin(a2) * r);
-        ctx.closePath();
-        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(0,0,0,0)';
-        ctx.fill();
-      }
-
-      // ── Left axis dots ──
-      const padX = 32, padY = 24;
-      for (let i = 0; i <= 6; i++) {
-        const y = padY + (i / 6) * (H - padY - 10);
-        ctx.beginPath();
-        ctx.arc(10, y, 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(99,140,255,0.35)';
-        ctx.fill();
-      }
+      const padL = 38, padB = 22, padT = 16, padR = 12;
+      const gW = W - padL - padR;
+      const gH = H - padT - padB;
 
       const pts = pointsRef.current;
+      const lastPt = pts[pts.length - 1];
+      const maxT = lastPt ? Math.max(lastPt.x, 1) : 1;
+      const rawMaxM = lastPt ? Math.max(lastPt.y, 1.5) : 2;
+      // Round up maxM to next nice level for stable grid
+      const levels = [2, 3, 5, 8, 10, 15, 20, 30, 50, 80, 100, 200, 500];
+      const maxM = levels.find(l => l >= rawMaxM * 1.15) ?? rawMaxM * 1.25;
+
+      const toX = (t: number) => padL + (t / maxT) * gW;
+      const toY = (m: number) => H - padB - ((m - 1) / Math.max(maxM - 1, 0.1)) * gH;
+
+      // ── Dashed grid lines + Y labels ──
+      const gridMultipliers = [1, 2, 3, 5, 10, 20, 50, 100].filter(m => m >= 1 && m <= maxM);
+      ctx.setLineDash([3, 5]);
+      ctx.lineWidth = 0.5;
+      gridMultipliers.forEach(m => {
+        const y = toY(m);
+        if (y < padT || y > H - padB + 4) return;
+        ctx.strokeStyle = isCrashed ? 'rgba(255,80,80,0.10)' : 'rgba(99,140,255,0.13)';
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+        // Label
+        ctx.fillStyle = isCrashed ? 'rgba(255,120,120,0.5)' : 'rgba(99,140,255,0.55)';
+        ctx.font = '600 9px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${m}x`, padL - 4, y + 3.5);
+      });
+      ctx.setLineDash([]);
+
+      // ── X axis baseline ──
+      ctx.strokeStyle = isCrashed ? 'rgba(255,80,80,0.25)' : 'rgba(99,140,255,0.22)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+
+      // ── Y axis ──
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, H - padB);
+      ctx.stroke();
+
       if (pts.length < 2) {
-        if (phase === 'running' || phase === 'crashed') rafRef.current = requestAnimationFrame(draw);
+        animId = requestAnimationFrame(draw);
         return;
       }
 
-      const lastPt = pts[pts.length - 1]!;
-      const maxT = Math.max(lastPt.x, 0.5);
-      const maxM = Math.max(...pts.map(p => p.y), 2);
+      const tipX = toX(lastPt!.x);
+      const tipY = toY(lastPt!.y);
 
-      const toX = (t: number) => padX + (t / maxT) * (W - padX - 14);
-      const toY = (m: number) => H - 10 - ((m - 1) / Math.max(maxM - 1, 0.5)) * (H - padY - 10);
-
-      const tipX = toX(lastPt.x);
-      const tipY = toY(lastPt.y);
-
-      // ── Filled area under curve ──
-      const grad = ctx.createLinearGradient(0, tipY, 0, H);
+      // ── Filled glow area under curve ──
+      const fillGrad = ctx.createLinearGradient(0, tipY, 0, H - padB);
       if (isCrashed) {
-        grad.addColorStop(0, 'rgba(239,68,68,0.4)');
-        grad.addColorStop(1, 'rgba(239,68,68,0.03)');
+        fillGrad.addColorStop(0, 'rgba(239,68,68,0.35)');
+        fillGrad.addColorStop(0.6, 'rgba(239,68,68,0.08)');
+        fillGrad.addColorStop(1, 'rgba(239,68,68,0)');
       } else {
-        grad.addColorStop(0, 'rgba(232,7,63,0.28)');
-        grad.addColorStop(1, 'rgba(232,7,63,0.02)');
+        fillGrad.addColorStop(0, 'rgba(232,7,63,0.30)');
+        fillGrad.addColorStop(0.5, 'rgba(232,7,63,0.08)');
+        fillGrad.addColorStop(1, 'rgba(232,7,63,0)');
       }
       ctx.beginPath();
-      ctx.moveTo(toX(pts[0]!.x), H - 10);
-      pts.forEach(p => ctx.lineTo(toX(p.x), toY(p.y)));
-      ctx.lineTo(tipX, H - 10);
+      ctx.moveTo(toX(pts[0]!.x), H - padB);
+      // Smooth bezier through points
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1]!, p1 = pts[i]!;
+        const mx = (toX(p0.x) + toX(p1.x)) / 2;
+        ctx.bezierCurveTo(mx, toY(p0.y), mx, toY(p1.y), toX(p1.x), toY(p1.y));
+      }
+      ctx.lineTo(tipX, H - padB);
       ctx.closePath();
-      ctx.fillStyle = grad;
+      ctx.fillStyle = fillGrad;
       ctx.fill();
 
-      // ── Curve line ──
+      // ── Curve outer glow (wide, soft) ──
       ctx.beginPath();
-      pts.forEach((p, i) => {
-        const x = toX(p.x), y = toY(p.y);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.strokeStyle = '#e8073f';
-      ctx.lineWidth = 2.5;
+      ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1]!, p1 = pts[i]!;
+        const mx = (toX(p0.x) + toX(p1.x)) / 2;
+        ctx.bezierCurveTo(mx, toY(p0.y), mx, toY(p1.y), toX(p1.x), toY(p1.y));
+      }
+      ctx.strokeStyle = isCrashed ? 'rgba(239,68,68,0.25)' : 'rgba(232,7,63,0.22)';
+      ctx.lineWidth = 8;
       ctx.lineJoin = 'round';
-      ctx.shadowColor = '#e8073f';
-      ctx.shadowBlur = isCrashed ? 4 : 8;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+
+      // ── Curve main line ──
+      ctx.beginPath();
+      ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1]!, p1 = pts[i]!;
+        const mx = (toX(p0.x) + toX(p1.x)) / 2;
+        ctx.bezierCurveTo(mx, toY(p0.y), mx, toY(p1.y), toX(p1.x), toY(p1.y));
+      }
+      ctx.strokeStyle = isCrashed ? '#ef4444' : '#e8073f';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = isCrashed ? '#ef4444' : '#ff2060';
+      ctx.shadowBlur = isCrashed ? 6 : 12;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // ── Glow dot at tip ──
+      // ── Smoke particles ──
       if (!isCrashed) {
+        if (Math.random() < 0.6) {
+          particlesRef.current.push({
+            id: particleIdRef.current++,
+            x: tipX - 6,
+            y: tipY + 2,
+            age: 0,
+            size: 2 + Math.random() * 3,
+          });
+        }
+        if (particlesRef.current.length > 60) particlesRef.current.shift();
+      }
+      particlesRef.current = particlesRef.current.filter(p => p.age < 1);
+      particlesRef.current.forEach(p => {
+        p.age += dt * 0.9;
+        p.x -= dt * 28;
+        p.y -= dt * 4;
+        const a = (1 - p.age) * 0.22;
+        const r = p.size * (1 + p.age * 1.8);
         ctx.beginPath();
-        ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,200,180,${a})`;
+        ctx.fill();
+      });
+
+      // ── Tip glow dot ──
+      if (!isCrashed) {
+        // outer ring
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 9, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(232,7,63,0.18)';
+        ctx.fill();
+        // inner dot
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 4.5, 0, Math.PI * 2);
         ctx.fillStyle = '#fff';
-        ctx.shadowColor = '#e8073f';
-        ctx.shadowBlur = 16;
+        ctx.shadowColor = '#ff2060';
+        ctx.shadowBlur = 18;
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      // ── Smoke / exhaust trail particles ──
-      if (!isCrashed && pts.length >= 2) {
-        particlesRef.current.push({
-          id: particleIdRef.current++,
-          x: tipX - 8,
-          y: tipY + 4,
-          age: 0,
-          size: 3 + Math.random() * 4,
+      // ── Crash explosion ──
+      if (isCrashed) {
+        const rings = [14, 22, 34];
+        rings.forEach((r, i) => {
+          ctx.beginPath();
+          ctx.arc(tipX, tipY, r, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(239,68,68,${0.35 - i * 0.1})`;
+          ctx.lineWidth = 2 - i * 0.4;
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 10;
+          ctx.stroke();
         });
-        if (particlesRef.current.length > 80) particlesRef.current.shift();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 20;
+        ctx.fill();
+        ctx.shadowBlur = 0;
       }
 
-      particlesRef.current = particlesRef.current.filter(p => p.age < 1);
-      particlesRef.current.forEach(p => {
-        p.age += dt * 0.7;
-        p.x -= dt * 35;
-        p.y += dt * 6;
-        const alpha = (1 - p.age) * 0.3;
-        const r = p.size * (1 + p.age * 2);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(220,200,200,${alpha})`;
-        ctx.fill();
-      });
-
-      // ── Compute tilt from last two curve points ──
+      // ── Tilt ──
       if (pts.length >= 2) {
         const prev = pts[pts.length - 2]!;
-        const dx = toX(lastPt.x) - toX(prev.x);
-        const dy = toY(lastPt.y) - toY(prev.y);
-        const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-        if (!isCrashed) {
-          setPlaneTilt(Math.max(-40, Math.min(5, angleDeg)));
-        } else {
-          setPlaneTilt(60);
-        }
+        const dx = toX(lastPt!.x) - toX(prev.x);
+        const dy = toY(lastPt!.y) - toY(prev.y);
+        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        setPlaneTilt(isCrashed ? 55 : Math.max(-38, Math.min(5, angle)));
       }
-
-      // Update plane overlay position — offset left so nose is at tip
       setPlanePct({ x: (tipX / W) * 100, y: (tipY / H) * 100 });
 
-      if (phase === 'running') rafRef.current = requestAnimationFrame(draw);
-      // One final frame on crash to render crashed state
-      if (phase === 'crashed' && !rafRef.current) rafRef.current = requestAnimationFrame(draw);
+      if (phase === 'running') animId = requestAnimationFrame(draw);
+      if (phase === 'crashed') animId = requestAnimationFrame(draw);
     };
 
-    rafRef.current = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(rafRef.current); rafRef.current = 0; };
+    animId = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(animId); };
   }, [phase, isCrashed]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 160 }}>
-      {/* Sunburst background */}
+    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 200 }}>
+      {/* Sunburst background — subtle */}
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: `url(${bgSun})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        opacity: isCrashed ? 0.06 : 0.10,
-        transition: 'opacity 0.4s',
+        backgroundSize: '110% 110%',
+        backgroundPosition: 'center bottom',
+        opacity: isCrashed ? 0.05 : 0.08,
+        transition: 'opacity 0.6s',
+        mixBlendMode: 'screen',
       }} />
       <canvas
         ref={canvasRef}
-        width={420}
-        height={210}
+        width={480}
+        height={240}
         style={{ width: '100%', height: '100%', display: 'block', position: 'relative' }}
       />
 
@@ -488,11 +542,12 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       {(phase === 'running' || phase === 'crashed') && planePct && (
         <div style={{
           position: 'absolute',
-          left: `${Math.min(planePct.x, 80)}%`,
-          top: `${Math.max(planePct.y - 14, 1)}%`,
+          left: `${Math.min(planePct.x, 82)}%`,
+          top: `${Math.max(planePct.y - 16, 0)}%`,
+          transform: 'translateX(-50%)',
           transition: isCrashed
-            ? 'left 0.4s ease-in, top 0.4s ease-in'
-            : 'left 0.12s linear, top 0.12s linear',
+            ? 'left 0.5s ease-in, top 0.5s ease-in'
+            : 'left 0.1s linear, top 0.1s linear',
           pointerEvents: 'none',
           zIndex: 10,
         }}>
@@ -503,43 +558,48 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       {/* Multiplier overlay */}
       <div style={{
         position: 'absolute',
-        top: '42%',
+        top: '44%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         textAlign: 'center',
         pointerEvents: 'none',
+        zIndex: 20,
       }}>
         {phase === 'waiting' && (
-          <div style={{ color: '#94a3b8', fontSize: 15, fontWeight: 600 }}>
-            <div style={{ marginBottom: 6 }}>Waiting for next round...</div>
+          <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 600 }}>
+            <div style={{ marginBottom: 8, letterSpacing: '0.04em' }}>Waiting for next round...</div>
             <CountdownBar />
           </div>
         )}
         {(phase === 'running' || phase === 'crashed') && (
           <>
             <div style={{
-              fontSize: 'clamp(38px, 11vw, 62px)',
+              fontSize: 'clamp(44px, 13vw, 70px)',
               fontWeight: 900,
               color: isCrashed ? '#ef4444' : '#ffffff',
               lineHeight: 1,
               letterSpacing: '-2px',
               fontVariantNumeric: 'tabular-nums',
               textShadow: isCrashed
-                ? '0 0 40px rgba(239,68,68,0.8)'
-                : '0 0 30px rgba(255,255,255,0.5)',
+                ? '0 0 50px rgba(239,68,68,0.9), 0 2px 8px rgba(0,0,0,0.8)'
+                : '0 0 40px rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.6)',
               animation: isCrashed ? 'crashShake 0.4s ease-out' : undefined,
             }}>
               {fmtMul(displayVal)}
             </div>
             {isCrashed && (
-              <div style={{ color: '#ef4444', fontWeight: 800, fontSize: 13, letterSpacing: '0.15em', marginTop: 4 }}>
+              <div style={{
+                color: '#ef4444', fontWeight: 900, fontSize: 12,
+                letterSpacing: '0.22em', marginTop: 6,
+                textShadow: '0 0 20px rgba(239,68,68,0.8)',
+              }}>
                 FLEW AWAY!
               </div>
             )}
           </>
         )}
         {phase === 'idle' && (
-          <div style={{ color: '#475569', fontSize: 22, fontWeight: 700 }}>—</div>
+          <div style={{ color: '#334155', fontSize: 20, fontWeight: 700 }}>—</div>
         )}
       </div>
     </div>
@@ -1148,6 +1208,7 @@ export default function CrashScreen() {
           borderRadius: 18,
           overflow: 'hidden',
           border: '1px solid rgba(255,255,255,0.06)',
+          height: 240,
           flexShrink: 0,
         }}>
           <CrashGraph phase={phase} multiplier={multiplier} crashPoint={crashPoint} />
