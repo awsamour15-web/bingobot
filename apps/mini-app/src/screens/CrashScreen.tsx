@@ -979,34 +979,11 @@ export default function CrashScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [depositModal, setDepositModal] = useState(false);
-  const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
   const playRoundSound = useCallback((kind: 'start' | 'finish') => {
     const audio = new Audio(crashSound);
-    audio.volume = kind === 'finish' ? 0.85 : 0.45;
+    audio.volume = kind === 'finish' ? 0.85 : 0.55;
     audio.currentTime = 0;
     void audio.play().catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const bgAudio = new Audio(crashSound);
-    bgAudio.loop = true;
-    bgAudio.volume = 0.06;
-    bgAudio.preload = 'auto';
-    ambientAudioRef.current = bgAudio;
-
-    const tryPlay = () => {
-      if (bgAudio.paused) {
-        void bgAudio.play().catch(() => {});
-      }
-    };
-
-    tryPlay();
-    window.addEventListener('pointerdown', tryPlay, { once: true });
-    return () => {
-      bgAudio.pause();
-      bgAudio.currentTime = 0;
-      window.removeEventListener('pointerdown', tryPlay);
-    };
   }, []);
 
   useEffect(() => {
