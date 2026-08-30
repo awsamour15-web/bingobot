@@ -239,12 +239,12 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
   // Initialise stars once
   useEffect(() => {
     if (starsRef.current.length) return;
-    starsRef.current = Array.from({ length: 80 }, () => ({
-      x: Math.random() * 420,
-      y: Math.random() * 210,
-      speed: 20 + Math.random() * 60,
-      size: 0.5 + Math.random() * 1.5,
-      alpha: 0.3 + Math.random() * 0.7,
+    starsRef.current = Array.from({ length: 120 }, () => ({
+      x: Math.random() * 480,
+      y: Math.random() * 240,
+      speed: 15 + Math.random() * 80,
+      size: 0.4 + Math.random() * 1.8,
+      alpha: 0.25 + Math.random() * 0.75,
     }));
   }, []);
 
@@ -290,45 +290,65 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
     if (!canvas) return;
     let lastFrameTime = Date.now();
     let animId = 0;
+    // For crash explosion animation
+    let crashAnimAge = 0;
 
     const draw = () => {
       const now = Date.now();
       const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
       lastFrameTime = now;
+      if (isCrashed) crashAnimAge = Math.min(crashAnimAge + dt * 1.8, 1);
 
       const ctx = canvas.getContext('2d')!;
       const W = canvas.width;
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // ── Background ──
+      // ─── 1. Background ────────────────────────────────────────────────────
       const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
       if (isCrashed) {
-        bgGrad.addColorStop(0, '#1a0408');
-        bgGrad.addColorStop(1, '#0d0204');
+        bgGrad.addColorStop(0, '#180305');
+        bgGrad.addColorStop(0.5, '#0e0205');
+        bgGrad.addColorStop(1, '#080102');
       } else {
-        bgGrad.addColorStop(0, '#0a0d1f');
-        bgGrad.addColorStop(1, '#060810');
+        bgGrad.addColorStop(0, '#08102a');
+        bgGrad.addColorStop(0.6, '#060b1c');
+        bgGrad.addColorStop(1, '#04070f');
       }
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // ── Stars ──
+      // ─── 2. Stars with trails ─────────────────────────────────────────────
+      const isRunning = phase === 'running';
       starsRef.current.forEach(s => {
-        if (phase === 'running') {
+        if (isRunning) {
           s.x -= s.speed * dt;
           if (s.x < 0) { s.x = W + 10; s.y = Math.random() * H; }
         }
-        const twinkle = s.alpha * (0.6 + 0.4 * Math.sin(now / 700 + s.x * 0.3));
+        const twinkle = s.alpha * (0.55 + 0.45 * Math.sin(now / 800 + s.x * 0.4));
+        // Trail for fast stars when running
+        if (isRunning && s.speed > 50) {
+          const trailLen = s.speed * 0.18;
+          const grad = ctx.createLinearGradient(s.x, s.y, s.x + trailLen, s.y);
+          grad.addColorStop(0, `rgba(180,210,255,${twinkle * 0.55})`);
+          grad.addColorStop(1, 'rgba(180,210,255,0)');
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x + trailLen, s.y);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = s.size * 0.8;
+          ctx.stroke();
+        }
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
         ctx.fillStyle = isCrashed
-          ? `rgba(255,160,160,${twinkle * 0.5})`
-          : `rgba(180,210,255,${twinkle})`;
+          ? `rgba(255,150,150,${twinkle * 0.45})`
+          : `rgba(190,215,255,${twinkle})`;
         ctx.fill();
       });
 
-      const padL = 38, padB = 22, padT = 16, padR = 12;
+      // ─── 3. Layout ────────────────────────────────────────────────────────
+      const padL = 42, padB = 26, padT = 14, padR = 10;
       const gW = W - padL - padR;
       const gH = H - padT - padB;
 
@@ -336,43 +356,59 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       const lastPt = pts[pts.length - 1];
       const maxT = lastPt ? Math.max(lastPt.x, 1) : 1;
       const rawMaxM = lastPt ? Math.max(lastPt.y, 1.5) : 2;
-      // Round up maxM to next nice level for stable grid
-      const levels = [2, 3, 5, 8, 10, 15, 20, 30, 50, 80, 100, 200, 500];
-      const maxM = levels.find(l => l >= rawMaxM * 1.15) ?? rawMaxM * 1.25;
+      const levels = [1.5, 2, 3, 5, 8, 10, 15, 20, 30, 50, 100, 200];
+      const maxM = levels.find(l => l >= rawMaxM * 1.18) ?? rawMaxM * 1.3;
 
       const toX = (t: number) => padL + (t / maxT) * gW;
       const toY = (m: number) => H - padB - ((m - 1) / Math.max(maxM - 1, 0.1)) * gH;
 
-      // ── Dashed grid lines + Y labels ──
-      const gridMultipliers = [1, 2, 3, 5, 10, 20, 50, 100].filter(m => m >= 1 && m <= maxM);
-      ctx.setLineDash([3, 5]);
+      // ─── 4. Grid ──────────────────────────────────────────────────────────
+      const yLevels = [1, 1.5, 2, 3, 5, 8, 10, 15, 20, 30, 50, 100, 200]
+        .filter(m => m >= 1 && m <= maxM);
+
+      // Vertical time grid lines
+      const timeTicks = Math.max(3, Math.floor(maxT / 5));
+      ctx.setLineDash([2, 6]);
       ctx.lineWidth = 0.5;
-      gridMultipliers.forEach(m => {
+      for (let i = 1; i <= timeTicks; i++) {
+        const t = (i / timeTicks) * maxT;
+        const x = toX(t);
+        ctx.strokeStyle = isCrashed ? 'rgba(255,60,60,0.08)' : 'rgba(80,120,255,0.10)';
+        ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
+        ctx.fillStyle = isCrashed ? 'rgba(255,120,120,0.35)' : 'rgba(80,140,255,0.40)';
+        ctx.font = '500 8px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${t.toFixed(0)}s`, x, H - padB + 10);
+      }
+
+      // Horizontal multiplier grid lines
+      yLevels.forEach(m => {
         const y = toY(m);
-        if (y < padT || y > H - padB + 4) return;
-        ctx.strokeStyle = isCrashed ? 'rgba(255,80,80,0.10)' : 'rgba(99,140,255,0.13)';
+        if (y < padT - 2 || y > H - padB + 4) return;
+        ctx.strokeStyle = isCrashed ? 'rgba(255,60,60,0.09)' : 'rgba(80,120,255,0.11)';
         ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-        // Label
-        ctx.fillStyle = isCrashed ? 'rgba(255,120,120,0.5)' : 'rgba(99,140,255,0.55)';
-        ctx.font = '600 9px Inter, system-ui, sans-serif';
+        ctx.fillStyle = isCrashed ? 'rgba(255,110,110,0.55)' : 'rgba(100,150,255,0.60)';
+        ctx.font = '600 8.5px Inter, system-ui';
         ctx.textAlign = 'right';
-        ctx.fillText(`${m}x`, padL - 4, y + 3.5);
+        ctx.fillText(`${m}x`, padL - 5, y + 3);
       });
       ctx.setLineDash([]);
 
-      // ── X axis baseline ──
-      ctx.strokeStyle = isCrashed ? 'rgba(255,80,80,0.25)' : 'rgba(99,140,255,0.22)';
+      // ─── 5. Axes ──────────────────────────────────────────────────────────
+      const axisColor = isCrashed ? 'rgba(255,80,80,0.30)' : 'rgba(80,130,255,0.28)';
+      ctx.strokeStyle = axisColor;
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(padL, H - padB);
-      ctx.lineTo(W - padR, H - padB);
-      ctx.stroke();
-
-      // ── Y axis ──
-      ctx.beginPath();
-      ctx.moveTo(padL, padT);
-      ctx.lineTo(padL, H - padB);
-      ctx.stroke();
+      // Y axis
+      ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.stroke();
+      // X axis
+      ctx.beginPath(); ctx.moveTo(padL, H - padB); ctx.lineTo(W - padR, H - padB); ctx.stroke();
+      // Axis tick marks
+      ctx.lineWidth = 0.7;
+      yLevels.forEach(m => {
+        const y = toY(m);
+        if (y < padT || y > H - padB) return;
+        ctx.beginPath(); ctx.moveTo(padL - 3, y); ctx.lineTo(padL, y); ctx.stroke();
+      });
 
       if (pts.length < 2) {
         animId = requestAnimationFrame(draw);
@@ -382,137 +418,185 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       const tipX = toX(lastPt!.x);
       const tipY = toY(lastPt!.y);
 
-      // ── Filled glow area under curve ──
+      // Helper: draw bezier path through points
+      const drawCurvePath = () => {
+        ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
+        for (let i = 1; i < pts.length; i++) {
+          const p0 = pts[i - 1]!, p1 = pts[i]!;
+          const cpx = (toX(p0.x) + toX(p1.x)) / 2;
+          ctx.bezierCurveTo(cpx, toY(p0.y), cpx, toY(p1.y), toX(p1.x), toY(p1.y));
+        }
+      };
+
+      // ─── 6. Filled area ───────────────────────────────────────────────────
       const fillGrad = ctx.createLinearGradient(0, tipY, 0, H - padB);
       if (isCrashed) {
-        fillGrad.addColorStop(0, 'rgba(239,68,68,0.35)');
-        fillGrad.addColorStop(0.6, 'rgba(239,68,68,0.08)');
+        fillGrad.addColorStop(0, 'rgba(239,68,68,0.38)');
+        fillGrad.addColorStop(0.45, 'rgba(200,30,30,0.12)');
         fillGrad.addColorStop(1, 'rgba(239,68,68,0)');
       } else {
-        fillGrad.addColorStop(0, 'rgba(232,7,63,0.30)');
-        fillGrad.addColorStop(0.5, 'rgba(232,7,63,0.08)');
+        fillGrad.addColorStop(0, 'rgba(232,7,63,0.32)');
+        fillGrad.addColorStop(0.4, 'rgba(232,7,63,0.10)');
         fillGrad.addColorStop(1, 'rgba(232,7,63,0)');
       }
       ctx.beginPath();
       ctx.moveTo(toX(pts[0]!.x), H - padB);
-      // Smooth bezier through points
-      for (let i = 1; i < pts.length; i++) {
-        const p0 = pts[i - 1]!, p1 = pts[i]!;
-        const mx = (toX(p0.x) + toX(p1.x)) / 2;
-        ctx.bezierCurveTo(mx, toY(p0.y), mx, toY(p1.y), toX(p1.x), toY(p1.y));
-      }
+      drawCurvePath();
       ctx.lineTo(tipX, H - padB);
       ctx.closePath();
       ctx.fillStyle = fillGrad;
       ctx.fill();
 
-      // ── Curve outer glow (wide, soft) ──
-      ctx.beginPath();
-      ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
-      for (let i = 1; i < pts.length; i++) {
-        const p0 = pts[i - 1]!, p1 = pts[i]!;
-        const mx = (toX(p0.x) + toX(p1.x)) / 2;
-        ctx.bezierCurveTo(mx, toY(p0.y), mx, toY(p1.y), toX(p1.x), toY(p1.y));
-      }
-      ctx.strokeStyle = isCrashed ? 'rgba(239,68,68,0.25)' : 'rgba(232,7,63,0.22)';
+      // ─── 7. Curve — outer glow pass 1 (widest, softest) ──────────────────
+      ctx.beginPath(); drawCurvePath();
+      ctx.strokeStyle = isCrashed ? 'rgba(239,68,68,0.12)' : 'rgba(255,30,80,0.14)';
+      ctx.lineWidth = 18; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // ─── 8. Curve — outer glow pass 2 ────────────────────────────────────
+      ctx.beginPath(); drawCurvePath();
+      ctx.strokeStyle = isCrashed ? 'rgba(239,68,68,0.22)' : 'rgba(255,30,80,0.26)';
       ctx.lineWidth = 8;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.shadowBlur = 0;
       ctx.stroke();
 
-      // ── Curve main line ──
-      ctx.beginPath();
-      ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
-      for (let i = 1; i < pts.length; i++) {
-        const p0 = pts[i - 1]!, p1 = pts[i]!;
-        const mx = (toX(p0.x) + toX(p1.x)) / 2;
-        ctx.bezierCurveTo(mx, toY(p0.y), mx, toY(p1.y), toX(p1.x), toY(p1.y));
+      // ─── 9. Curve — main bright line ─────────────────────────────────────
+      ctx.beginPath(); drawCurvePath();
+      ctx.strokeStyle = isCrashed ? '#f87171' : '#ff1a50';
+      ctx.lineWidth = 2.8;
+      ctx.shadowColor = isCrashed ? '#ef4444' : '#ff1a50';
+      ctx.shadowBlur = isCrashed ? 8 : 16;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // ─── 10. Altitude highlight line (horizontal from tip to Y axis) ──────
+      if (!isCrashed && lastPt) {
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = 'rgba(255,80,120,0.30)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(padL, tipY);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Current multiplier label on Y axis
+        const labelY = Math.max(padT + 8, Math.min(H - padB - 4, tipY + 4));
+        ctx.fillStyle = '#ff4070';
+        ctx.font = 'bold 9px Inter, system-ui';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${lastPt.y.toFixed(2)}x`, padL - 4, labelY);
       }
-      ctx.strokeStyle = isCrashed ? '#ef4444' : '#e8073f';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = isCrashed ? '#ef4444' : '#ff2060';
-      ctx.shadowBlur = isCrashed ? 6 : 12;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
 
-      // ── Smoke particles ──
+      // ─── 11. Engine fire / exhaust trail ─────────────────────────────────
       if (!isCrashed) {
-        if (Math.random() < 0.6) {
+        for (let i = 0; i < 2; i++) {
           particlesRef.current.push({
             id: particleIdRef.current++,
-            x: tipX - 6,
-            y: tipY + 2,
+            x: tipX - 4 + (Math.random() - 0.5) * 6,
+            y: tipY + 2 + (Math.random() - 0.5) * 4,
             age: 0,
-            size: 2 + Math.random() * 3,
+            size: 1.5 + Math.random() * 2.5,
           });
         }
-        if (particlesRef.current.length > 60) particlesRef.current.shift();
+        if (particlesRef.current.length > 80) particlesRef.current.splice(0, particlesRef.current.length - 80);
       }
       particlesRef.current = particlesRef.current.filter(p => p.age < 1);
       particlesRef.current.forEach(p => {
-        p.age += dt * 0.9;
-        p.x -= dt * 28;
-        p.y -= dt * 4;
-        const a = (1 - p.age) * 0.22;
-        const r = p.size * (1 + p.age * 1.8);
+        p.age += dt * 1.1;
+        p.x -= dt * 40;
+        p.y += (Math.random() - 0.5) * dt * 6;
+        const life = 1 - p.age;
+        const r = p.size * (1 + p.age * 2.2);
+        // Color shifts orange → dim gray as it ages
+        const red = Math.round(255 * life * 0.9);
+        const green = Math.round(140 * life * 0.5);
+        const blue = Math.round(60 * life * 0.3);
         ctx.beginPath();
         ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,200,180,${a})`;
+        ctx.fillStyle = `rgba(${red},${green},${blue},${life * 0.55})`;
         ctx.fill();
       });
 
-      // ── Tip glow dot ──
+      // ─── 12. Tip pulse rings ──────────────────────────────────────────────
       if (!isCrashed) {
-        // outer ring
+        const pulseT = (now % 900) / 900;
+        const pulseR = 6 + pulseT * 14;
+        const pulseA = (1 - pulseT) * 0.35;
         ctx.beginPath();
-        ctx.arc(tipX, tipY, 9, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(232,7,63,0.18)';
-        ctx.fill();
-        // inner dot
-        ctx.beginPath();
-        ctx.arc(tipX, tipY, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = '#ff2060';
-        ctx.shadowBlur = 18;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
+        ctx.arc(tipX, tipY, pulseR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,30,80,${pulseA})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-      // ── Crash explosion ──
-      if (isCrashed) {
-        const rings = [14, 22, 34];
-        rings.forEach((r, i) => {
-          ctx.beginPath();
-          ctx.arc(tipX, tipY, r, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(239,68,68,${0.35 - i * 0.1})`;
-          ctx.lineWidth = 2 - i * 0.4;
-          ctx.shadowColor = '#ef4444';
-          ctx.shadowBlur = 10;
-          ctx.stroke();
-        });
-        ctx.shadowBlur = 0;
+        // Core glow dot
         ctx.beginPath();
         ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ef4444';
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ff1a50';
+        ctx.shadowBlur = 22;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Outer halo
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 10, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,30,80,0.12)';
+        ctx.fill();
+      }
+
+      // ─── 13. Crash explosion ──────────────────────────────────────────────
+      if (isCrashed && lastPt) {
+        const age = crashAnimAge;
+        // Shockwave rings — expand outward and fade
+        [1, 0.7, 0.45].forEach((delay, i) => {
+          const a = Math.max(0, age - (1 - delay) * 0.3);
+          const ring = a * (30 + i * 18);
+          const alpha = Math.max(0, (1 - a) * (0.55 - i * 0.12));
+          if (ring <= 0) return;
+          ctx.beginPath();
+          ctx.arc(tipX, tipY, ring, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255,${60 - i * 10},${40 - i * 10},${alpha})`;
+          ctx.lineWidth = 3 - i * 0.6;
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 12;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        });
+        // Debris sparks
+        const sparkCount = 8;
+        for (let i = 0; i < sparkCount; i++) {
+          const angle = (i / sparkCount) * Math.PI * 2;
+          const dist = crashAnimAge * 28;
+          const sx = tipX + Math.cos(angle) * dist;
+          const sy = tipY + Math.sin(angle) * dist;
+          const alpha = Math.max(0, 1 - crashAnimAge * 1.3);
+          ctx.beginPath();
+          ctx.arc(sx, sy, 2.5 - crashAnimAge * 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,${80 + i * 10},40,${alpha})`;
+          ctx.shadowColor = '#ff4040';
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+        // Core flash
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, Math.max(0.5, 7 * (1 - crashAnimAge * 0.6)), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,80,60,${Math.max(0, 0.9 - crashAnimAge * 0.8)})`;
+        ctx.shadowColor = '#ff2020';
+        ctx.shadowBlur = 24;
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      // ── Tilt ──
+      // ─── 14. Plane tilt ───────────────────────────────────────────────────
       if (pts.length >= 2) {
-        const prev = pts[pts.length - 2]!;
+        const prev = pts[Math.max(0, pts.length - 4)]!;
         const dx = toX(lastPt!.x) - toX(prev.x);
         const dy = toY(lastPt!.y) - toY(prev.y);
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-        setPlaneTilt(isCrashed ? 55 : Math.max(-38, Math.min(5, angle)));
+        setPlaneTilt(isCrashed ? 58 : Math.max(-42, Math.min(4, angle)));
       }
       setPlanePct({ x: (tipX / W) * 100, y: (tipY / H) * 100 });
 
-      if (phase === 'running') animId = requestAnimationFrame(draw);
-      if (phase === 'crashed') animId = requestAnimationFrame(draw);
+      if (phase === 'running' || phase === 'crashed') animId = requestAnimationFrame(draw);
     };
 
     animId = requestAnimationFrame(draw);
