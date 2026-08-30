@@ -700,6 +700,19 @@ interface BetPanelProps {
   cashingOut: boolean;
 }
 
+function adjBtnStyle(enabled: boolean): React.CSSProperties {
+  return {
+    width: 36, height: 36, borderRadius: '50%',
+    border: 'none',
+    background: 'rgba(255,255,255,0.10)',
+    color: enabled ? '#fff' : '#475569',
+    fontSize: 22, fontWeight: 400,
+    cursor: enabled ? 'pointer' : 'default',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    lineHeight: 1,
+  };
+}
+
 function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut }: BetPanelProps) {
   const [tab, setTab] = useState<'bet' | 'auto'>('bet');
   const [amount, setAmount] = useState(4);
