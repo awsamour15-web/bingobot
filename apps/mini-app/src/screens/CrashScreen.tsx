@@ -628,7 +628,7 @@ function HistoryChips({ items }: { items: CrashHistoryEntry[] }) {
   );
 }
 
-// ─── Bet Panel ────────────────────────────────────────────────────────────────
+// ─── Bet Panel (matches screenshot style) ─────────────────────────────────────
 
 interface BetPanelProps {
   phase: Phase;
@@ -642,8 +642,8 @@ interface BetPanelProps {
 
 function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashingOut }: BetPanelProps) {
   const [tab, setTab] = useState<'bet' | 'auto'>('bet');
-  const [amount, setAmount] = useState(5);
-  const QUICK = [5, 10, 40, 100];
+  const [amount, setAmount] = useState(4);
+  const QUICK = [4, 10, 40, 100];
 
   const [autoRounds, setAutoRounds] = useState(5);
   const [autoCashoutAt, setAutoCashoutAt] = useState(2.0);
@@ -657,27 +657,18 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
   useEffect(() => {
     const prev = prevPhaseRef.current;
     prevPhaseRef.current = phase;
-
     if (!autoActiveRef.current) return;
     if (phase !== 'waiting') return;
-
     const isNewRound = prev !== 'waiting';
     const isFirstActivation = autoBetPendingRef.current;
-
     if (isNewRound || isFirstActivation) {
       autoBetPendingRef.current = false;
       if (autoRoundsLeftRef.current > 0 && !myBet && !placing) {
         onBet(amount);
         autoRoundsLeftRef.current -= 1;
         setAutoRoundsLeft(autoRoundsLeftRef.current);
-        if (autoRoundsLeftRef.current <= 0) {
-          setAutoActive(false);
-          autoActiveRef.current = false;
-        }
-      } else if (autoRoundsLeftRef.current <= 0) {
-        setAutoActive(false);
-        autoActiveRef.current = false;
-      }
+        if (autoRoundsLeftRef.current <= 0) { setAutoActive(false); autoActiveRef.current = false; }
+      } else if (autoRoundsLeftRef.current <= 0) { setAutoActive(false); autoActiveRef.current = false; }
     }
   }, [phase, myBet, placing]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -691,19 +682,15 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
     }
   }, [multiplier, phase, autoActive, myBet, autoCashoutAt, onCashout]);
 
-  useEffect(() => {
-    if (phase === 'waiting') hasCashedOutRef.current = false;
-  }, [phase]);
+  useEffect(() => { if (phase === 'waiting') hasCashedOutRef.current = false; }, [phase]);
 
   const startAuto = () => {
-    const rounds = autoRounds;
-    autoRoundsLeftRef.current = rounds;
+    autoRoundsLeftRef.current = autoRounds;
     autoActiveRef.current = true;
     autoBetPendingRef.current = phase === 'waiting';
-    setAutoRoundsLeft(rounds);
+    setAutoRoundsLeft(autoRounds);
     setAutoActive(true);
   };
-
   const stopAuto = () => {
     autoActiveRef.current = false;
     autoBetPendingRef.current = false;
@@ -718,218 +705,144 @@ function BetPanel({ phase, multiplier, myBet, onBet, onCashout, placing, cashing
 
   return (
     <div style={{
-      background: 'linear-gradient(180deg, rgba(15,23,42,0.95), rgba(15,23,42,0.72))',
-      border: '1px solid rgba(148,163,184,0.12)',
-      borderRadius: 22,
+      background: '#1a1f2e',
+      borderRadius: 16,
       padding: '12px 12px 14px',
-      boxShadow: '0 12px 40px rgba(15, 23, 42, 0.35)',
-      backdropFilter: 'blur(8px)',
+      border: '1px solid rgba(255,255,255,0.07)',
     }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-      }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+      {/* Tabs + LIVE badge */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {(['bet', 'auto'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
-              padding: '7px 14px',
-              borderRadius: 999,
-              border: 'none',
-              background: tab === t ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'transparent',
+              padding: '7px 20px', borderRadius: 999, border: 'none',
+              background: tab === t ? 'linear-gradient(135deg, #f97316, #e8073f)' : 'transparent',
               color: tab === t ? '#fff' : '#64748b',
-              fontWeight: 800,
-              fontSize: 12,
-              cursor: 'pointer',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
+              fontWeight: 800, fontSize: 13, cursor: 'pointer',
             }}>{t === 'bet' ? 'Bet' : 'Auto'}</button>
           ))}
         </div>
         <div style={{
-          padding: '5px 8px',
-          borderRadius: 999,
-          background: 'rgba(239,68,68,0.08)',
-          border: '1px solid rgba(239,68,68,0.22)',
-          color: '#fca5a5',
-          fontSize: 10,
-          fontWeight: 800,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
+          padding: '5px 12px', borderRadius: 999,
+          background: 'rgba(180,0,40,0.25)', border: '1px solid rgba(232,7,63,0.4)',
+          color: '#ff6b8a', fontSize: 11, fontWeight: 800, letterSpacing: '0.06em',
         }}>
-          {phase === 'waiting' ? 'Open' : phase === 'running' ? 'Live' : 'Closed'}
+          {phase === 'waiting' ? 'OPEN' : phase === 'running' ? 'LIVE' : 'CLOSED'}
         </div>
       </div>
 
       {tab === 'bet' ? (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <button onClick={() => adj(-1)} disabled={!canBet} style={adjBtnStyle(canBet)}>−</button>
-              <div style={{ flex: 1, textAlign: 'center', fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
-                {amount.toFixed(2)}
-              </div>
-              <button onClick={() => adj(1)} disabled={!canBet} style={adjBtnStyle(canBet)}>+</button>
+        <>
+          {/* Amount row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <button onClick={() => adj(-1)} disabled={!canBet} style={adjBtnStyle(canBet)}>−</button>
+            <div style={{ flex: 1, textAlign: 'center', fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+              {amount.toFixed(2)}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {QUICK.map(q => (
-                <button key={q} onClick={() => canBet && setAmount(q)} style={{
-                  padding: '7px 0',
-                  borderRadius: 10,
-                  border: '1px solid rgba(148,163,184,0.18)',
-                  background: amount === q ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.04)',
-                  color: amount === q ? '#fff' : '#94a3b8',
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: canBet ? 'pointer' : 'default',
-                  opacity: canBet ? 1 : 0.5,
-                }}>{q} ETB</button>
-              ))}
-            </div>
+            <button onClick={() => adj(1)} disabled={!canBet} style={adjBtnStyle(canBet)}>+</button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 142 }}>
-            {canCashout ? (
-              <button onClick={onCashout} style={{
-                width: '100%', padding: '14px 10px', borderRadius: 16, border: 'none',
-                background: 'linear-gradient(135deg, #10b981, #22c55e)',
-                color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
-                textAlign: 'center', lineHeight: 1.3,
-                boxShadow: '0 0 22px rgba(34,197,94,0.45)',
-                animation: 'cashoutPulse 1s ease-in-out infinite',
-              }}>
-                {cashingOut ? '...' : <>Cash Out<br /><span style={{ fontSize: 12 }}>{(myBet!.betAmount * multiplier).toFixed(2)} ETB</span></>}
-              </button>
-            ) : alreadyCashedOut ? (
-              <button disabled style={{
-                width: '100%', padding: '14px 10px', borderRadius: 16, border: 'none',
-                background: 'rgba(34,197,94,0.12)', color: '#34d399',
-                fontSize: 12, fontWeight: 800, textAlign: 'center', lineHeight: 1.3,
-              }}>
-                Cashed out<br />{fmtMul(myBet!.cashoutAt!)}
-              </button>
-            ) : (
-              <button onClick={() => canBet && onBet(amount)} disabled={!canBet} style={{
-                width: '100%', padding: '14px 10px', borderRadius: 16, border: 'none',
-                background: canBet ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'rgba(255,255,255,0.06)',
-                color: canBet ? '#fff' : '#475569', fontSize: 14, fontWeight: 900,
+          {/* Quick picks 2×2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+            {QUICK.map(q => (
+              <button key={q} onClick={() => canBet && setAmount(q)} style={{
+                padding: '10px 0', borderRadius: 10, border: 'none',
+                background: amount === q ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+                color: amount === q ? '#fff' : '#94a3b8',
+                fontSize: 13, fontWeight: 700,
                 cursor: canBet ? 'pointer' : 'default',
-                textAlign: 'center', lineHeight: 1.3,
-                boxShadow: canBet ? '0 0 18px rgba(239,68,68,0.35)' : 'none',
-              }}>
-                {placing ? '...' : <>{phase === 'running' ? 'Bet Next' : 'Place Bet'}<br /><span style={{ fontSize: 12 }}>{amount.toFixed(2)} ETB</span></>}
-              </button>
-            )}
+              }}>{q} ETB</button>
+            ))}
           </div>
-        </div>
+
+          {/* Action button */}
+          {canCashout ? (
+            <button onClick={onCashout} style={{
+              width: '100%', padding: '16px', borderRadius: 12, border: 'none',
+              background: '#e8073f',
+              color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer',
+              lineHeight: 1.25, textAlign: 'center',
+              animation: 'cashoutPulse 1s ease-in-out infinite',
+            }}>
+              {cashingOut ? '...' : <><div>Cash Out</div><div style={{ fontSize: 13, opacity: 0.9 }}>{(myBet!.betAmount * multiplier).toFixed(2)} ETB</div></>}
+            </button>
+          ) : alreadyCashedOut ? (
+            <button disabled style={{
+              width: '100%', padding: '16px', borderRadius: 12, border: 'none',
+              background: 'rgba(34,197,94,0.15)', color: '#4ade80',
+              fontSize: 14, fontWeight: 800, textAlign: 'center',
+            }}>
+              ✓ Cashed out {fmtMul(myBet!.cashoutAt!)}
+            </button>
+          ) : (
+            <button onClick={() => canBet && onBet(amount)} disabled={!canBet} style={{
+              width: '100%', padding: '16px', borderRadius: 12, border: 'none',
+              background: canBet ? '#22c55e' : 'rgba(255,255,255,0.07)',
+              color: canBet ? '#fff' : '#475569',
+              fontSize: 16, fontWeight: 900, cursor: canBet ? 'pointer' : 'default',
+              lineHeight: 1.25, textAlign: 'center',
+            }}>
+              {placing ? '...' : <><div>Bet</div><div style={{ fontSize: 13, opacity: 0.9 }}>{amount.toFixed(2)} ETB</div></>}
+            </button>
+          )}
+        </>
       ) : (
-        <div>
+        /* Auto tab */
+        <>
           {autoActive && (
             <div style={{
-              textAlign: 'center', fontSize: 12, fontWeight: 800,
-              color: '#fbbf24', marginBottom: 10,
-              background: 'rgba(251,191,36,0.08)', borderRadius: 10, padding: '6px 8px',
-              border: '1px solid rgba(251,191,36,0.22)',
+              textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#fbbf24',
+              background: 'rgba(251,191,36,0.08)', borderRadius: 8, padding: '5px 8px',
+              border: '1px solid rgba(251,191,36,0.2)', marginBottom: 10,
             }}>
-              Auto running — {autoRoundsLeft} round{autoRoundsLeft !== 1 ? 's' : ''} left
+              Auto — {autoRoundsLeft} round{autoRoundsLeft !== 1 ? 's' : ''} left
             </div>
           )}
-
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Bet amount</div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Bet</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={() => adj(-1)} disabled={autoActive} style={adjBtnStyle(!autoActive)}>−</button>
-              <div style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 900, color: '#fff' }}>
-                {amount.toFixed(2)}
-              </div>
+              <div style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 900, color: '#fff' }}>{amount.toFixed(2)}</div>
               <button onClick={() => adj(1)} disabled={autoActive} style={adjBtnStyle(!autoActive)}>+</button>
             </div>
           </div>
-
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Auto cashout at</div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Auto cashout at</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button disabled={autoActive} onClick={() => setAutoCashoutAt(v => Math.max(1.1, parseFloat((v - 0.1).toFixed(2))))} style={adjBtnStyle(!autoActive)}>−</button>
-              <div style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 900, color: '#fbbf24' }}>
-                {autoCashoutAt.toFixed(2)}x
-              </div>
+              <div style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 900, color: '#fbbf24' }}>{autoCashoutAt.toFixed(2)}x</div>
               <button disabled={autoActive} onClick={() => setAutoCashoutAt(v => parseFloat((v + 0.1).toFixed(2)))} style={adjBtnStyle(!autoActive)}>+</button>
             </div>
-            <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-              {[1.5, 2, 3, 5, 10].map(v => (
-                <button key={v} disabled={autoActive} onClick={() => setAutoCashoutAt(v)} style={{
-                  flex: 1, padding: '5px 0', borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: autoCashoutAt === v ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.04)',
-                  color: autoCashoutAt === v ? '#fbbf24' : '#64748b',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  cursor: autoActive ? 'default' : 'pointer',
-                }}>{v}x</button>
-              ))}
-            </div>
           </div>
-
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Rounds</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button disabled={autoActive} onClick={() => setAutoRounds(r => Math.max(1, r - 1))} style={adjBtnStyle(!autoActive)}>−</button>
-              <div style={{ flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 900, color: '#fff' }}>
-                {autoRounds}
-              </div>
-              <button disabled={autoActive} onClick={() => setAutoRounds(r => Math.min(100, r + 1))} style={adjBtnStyle(!autoActive)}>+</button>
-            </div>
-            <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Rounds</div>
+            <div style={{ display: 'flex', gap: 5 }}>
               {[3, 5, 10, 20, 50].map(v => (
                 <button key={v} disabled={autoActive} onClick={() => setAutoRounds(v)} style={{
-                  flex: 1, padding: '5px 0', borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: autoRounds === v ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.04)',
+                  flex: 1, padding: '7px 0', borderRadius: 8, border: 'none',
+                  background: autoRounds === v ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.07)',
                   color: autoRounds === v ? '#fca5a5' : '#64748b',
-                  fontSize: 10,
-                  fontWeight: 800,
+                  fontSize: 11, fontWeight: 700,
                   cursor: autoActive ? 'default' : 'pointer',
                 }}>{v}</button>
               ))}
             </div>
           </div>
-
           {autoActive ? (
             <button onClick={stopAuto} style={{
-              width: '100%', padding: '13px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-              color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
-              boxShadow: '0 0 16px rgba(239,68,68,0.4)',
-            }}>
-              Stop Auto
-            </button>
+              width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+              background: '#e8073f', color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+            }}>Stop Auto</button>
           ) : (
             <button onClick={startAuto} style={{
-              width: '100%', padding: '13px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-              color: '#1f2937', fontSize: 14, fontWeight: 900, cursor: 'pointer',
-              boxShadow: '0 0 16px rgba(251,191,36,0.35)',
-            }}>
-              Start Auto ({autoRounds} rounds)
-            </button>
+              width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+              background: '#22c55e', color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+            }}>Start Auto ({autoRounds} rounds)</button>
           )}
-        </div>
+        </>
       )}
     </div>
   );
-}
-
-function adjBtnStyle(enabled: boolean): React.CSSProperties {
-  return {
-    width: 34, height: 34, borderRadius: '50%',
-    border: '1px solid rgba(255,255,255,0.12)',
-    background: 'rgba(255,255,255,0.07)',
-    color: enabled ? '#fff' : '#475569',
-    fontSize: 20, fontWeight: 700,
-    cursor: enabled ? 'pointer' : 'default',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  };
 }
 
 // ─── Bet table row ────────────────────────────────────────────────────────────
