@@ -635,13 +635,14 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
         style={{ width: '100%', height: '100%', display: 'block', position: 'relative' }}
       />
 
-      {/* Plane follows curve tip */}
+      {/* Plane follows curve tip — nose (right edge) aligned to curve tip */}
       {(phase === 'running' || phase === 'crashed') && planePct && (
         <div style={{
           position: 'absolute',
-          left: `${Math.min(planePct.x, 82)}%`,
-          top: `${Math.max(planePct.y - 16, 0)}%`,
-          transform: 'translateX(-50%)',
+          left: `${Math.min(planePct.x, 88)}%`,
+          top: `${planePct.y}%`,
+          // Shift left by full width so nose (right side of image) sits on the tip
+          transform: 'translateX(-100%) translateY(-35%)',
           transition: isCrashed
             ? 'left 0.5s ease-in, top 0.5s ease-in'
             : 'left 0.1s linear, top 0.1s linear',
