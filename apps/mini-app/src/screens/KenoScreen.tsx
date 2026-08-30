@@ -26,51 +26,18 @@ function calcPossibleWin(bet: number, p: number): number {
 }
 
 function Countdown({ endsAt }: { endsAt: number }) {
-  const [d, setD] = useState("00:00");
+  const [d, setD] = useState("00 : 00");
   useEffect(() => {
     const tick = () => {
       const rem = Math.max(0, endsAt - Date.now());
       const s = Math.ceil(rem / 1000);
-      setD(String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"));
+      setD(String(Math.floor(s / 60)).padStart(2, "0") + " : " + String(s % 60).padStart(2, "0"));
     };
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, [endsAt]);
   return <span>{d}</span>;
-}
-
-function CenterBall({ number }: { number: number | null }) {
-  return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"16px 0 10px", background:"radial-gradient(ellipse at 50% 60%, rgba(0,255,120,0.07) 0%, transparent 70%)" }}>
-      <div style={{ position:"relative", width:110, height:110 }}>
-        <svg style={{ position:"absolute", inset:0 }} width="110" height="110" viewBox="0 0 110 110">
-          <circle cx="55" cy="55" r="52" fill="none" stroke="rgba(0,200,80,0.12)" strokeWidth="1"/>
-          <circle cx="55" cy="55" r="42" fill="none" stroke="rgba(0,200,80,0.07)" strokeWidth="1" strokeDasharray="4 6"/>
-        </svg>
-        <div style={{ position:"absolute", inset:10, borderRadius:"50%", background:number!==null?"radial-gradient(circle at 38% 35%, #3a5a4a 0%, #1a3328 40%, #0d1f18 100%)":"radial-gradient(circle at 38% 35%, #1e2d24 0%, #0d1a12 100%)", border:"2px solid rgba(0,180,70,0.25)", boxShadow:number!==null?"0 4px 24px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.1),0 0 20px rgba(0,200,80,0.2)":"0 4px 20px rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          {number !== null
-            ? <span style={{ fontSize:36, fontWeight:900, color:"#e8f5ee", textShadow:"0 2px 8px rgba(0,0,0,0.6)", letterSpacing:"-1px", fontFamily:"Arial Black,sans-serif" }}>{number}</span>
-            : <span style={{ fontSize:24, color:"rgba(255,255,255,0.08)" }}>-</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DrawnRow({ numbers, pickedSet }: { numbers: number[]; pickedSet: Set<number> }) {
-  const show = numbers.slice(0, -1).slice(-8);
-  if (!show.length) return null;
-  return (
-    <div style={{ display:"flex", gap:6, padding:"0 14px 10px", overflowX:"auto", scrollbarWidth:"none" }}>
-      {show.map((n, i) => {
-        const hit = pickedSet.has(n);
-        return (
-          <div key={i} style={{ flexShrink:0, width:34, height:34, borderRadius:"50%", background:hit?"radial-gradient(circle at 40% 35%,#2a5a3a,#143322)":"radial-gradient(circle at 40% 35%,#253040,#141e2a)", border:`2px solid ${hit?"rgba(0,200,80,0.6)":"rgba(255,255,255,0.12)"}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:hit?"#4ade80":"#94a3b8", boxShadow:hit?"0 0 10px rgba(0,200,80,0.3)":"none" }}>{n}</div>
-        );
-      })}
-    </div>
-  );
 }
 
 function PossibleWinCard({ betAmount, pickedNumbers }: { betAmount: number; pickedNumbers: number[] }) {
@@ -81,42 +48,56 @@ function PossibleWinCard({ betAmount, pickedNumbers }: { betAmount: number; pick
   for (let m = 1; m <= p; m++) { const mul = getMultiplier(p, m); if (mul > 0) rows.push({ match: m, mul }); }
   const show = rows.slice(-3);
   return (
-    <div style={{ margin:"0 14px 10px", background:"rgba(0,0,0,0.35)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"10px 14px", position:"relative" }}>
-      <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:6 }}>
-        <span style={{ fontSize:14, color:"#9ab8a8", fontWeight:700 }}>Possible win</span>
-        <span style={{ fontSize:18, color:"#4ade80", fontWeight:900 }}>{possible.toFixed(0)}</span>
+    <div style={{ margin:"0 10px 8px", background:"rgba(20,30,24,0.95)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px", position:"relative" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+        <span style={{ fontSize:15, color:"#c8ddd2", fontWeight:700 }}>Possible win</span>
+        <span style={{ fontSize:17, color:"#4ade80", fontWeight:900 }}>{possible.toFixed(0)}</span>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"auto auto", gap:"2px 20px", marginBottom:8 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"50px 1fr", gap:"2px 0", marginBottom:8 }}>
         <span style={{ fontSize:11, color:"#6a8a78" }}>Match</span>
-        <span style={{ fontSize:11, color:"#6a8a78" }}>{show.map(r => r.match).join("   ")}</span>
+        <span style={{ fontSize:11, color:"#8ab89a" }}>{show.map(r => r.match).join("        ")}</span>
         <span style={{ fontSize:11, color:"#6a8a78" }}>Pays</span>
-        <span style={{ fontSize:11, color:"#c8e6d4" }}>{show.map(r => "x"+r.mul).join("   ")}</span>
+        <span style={{ fontSize:11, color:"#c8e6d4" }}>{show.map(r => "x"+r.mul).join("      ")}</span>
       </div>
       <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
         {pickedNumbers.map(n => (
-          <div key={n} style={{ minWidth:30, height:26, borderRadius:4, padding:"0 5px", background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.16)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#e2e8f0" }}>{n}</div>
+          <div key={n} style={{ minWidth:30, height:26, borderRadius:5, padding:"0 6px", background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.18)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#e2e8f0" }}>{n}</div>
         ))}
       </div>
-      <div style={{ position:"absolute", top:10, right:12, width:20, height:20, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"#6a8a78" }}>?</div>
+      <div style={{ position:"absolute", top:10, right:12, width:22, height:22, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.22)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:"#8ab89a", fontWeight:700 }}>?</div>
     </div>
   );
 }
 
+// Small colored dot shown on some grid cells (decorative, like in screenshot)
+const DOT_CELLS: Record<number, string> = {
+  3:"#ef4444", 6:"#ef4444", 10:"rgba(100,180,255,0.8)", 18:"#ef4444",
+  27:"rgba(100,180,255,0.8)", 36:"rgba(100,180,255,0.8)", 41:"rgba(100,180,255,0.8)", 50:"#ef4444",
+  71:"rgba(100,180,255,0.8)", 78:"#ef4444",
+};
+
 function NumberGrid({ picked, drawn, phase, onToggle }: { picked: Set<number>; drawn: Set<number>; phase: KenoState["phase"]; onToggle: (n: number) => void }) {
   const canPick = phase === "betting";
   return (
-    <div style={{ display:"grid", gridTemplateColumns:"repeat(10, 1fr)", gap:3, padding:"8px 10px" }}>
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(10, 1fr)", gap:3, padding:"6px 8px" }}>
       {Array.from({ length: TOTAL_NUMBERS }, (_, i) => i + 1).map(n => {
         const isPicked = picked.has(n), isDrawn = drawn.has(n);
         const isHit = isPicked && isDrawn;
         const isMiss = isPicked && !isDrawn && (phase === "drawing" || phase === "finished");
-        let bg = "rgba(255,255,255,0.05)", border = "rgba(255,255,255,0.1)", color = "#94a3b8", shadow = "none";
-        if (isHit) { bg="#1a4a2a"; border="#22c55e"; color="#4ade80"; shadow="0 0 8px rgba(34,197,94,0.4)"; }
-        else if (isMiss) { bg="rgba(255,255,255,0.04)"; border="rgba(255,255,255,0.06)"; color="#475569"; }
-        else if (isDrawn) { bg="rgba(59,130,246,0.18)"; border="rgba(59,130,246,0.4)"; color="#93c5fd"; }
-        else if (isPicked) { bg="#1a3a2a"; border="#22c55e"; color="#e2e8f0"; shadow="0 0 6px rgba(34,197,94,0.25)"; }
+        let bg = "rgba(255,255,255,0.055)", border = "rgba(255,255,255,0.09)", color = "#9ab8a8", shadow = "none";
+        if (isHit) { bg="#1a5c30"; border="#22c55e"; color="#4ade80"; shadow="0 0 8px rgba(34,197,94,0.45)"; }
+        else if (isMiss) { bg="rgba(255,255,255,0.03)"; border="rgba(255,255,255,0.05)"; color="#3a5a48"; }
+        else if (isDrawn) { bg="rgba(59,130,246,0.15)"; border="rgba(59,130,246,0.35)"; color="#93c5fd"; }
+        else if (isPicked) { bg="#1a5c30"; border="#22c55e"; color="#e2e8f0"; shadow="0 0 6px rgba(34,197,94,0.3)"; }
+        const dot = DOT_CELLS[n];
         return (
-          <button key={n} onClick={() => canPick && onToggle(n)} disabled={!canPick} style={{ height:32, borderRadius:5, background:bg, border:`1px solid ${border}`, color, fontSize:12, fontWeight:700, cursor:canPick?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s", boxShadow:shadow, outline:"none", padding:0, fontFamily:"inherit", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>{n}</button>
+          <button key={n} onClick={() => canPick && onToggle(n)} disabled={!canPick}
+            style={{ position:"relative", height:34, borderRadius:5, background:bg, border:`1px solid ${border}`, color, fontSize:12, fontWeight:700, cursor:canPick?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.12s", boxShadow:shadow, outline:"none", padding:0, fontFamily:"inherit", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+            {n}
+            {dot && !isPicked && !isDrawn && (
+              <span style={{ position:"absolute", top:3, right:3, width:5, height:5, borderRadius:"50%", background:dot, boxShadow:`0 0 3px ${dot}` }} />
+            )}
+          </button>
         );
       })}
     </div>
@@ -125,17 +106,22 @@ function NumberGrid({ picked, drawn, phase, onToggle }: { picked: Set<number>; d
 
 function BetControls({ amount, onChange }: { amount: number; onChange: (v: number) => void }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:0, padding:"6px 10px" }}>
-      <button onClick={() => onChange(Math.max(MIN_BET, amount - 1))} style={{ width:36, height:36, borderRadius:"8px 0 0 8px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRight:"none", color:"#fff", fontSize:20, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>-</button>
-      <div style={{ flex:1, height:36, background:"rgba(0,0,0,0.3)", border:"1px solid rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:800, color:"#fff", letterSpacing:"-0.3px" }}>{amount.toFixed(2)}</div>
-      <button onClick={() => onChange(Math.min(MAX_BET, amount + 1))} style={{ width:36, height:36, borderRadius:"0 8px 8px 0", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderLeft:"none", color:"#fff", fontSize:20, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
-      <button onClick={() => onChange(Math.min(MAX_BET, amount * 2))} style={{ marginLeft:6, padding:"0 12px", height:36, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#94a3b8", fontSize:12, fontWeight:800, cursor:"pointer" }}>X2</button>
-      <button onClick={() => onChange(MAX_BET)} style={{ marginLeft:4, padding:"0 12px", height:36, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#94a3b8", fontSize:12, fontWeight:800, cursor:"pointer" }}>MAX</button>
-      <button style={{ marginLeft:4, width:36, height:36, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#94a3b8", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>x</button>
+    <div style={{ display:"flex", alignItems:"center", gap:0, padding:"6px 8px" }}>
+      <button onClick={() => onChange(Math.max(MIN_BET, amount - 1))} style={{ width:38, height:40, borderRadius:"8px 0 0 8px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRight:"none", color:"#fff", fontSize:22, fontWeight:300, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
+      <div style={{ flex:1, height:40, background:"rgba(0,0,0,0.3)", border:"1px solid rgba(255,255,255,0.12)", borderLeft:"none", borderRight:"none", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:800, color:"#fff", letterSpacing:"-0.3px" }}>{amount.toFixed(2)}</div>
+      <button onClick={() => onChange(Math.min(MAX_BET, amount + 1))} style={{ width:38, height:40, borderRadius:"0 8px 8px 0", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderLeft:"none", color:"#fff", fontSize:22, fontWeight:300, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
+      <button onClick={() => onChange(Math.min(MAX_BET, amount * 2))} style={{ marginLeft:6, padding:"0 12px", height:40, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#8ab89a", fontSize:12, fontWeight:800, cursor:"pointer", flexShrink:0 }}>X2</button>
+      <button onClick={() => onChange(MAX_BET)} style={{ marginLeft:4, padding:"0 12px", height:40, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#8ab89a", fontSize:12, fontWeight:800, cursor:"pointer", flexShrink:0 }}>MAX</button>
+      {/* Gear icon */}
+      <button style={{ marginLeft:4, width:40, height:40, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#8ab89a", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   );
 }
-
 
 type HistEntry = { id: string; drawnNumbers: number[]; finishedAt: string; myBet: { pickedNumbers: number[]; betAmount: number; matched: number | null; payout: number | null } | null };
 function HistoryTab() {
@@ -231,12 +217,9 @@ export default function KenoScreen() {
   const [access, setAccess] = useState<"loading"|"allowed"|"denied">("loading");
   const [balance, setBalance] = useState<number|null>(null);
   const [roundId, setRoundId] = useState<string|null>(null);
-  const [roundCounter, setRoundCounter] = useState("0/20");
   const [phase, setPhase] = useState<KenoState["phase"]>("idle");
   const [bettingEndsAt, setBettingEndsAt] = useState(0);
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
-  const [latestNum, setLatestNum] = useState<number|null>(null);
-  const latestTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const [myBet, setMyBet] = useState<KenoState["myBet"]>(null);
   const [liveBets, setLiveBets] = useState<KenoState["bets"]>([]);
   const [picked, setPicked] = useState<number[]>([]);
@@ -244,6 +227,7 @@ export default function KenoScreen() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [tab, setTab] = useState<"game"|"history"|"results"|"statistics">("game");
+  const latestTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   useEffect(() => {
     checkKenoAccess().then(r => setAccess(r.allowed?"allowed":"denied")).catch(() => setAccess("denied"));
@@ -260,8 +244,6 @@ export default function KenoScreen() {
         setBettingEndsAt(new Date(state.round.bettingEndsAt).getTime());
         const nums = state.round.drawnNumbers ?? [];
         setDrawnNumbers(nums);
-        setRoundCounter(`${nums.length}/${TOTAL_DRAWN}`);
-        if (nums.length > 0) setLatestNum(nums[nums.length-1] ?? null);
       }
       if (state.myBet) { setMyBet(state.myBet); setPicked(state.myBet.pickedNumbers); }
     }).catch(() => {});
@@ -271,18 +253,16 @@ export default function KenoScreen() {
     if (access !== "allowed") return;
     const onBettingOpen = ({ roundId: rid, endsAt }: { roundId: string; endsAt: number }) => {
       setRoundId(rid); setPhase("betting"); setBettingEndsAt(endsAt);
-      setDrawnNumbers([]); setLatestNum(null); setRoundCounter(`0/${TOTAL_DRAWN}`);
-      setMyBet(null); setLiveBets([]); setError(null); setPicked([]);
+      setDrawnNumbers([]); setMyBet(null); setLiveBets([]); setError(null); setPicked([]);
     };
     const onNumberDrawn = ({ roundId: rid, number, drawnSoFar }: { roundId: string; number: number; drawnSoFar: number[] }) => {
       if (rid !== roundId && roundId !== null) return;
-      setPhase("drawing"); setDrawnNumbers([...drawnSoFar]); setLatestNum(number);
-      setRoundCounter(`${drawnSoFar.length}/${TOTAL_DRAWN}`);
+      setPhase("drawing"); setDrawnNumbers([...drawnSoFar]);
       if (latestTimer.current) clearTimeout(latestTimer.current);
-      latestTimer.current = setTimeout(() => setLatestNum(null), 1800);
+      latestTimer.current = setTimeout(() => {}, 1800);
     };
     const onRoundFinished = ({ drawnNumbers: nums }: { roundId: string; drawnNumbers: number[] }) => {
-      setPhase("finished"); setDrawnNumbers(nums); setRoundCounter(`${TOTAL_DRAWN}/${TOTAL_DRAWN}`);
+      setPhase("finished"); setDrawnNumbers(nums);
       getKenoState().then(state => {
         if (state.myBet) { setMyBet(state.myBet); setTab("results"); }
         setLiveBets(state.bets);
@@ -325,6 +305,7 @@ export default function KenoScreen() {
   const drawnSet = new Set(drawnNumbers);
   const pickedSet = new Set(picked);
   const canBet = phase === "betting" && !myBet && !placing && picked.length > 0;
+  const roundShortId = roundId ? roundId.slice(-5) : null;
 
   if (access === "loading") return <div style={{ minHeight:"100dvh", background:"#0a1410" }} />;
   if (access === "denied") return (
@@ -337,129 +318,133 @@ export default function KenoScreen() {
   );
 
   return (
-    <div style={{ minHeight:"100dvh", background:"linear-gradient(180deg,#0a1410 0%,#071009 100%)", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden" }}>
+    <div style={{ minHeight:"100dvh", background:"linear-gradient(180deg,#0d1a14 0%,#08110d 100%)", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden" }}>
 
-      {/* Top bar */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 8px", background:"rgba(0,0,0,0.4)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
-        <button onClick={() => navigate("/")} style={{ background:"none", border:"none", color:"#9ab8a8", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4, padding:0 }}>&#8592; Back</button>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ background:"rgba(0,0,0,0.4)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"4px 10px", display:"flex", alignItems:"center", gap:6 }}>
+      {/* Top bar: Back | balance + ID | icons */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 8px", background:"rgba(0,0,0,0.45)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+        <button onClick={() => navigate("/")} style={{ background:"none", border:"none", color:"#c8d8d0", fontSize:14, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:5, padding:0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"5px 10px", display:"flex", alignItems:"center", gap:5 }}>
             <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>{balance !== null ? balance.toFixed(2) : "0.00"}</span>
             <span style={{ fontSize:11, color:"#6a8a78", fontWeight:600 }}>ETB</span>
           </div>
-          {roundId && (
-            <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"#6a8a78" }}>
-              <span>ID: {roundId.slice(-5)}</span>
-              <span style={{ width:8, height:8, borderRadius:"50%", background:phase==="betting"||phase==="drawing"?"#22c55e":"#475569", display:"inline-block", boxShadow:phase==="betting"||phase==="drawing"?"0 0 6px #22c55e":"none" }} />
+          {roundShortId && (
+            <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#9ab8a8", fontWeight:600 }}>
+              <span>ID: {roundShortId}</span>
+              <span style={{ width:16, height:16, borderRadius:"50%", border:"2px solid #22c55e", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </span>
             </div>
           )}
         </div>
-        <div style={{ fontSize:13, color:"#6a8a78", fontWeight:700 }}>{roundCounter}</div>
-      </div>
-
-      {/* FAST KENO logo + timer */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 14px 0", flexShrink:0 }}>
-        <div style={{ lineHeight:1 }}>
-          <div style={{ fontSize:11, fontWeight:900, color:"#22c55e", letterSpacing:"0.05em" }}>FAST</div>
-          <div style={{ fontSize:16, fontWeight:900, color:"#22c55e" }}>KENO</div>
-        </div>
-        <div style={{ fontSize:18, fontWeight:900, color:"#e2e8f0", letterSpacing:"2px", fontFamily:"monospace" }}>
-          {phase==="betting"&&bettingEndsAt>0 ? <Countdown endsAt={bettingEndsAt} />
-            : phase==="drawing" ? <span style={{ fontSize:13, color:"#3b82f6", letterSpacing:"0.05em" }}>DRAWING</span>
-            : phase==="finished" ? <span style={{ fontSize:13, color:"#22c55e" }}>FINISHED</span>
-            : <span style={{ color:"#475569" }}>- : -</span>}
-        </div>
-        <div style={{ display:"flex", gap:10 }}>
-          <span style={{ fontSize:18, color:"#4a6a58", cursor:"pointer" }}>&#9776;</span>
-          <span style={{ fontSize:18, color:"#4a6a58", cursor:"pointer" }}>&#128172;</span>
-        </div>
-      </div>
-
-      {/* Center area */}
-      <div style={{ flexShrink:0 }}>
-        {phase==="betting" && picked.length>0 ? (
-          <div style={{ padding:"10px 0 0" }}><PossibleWinCard betAmount={betAmount} pickedNumbers={picked} /></div>
-        ) : phase==="betting" ? (
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"20px 0 10px", background:"radial-gradient(ellipse at 50% 60%, rgba(0,200,80,0.06) 0%, transparent 70%)" }}>
-            <div style={{ position:"relative", width:110, height:110, marginBottom:8 }}>
-              <svg style={{ position:"absolute", inset:0 }} width="110" height="110" viewBox="0 0 110 110">
-                <circle cx="55" cy="55" r="52" fill="none" stroke="rgba(0,200,80,0.1)" strokeWidth="1"/>
-                <circle cx="55" cy="55" r="42" fill="none" stroke="rgba(0,200,80,0.06)" strokeWidth="1" strokeDasharray="4 6"/>
-              </svg>
-              <div style={{ position:"absolute", inset:10, borderRadius:"50%", background:"radial-gradient(circle at 38% 35%,#1e2d24 0%,#0d1a12 100%)", border:"2px solid rgba(0,180,70,0.15)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}>
-                <span style={{ fontSize:12, fontWeight:800, color:"#6a8a78" }}>Pick</span>
-                <span style={{ fontSize:22, fontWeight:900, color:"#22c55e" }}>10</span>
-                <span style={{ fontSize:9, color:"#4a6a58" }}>numbers</span>
-              </div>
-            </div>
-            <div style={{ fontSize:16, fontWeight:800, color:"#e2e8f0", marginBottom:2 }}>Choose {MAX_PICKS} numbers</div>
-            <div style={{ fontSize:13, color:"#22c55e", fontWeight:700 }}>From 1 to {TOTAL_NUMBERS}</div>
-          </div>
-        ) : (
-          <>
-            <CenterBall number={latestNum ?? (drawnNumbers.length>0 ? drawnNumbers[drawnNumbers.length-1] ?? null : null)} />
-            <DrawnRow numbers={drawnNumbers} pickedSet={pickedSet} />
-          </>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.07)", flexShrink:0 }}>
-        {(["game","history","results","statistics"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:"10px 4px", background:"none", border:"none", borderBottom:tab===t?"2px solid #22c55e":"2px solid transparent", color:tab===t?"#22c55e":"#4a6a58", fontSize:10, fontWeight:800, cursor:"pointer", textTransform:"uppercase", letterSpacing:"0.06em" }}>
-            {t==="game"?"GAME":t==="history"?"HISTORY":t==="results"?"RESULTS":"STATS"}
+        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <button style={{ background:"none", border:"none", cursor:"pointer", color:"#6a8a78", padding:0, display:"flex", alignItems:"center" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
-        ))}
+          <button style={{ background:"none", border:"none", cursor:"pointer", color:"#6a8a78", padding:0, display:"flex", alignItems:"center" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
       </div>
 
-      {/* Tab counts */}
-      {tab==="game" && (
-        <div style={{ display:"flex", gap:20, padding:"8px 14px", fontSize:12, color:"#4a6a58", fontWeight:700, borderBottom:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
-          <span>All <span style={{ color:"#6a8a78" }}>{liveBets.length+(myBet?1:0)}</span></span>
-          <span>My Tickets <span style={{ color:"#6a8a78" }}>{myBet?1:0}</span></span>
-          <span>My Bets <span style={{ color:"#6a8a78" }}>{myBet?1:0}</span></span>
+      {/* FAST KENO row + timer centered */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 14px 6px", flexShrink:0 }}>
+        <div style={{ lineHeight:1.1 }}>
+          <div style={{ fontSize:10, fontWeight:900, color:"#fff", letterSpacing:"0.12em" }}>FAST</div>
+          <div style={{ fontSize:18, fontWeight:900, color:"#22c55e", letterSpacing:"0.04em", marginTop:-1 }}>KENO</div>
         </div>
+        {/* Timer pill */}
+        <div style={{ background:"rgba(0,0,0,0.55)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"center", minWidth:100 }}>
+          <span style={{ fontSize:18, fontWeight:900, color:"#e2e8f0", letterSpacing:"3px", fontFamily:"monospace" }}>
+            {phase === "betting" && bettingEndsAt > 0
+              ? <Countdown endsAt={bettingEndsAt} />
+              : phase === "drawing"
+              ? <span style={{ fontSize:13, color:"#3b82f6", letterSpacing:"0.05em" }}>DRAWING</span>
+              : phase === "finished"
+              ? <span style={{ fontSize:13, color:"#22c55e" }}>DONE</span>
+              : <span style={{ color:"#475569" }}>--:--</span>}
+          </span>
+        </div>
+        <div style={{ width:60 }} />
+      </div>
+
+      {/* Possible win card (when picks made) */}
+      {picked.length > 0 && phase === "betting" && (
+        <PossibleWinCard betAmount={betAmount} pickedNumbers={picked} />
       )}
 
-      {/* Scrollable content */}
-      <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
-        {tab==="game" && (
-          <>
-            {myBet && <MyBetFeedRow myBet={myBet} drawnSet={drawnSet} />}
-            {liveBets.map((b,i) => <BetFeedRow key={i} bet={b} drawnSet={drawnSet} />)}
-            {!myBet && liveBets.length===0 && <div style={{ textAlign:"center", padding:"32px 16px", color:"#2a4a38", fontSize:13 }}>No bets yet this round</div>}
-          </>
-        )}
-        {tab==="history" && <HistoryTab />}
-        {tab==="results" && <ResultsTab myBet={myBet} drawnNumbers={drawnNumbers} />}
-        {tab==="statistics" && <div style={{ textAlign:"center", padding:40, color:"#475569" }}>Statistics coming soon</div>}
+      {/* Number Grid - always visible */}
+      <div style={{ flexShrink:0, borderTop:"1px solid rgba(255,255,255,0.05)", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+        <NumberGrid picked={pickedSet} drawn={drawnSet} phase={phase} onToggle={togglePick} />
       </div>
 
-      {/* Betting panel */}
-      {phase==="betting" && !myBet && tab==="game" && (
-        <div style={{ flexShrink:0, background:"rgba(5,12,8,0.97)", borderTop:"1px solid rgba(255,255,255,0.07)" }}>
-          <NumberGrid picked={pickedSet} drawn={drawnSet} phase={phase} onToggle={togglePick} />
+      {/* Bet controls row */}
+      {phase === "betting" && !myBet && (
+        <div style={{ flexShrink:0, background:"rgba(8,15,10,0.97)" }}>
           <BetControls amount={betAmount} onChange={setBetAmount} />
-          {error && <div style={{ padding:"4px 10px", fontSize:12, color:"#f87171" }}>{error}</div>}
-          <div style={{ padding:"6px 10px", paddingBottom:"max(10px, env(safe-area-inset-bottom))" }}>
-            <button onClick={() => { void handleBet(); }} disabled={!canBet} style={{ width:"100%", padding:"16px", borderRadius:10, border:"none", background:canBet?"linear-gradient(180deg,#2d8a50 0%,#1a6a38 100%)":"rgba(255,255,255,0.06)", color:canBet?"#fff":"#475569", fontSize:18, fontWeight:900, cursor:canBet?"pointer":"default", letterSpacing:"0.05em", boxShadow:canBet?"0 4px 20px rgba(0,160,70,0.3)":"none", transition:"all 0.2s" }}>
+          {error && <div style={{ padding:"2px 10px 4px", fontSize:12, color:"#f87171" }}>{error}</div>}
+          <div style={{ padding:"4px 8px", paddingBottom:"max(8px, env(safe-area-inset-bottom))" }}>
+            <button onClick={() => { void handleBet(); }} disabled={!canBet} style={{ width:"100%", padding:"15px", borderRadius:10, border:"none", background:canBet?"#2d7a45":"rgba(255,255,255,0.06)", color:canBet?"#fff":"#475569", fontSize:18, fontWeight:900, cursor:canBet?"pointer":"default", letterSpacing:"0.08em", boxShadow:canBet?"0 2px 16px rgba(0,160,70,0.35)":"none", transition:"background 0.2s" }}>
               {placing ? "PLACING..." : "BET"}
             </button>
           </div>
         </div>
       )}
 
-      {phase==="betting" && myBet && (
+      {phase === "betting" && myBet && (
         <div style={{ flexShrink:0, padding:"12px 14px", background:"rgba(0,100,50,0.15)", borderTop:"1px solid rgba(0,180,70,0.2)", textAlign:"center", fontSize:13, color:"#4ade80", fontWeight:700 }}>
-          Bet placed - waiting for draw
+          Bet placed – waiting for draw
         </div>
       )}
 
-      {(phase==="idle"||phase==="finished") && !myBet && (
-        <div style={{ flexShrink:0, padding:"14px", background:"rgba(0,0,0,0.3)", borderTop:"1px solid rgba(255,255,255,0.06)", textAlign:"center", fontSize:13, color:"#4a6a58" }}>
-          {phase==="finished" ? "Round finished - next round starting soon" : "Waiting for next round..."}
+      {(phase === "idle" || phase === "finished") && !myBet && (
+        <div style={{ flexShrink:0, padding:"12px 14px", background:"rgba(0,0,0,0.3)", borderTop:"1px solid rgba(255,255,255,0.06)", textAlign:"center", fontSize:13, color:"#4a6a58" }}>
+          {phase === "finished" ? "Round finished – next round starting soon" : "Waiting for next round..."}
         </div>
       )}
+
+      {/* Tabs */}
+      <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.07)", borderTop:"1px solid rgba(255,255,255,0.06)", flexShrink:0, background:"rgba(0,0,0,0.3)" }}>
+        {([
+          { key:"game", label:"GAME", icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> },
+          { key:"history", label:"HISTORY", icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.96"/></svg> },
+          { key:"results", label:"RESULTS", icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> },
+          { key:"statistics", label:"STATISTICS", icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+        ] as const).map(({ key, label, icon }) => (
+          <button key={key} onClick={() => setTab(key)} style={{ flex:1, padding:"10px 2px", background:"none", border:"none", borderBottom:tab===key?"2px solid #22c55e":"2px solid transparent", color:tab===key?"#22c55e":"#4a6a58", fontSize:9, fontWeight:800, cursor:"pointer", textTransform:"uppercase", letterSpacing:"0.05em", display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <span style={{ color:tab===key?"#22c55e":"#4a6a58" }}>{icon}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab counts row */}
+      {tab === "game" && (
+        <div style={{ display:"flex", gap:0, padding:"7px 14px", fontSize:12, color:"#4a6a58", fontWeight:600, borderBottom:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
+          <span style={{ marginRight:20 }}>All <span style={{ color:"#8ab89a" }}>{liveBets.length + (myBet ? 1 : 0)}</span></span>
+          <span style={{ marginRight:20 }}>My Tickets <span style={{ color:"#8ab89a" }}>{myBet ? 1 : 0}</span></span>
+          <span>My Bets <span style={{ color:"#8ab89a" }}>{myBet ? 1 : 0}</span></span>
+        </div>
+      )}
+
+      {/* Scrollable feed */}
+      <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
+        {tab === "game" && (
+          <>
+            {myBet && <MyBetFeedRow myBet={myBet} drawnSet={drawnSet} />}
+            {liveBets.map((b, i) => <BetFeedRow key={i} bet={b} drawnSet={drawnSet} />)}
+            {!myBet && liveBets.length === 0 && (
+              <div style={{ padding:"10px 14px", fontSize:12, color:"#4a6a58" }}>h***s</div>
+            )}
+          </>
+        )}
+        {tab === "history" && <HistoryTab />}
+        {tab === "results" && <ResultsTab myBet={myBet} drawnNumbers={drawnNumbers} />}
+        {tab === "statistics" && <div style={{ textAlign:"center", padding:40, color:"#475569" }}>Statistics coming soon</div>}
+      </div>
     </div>
   );
 }
