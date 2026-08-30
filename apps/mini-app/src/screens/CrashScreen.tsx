@@ -348,7 +348,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       });
 
       // ─── 3. Layout ────────────────────────────────────────────────────────
-      const padL = 42, padB = 26, padT = 14, padR = 10;
+      const padL = 8, padB = 10, padT = 10, padR = 8;
       const gW = W - padL - padR;
       const gH = H - padT - padB;
 
@@ -361,54 +361,6 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
 
       const toX = (t: number) => padL + (t / maxT) * gW;
       const toY = (m: number) => H - padB - ((m - 1) / Math.max(maxM - 1, 0.1)) * gH;
-
-      // ─── 4. Grid ──────────────────────────────────────────────────────────
-      const yLevels = [1, 1.5, 2, 3, 5, 8, 10, 15, 20, 30, 50, 100, 200]
-        .filter(m => m >= 1 && m <= maxM);
-
-      // Vertical time grid lines
-      const timeTicks = Math.max(3, Math.floor(maxT / 5));
-      ctx.setLineDash([2, 6]);
-      ctx.lineWidth = 0.5;
-      for (let i = 1; i <= timeTicks; i++) {
-        const t = (i / timeTicks) * maxT;
-        const x = toX(t);
-        ctx.strokeStyle = isCrashed ? 'rgba(255,60,60,0.08)' : 'rgba(80,120,255,0.10)';
-        ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
-        ctx.fillStyle = isCrashed ? 'rgba(255,120,120,0.35)' : 'rgba(80,140,255,0.40)';
-        ctx.font = '500 8px Inter, system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${t.toFixed(0)}s`, x, H - padB + 10);
-      }
-
-      // Horizontal multiplier grid lines
-      yLevels.forEach(m => {
-        const y = toY(m);
-        if (y < padT - 2 || y > H - padB + 4) return;
-        ctx.strokeStyle = isCrashed ? 'rgba(255,60,60,0.09)' : 'rgba(80,120,255,0.11)';
-        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-        ctx.fillStyle = isCrashed ? 'rgba(255,110,110,0.55)' : 'rgba(100,150,255,0.60)';
-        ctx.font = '600 8.5px Inter, system-ui';
-        ctx.textAlign = 'right';
-        ctx.fillText(`${m}x`, padL - 5, y + 3);
-      });
-      ctx.setLineDash([]);
-
-      // ─── 5. Axes ──────────────────────────────────────────────────────────
-      const axisColor = isCrashed ? 'rgba(255,80,80,0.30)' : 'rgba(80,130,255,0.28)';
-      ctx.strokeStyle = axisColor;
-      ctx.lineWidth = 1;
-      // Y axis
-      ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.stroke();
-      // X axis
-      ctx.beginPath(); ctx.moveTo(padL, H - padB); ctx.lineTo(W - padR, H - padB); ctx.stroke();
-      // Axis tick marks
-      ctx.lineWidth = 0.7;
-      yLevels.forEach(m => {
-        const y = toY(m);
-        if (y < padT || y > H - padB) return;
-        ctx.beginPath(); ctx.moveTo(padL - 3, y); ctx.lineTo(padL, y); ctx.stroke();
-      });
 
       if (pts.length < 2) {
         animId = requestAnimationFrame(draw);
@@ -481,23 +433,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // ─── 10. Altitude highlight line (horizontal from tip to Y axis) ──────
-      if (!isCrashed && lastPt) {
-        ctx.setLineDash([3, 4]);
-        ctx.strokeStyle = 'rgba(255,80,120,0.30)';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(padL, tipY);
-        ctx.lineTo(tipX, tipY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // Current multiplier label on Y axis
-        const labelY = Math.max(padT + 8, Math.min(H - padB - 4, tipY + 4));
-        ctx.fillStyle = '#ff4070';
-        ctx.font = 'bold 9px Inter, system-ui';
-        ctx.textAlign = 'right';
-        ctx.fillText(`${lastPt.y.toFixed(2)}x`, padL - 4, labelY);
-      }
+      // ─── 10. No altitude line — clean look ───────────────────────────────
 
       // ─── 11. Engine fire / exhaust trail ─────────────────────────────────
       if (!isCrashed) {
@@ -635,14 +571,13 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
         style={{ width: '100%', height: '100%', display: 'block', position: 'relative' }}
       />
 
-      {/* Plane follows curve tip — nose (right edge) aligned to curve tip */}
+      {/* Plane — bottom-center of image sits on curve tip */}
       {(phase === 'running' || phase === 'crashed') && planePct && (
         <div style={{
           position: 'absolute',
           left: `${Math.min(planePct.x, 88)}%`,
-          top: `${planePct.y}%`,
-          // Shift left by full width so nose (right side of image) sits on the tip
-          transform: 'translateX(-100%) translateY(-35%)',
+          top: `${Math.max(Math.min(planePct.y, 90), 2)}%`,
+          transform: 'translate(-50%, -100%)',
           transition: isCrashed
             ? 'left 0.5s ease-in, top 0.5s ease-in'
             : 'left 0.1s linear, top 0.1s linear',
