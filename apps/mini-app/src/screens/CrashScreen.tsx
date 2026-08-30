@@ -279,7 +279,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
     const t = (Date.now() - startTimeRef.current) / 1000;
     const pts = pointsRef.current;
     const last = pts[pts.length - 1];
-    if (!last || Math.abs(multiplier - last.y) > 0.01 || t - last.x > 0.3) {
+    if (!last || Math.abs(multiplier - last.y) > 0.02 || t - last.x > 0.15) {
       pts.push({ x: t, y: multiplier });
       if (pts.length > 300) pts.splice(0, pts.length - 300);
     }
@@ -418,13 +418,26 @@ function CrashGraph({ phase, multiplier, crashPoint }: {
       const tipX = toX(lastPt!.x);
       const tipY = toY(lastPt!.y);
 
-      // Helper: draw bezier path through points
+      // Helper: draw smooth Catmull-Rom spline through points
       const drawCurvePath = () => {
+        if (pts.length < 2) return;
         ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
-        for (let i = 1; i < pts.length; i++) {
-          const p0 = pts[i - 1]!, p1 = pts[i]!;
-          const cpx = (toX(p0.x) + toX(p1.x)) / 2;
-          ctx.bezierCurveTo(cpx, toY(p0.y), cpx, toY(p1.y), toX(p1.x), toY(p1.y));
+        if (pts.length === 2) {
+          ctx.lineTo(toX(pts[1]!.x), toY(pts[1]!.y));
+          return;
+        }
+        // Catmull-Rom → cubic bezier conversion
+        for (let i = 0; i < pts.length - 1; i++) {
+          const p0 = pts[Math.max(i - 1, 0)]!;
+          const p1 = pts[i]!;
+          const p2 = pts[i + 1]!;
+          const p3 = pts[Math.min(i + 2, pts.length - 1)]!;
+          const tension = 0.5;
+          const cp1x = toX(p1.x) + (toX(p2.x) - toX(p0.x)) * tension / 3;
+          const cp1y = toY(p1.y) + (toY(p2.y) - toY(p0.y)) * tension / 3;
+          const cp2x = toX(p2.x) - (toX(p3.x) - toX(p1.x)) * tension / 3;
+          const cp2y = toY(p2.y) - (toY(p3.y) - toY(p1.y)) * tension / 3;
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, toX(p2.x), toY(p2.y));
         }
       };
 
