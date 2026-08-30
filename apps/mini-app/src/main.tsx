@@ -5,13 +5,17 @@ import WebApp from '@twa-dev/sdk';
 import './index.css';
 import App from './App';
 
+// Telegram Web injects tgWebApp* params into the pathname (e.g. /tgWebAppData=...).
+// This must be fixed BEFORE React/HashRouter mounts or the router matches no routes.
+if (window.location.pathname.includes('tgWebApp')) {
+  window.history.replaceState(null, '', '/' + window.location.hash);
+}
+
 function Root() {
   useEffect(() => {
     WebApp.ready();
-    WebApp.expand(); // Request full screen / expanded mode
+    WebApp.expand();
     // Only clear stale session on fresh app open, not on user-triggered reloads.
-    // We detect a reload via the navigation type: 'reload' means the user hit refresh,
-    // in which case we keep all sessionStorage so they stay on the same game screen.
     const isReload = performance?.navigation?.type === 1 ||
       (performance?.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';
 
@@ -30,8 +34,6 @@ function Root() {
     }
   }, []);
 
-  // Telegram Web injects tgWebApp* params into the pathname, which breaks HashRouter.
-  // Pass basename="/" so the router only cares about the hash, ignoring the polluted pathname.
   return (
     <HashRouter>
       <App />

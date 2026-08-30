@@ -1536,7 +1536,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
               outcome: 'pending_approval', amountExpected: depositAmount, amountParsed: parsed.amount,
             });
             await ctx.reply(
-              `⏳ ትዕዛዝዎ ተቀብሏል።\n\nየ ${depositAmount} ብር ማስያዣ ለአስተዳዳሪ ማረጋገጫ ቀርቧል። ከጥቂት ጊዜ ገደማ ሂሳቡ ይጨምርልዎታል።\n\n✅ Deposit of ${depositAmount} ETB received and is pending admin approval.\n\nRef: ${parsed.txNumber}`,
+              `⏳ እየተሰራ ነው...\n\nየ ${depositAmount} ብር ክፍያዎ ተቀብለናል እና እየተሰራ ነው። ከጥቂት ጊዜ ውስጥ ሂሳቡ ይጨምርልዎታል።\n\n⏳ Processing your deposit of ${depositAmount} ETB. Your balance will be updated shortly.\n\nRef: ${parsed.txNumber}`,
             );
             return;
           }

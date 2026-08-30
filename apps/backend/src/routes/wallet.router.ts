@@ -227,7 +227,7 @@ router.post('/deposit/manual', async (req: Request, res: Response): Promise<void
       pending_approval: true,
       amount,
       txNumber: validation.txNumber,
-      message: `⏳ Your deposit of ${amount} ETB has been received and is pending admin approval. You will be notified once it is approved.`,
+      message: `⏳ Processing your deposit of ${amount} ETB. Your balance will be updated shortly.`,
     });
     return;
   }
