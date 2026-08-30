@@ -1282,8 +1282,8 @@ export default function CrashScreen() {
           <CrashGraph phase={phase} multiplier={multiplier} crashPoint={crashPoint} />
         </div>
 
-        {/* Bet panels — side by side */}
-        <div style={{ padding: '0 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {/* Bet panel */}
+        <div style={{ padding: '0 12px' }}>
           <BetPanel
             phase={phase}
             multiplier={multiplier}
@@ -1292,15 +1292,6 @@ export default function CrashScreen() {
             onCashout={() => handleCashout(1)}
             placing={placing1}
             cashingOut={cashingOut1}
-          />
-          <BetPanel
-            phase={phase}
-            multiplier={multiplier}
-            myBet={myBet2}
-            onBet={(amt) => void handleBet(2, amt)}
-            onCashout={() => handleCashout(2)}
-            placing={placing2}
-            cashingOut={cashingOut2}
           />
         </div>
 
