@@ -812,6 +812,109 @@ function KenoAccessSection() {
   );
 }
 
+// ── Plinko Access Control ─────────────────────────────────────────────────────
+function PlinkoAccessSection() {
+  const [mode, setMode] = useState<'all' | 'allowlist'>('allowlist');
+  const [usernames, setUsernames] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fb, setFb] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    getConfig()
+      .then((data) => {
+        const val = data.find((e) => e.key === 'plinko_allowed_usernames')?.value ?? '';
+        const trimmed = val.trim();
+        if (trimmed === 'all') {
+          setMode('all');
+          setUsernames('');
+        } else {
+          setMode('allowlist');
+          setUsernames(trimmed);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true); setFb(null);
+    try {
+      const value = mode === 'all' ? 'all' : usernames.trim();
+      await updateConfig('plinko_allowed_usernames', value);
+      setFb({
+        type: 'success',
+        msg: mode === 'all'
+          ? 'Plinko is now open to all players.'
+          : `Allowlist saved. Only listed usernames can access Plinko.`,
+      });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally { setSaving(false); }
+  }
+
+  const previewList = usernames.split(',').map(s => s.trim()).filter(Boolean);
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader
+        title="🎱 Plinko Access Control"
+        subtitle="Control who can see and play Plinko. Useful for beta testing before a full rollout."
+      />
+      {loading ? <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+
+          <div style={{ display: 'flex', gap: 24 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} />
+              Open to all players
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="radio" checked={mode === 'allowlist'} onChange={() => setMode('allowlist')} />
+              Allowlist only (beta)
+            </label>
+          </div>
+
+          {mode === 'allowlist' && (
+            <Field label="Usernames (comma-separated)">
+              <input
+                style={inputCss}
+                type="text"
+                placeholder="e.g. kanu_1921, other_user"
+                value={usernames}
+                onChange={(e) => { setUsernames(e.target.value); setFb(null); }}
+                disabled={saving}
+              />
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 4 }}>
+                Only players with these exact usernames will see and play Plinko.
+              </div>
+              {previewList.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  {previewList.map((u) => (
+                    <span key={u} style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                      background: 'rgba(129,140,248,0.15)', border: '1px solid rgba(129,140,248,0.35)',
+                      color: '#818cf8',
+                    }}>
+                      @{u}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Field>
+          )}
+
+          <div>
+            <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   return (
     <div className="fade-in">
@@ -820,6 +923,7 @@ export function SettingsPage() {
       <CartelaLimitSection />
       <ChannelSettingsSection />
       <KenoAccessSection />
+      <PlinkoAccessSection />
       <DepositAccountsSection />
       <ConfigSection />
       <AdminAccountsSection />

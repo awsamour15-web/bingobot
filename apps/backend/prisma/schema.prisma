@@ -34,6 +34,7 @@ model Player {
   crash_bets              CrashBet[]
   slot_spins              SlotSpin[]
   keno_bets               KenoBet[]
+  plinko_bets             PlinkoBet[]
   deposit_attempts        DepositAttempt[]
 
   @@index([telegram_id])
@@ -560,4 +561,24 @@ model KenoBet {
   @@index([round_id])
   @@index([player_id])
   @@map("keno_bets")
+}
+
+// ─── Plinko Game ──────────────────────────────────────────────────────────────
+
+model PlinkoBet {
+  id          String   @id @default(uuid())
+  player_id   String
+  bet_amount  Decimal  @db.Decimal(14, 2)
+  rows        Int      // 8, 12, or 16
+  risk        String   // 'low' | 'medium' | 'high'
+  path        Int[]    // 0=left, 1=right for each peg row
+  slot        Int      // final slot index (0-based)
+  multiplier  Float
+  payout      Decimal  @db.Decimal(14, 2)
+  created_at  DateTime @default(now())
+  player      Player   @relation(fields: [player_id], references: [id])
+
+  @@index([player_id])
+  @@index([created_at])
+  @@map("plinko_bets")
 }

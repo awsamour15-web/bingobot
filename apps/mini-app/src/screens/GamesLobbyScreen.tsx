@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initAuth, getAgentJwt } from '../lib/auth';
-import { getProfile, checkKenoAccess } from '../lib/api';
+import { getProfile, checkKenoAccess, checkPlinkoAccess } from '../lib/api';
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -83,6 +83,20 @@ const GAMES: Game[] = [
     route: '/keno',
     tag: 'NEW',
     tagColor: '#22c55e',
+    available: true,
+    bonusNote: '💳 Deposit required',
+    bonusNoteColor: '#f59e0b',
+  },
+  {
+    id: 'plinko',
+    title: 'Plinko',
+    subtitle: 'Drop the ball • Bounce to big wins',
+    emoji: '🎱',
+    gradient: 'linear-gradient(135deg, #0a1f3c 0%, #051020 55%, #020810 100%)',
+    glowColor: 'rgba(99,102,241,0.3)',
+    route: '/plinko',
+    tag: 'NEW',
+    tagColor: '#818cf8',
     available: true,
     bonusNote: '💳 Deposit required',
     bonusNoteColor: '#f59e0b',
@@ -262,19 +276,25 @@ export default function GamesLobbyScreen() {
   const [isAgent, setIsAgent] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
   const [kenoAllowed, setKenoAllowed] = useState(false);
+  const [plinkoAllowed, setPlinkoAllowed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         await initAuth();
-        const [profile, kenoAccess] = await Promise.all([getProfile(), checkKenoAccess().catch(() => ({ allowed: false }))]);
+        const [profile, kenoAccess, plinkoAccess] = await Promise.all([
+          getProfile(),
+          checkKenoAccess().catch(() => ({ allowed: false })),
+          checkPlinkoAccess().catch(() => ({ allowed: false })),
+        ]);
         if (!cancelled) {
           setBalance(profile.mainWallet.balance);
           setUsername(profile.username ?? null);
           setIsAgent(!!getAgentJwt());
           setIsSuspended(profile.is_suspended);
           setKenoAllowed(kenoAccess.allowed);
+          setPlinkoAllowed(plinkoAccess.allowed);
         }
       } catch {
         // ignore — auth may not be ready yet
@@ -447,7 +467,11 @@ export default function GamesLobbyScreen() {
 
       {/* ── Game grid ────────────────────────────────────────────── */}
       <div style={{ padding:'0 16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        {GAMES.filter((g) => g.id !== 'keno' || kenoAllowed).map((game, i) => (
+        {GAMES.filter((g) => {
+          if (g.id === 'keno') return kenoAllowed;
+          if (g.id === 'plinko') return plinkoAllowed;
+          return true;
+        }).map((game, i) => (
           <div
             key={game.id}
             style={{ animation: `lobbySlideUp 0.38s cubic-bezier(0.22,1,0.36,1) ${i * 0.06}s both` }}

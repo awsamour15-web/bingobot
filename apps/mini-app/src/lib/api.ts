@@ -663,3 +663,21 @@ export function getKenoHistory(): Promise<{
 export function checkKenoAccess(): Promise<{ allowed: boolean }> {
   return apiRequest<{ allowed: boolean }>('GET', '/api/keno/access');
 }
+
+// ─── Plinko ──────────────────────────────────────────────────────────────────
+
+export function checkPlinkoAccess(): Promise<{ allowed: boolean }> {
+  return apiRequest<{ allowed: boolean }>('GET', '/api/plinko/access');
+}
+
+export function dropPlinko(betAmount: number, rows: 8 | 12 | 16, risk: 'low' | 'medium' | 'high'): Promise<{
+  id: string; path: number[]; slot: number; multiplier: number; payout: number; betAmount: number;
+}> {
+  return apiRequest('POST', '/api/plinko/drop', { betAmount, rows, risk });
+}
+
+export function getPlinkoHistory(): Promise<{
+  id: string; betAmount: number; rows: number; risk: string; slot: number; multiplier: number; payout: number; createdAt: string;
+}[]> {
+  return apiRequest('GET', '/api/plinko/history');
+}
