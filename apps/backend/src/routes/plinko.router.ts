@@ -90,7 +90,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
 
-  const { betAmount, rows, risk } = req.body as { betAmount?: unknown; rows?: unknown; risk?: unknown };
+  const { betAmount, rows, risk, walletType } = req.body as { betAmount?: unknown; rows?: unknown; risk?: unknown; walletType?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < MIN_BET || betAmount > MAX_BET) {
     res.status(400).json({ error: `betAmount must be between ${MIN_BET} and ${MAX_BET}` });
@@ -108,6 +108,11 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
     return;
   }
 
+  const validWalletTypes: ('main' | 'play')[] = ['main', 'play'];
+  const walletToUse: WalletType = validWalletTypes.includes(walletType as 'main' | 'play') 
+    ? (walletType as 'main' | 'play') 
+    : WalletType.play;
+
   // Check suspension
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
   if (player?.is_suspended) {
@@ -117,7 +122,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
 
   // Debit wallet before computing result
   try {
-    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, undefined, 'Plinko drop');
+    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, undefined, 'Plinko drop');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: (err as Error).message });

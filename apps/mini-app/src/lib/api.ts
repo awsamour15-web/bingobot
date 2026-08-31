@@ -556,8 +556,8 @@ export function getCrashState(): Promise<CrashState> {
   return apiRequest<CrashState>('GET', '/api/crash/state');
 }
 
-export function placeCrashBet(betAmount: number, slot: 1 | 2 = 1, autoCashoutAt?: number): Promise<{ roundId: string; betAmount: number; slot: number }> {
-  return apiRequest('POST', '/api/crash/bet', { betAmount, slot, autoCashoutAt });
+export function placeCrashBet(betAmount: number, slot: 1 | 2 = 1, autoCashoutAt?: number, walletType?: 'main' | 'play'): Promise<{ roundId: string; betAmount: number; slot: number }> {
+  return apiRequest('POST', '/api/crash/bet', { betAmount, slot, autoCashoutAt, walletType });
 }
 
 export function getCrashHistory(): Promise<CrashHistoryEntry[]> {
@@ -670,10 +670,10 @@ export function checkPlinkoAccess(): Promise<{ allowed: boolean }> {
   return apiRequest<{ allowed: boolean }>('GET', '/api/plinko/access');
 }
 
-export function dropPlinko(betAmount: number, rows: 8 | 12 | 16, risk: 'low' | 'medium' | 'high'): Promise<{
+export function dropPlinko(betAmount: number, rows: 8 | 12 | 16, risk: 'low' | 'medium' | 'high', walletType?: 'main' | 'play'): Promise<{
   id: string; path: number[]; slot: number; multiplier: number; payout: number; betAmount: number;
 }> {
-  return apiRequest('POST', '/api/plinko/drop', { betAmount, rows, risk });
+  return apiRequest('POST', '/api/plinko/drop', { betAmount, rows, risk, walletType });
 }
 
 export function getPlinkoHistory(): Promise<{

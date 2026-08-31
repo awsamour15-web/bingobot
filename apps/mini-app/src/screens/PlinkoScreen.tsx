@@ -109,7 +109,9 @@ export default function PlinkoScreen() {
   const animRef = useRef<AnimState | null>(null);
   const rafRef = useRef<number>(0);
 
-  const [balance, setBalance] = useState<number | null>(null);
+  const [mainBalance, setMainBalance] = useState<number | null>(null);
+  const [playBalance, setPlayBalance] = useState<number | null>(null);
+  const [walletType, setWalletType] = useState<'main' | 'play'>('play');
   const [bet, setBet] = useState(10);
   const [rows, setRows] = useState<Rows>(12);
   const [risk, setRisk] = useState<Risk>('medium');
@@ -121,7 +123,10 @@ export default function PlinkoScreen() {
 
   // Load profile
   useEffect(() => {
-    getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
+    getProfile().then(p => {
+      setMainBalance(p.mainWallet.balance);
+      setPlayBalance(p.playWallet.balance);
+    }).catch(() => {});
   }, []);
 
   // Load history when tab switches
@@ -252,7 +257,10 @@ export default function PlinkoScreen() {
         setDropping(false);
         setLastResult({ multiplier: anim.ball.multiplier, payout: anim.ball.payout, bet: anim.ball.betAmount });
         // Refresh balance
-        getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
+        getProfile().then(p => {
+          setMainBalance(p.mainWallet.balance);
+          setPlayBalance(p.playWallet.balance);
+        }).catch(() => {});
         return;
       }
     }
@@ -273,7 +281,7 @@ export default function PlinkoScreen() {
     setLastResult(null);
     setDropping(true);
     try {
-      const result = await dropPlinko(bet, rows, risk);
+      const result = await dropPlinko(bet, rows, risk, walletType);
       const anim: AnimState = {
         ball: { ...result, rows, risk },
         rowIdx: 0,
@@ -305,7 +313,8 @@ export default function PlinkoScreen() {
         <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.3px' }}>🎱 Plinko</span>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 9, color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Balance</div>
-          <div style={{ fontSize: 15, fontWeight: 900, color: '#fff7e6' }}>{balance !== null ? balance.toFixed(2) : '—'} <span style={{ fontSize: 9, color: '#d89b2b' }}>ETB</span></div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#4ade80' }}>M: {mainBalance !== null ? mainBalance.toFixed(2) : '—'}</div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#818cf8' }}>P: {playBalance !== null ? playBalance.toFixed(2) : '—'}</div>
         </div>
       </div>
 
@@ -349,6 +358,19 @@ export default function PlinkoScreen() {
 
           {/* Controls */}
           <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Wallet selector */}
+            <div>
+              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Pay From</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setWalletType('main')} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: walletType === 'main' ? '#4ade80' : 'rgba(255,255,255,0.06)', border: `1px solid ${walletType === 'main' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, color: walletType === 'main' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                  Main {mainBalance !== null ? `(${mainBalance.toFixed(2)})` : ''}
+                </button>
+                <button onClick={() => setWalletType('play')} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: walletType === 'play' ? '#818cf8' : 'rgba(255,255,255,0.06)', border: `1px solid ${walletType === 'play' ? '#818cf8' : 'rgba(255,255,255,0.1)'}`, color: walletType === 'play' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                  Play {playBalance !== null ? `(${playBalance.toFixed(2)})` : ''}
+                </button>
+              </div>
+            </div>
 
             {/* Rows selector */}
             <div>
