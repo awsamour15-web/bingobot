@@ -37,7 +37,7 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
 
   // Debit wallet first
   try {
-    await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, undefined, 'Slots spin');
+    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, undefined, 'Slots spin');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -71,9 +71,13 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
     },
   });
 
+  // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
+  const { ReferralService } = await import('../services/referral.service.js');
+  void ReferralService.maybeCreditInviteBonus(playerId);
+
   // Get updated balance
   const wallet = await prisma.wallet.findUnique({
-    where: { player_id_type: { player_id: playerId, type: WalletType.main } },
+    where: { player_id_type: { player_id: playerId, type: WalletType.play } },
     select: { balance: true },
   });
 
@@ -131,7 +135,7 @@ router.post('/gamble', async (req: Request, res: Response): Promise<void> => {
   });
 
   const wallet = await prisma.wallet.findUnique({
-    where: { player_id_type: { player_id: playerId, type: WalletType.main } },
+    where: { player_id_type: { player_id: playerId, type: WalletType.play } },
     select: { balance: true },
   });
 

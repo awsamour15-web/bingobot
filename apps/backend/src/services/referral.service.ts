@@ -23,18 +23,40 @@ export const ReferralService = {
   },
 
   /**
-   * Credit a 5 ETB invite bonus to the referrer's main wallet when a new
-   * player they invited completes registration.
+   * Credit a 5 ETB invite bonus to the referrer's play wallet the first time
+   * the invited player either makes a deposit OR places a game bet.
+   *
+   * Idempotent — safe to call multiple times; the bonus is only ever paid once
+   * per invited player (guarded by checking for an existing referral_commission
+   * transaction with reference_id = newPlayerId on the referrer's wallets).
    *
    * Requirements: 9.3
    */
-  async creditInviteBonus(newPlayerId: string): Promise<void> {
+  async maybeCreditInviteBonus(newPlayerId: string): Promise<void> {
     const player = await prisma.player.findUnique({
       where: { id: newPlayerId },
       select: { referrer_id: true },
     });
 
     if (!player?.referrer_id) return;
+
+    // Check if bonus was already paid (idempotency guard)
+    const referrerWallets = await prisma.wallet.findMany({
+      where: { player_id: player.referrer_id },
+      select: { id: true },
+    });
+    const walletIds = referrerWallets.map((w) => w.id);
+
+    const existing = await prisma.transaction.findFirst({
+      where: {
+        wallet_id: { in: walletIds },
+        type: 'referral_commission',
+        reference_id: newPlayerId,
+      },
+      select: { id: true },
+    });
+
+    if (existing) return; // Already paid
 
     await WalletService.credit(
       player.referrer_id,
@@ -44,5 +66,13 @@ export const ReferralService = {
       newPlayerId,
       `Invite bonus for referring player ${newPlayerId}`,
     );
+  },
+
+  /**
+   * @deprecated Use maybeCreditInviteBonus instead.
+   * Kept for backwards compatibility — now a no-op alias.
+   */
+  async creditInviteBonus(newPlayerId: string): Promise<void> {
+    return ReferralService.maybeCreditInviteBonus(newPlayerId);
   },
 };

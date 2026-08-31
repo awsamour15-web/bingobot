@@ -556,8 +556,8 @@ export function getCrashState(): Promise<CrashState> {
   return apiRequest<CrashState>('GET', '/api/crash/state');
 }
 
-export function placeCrashBet(betAmount: number, slot: 1 | 2 = 1): Promise<{ roundId: string; betAmount: number; slot: number }> {
-  return apiRequest('POST', '/api/crash/bet', { betAmount, slot });
+export function placeCrashBet(betAmount: number, slot: 1 | 2 = 1, autoCashoutAt?: number): Promise<{ roundId: string; betAmount: number; slot: number }> {
+  return apiRequest('POST', '/api/crash/bet', { betAmount, slot, autoCashoutAt });
 }
 
 export function getCrashHistory(): Promise<CrashHistoryEntry[]> {

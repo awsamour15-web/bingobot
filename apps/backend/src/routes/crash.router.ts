@@ -126,7 +126,7 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
+    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -144,12 +144,16 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
     // P2002 = unique constraint violation — already bet (race condition or duplicate request)
     if (dbErr?.code === 'P2002') {
       // Refund the wallet debit
-      await WalletService.credit(playerId, WalletType.main, betAmount, TxType.game_entry, round.id, `Crash bet refund slot ${slotIdx}`).catch(() => {});
+      await WalletService.credit(playerId, WalletType.play, betAmount, TxType.game_entry, round.id, `Crash bet refund slot ${slotIdx}`).catch(() => {});
       res.status(409).json({ error: 'You already have a bet in this round' });
       return;
     }
     throw dbErr;
   }
+
+  // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
+  const { ReferralService } = await import('../services/referral.service.js');
+  void ReferralService.maybeCreditInviteBonus(playerId);
 
   // Notify via WebSocket
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });

@@ -7,7 +7,6 @@ import type { PrismaClient } from '@prisma/client';
 import { verifyTelegramInitData, TelegramAuthError } from '../lib/telegram-auth.js';
 import { authRateLimiter } from '../middleware/telegram-auth.middleware.js';
 import prisma from '../lib/prisma.js';
-import { ReferralService } from '../services/referral.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -181,10 +180,8 @@ router.post(
       throw err;
     }
 
-    // Credit 5 ETB invite bonus to the referrer (non-blocking)
-    if (isNew && referrerId) {
-      void ReferralService.creditInviteBonus(player.id);
-    }
+    // Invite bonus is deferred — credited when the invited player first deposits
+    // or places their first game bet (via ReferralService.maybeCreditInviteBonus).
 
     // ── Step 4: Issue JWT ────────────────────────────────────────────────────
     const token = jwt.sign({ playerId: player.id }, jwtSecret, {

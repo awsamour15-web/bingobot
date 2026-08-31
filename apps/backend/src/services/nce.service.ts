@@ -255,7 +255,20 @@ export class NumberCallingEngine {
    * Returns true if a winner was found (NCE should stop).
    */
   private async detectAndHandleWin(roundId: string): Promise<boolean> {
+    // Re-entry guard: if we're already stopping/distributing for this round, bail out
+    if (this.stoppingRounds.has(roundId)) return true;
+
     try {
+      // Fast pre-check: skip all detection work if the round is no longer active
+      const roundStatus = await prisma.gameRound.findUnique({
+        where: { id: roundId },
+        select: { status: true },
+      });
+      if (!roundStatus || roundStatus.status !== 'active') {
+        console.log(`[NCE] detectAndHandleWin skipped — round ${roundId} status=${roundStatus?.status}`);
+        return roundStatus?.status !== 'active'; // true stops the loop for completed/void rounds
+      }
+
       const calledRows = await prisma.calledNumber.findMany({
         where: { round_id: roundId },
         select: { number: true },
@@ -268,7 +281,7 @@ export class NumberCallingEngine {
       });
       if (!entries.length) return false;
 
-      // Use cached grid map; populate from DB on first call for this round
+      // Use cached grid map; always re-fetch if cache was cleared (e.g. by mock bot injection)
       let gridMap = this.gridCache.get(roundId);
       if (!gridMap) {
         const cartelaNumbers = [...new Set(entries.map((e) => e.cartela_number))];
@@ -296,18 +309,25 @@ export class NumberCallingEngine {
       // Mark as stopping FIRST — prevents any concurrent callNext from proceeding
       this.stoppingRounds.add(roundId);
 
-      // Stop NCE timer
+      // Stop NCE timer synchronously before the async distribution
       this.stop(roundId);
 
-      // Call distributeWinnings directly — bypass validateClaim/claim-window entirely
-      const { distributeWinningsDirectly } = await import('./win-detection.service.js');
-      await distributeWinningsDirectly(roundId, winnerMap);
+      try {
+        // Call distributeWinnings directly — bypass validateClaim/claim-window entirely
+        const { distributeWinningsDirectly } = await import('./win-detection.service.js');
+        await distributeWinningsDirectly(roundId, winnerMap);
+      } catch (distErr) {
+        console.error(`[NCE] distributeWinnings error round=${roundId}:`, distErr);
+        // Even if distribution fails, do NOT restart NCE — the round may be
+        // partially committed. Log and leave it for admin recovery.
+      }
       // Keep roundId in stoppingRounds until after distribution so recoverStaleActiveRounds
       // does not restart NCE for a round that is mid-distribution (still active in DB)
       this.stoppingRounds.delete(roundId);
       return true;
     } catch (err) {
       console.error(`[NCE] detectAndHandleWin error round=${roundId}:`, err);
+      // Only clear stoppingRounds if we hadn't set it yet (set happens after winnerMap check)
       this.stoppingRounds.delete(roundId);
       return false;
     }

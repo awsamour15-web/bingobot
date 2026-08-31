@@ -117,7 +117,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
 
   // Debit wallet before computing result
   try {
-    await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, undefined, 'Plinko drop');
+    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, undefined, 'Plinko drop');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: (err as Error).message });
@@ -152,6 +152,10 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
       payout,
     },
   });
+
+  // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
+  const { ReferralService } = await import('../services/referral.service.js');
+  void ReferralService.maybeCreditInviteBonus(playerId);
 
   res.json({
     id: bet.id,

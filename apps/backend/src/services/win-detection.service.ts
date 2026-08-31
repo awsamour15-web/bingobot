@@ -160,8 +160,8 @@ async function distributeWinnings(
     });
 
     // ── After commit: stop number calling, emit ROUND_WON, notify, schedule next round ──
-
-    // Stop the NCE FIRST — synchronously — so no more numbers are called after the win
+    // Note: when called from NCE directly, the timer is already stopped before this runs.
+    // Calling stop() again is safe (idempotent) but only needed for the claim-window path.
     nce.stop(roundId);
 
     // Build payload — need usernames
@@ -208,6 +208,7 @@ async function distributeWinnings(
 
   } catch (err) {
     console.error('[WinDetectionService] distribution error:', err);
+    throw err; // re-throw so callers (NCE) know distribution failed
   } finally {
     claimWindows.delete(roundId);
   }

@@ -178,7 +178,7 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, WalletType.main, betAmount, TxType.game_entry, round.id, 'Keno bet');
+    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, round.id, 'Keno bet');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -196,6 +196,10 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
       bet_amount: betAmount,
     },
   });
+
+  // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
+  const { ReferralService } = await import('../services/referral.service.js');
+  void ReferralService.maybeCreditInviteBonus(playerId);
 
   res.json({
     betId: bet.id,

@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { spinSlots, gambleSlots, getProfile } from "../lib/api";
 import type { SlotSymbol, PaylineWin, SpinResponse } from "../lib/api";
@@ -624,7 +624,7 @@ export default function SlotsScreen() {
   const [gambleLoading, setGambleLoading] = useState(false);
 
   useEffect(() => { betRef.current = betIdx; }, [betIdx]);
-  useEffect(() => { getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {}); }, []);
+  useEffect(() => { getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {}); }, []);
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
 
   function startScramble() {

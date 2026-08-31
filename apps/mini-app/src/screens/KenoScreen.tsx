@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../lib/socket";
 import { getKenoState, placeKenoBet, getKenoHistory, checkKenoAccess, getProfile } from "../lib/api";
@@ -107,7 +107,7 @@ function NumberGrid({ picked, drawn, phase, onToggle }: { picked: Set<number>; d
 function BetControls({ amount, onChange }: { amount: number; onChange: (v: number) => void }) {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:0, padding:"6px 8px" }}>
-      <button onClick={() => onChange(Math.max(MIN_BET, amount - 1))} style={{ width:38, height:40, borderRadius:"8px 0 0 8px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRight:"none", color:"#fff", fontSize:22, fontWeight:300, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
+      <button onClick={() => onChange(Math.max(MIN_BET, amount - 1))} style={{ width:38, height:40, borderRadius:"8px 0 0 8px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRight:"none", color:"#fff", fontSize:22, fontWeight:300, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>-</button>
       <div style={{ flex:1, height:40, background:"rgba(0,0,0,0.3)", border:"1px solid rgba(255,255,255,0.12)", borderLeft:"none", borderRight:"none", display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:800, color:"#fff", letterSpacing:"-0.3px" }}>{amount.toFixed(2)}</div>
       <button onClick={() => onChange(Math.min(MAX_BET, amount + 1))} style={{ width:38, height:40, borderRadius:"0 8px 8px 0", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderLeft:"none", color:"#fff", fontSize:22, fontWeight:300, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
       <button onClick={() => onChange(Math.min(MAX_BET, amount * 2))} style={{ marginLeft:6, padding:"0 12px", height:40, borderRadius:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"#8ab89a", fontSize:12, fontWeight:800, cursor:"pointer", flexShrink:0 }}>X2</button>
@@ -163,7 +163,7 @@ function ResultsTab({ myBet, drawnNumbers }: { myBet: KenoState["myBet"]; drawnN
   return (
     <div style={{ padding:"16px 14px" }}>
       <div style={{ textAlign:"center", marginBottom:16 }}>
-        <div style={{ fontSize:32, marginBottom:6 }}>{won ? "🎉" : "😔"}</div>
+        <div style={{ fontSize:32, marginBottom:6 }}>{won ? "??" : "??"}</div>
         <div style={{ fontSize:24, fontWeight:900, color:won?"#4ade80":"#ef4444" }}>{won ? `+${myBet.payout?.toFixed(2)} ETB` : "No Win"}</div>
         <div style={{ fontSize:13, color:"#64748b", marginTop:4 }}>{matched}/{myBet.pickedNumbers.length} matched</div>
       </div>
@@ -231,7 +231,7 @@ export default function KenoScreen() {
 
   useEffect(() => {
     checkKenoAccess().then(r => setAccess(r.allowed?"allowed":"denied")).catch(() => setAccess("denied"));
-    getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
+    getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -293,7 +293,7 @@ export default function KenoScreen() {
     try {
       await placeKenoBet(betAmount, picked);
       setMyBet({ id:"pending", pickedNumbers:picked, betAmount, matched:null, payout:null });
-      getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
+      getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "Failed";
       if (msg.includes("INSUFFICIENT")) setError("Insufficient balance");
@@ -310,7 +310,7 @@ export default function KenoScreen() {
   if (access === "loading") return <div style={{ minHeight:"100dvh", background:"#0a1410" }} />;
   if (access === "denied") return (
     <div style={{ minHeight:"100dvh", background:"#0a1410", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, padding:24, textAlign:"center", fontFamily:"Inter,-apple-system,sans-serif", color:"#fff" }}>
-      <div style={{ fontSize:48 }}>🎱</div>
+      <div style={{ fontSize:48 }}>??</div>
       <div style={{ fontSize:20, fontWeight:800 }}>Keno Coming Soon</div>
       <div style={{ fontSize:14, color:"#6b8a7a", lineHeight:1.7 }}>Currently in early access.</div>
       <button onClick={() => navigate("/")} style={{ padding:"12px 28px", borderRadius:12, border:"none", background:"#1a5c3a", color:"#4ade80", fontSize:14, fontWeight:800, cursor:"pointer" }}>Back to Games</button>
@@ -396,13 +396,13 @@ export default function KenoScreen() {
 
       {phase === "betting" && myBet && (
         <div style={{ flexShrink:0, padding:"12px 14px", background:"rgba(0,100,50,0.15)", borderTop:"1px solid rgba(0,180,70,0.2)", textAlign:"center", fontSize:13, color:"#4ade80", fontWeight:700 }}>
-          Bet placed – waiting for draw
+          Bet placed � waiting for draw
         </div>
       )}
 
       {(phase === "idle" || phase === "finished") && !myBet && (
         <div style={{ flexShrink:0, padding:"12px 14px", background:"rgba(0,0,0,0.3)", borderTop:"1px solid rgba(255,255,255,0.06)", textAlign:"center", fontSize:13, color:"#4a6a58" }}>
-          {phase === "finished" ? "Round finished – next round starting soon" : "Waiting for next round..."}
+          {phase === "finished" ? "Round finished � next round starting soon" : "Waiting for next round..."}
         </div>
       )}
 

@@ -694,6 +694,9 @@ export async function processDepositClaim(
     source: auditCtx?.source ?? 'bot',
   });
 
+  // Credit invite bonus to referrer on first deposit (non-blocking, idempotent)
+  void ReferralService.maybeCreditInviteBonus(playerId);
+
   return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : 0 };
 }
 
@@ -1132,8 +1135,7 @@ if (BOT_TOKEN) {
         { reply_markup: await getMenuForUser(telegramId) },
       );
 
-      // Credit 5 ETB invite bonus to referrer (non-blocking)
-      void ReferralService.creditInviteBonus(player.id);
+      // Invite bonus is deferred — credited on first deposit or first game bet.
     } catch (err) {
       console.error('[Bot] Registration error:', err);
       await ctx.reply('Something went wrong during registration. Please try again.');

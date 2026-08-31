@@ -164,6 +164,9 @@ async function tryInjectWin(roundId: string, calledSet: Set<number>): Promise<vo
   const info = pendingWins.get(roundId);
   if (!info) return;
 
+  // Wait until at least 10 numbers have been called before injecting a win
+  if (calledSet.size < 10) return;
+
   const winLine = findWinLineFromCalled(calledSet);
   if (!winLine) return; // Not enough coverage yet
 

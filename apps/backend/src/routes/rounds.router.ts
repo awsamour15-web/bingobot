@@ -256,6 +256,10 @@ router.post('/:id/join-batch', async (req: Request, res: Response): Promise<void
   const mainWallet = wallets.find((w) => w.type === 'main');
   const playWallet = wallets.find((w) => w.type === 'play');
 
+  // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
+  const { ReferralService } = await import('../services/referral.service.js');
+  void ReferralService.maybeCreditInviteBonus(playerId);
+
   res.status(200).json({
     cartelaNumbers,
     mainWalletBalance: Number(mainWallet?.balance ?? 0),
@@ -319,6 +323,10 @@ router.post('/:id/join', async (req: Request, res: Response): Promise<void> => {
 
   const mainWallet = wallets.find((w) => w.type === 'main');
   const playWallet = wallets.find((w) => w.type === 'play');
+
+  // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
+  const { ReferralService } = await import('../services/referral.service.js');
+  void ReferralService.maybeCreditInviteBonus(playerId);
 
   const response: JoinRoundResponse = {
     cartelaNumber,
