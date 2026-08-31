@@ -121,7 +121,7 @@ export default function PlinkoScreen() {
 
   // Load profile
   useEffect(() => {
-    getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+    getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
   }, []);
 
   // Load history when tab switches
@@ -252,7 +252,7 @@ export default function PlinkoScreen() {
         setDropping(false);
         setLastResult({ multiplier: anim.ball.multiplier, payout: anim.ball.payout, bet: anim.ball.betAmount });
         // Refresh balance
-        getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+        getProfile().then(p => setBalance(p.mainWallet.balance)).catch(() => {});
         return;
       }
     }
