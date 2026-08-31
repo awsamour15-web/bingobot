@@ -681,3 +681,46 @@ export function getPlinkoHistory(): Promise<{
 }[]> {
   return apiRequest('GET', '/api/plinko/history');
 }
+
+// ---------------------------------------------------------------------------
+// Minesweeper Casino Game
+// ---------------------------------------------------------------------------
+
+export interface MinesweeperGame {
+  gameId: string;
+  betAmount: number;
+  mineCount: number;
+  multiplier: number;
+}
+
+export interface MinesweeperHistoryEntry {
+  id: string;
+  betAmount: number;
+  mineCount: number;
+  cellsRevealed: number;
+  multiplier: number;
+  payout: number;
+  result: 'win' | 'loss';
+  createdAt: string;
+}
+
+export function playMinesweeper(betAmount: number, mineCount: number, walletType?: 'main' | 'play'): Promise<MinesweeperGame> {
+  return apiRequest('POST', '/api/minesweeper/play', { betAmount, mineCount, walletType });
+}
+
+export function cashoutMinesweeper(gameId: string): Promise<{ payout: number; multiplier: number }> {
+  return apiRequest('POST', '/api/minesweeper/cashout', { gameId });
+}
+
+export function revealMinesweeperCell(gameId: string, row: number, col: number): Promise<{
+  isMine: boolean;
+  cellsRevealed: number;
+  multiplier: number;
+  gameOver: boolean;
+}> {
+  return apiRequest('POST', '/api/minesweeper/reveal', { gameId, row, col });
+}
+
+export function getMinesweeperHistory(): Promise<MinesweeperHistoryEntry[]> {
+  return apiRequest('GET', '/api/minesweeper/history');
+}

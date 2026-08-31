@@ -29,6 +29,22 @@ interface Game {
 
 const GAMES: Game[] = [
   {
+    id: 'minesweeper',
+    title: 'Minesweeper Casino',
+    subtitle: 'Reveal gems • Avoid mines • Cash out big',
+    emoji: '💣',
+    gradient: 'linear-gradient(135deg, #2d1b00 0%, #1a1000 55%, #0d0800 100%)',
+    glowColor: 'rgba(245,158,11,0.35)',
+    badge: 'HOT',
+    badgeColor: '#ef4444',
+    route: '/minesweeper',
+    tag: '🎰 CASINO',
+    tagColor: '#f59e0b',
+    available: true,
+    bonusNote: '💎 Win up to 100x',
+    bonusNoteColor: '#22c55e',
+  },
+  {
     id: 'bingo',
     title: 'Fidel Bingo',
     subtitle: 'Live multiplayer • Win up to 40K Birr',
