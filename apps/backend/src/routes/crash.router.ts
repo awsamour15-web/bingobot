@@ -88,7 +88,7 @@ router.get('/state', async (req: Request, res: Response): Promise<void> => {
 router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
-  const { betAmount, slot } = req.body as { betAmount?: unknown; slot?: unknown };
+  const { betAmount, slot, walletType } = req.body as { betAmount?: unknown; slot?: unknown; walletType?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < 5 || betAmount > 10_000) {
     res.status(400).json({ error: 'betAmount must be a number between 5 and 10000' });
@@ -96,6 +96,10 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   }
 
   const slotIdx = slot === 2 ? 2 : 1;
+  const validWalletTypes: ('main' | 'play')[] = ['main', 'play'];
+  const walletToUse: WalletType = validWalletTypes.includes(walletType as 'main' | 'play') 
+    ? (walletType as 'main' | 'play') 
+    : WalletType.play;
 
   // Check suspension
   const suspensionCheck = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
@@ -126,7 +130,7 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
+    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -144,7 +148,7 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
     // P2002 = unique constraint violation — already bet (race condition or duplicate request)
     if (dbErr?.code === 'P2002') {
       // Refund the wallet debit
-      await WalletService.credit(playerId, WalletType.play, betAmount, TxType.game_entry, round.id, `Crash bet refund slot ${slotIdx}`).catch(() => {});
+      await WalletService.credit(playerId, walletToUse, betAmount, TxType.game_entry, round.id, `Crash bet refund slot ${slotIdx}`).catch(() => {});
       res.status(409).json({ error: 'You already have a bet in this round' });
       return;
     }

@@ -140,7 +140,7 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
 
-  const { betAmount, pickedNumbers } = req.body as { betAmount?: unknown; pickedNumbers?: unknown };
+  const { betAmount, pickedNumbers, walletType } = req.body as { betAmount?: unknown; pickedNumbers?: unknown; walletType?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < MIN_BET || betAmount > MAX_BET) {
     res.status(400).json({ error: `betAmount must be between ${MIN_BET} and ${MAX_BET}` });
@@ -157,6 +157,11 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
     res.status(400).json({ error: `Pick between ${MIN_PICKS} and ${MAX_PICKS} unique numbers from 1–80` });
     return;
   }
+
+  const validWalletTypes: ('main' | 'play')[] = ['main', 'play'];
+  const walletToUse: WalletType = validWalletTypes.includes(walletType as 'main' | 'play') 
+    ? (walletType as 'main' | 'play') 
+    : WalletType.play;
 
   // Check suspension
   const playerRecord = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
@@ -178,7 +183,7 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, round.id, 'Keno bet');
+    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, round.id, 'Keno bet');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
