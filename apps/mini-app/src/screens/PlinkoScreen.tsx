@@ -9,7 +9,7 @@ const MIN_BET = 5;
 const MAX_BET = 10_000;
 
 // ─── Multiplier tables (must match backend) ───────────────────────────────────
-const MULTIPLIERS: Record<number, Record<Risk, number[]>> = {
+const MULTIPLIERS: Record<Rows, Record<Risk, number[]>> = {
   8: {
     low:    [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
     medium: [13,  3,   1.3, 0.7, 0.4, 0.7, 1.3, 3,   13],
@@ -28,11 +28,11 @@ const MULTIPLIERS: Record<number, Record<Risk, number[]>> = {
 };
 
 function mulColor(m: number): string {
-  if (m >= 10)  return '#f97316'; // orange
-  if (m >= 3)   return '#eab308'; // yellow
-  if (m >= 1.5) return '#22c55e'; // green
-  if (m >= 1.0) return '#3b82f6'; // blue
-  return '#ef4444';               // red (loss)
+  if (m >= 10)  return '#f97316';
+  if (m >= 3)   return '#eab308';
+  if (m >= 1.5) return '#22c55e';
+  if (m >= 1.0) return '#3b82f6';
+  return '#ef4444';
 }
 
 // ─── Canvas board geometry ────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ export default function PlinkoScreen() {
       const slotW = colSpacing - 4;
       const slotH = PAD_BOT - 10;
       const slotY = H - slotH - 6;
-      const m = muls[s];
+      const m = muls[s] ?? 0;
       const col = mulColor(m);
       const isFlash = anim?.flashSlot === s;
 
@@ -166,7 +166,7 @@ export default function PlinkoScreen() {
       ctx.font = `bold ${Math.max(8, Math.min(11, colSpacing * 0.35))}px Inter,sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const label = m >= 100 ? `${m}x` : m >= 10 ? `${m}x` : `${m}x`;
+      const label = `${m}x`;
       ctx.fillText(label, x + slotW / 2, slotY + slotH / 2);
       ctx.restore();
     }
@@ -200,9 +200,8 @@ export default function PlinkoScreen() {
         const fromRow = rowIdx - 1;
         const toRow = rowIdx;
         let fromCol = 0;
-        for (let i = 0; i < fromRow; i++) fromCol += ball.path[i];
-        let toCol = fromCol + (ball.path[rowIdx] ?? 0);
-        // Adjust for row width difference
+        for (let i = 0; i < fromRow; i++) fromCol += ball.path[i] ?? 0;
+        const toCol = fromCol + (ball.path[rowIdx] ?? 0);
         const fromPeg = pegPos(fromRow, fromCol);
         const toPeg = pegPos(toRow, toCol);
         bx = fromPeg.x * (1 - progress) + toPeg.x * progress;
@@ -211,7 +210,7 @@ export default function PlinkoScreen() {
         // Last peg to slot
         const lastRow = rows - 1;
         let lastCol = 0;
-        for (let i = 0; i < lastRow; i++) lastCol += ball.path[i];
+        for (let i = 0; i < lastRow; i++) lastCol += ball.path[i] ?? 0;
         const lastPeg = pegPos(lastRow, lastCol);
         const { cx } = slotPos(ball.slot);
         const slotY = H - PAD_BOT + 4;
