@@ -130,8 +130,8 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const numRows = rows as typeof VALID_ROWS[number];
   const riskLevel = risk as RiskLevel;
   const { path, slot } = generatePath(numRows);
-  const multiplierTable = MULTIPLIERS[numRows][riskLevel];
-  const multiplier = multiplierTable[slot];
+  const multiplierTable = MULTIPLIERS[numRows]![riskLevel];
+  const multiplier = multiplierTable[slot]!;
   const payout = parseFloat((betAmount * multiplier).toFixed(2));
 
   // Credit winnings (if any)
