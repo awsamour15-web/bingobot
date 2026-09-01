@@ -755,13 +755,7 @@ export default function CrashScreen() {
             <div style={{ position: 'absolute', bottom: 1, right: 1, width: 9, height: 9, borderRadius: '50%', background: '#22c55e', border: '2px solid #080614' }} />
           </div>
         </div>
-        {/* Nav row: Deposit only */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={() => navigate('/wallet')} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#9d1fcc,#c44dff)', color: '#fff', fontSize: 13, fontWeight: 800, cursor: 'pointer', boxShadow: '0 2px 16px rgba(196,77,255,0.4)', flexShrink: 0 }}>
-            Deposit
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-        </div>
+
       </div>
 
       {/* ── Scrollable body ── */}
