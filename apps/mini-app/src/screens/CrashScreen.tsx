@@ -737,7 +737,6 @@ export default function CrashScreen() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <img src={aviatorLogo} alt="Aviator" style={{ height: 22 }} />
-            <span style={{ fontSize: 16, fontWeight: 900, color: '#fff', letterSpacing: '0.05em' }}>AVIATOR</span>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: 'rgba(150,180,220,0.6)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>BALANCE</div>
