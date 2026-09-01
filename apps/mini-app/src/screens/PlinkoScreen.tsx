@@ -302,7 +302,7 @@ export default function PlinkoScreen() {
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   // ─── Canvas size ─────────────────────────────────────────────────────────────
-  const canvasH = rows === 8 ? 280 : rows === 12 ? 340 : 400;
+  const canvasH = rows === 8 ? 240 : rows === 12 ? 280 : 320;
 
   return (
     <div style={{ minHeight: '100dvh', background: '#060b18', color: '#f8fafc', fontFamily: "'Inter',sans-serif", display: 'flex', flexDirection: 'column', maxWidth: 480, margin: '0 auto' }}>
@@ -330,10 +330,10 @@ export default function PlinkoScreen() {
       {tab === 'history' ? (
         <HistoryTab items={history} />
       ) : (
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
           {/* Board */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '8px 0' }}>
+          <div style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '6px 0', flexShrink: 0 }}>
             <canvas
               ref={canvasRef}
               width={Math.min(window.innerWidth, 480)}
@@ -342,93 +342,84 @@ export default function PlinkoScreen() {
             />
           </div>
 
-          {/* Result banner */}
-          {lastResult && (
-            <div style={{ margin: '10px 14px 0', padding: '12px 16px', borderRadius: 12, background: lastResult.payout >= lastResult.bet ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)', border: `1px solid ${lastResult.payout >= lastResult.bet ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.25)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>{lastResult.multiplier}x</span>
-              <span style={{ fontSize: 16, fontWeight: 900, color: lastResult.payout >= lastResult.bet ? '#4ade80' : '#f87171' }}>
-                {lastResult.payout >= lastResult.bet ? '+' : ''}{(lastResult.payout - lastResult.bet).toFixed(2)} ETB
-              </span>
-            </div>
-          )}
+          {/* Scrollable controls area */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-          {error && (
-            <div style={{ margin: '10px 14px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', fontSize: 12, color: '#f87171' }}>{error}</div>
-          )}
-
-          {/* Controls */}
-          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-            {/* Wallet selector */}
-            <div>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Pay From</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setWalletType('main')} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: walletType === 'main' ? '#4ade80' : 'rgba(255,255,255,0.06)', border: `1px solid ${walletType === 'main' ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, color: walletType === 'main' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
-                  Main {mainBalance !== null ? `(${mainBalance.toFixed(2)})` : ''}
-                </button>
-                <button onClick={() => setWalletType('play')} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: walletType === 'play' ? '#818cf8' : 'rgba(255,255,255,0.06)', border: `1px solid ${walletType === 'play' ? '#818cf8' : 'rgba(255,255,255,0.1)'}`, color: walletType === 'play' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
-                  Play {playBalance !== null ? `(${playBalance.toFixed(2)})` : ''}
-                </button>
+            {/* Result banner */}
+            {lastResult && (
+              <div style={{ margin: '8px 14px 0', padding: '10px 14px', borderRadius: 10, background: lastResult.payout >= lastResult.bet ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)', border: `1px solid ${lastResult.payout >= lastResult.bet ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.25)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8' }}>{lastResult.multiplier}x</span>
+                <span style={{ fontSize: 15, fontWeight: 900, color: lastResult.payout >= lastResult.bet ? '#4ade80' : '#f87171' }}>
+                  {lastResult.payout >= lastResult.bet ? '+' : ''}{(lastResult.payout - lastResult.bet).toFixed(2)} ETB
+                </span>
               </div>
-            </div>
+            )}
 
-            {/* Rows selector */}
-            <div>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Rows</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {([8, 12, 16] as Rows[]).map(r => (
-                  <button key={r} onClick={() => { setRows(r); setLastResult(null); }} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: rows === r ? '#818cf8' : 'rgba(255,255,255,0.06)', border: `1px solid ${rows === r ? '#818cf8' : 'rgba(255,255,255,0.1)'}`, color: rows === r ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{r}</button>
-                ))}
+            {error && (
+              <div style={{ margin: '8px 14px 0', padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', fontSize: 11, color: '#f87171', flexShrink: 0 }}>{error}</div>
+            )}
+
+            {/* Controls */}
+            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+              {/* Rows selector */}
+              <div>
+                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Rows</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {([8, 12, 16] as Rows[]).map(r => (
+                    <button key={r} onClick={() => { setRows(r); setLastResult(null); }} style={{ flex: 1, padding: '7px 0', borderRadius: 8, background: rows === r ? '#818cf8' : 'rgba(255,255,255,0.06)', border: `1px solid ${rows === r ? '#818cf8' : 'rgba(255,255,255,0.1)'}`, color: rows === r ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{r}</button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Risk selector */}
-            <div>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Risk</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {(['low', 'medium', 'high'] as Risk[]).map(r => {
-                  const col = r === 'low' ? '#22c55e' : r === 'medium' ? '#eab308' : '#ef4444';
-                  return (
-                    <button key={r} onClick={() => setRisk(r)} style={{ flex: 1, padding: '8px 0', borderRadius: 8, background: risk === r ? col + '33' : 'rgba(255,255,255,0.06)', border: `1px solid ${risk === r ? col : 'rgba(255,255,255,0.1)'}`, color: risk === r ? col : '#94a3b8', fontSize: 12, fontWeight: 800, cursor: 'pointer', textTransform: 'capitalize' }}>{r}</button>
-                  );
-                })}
+              {/* Risk selector */}
+              <div>
+                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Risk</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['low', 'medium', 'high'] as Risk[]).map(r => {
+                    const col = r === 'low' ? '#22c55e' : r === 'medium' ? '#eab308' : '#ef4444';
+                    return (
+                      <button key={r} onClick={() => setRisk(r)} style={{ flex: 1, padding: '7px 0', borderRadius: 8, background: risk === r ? col + '33' : 'rgba(255,255,255,0.06)', border: `1px solid ${risk === r ? col : 'rgba(255,255,255,0.1)'}`, color: risk === r ? col : '#94a3b8', fontSize: 12, fontWeight: 800, cursor: 'pointer', textTransform: 'capitalize' }}>{r}</button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* Bet amount */}
-            <div>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Bet (ETB)</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                <button onClick={() => setBet(b => Math.max(MIN_BET, b - (b >= 100 ? 10 : 1)))} style={{ width: 40, height: 42, borderRadius: '8px 0 0 8px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRight: 'none', color: '#fff', fontSize: 20, cursor: 'pointer' }}>−</button>
-                <input
-                  type="number" value={bet} min={MIN_BET} max={MAX_BET}
-                  onChange={e => setBet(Math.min(MAX_BET, Math.max(MIN_BET, Number(e.target.value) || MIN_BET)))}
-                  style={{ flex: 1, height: 42, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderLeft: 'none', borderRight: 'none', color: '#fff', fontSize: 16, fontWeight: 800, textAlign: 'center', outline: 'none' }}
-                />
-                <button onClick={() => setBet(b => Math.min(MAX_BET, b + (b >= 100 ? 10 : 1)))} style={{ width: 40, height: 42, borderRadius: '0 8px 8px 0', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderLeft: 'none', color: '#fff', fontSize: 20, cursor: 'pointer' }}>+</button>
-                <button onClick={() => setBet(b => Math.min(MAX_BET, b * 2))} style={{ marginLeft: 6, padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>x2</button>
-                <button onClick={() => setBet(MAX_BET)} style={{ marginLeft: 4, padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>MAX</button>
+              {/* Bet amount */}
+              <div>
+                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Bet (ETB)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                  <button onClick={() => setBet(b => Math.max(MIN_BET, b - (b >= 100 ? 10 : 1)))} style={{ width: 38, height: 40, borderRadius: '8px 0 0 8px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRight: 'none', color: '#fff', fontSize: 18, cursor: 'pointer' }}>−</button>
+                  <input
+                    type="number" value={bet} min={MIN_BET} max={MAX_BET}
+                    onChange={e => setBet(Math.min(MAX_BET, Math.max(MIN_BET, Number(e.target.value) || MIN_BET)))}
+                    style={{ flex: 1, height: 40, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderLeft: 'none', borderRight: 'none', color: '#fff', fontSize: 15, fontWeight: 800, textAlign: 'center', outline: 'none' }}
+                  />
+                  <button onClick={() => setBet(b => Math.min(MAX_BET, b + (b >= 100 ? 10 : 1)))} style={{ width: 38, height: 40, borderRadius: '0 8px 8px 0', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderLeft: 'none', color: '#fff', fontSize: 18, cursor: 'pointer' }}>+</button>
+                  <button onClick={() => setBet(b => Math.min(MAX_BET, b * 2))} style={{ marginLeft: 5, padding: '0 11px', height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>x2</button>
+                  <button onClick={() => setBet(MAX_BET)} style={{ marginLeft: 4, padding: '0 11px', height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>MAX</button>
+                </div>
               </div>
-            </div>
 
-            {/* Drop button */}
-            <button
-              onClick={handleDrop}
-              disabled={dropping}
-              style={{ width: '100%', height: 52, borderRadius: 14, background: dropping ? 'rgba(129,140,248,0.3)' : 'linear-gradient(135deg,#818cf8,#6366f1)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 900, cursor: dropping ? 'not-allowed' : 'pointer', letterSpacing: '-0.2px', transition: 'opacity 0.15s' }}
-            >
-              {dropping ? 'Dropping…' : '🎱 Drop Ball'}
-            </button>
+              {/* Drop button */}
+              <button
+                onClick={handleDrop}
+                disabled={dropping}
+                style={{ width: '100%', height: 48, borderRadius: 12, background: dropping ? 'rgba(129,140,248,0.3)' : 'linear-gradient(135deg,#818cf8,#6366f1)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 900, cursor: dropping ? 'not-allowed' : 'pointer', letterSpacing: '-0.2px', transition: 'opacity 0.15s', marginTop: 2 }}
+              >
+                {dropping ? 'Dropping…' : '🎱 Drop Ball'}
+              </button>
 
-          </div>
+              {/* Mini multiplier preview */}
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 9, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Multipliers ({rows} rows · {risk})</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                  {MULTIPLIERS[rows][risk].map((m, i) => (
+                    <div key={i} style={{ padding: '2px 7px', borderRadius: 5, background: mulColor(m) + '22', border: `1px solid ${mulColor(m)}55`, fontSize: 9, fontWeight: 800, color: mulColor(m) }}>{m}x</div>
+                  ))}
+                </div>
+              </div>
 
-          {/* Mini multiplier preview */}
-          <div style={{ padding: '0 14px 20px' }}>
-            <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Multipliers ({rows} rows · {risk})</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {MULTIPLIERS[rows][risk].map((m, i) => (
-                <div key={i} style={{ padding: '3px 8px', borderRadius: 6, background: mulColor(m) + '22', border: `1px solid ${mulColor(m)}55`, fontSize: 10, fontWeight: 800, color: mulColor(m) }}>{m}x</div>
-              ))}
             </div>
           </div>
         </div>
