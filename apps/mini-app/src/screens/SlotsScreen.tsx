@@ -624,7 +624,11 @@ export default function SlotsScreen() {
   const [gambleLoading, setGambleLoading] = useState(false);
 
   useEffect(() => { betRef.current = betIdx; }, [betIdx]);
-  useEffect(() => { getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {}); }, []);
+  
+  useEffect(() => { 
+    getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+  }, []);
+  
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
 
   function startScramble() {
