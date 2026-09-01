@@ -6,13 +6,14 @@ import {
 import { getGamesStats } from '../lib/api';
 import type { GameStat, GameTx, GamesStatsResponse } from '../lib/api';
 
-type GameKey = 'bingo' | 'crash' | 'keno' | 'slots';
+type GameKey = 'bingo' | 'crash' | 'keno' | 'slots' | 'plinko';
 
 const GAME_COLORS: Record<GameKey, string> = {
   bingo: '#6366f1',
   crash: '#ef4444',
   keno:  '#22c55e',
   slots: '#f59e0b',
+  plinko: '#818cf8',
 };
 
 function fmt(n: number) {
@@ -252,7 +253,7 @@ export function GamesPage() {
           subtitle="Last 50 rounds, each with individual profit / loss"
           action={
             <div style={{ display: 'flex', gap: 6 }}>
-              {(['bingo', 'crash', 'keno', 'slots'] as GameKey[]).map((k) => (
+              {(['bingo', 'crash', 'keno', 'slots', 'plinko'] as GameKey[]).map((k) => (
                 <button
                   key={k}
                   onClick={() => setSelectedGame(k)}

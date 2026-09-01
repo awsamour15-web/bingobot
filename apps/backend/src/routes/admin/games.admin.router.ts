@@ -13,10 +13,12 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
     crashStats,
     kenoStats,
     slotsStats,
+    plinkoStats,
     recentBingo,
     recentCrash,
     recentKeno,
     recentSlots,
+    recentPlinko,
   ] = await Promise.all([
     // Bingo (GameRound + round_entries)
     prisma.gameRound.aggregate({
@@ -37,6 +39,11 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
     // Slots spins
     prisma.slotSpin.aggregate({
       _sum: { bet_amount: true, total_win: true },
+      _count: { id: true },
+    }),
+    // Plinko drops
+    prisma.plinkoDrop.aggregate({
+      _sum: { bet_amount: true, payout: true },
       _count: { id: true },
     }),
 
@@ -92,6 +99,21 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         player: { select: { username: true } },
       },
     }),
+    // Recent plinko drops (last 50)
+    prisma.plinkoDrop.findMany({
+      orderBy: { created_at: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        bet_amount: true,
+        payout: true,
+        rows: true,
+        risk: true,
+        multiplier: true,
+        created_at: true,
+        player: { select: { username: true } },
+      },
+    }),
   ]);
 
   // Bingo totals
@@ -113,6 +135,9 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
 
   const slotsTotalBets = Number(slotsStats._sum.bet_amount ?? 0);
   const slotsTotalWins = Number(slotsStats._sum.total_win ?? 0);
+
+  const plinkoTotalBets = Number(plinkoStats._sum.bet_amount ?? 0);
+  const plinkoTotalPaid = Number(plinkoStats._sum.payout ?? 0);
 
   res.json({
     games: [
@@ -151,6 +176,15 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         totalBets: slotsTotalBets,
         totalPaid: slotsTotalWins,
         profit: slotsTotalBets - slotsTotalWins,
+      },
+      {
+        key: 'plinko',
+        name: 'Plinko',
+        icon: '🎲',
+        totalRounds: plinkoStats._count.id,
+        totalBets: plinkoTotalBets,
+        totalPaid: plinkoTotalPaid,
+        profit: plinkoTotalBets - plinkoTotalPaid,
       },
     ],
     transactions: {
@@ -199,6 +233,19 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         profit: Number(s.bet_amount) - Number(s.total_win),
         players: 1,
         date: s.created_at.toISOString(),
+      })),
+      plinko: recentPlinko.map((p) => ({
+        id: p.id,
+        type: 'completed',
+        username: p.player.username,
+        totalBet: Number(p.bet_amount),
+        paid: Number(p.payout),
+        profit: Number(p.bet_amount) - Number(p.payout),
+        players: 1,
+        multiplier: p.multiplier,
+        rows: p.rows,
+        risk: p.risk,
+        date: p.created_at.toISOString(),
       })),
     },
   });

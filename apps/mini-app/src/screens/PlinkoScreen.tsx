@@ -160,7 +160,7 @@ export default function PlinkoScreen() {
       const slotY = H - slotH - 6;
       const m = muls[s] ?? 0;
       const col = mulColor(m);
-      const isFlash = anim?.flashSlot === s;
+      const isFlash = anims.some(a => a.done && a.flashSlot === s);
 
       ctx.save();
       ctx.fillStyle = isFlash ? col : col + '33';
