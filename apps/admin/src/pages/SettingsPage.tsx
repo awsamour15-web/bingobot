@@ -732,7 +732,7 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('house_edge');
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', width: '100%', margin: 0 }}>
       <style>{`
         @media (max-width: 640px) {
           .settings-layout { flex-direction: column !important; }
