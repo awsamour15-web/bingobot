@@ -602,7 +602,8 @@ export default function SlotsScreen() {
   const [mul, setMul] = useState(1);
   const [spinning, setSpinning] = useState(false);
   const [betIdx, setBetIdx] = useState(0);
-  const [balance, setBalance] = useState<number | null>(null);
+  const [mainBalance, setMainBalance] = useState<number | null>(null);
+  const [playBalance, setPlayBalance] = useState<number | null>(null);
   const [wins, setWins] = useState<PaylineWin[]>([]);
   const [totalWin, setTotalWin] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -626,7 +627,10 @@ export default function SlotsScreen() {
   useEffect(() => { betRef.current = betIdx; }, [betIdx]);
   
   useEffect(() => { 
-    getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+    getProfile().then(p => {
+      setMainBalance(p.mainWallet.balance);
+      setPlayBalance(p.playWallet.balance);
+    }).catch(() => {});
   }, []);
   
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
@@ -679,7 +683,14 @@ export default function SlotsScreen() {
     await new Promise(r => setTimeout(r, 100));
     setWins(res.paylineWins);
     setTotalWin(res.totalWin);
-    setBalance(res.balance);
+    // Update balance from response if available, otherwise refetch
+    if (res.balance !== undefined) {
+      // Slots API returns combined balance, we need to refetch to get separate wallets
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet.balance);
+        setPlayBalance(p.playWallet.balance);
+      }).catch(() => {});
+    }
 
     if (res.canGamble && !fromAuto) {
       setGambleId(res.spinId); setGambleWin(res.totalWin);
@@ -712,7 +723,12 @@ export default function SlotsScreen() {
     try {
       const r = await gambleSlots(gambleId, guess);
       setGambleResult({ won: r.won, actual: r.actual, payout: r.payout });
-      setBalance(r.balance); setTotalWin(r.won ? r.payout : 0);
+      // Refetch to get both wallet balances
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet.balance);
+        setPlayBalance(p.playWallet.balance);
+      }).catch(() => {});
+      setTotalWin(r.won ? r.payout : 0);
       if (!r.won) setWins([]);
     } catch (e: any) { setError(e?.message ?? "Gamble failed"); setShowGamble(false); }
     finally { setGambleLoading(false); }
@@ -865,14 +881,14 @@ export default function SlotsScreen() {
             borderTop: "1px solid rgba(201,168,76,0.15)",
           }}>
             {[
-              { icon: "💼", label: balance !== null ? balance.toFixed(2) : "—" },
-              { icon: "🏆", label: totalWin !== null && totalWin > 0 ? totalWin.toFixed(2) : "0.00" },
-              { icon: "🎖", label: "0.00" },
-            ].map(({ icon, label }, i) => (
+              { icon: "💰", label: `M: ${mainBalance !== null ? mainBalance.toFixed(2) : "—"}`, color: "#4ade80" },
+              { icon: "🎮", label: `P: ${playBalance !== null ? playBalance.toFixed(2) : "—"}`, color: "#818cf8" },
+              { icon: "🏆", label: totalWin !== null && totalWin > 0 ? totalWin.toFixed(2) : "0.00", color: "#e2e8f0" },
+            ].map(({ icon, label, color }, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ fontSize: 14 }}>{icon}</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#e2e8f0" }}>{label}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color }}>{label}</div>
                   <div style={{ fontSize: 9, color: "#475569", fontWeight: 700 }}>ETB</div>
                 </div>
               </div>

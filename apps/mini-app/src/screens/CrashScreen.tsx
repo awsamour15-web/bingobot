@@ -588,7 +588,8 @@ export default function CrashScreen() {
   const placingRef2 = useRef(false);
   const [betTab, setBetTab] = useState<'all' | 'mine'>('all');
   const [myUsername, setMyUsername] = useState('');
-  const [balance, setBalance] = useState<number | null>(null);
+  const [mainBalance, setMainBalance] = useState<number | null>(null);
+  const [playBalance, setPlayBalance] = useState<number | null>(null);
   const [autoCashoutAt, setAutoCashoutAt] = useState(5.0);
   const [showRules, setShowRules] = useState(false);
   const [depositModal, setDepositModal] = useState(false);
@@ -621,7 +622,10 @@ export default function CrashScreen() {
       setBets(s.bets);
     }).catch(() => {});
     getCrashHistory().then(setHistory).catch(() => {});
-    getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+    getProfile().then(p => {
+      setMainBalance(p.mainWallet.balance);
+      setPlayBalance(p.playWallet.balance);
+    }).catch(() => {});
     try {
       const jwt = getJwtFromStorage() ?? '';
       const payload = JSON.parse(atob(jwt.split('.')[1]!));
@@ -674,7 +678,10 @@ export default function CrashScreen() {
       setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
       setBets(prev => [{ username: myUsername || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
       setRoundId(res.roundId);
-      getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet.balance);
+        setPlayBalance(p.playWallet.balance);
+      }).catch(() => {});
     } catch (err: any) {
       const msg: string = err?.message ?? '';
       if (!msg.toLowerCase().includes('already')) {
@@ -695,7 +702,10 @@ export default function CrashScreen() {
       setCashingOut(false);
       if (res?.ok) {
         setMyBet(prev => prev ? { ...prev, cashoutAt: res.multiplier, payout: res.payout } : prev);
-        getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+        getProfile().then(p => {
+          setMainBalance(p.mainWallet.balance);
+          setPlayBalance(p.playWallet.balance);
+        }).catch(() => {});
       }
     });
   }, [roundId]);
@@ -731,9 +741,13 @@ export default function CrashScreen() {
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: 'rgba(150,180,220,0.6)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>BALANCE</div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
-              {balance !== null ? balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
-              <span style={{ fontSize: 11, color: 'rgba(150,180,220,0.7)', fontWeight: 600, marginLeft: 4 }}>ETB</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#4ade80' }}>
+                M: {mainBalance !== null ? mainBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#818cf8' }}>
+                P: {playBalance !== null ? playBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+              </div>
             </div>
           </div>
           <div style={{ position: 'relative' }}>

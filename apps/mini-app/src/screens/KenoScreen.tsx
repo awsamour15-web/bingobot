@@ -215,7 +215,8 @@ function MyBetFeedRow({ myBet, drawnSet }: { myBet: NonNullable<KenoState["myBet
 export default function KenoScreen() {
   const navigate = useNavigate();
   const [access, setAccess] = useState<"loading"|"allowed"|"denied">("loading");
-  const [balance, setBalance] = useState<number|null>(null);
+  const [mainBalance, setMainBalance] = useState<number|null>(null);
+  const [playBalance, setPlayBalance] = useState<number|null>(null);
   const [roundId, setRoundId] = useState<string|null>(null);
   const [phase, setPhase] = useState<KenoState["phase"]>("idle");
   const [bettingEndsAt, setBettingEndsAt] = useState(0);
@@ -231,7 +232,10 @@ export default function KenoScreen() {
 
   useEffect(() => {
     checkKenoAccess().then(r => setAccess(r.allowed?"allowed":"denied")).catch(() => setAccess("denied"));
-    getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+    getProfile().then(p => {
+      setMainBalance(p.mainWallet.balance);
+      setPlayBalance(p.playWallet.balance);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -293,7 +297,10 @@ export default function KenoScreen() {
     try {
       await placeKenoBet(betAmount, picked);
       setMyBet({ id:"pending", pickedNumbers:picked, betAmount, matched:null, payout:null });
-      getProfile().then(p => setBalance(p.playWallet.balance)).catch(() => {});
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet.balance);
+        setPlayBalance(p.playWallet.balance);
+      }).catch(() => {});
     } catch (e: unknown) {
       const msg = (e as Error)?.message ?? "Failed";
       if (msg.includes("INSUFFICIENT")) setError("Insufficient balance");
@@ -327,8 +334,16 @@ export default function KenoScreen() {
           Back
         </button>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"5px 10px", display:"flex", alignItems:"center", gap:5 }}>
-            <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>{balance !== null ? balance.toFixed(2) : "0.00"}</span>
+          <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"5px 10px", display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"#4ade80" }}>M:</span>
+              <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>{mainBalance !== null ? mainBalance.toFixed(2) : "0.00"}</span>
+            </div>
+            <div style={{ width:1, height:16, background:"rgba(255,255,255,0.15)" }}/>
+            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:"#818cf8" }}>P:</span>
+              <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>{playBalance !== null ? playBalance.toFixed(2) : "0.00"}</span>
+            </div>
             <span style={{ fontSize:11, color:"#6a8a78", fontWeight:600 }}>ETB</span>
           </div>
           {roundShortId && (
