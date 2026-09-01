@@ -105,17 +105,19 @@ function TransactionsTable({ gameKey, txs, loading }: {
 }) {
   const isSlots = gameKey === 'slots';
   const isCrash = gameKey === 'crash';
+  const isPlinko = gameKey === 'plinko';
 
-  const cols = isSlots ? 5 : isCrash ? 6 : 5;
+  const cols = isSlots ? 5 : isCrash ? 6 : isPlinko ? 6 : 5;
 
   return (
     <Table>
       <thead>
         <tr>
-          <Th>Round ID</Th>
-          {isSlots && <Th>Player</Th>}
+          <Th>ID</Th>
+          {(isSlots || isPlinko) && <Th>Player</Th>}
           <Th right>Players</Th>
           {isCrash && <Th right>Crash Point</Th>}
+          {isPlinko && <Th right>Multiplier</Th>}
           <Th right>Bets In (ETB)</Th>
           <Th right>Paid Out (ETB)</Th>
           <Th right>Profit / Loss</Th>
@@ -131,12 +133,19 @@ function TransactionsTable({ gameKey, txs, loading }: {
           txs.map((tx) => (
             <tr key={tx.id}>
               <Td mono muted>{String(tx.id).slice(0, 12)}…</Td>
-              {isSlots && <Td><span style={{ fontWeight: 600 }}>@{tx.username ?? '—'}</span></Td>}
+              {(isSlots || isPlinko) && <Td><span style={{ fontWeight: 600 }}>@{tx.username ?? '—'}</span></Td>}
               <Td right muted>{tx.players}</Td>
               {isCrash && (
                 <Td right>
                   <span style={{ fontWeight: 700, color: '#f59e0b' }}>
                     {tx.crashPoint != null ? `${Number(tx.crashPoint).toFixed(2)}x` : '—'}
+                  </span>
+                </Td>
+              )}
+              {isPlinko && (
+                <Td right>
+                  <span style={{ fontWeight: 700, color: '#818cf8' }}>
+                    {tx.multiplier != null ? `${Number(tx.multiplier).toFixed(2)}x` : '—'}
                   </span>
                 </Td>
               )}

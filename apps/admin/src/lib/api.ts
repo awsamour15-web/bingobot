@@ -739,6 +739,9 @@ export interface GameTx {
   profit: number;
   players: number;
   crashPoint?: number | null;
+  multiplier?: number | null;
+  rows?: number;
+  risk?: string;
   date: string;
 }
 
@@ -749,6 +752,7 @@ export interface GamesStatsResponse {
     crash: GameTx[];
     keno: GameTx[];
     slots: GameTx[];
+    plinko: GameTx[];
   };
 }
 

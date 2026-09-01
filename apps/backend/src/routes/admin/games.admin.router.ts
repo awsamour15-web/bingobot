@@ -20,7 +20,7 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
     recentSlots,
     recentPlinko,
   ] = await Promise.all([
-    // Bingo (GameRound + round_entries)
+    // Bingo
     prisma.gameRound.aggregate({
       where: { status: 'completed' },
       _sum: { derash: true },
@@ -41,8 +41,8 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
       _sum: { bet_amount: true, total_win: true },
       _count: { id: true },
     }),
-    // Plinko drops
-    prisma.plinkoDrop.aggregate({
+    // Plinko bets
+    prisma.plinkoBet.aggregate({
       _sum: { bet_amount: true, payout: true },
       _count: { id: true },
     }),
@@ -69,9 +69,7 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
       take: 50,
       include: {
         _count: { select: { bets: true } },
-        bets: {
-          select: { bet_amount: true, payout: true },
-        },
+        bets: { select: { bet_amount: true, payout: true } },
       },
     }),
     // Recent keno rounds (last 50)
@@ -81,9 +79,7 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
       take: 50,
       include: {
         _count: { select: { bets: true } },
-        bets: {
-          select: { bet_amount: true, payout: true },
-        },
+        bets: { select: { bet_amount: true, payout: true } },
       },
     }),
     // Recent slots spins (last 50)
@@ -99,8 +95,8 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         player: { select: { username: true } },
       },
     }),
-    // Recent plinko drops (last 50)
-    prisma.plinkoDrop.findMany({
+    // Recent plinko bets (last 50)
+    prisma.plinkoBet.findMany({
       orderBy: { created_at: 'desc' },
       take: 50,
       select: {
@@ -142,48 +138,33 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
   res.json({
     games: [
       {
-        key: 'bingo',
-        name: 'Bingo',
-        icon: '🎯',
+        key: 'bingo', name: 'Bingo', icon: '🎯',
         totalRounds: bingoStats._count.id,
-        totalBets: bingoTotalBets,
-        totalPaid: bingoPrizesPaid,
+        totalBets: bingoTotalBets, totalPaid: bingoPrizesPaid,
         profit: bingoTotalBets - bingoPrizesPaid,
       },
       {
-        key: 'crash',
-        name: 'Crash',
-        icon: '🚀',
+        key: 'crash', name: 'Crash', icon: '🚀',
         totalRounds: crashStats._count.id,
-        totalBets: crashTotalBets,
-        totalPaid: crashTotalPaid,
+        totalBets: crashTotalBets, totalPaid: crashTotalPaid,
         profit: crashTotalBets - crashTotalPaid,
       },
       {
-        key: 'keno',
-        name: 'Keno',
-        icon: '🎱',
+        key: 'keno', name: 'Keno', icon: '🎱',
         totalRounds: kenoStats._count.id,
-        totalBets: kenoTotalBets,
-        totalPaid: kenoTotalPaid,
+        totalBets: kenoTotalBets, totalPaid: kenoTotalPaid,
         profit: kenoTotalBets - kenoTotalPaid,
       },
       {
-        key: 'slots',
-        name: 'Slots',
-        icon: '🎰',
+        key: 'slots', name: 'Slots', icon: '🎰',
         totalRounds: slotsStats._count.id,
-        totalBets: slotsTotalBets,
-        totalPaid: slotsTotalWins,
+        totalBets: slotsTotalBets, totalPaid: slotsTotalWins,
         profit: slotsTotalBets - slotsTotalWins,
       },
       {
-        key: 'plinko',
-        name: 'Plinko',
-        icon: '🎲',
+        key: 'plinko', name: 'Plinko', icon: '�',
         totalRounds: plinkoStats._count.id,
-        totalBets: plinkoTotalBets,
-        totalPaid: plinkoTotalPaid,
+        totalBets: plinkoTotalBets, totalPaid: plinkoTotalPaid,
         profit: plinkoTotalBets - plinkoTotalPaid,
       },
     ],
@@ -198,8 +179,8 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         date: (r.ended_at ?? r.start_time).toISOString(),
       })),
       crash: recentCrash.map((r) => {
-        const totalBet = r.bets.reduce((s, b) => s + Number(b.bet_amount), 0);
-        const totalPaid = r.bets.reduce((s, b) => s + Number(b.payout ?? 0), 0);
+        const totalBet = r.bets.reduce((s: number, b: { bet_amount: unknown }) => s + Number(b.bet_amount), 0);
+        const totalPaid = r.bets.reduce((s: number, b: { payout: unknown }) => s + Number(b.payout ?? 0), 0);
         return {
           id: r.id,
           type: 'crashed',
@@ -212,8 +193,8 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         };
       }),
       keno: recentKeno.map((r) => {
-        const totalBet = r.bets.reduce((s, b) => s + Number(b.bet_amount), 0);
-        const totalPaid = r.bets.reduce((s, b) => s + Number(b.payout ?? 0), 0);
+        const totalBet = r.bets.reduce((s: number, b: { bet_amount: unknown }) => s + Number(b.bet_amount), 0);
+        const totalPaid = r.bets.reduce((s: number, b: { payout: unknown }) => s + Number(b.payout ?? 0), 0);
         return {
           id: r.id,
           type: 'finished',
