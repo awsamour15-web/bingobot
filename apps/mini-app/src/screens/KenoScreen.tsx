@@ -453,8 +453,8 @@ export default function KenoScreen() {
         <PossibleWinCard betAmount={betAmount} pickedNumbers={picked} />
       )}
 
-      {/* Number Grid - hidden during draw */}
-      {phase !== "drawing" && (
+      {/* Number Grid - only shown during betting */}
+      {phase === "betting" && (
         <div style={{ flexShrink:0, borderTop:"1px solid rgba(255,255,255,0.05)", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
           <NumberGrid picked={pickedSet} drawn={drawnSet} phase={phase} onToggle={togglePick} />
         </div>
