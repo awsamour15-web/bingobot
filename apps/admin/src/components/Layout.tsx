@@ -201,7 +201,7 @@ export function Layout() {
           background: transparent;
           transition: margin-left 0.22s cubic-bezier(.4,0,.2,1);
         }
-        .main-content > * { max-width: 1400px; margin: 0 auto; }
+        .main-content > * { max-width: 100%; }
 
         .overlay {
           display: none; position: fixed; inset: 0;

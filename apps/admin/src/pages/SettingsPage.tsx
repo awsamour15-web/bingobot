@@ -732,8 +732,11 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('house_edge');
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%', width: '100%', margin: 0 }}>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', width: '100%', margin: 0 }}>
       <style>{`
+        .settings-layout { width: 100%; }
+        /* Override Layout's .main-content > * max-width constraint */
+        .main-content .fade-in { max-width: 100% !important; margin: 0 !important; }
         @media (max-width: 640px) {
           .settings-layout { flex-direction: column !important; }
           .settings-sidebar { flex-direction: row !important; overflow-x: auto; border-right: none !important; border-bottom: 1px solid var(--c-border) !important; padding: 8px !important; gap: 4px !important; }
@@ -746,9 +749,10 @@ export function SettingsPage() {
       <PageHeader title="Settings" />
 
       <div className="settings-layout" style={{
-        display: 'flex', flex: 1, gap: 0,
+        display: 'flex', gap: 0, width: '100%',
         background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
-        borderRadius: 16, overflow: 'hidden', minHeight: 0,
+        borderRadius: 16, overflow: 'hidden',
+        minHeight: 'calc(100vh - 160px)',
       }}>
         {/* Sidebar */}
         <nav className="settings-sidebar" style={{
@@ -783,7 +787,7 @@ export function SettingsPage() {
         </nav>
 
         {/* Content */}
-        <div style={{ flex: 1, padding: 28, overflowY: 'auto', minWidth: 0 }}>
+        <div style={{ flex: 1, padding: 28, overflowY: 'auto', minWidth: 0, width: '100%' }}>
           {/* Section header */}
           {(() => {
             const tab = TABS.find(t => t.key === activeTab)!;
