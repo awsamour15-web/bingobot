@@ -11,11 +11,9 @@ const TOTAL_NUMBERS = 80;
 const TOTAL_DRAWN = 20;
 
 const PAYOUT_TABLE: Record<number, Record<number, number>> = {
-  1:{1:3.5}, 2:{2:9}, 3:{2:2,3:25}, 4:{2:1.5,3:6,4:75},
-  5:{2:1,3:3,4:15,5:120}, 6:{2:1,3:2,4:5,5:30,6:300},
-  7:{3:1.5,4:3,5:10,6:75,7:700}, 8:{3:1,4:2,5:6,6:25,7:150,8:1500},
-  9:{3:1,4:1.5,5:4,6:12,7:50,8:300,9:3000},
-  10:{3:1,4:1.2,5:3,6:8,7:25,8:100,9:500,10:5000},
+  1:{1:3.5}, 2:{2:10}, 3:{3:50}, 4:{4:80},
+  5:{5:150}, 6:{6:500}, 7:{7:1000}, 8:{8:2000},
+  9:{9:5000}, 10:{10:10000},
 };
 
 function getMultiplier(p: number, m: number): number { return PAYOUT_TABLE[p]?.[m] ?? 0; }
@@ -320,7 +318,7 @@ export default function KenoScreen() {
   const [myBets, setMyBets] = useState<NonNullable<KenoState["myBet"]>[]>([]);
   const [liveBets, setLiveBets] = useState<KenoState["bets"]>([]);
   const [picked, setPicked] = useState<number[]>([]);
-  const [betAmount, setBetAmount] = useState(4);
+  const [betAmount, setBetAmount] = useState(5);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [tab, setTab] = useState<"game"|"history"|"results"|"statistics">("game");
