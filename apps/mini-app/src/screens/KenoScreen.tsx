@@ -284,6 +284,7 @@ export default function KenoScreen() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [tab, setTab] = useState<"game"|"history"|"results"|"statistics">("game");
+  const [gameSubTab, setGameSubTab] = useState<"all"|"mytickets"|"mybets">("all");
   const latestTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   useEffect(() => {
@@ -499,26 +500,41 @@ export default function KenoScreen() {
         ))}
       </div>
 
-      {/* Tab counts row */}
+      {/* Tab counts row - sub tabs for GAME */}
       {tab === "game" && (
-        <div style={{ display:"flex", gap:0, padding:"7px 14px", fontSize:12, color:"#4a6a58", fontWeight:600, borderBottom:"1px solid rgba(255,255,255,0.05)", flexShrink:0 }}>
-          <span style={{ marginRight:20 }}>All <span style={{ color:"#8ab89a" }}>{liveBets.length + (myBet ? 1 : 0)}</span></span>
-          <span style={{ marginRight:20 }}>My Tickets <span style={{ color:"#8ab89a" }}>{myBet ? 1 : 0}</span></span>
-          <span>My Bets <span style={{ color:"#8ab89a" }}>{myBet ? 1 : 0}</span></span>
+        <div style={{ display:"flex", gap:0, padding:"0 14px", fontSize:12, color:"#4a6a58", fontWeight:600, borderBottom:"1px solid rgba(255,255,255,0.05)", flexShrink:0, background:"rgba(0,0,0,0.2)" }}>
+          {([
+            { key:"all", label:"All", count: liveBets.length + (myBet ? 1 : 0) },
+            { key:"mytickets", label:"My Tickets", count: myBet ? 1 : 0 },
+            { key:"mybets", label:"My Bets", count: null },
+          ] as const).map(({ key, label, count }) => (
+            <button key={key} onClick={() => setGameSubTab(key)} style={{ padding:"8px 12px 7px", background:"none", border:"none", borderBottom: gameSubTab===key ? "2px solid #22c55e" : "2px solid transparent", color: gameSubTab===key ? "#e2e8f0" : "#4a6a58", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
+              {label}{count !== null && <span style={{ marginLeft:4, color: gameSubTab===key ? "#22c55e" : "#4a6a58" }}>{count}</span>}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Scrollable feed */}
       <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
-        {tab === "game" && (
+        {tab === "game" && gameSubTab === "all" && (
           <>
             {myBet && <MyBetFeedRow myBet={myBet} drawnSet={drawnSet} />}
             {liveBets.map((b, i) => <BetFeedRow key={i} bet={b} drawnSet={drawnSet} />)}
             {!myBet && liveBets.length === 0 && (
-              <div style={{ padding:"10px 14px", fontSize:12, color:"#4a6a58" }}>h***s</div>
+              <div style={{ padding:"20px 14px", fontSize:12, color:"#4a6a58", textAlign:"center" }}>No bets yet this round</div>
             )}
           </>
         )}
+        {tab === "game" && gameSubTab === "mytickets" && (
+          <>
+            {myBet
+              ? <MyBetFeedRow myBet={myBet} drawnSet={drawnSet} />
+              : <div style={{ padding:"20px 14px", fontSize:12, color:"#4a6a58", textAlign:"center" }}>No ticket this round</div>
+            }
+          </>
+        )}
+        {tab === "game" && gameSubTab === "mybets" && <HistoryTab />}
         {tab === "history" && <HistoryTab />}
         {tab === "results" && <ResultsTab myBet={myBet} drawnNumbers={drawnNumbers} />}
         {tab === "statistics" && <div style={{ textAlign:"center", padding:40, color:"#475569" }}>Statistics coming soon</div>}
