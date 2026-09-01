@@ -200,7 +200,7 @@ function AppInner() {
   }, []);
 
   return (
-    <div style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', height: isSubPage ? '100dvh' : undefined, minHeight: isSubPage ? undefined : '100dvh', background: '#0a0e1a', color: '#fff', overflow: isSubPage ? 'hidden' : undefined }}>
+    <div style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<GamesLobbyScreen />} />
