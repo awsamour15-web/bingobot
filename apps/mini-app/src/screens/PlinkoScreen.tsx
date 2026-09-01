@@ -11,19 +11,19 @@ const MAX_BET = 10_000;
 // ─── Multiplier tables (must match backend) ───────────────────────────────────
 const MULTIPLIERS: Record<Rows, Record<Risk, number[]>> = {
   8: {
-    low:    [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6],
-    medium: [13,  3,   1.3, 0.7, 0.4, 0.7, 1.3, 3,   13],
-    high:   [29,  4,   1.5, 0.3, 0.2, 0.3, 1.5, 4,   29],
+    low:    [3.0, 1.5, 1.0, 0.8, 0.5, 0.8, 1.0, 1.5, 3.0],
+    medium: [5.0, 2.0, 1.0, 0.6, 0.3, 0.6, 1.0, 2.0, 5.0],
+    high:   [10,  3.0, 1.2, 0.4, 0.2, 0.4, 1.2, 3.0, 10],
   },
   12: {
-    low:    [8.9, 3,   1.4, 1.1, 1.0, 0.5, 0.5, 1.0, 1.1, 1.4, 3,   8.9],
-    medium: [33,  11,  4,   2,   1.1, 0.6, 0.6, 1.1, 2,   4,   11,  33],
-    high:   [170, 24,  8.1, 2,   0.7, 0.2, 0.2, 0.7, 2,   8.1, 24,  170],
+    low:    [4.0, 2.0, 1.2, 1.0, 0.8, 0.5, 0.5, 0.8, 1.0, 1.2, 2.0, 4.0],
+    medium: [8.0, 4.0, 2.0, 1.5, 0.8, 0.4, 0.4, 0.8, 1.5, 2.0, 4.0, 8.0],
+    high:   [25,  10,  4.0, 2.0, 0.8, 0.3, 0.3, 0.8, 2.0, 4.0, 10,  25],
   },
   16: {
-    low:    [16,  9,   2,   1.4, 1.1, 1.0, 0.5, 0.3, 0.3, 0.5, 1.0, 1.1, 1.4, 2,   9,   16],
-    medium: [110, 41,  10,  5,   3,   1.5, 1.0, 0.5, 0.5, 1.0, 1.5, 3,   5,   10,  41,  110],
-    high:   [1000,130, 26,  9,   4,   2,   0.2, 0.2, 0.2, 0.2, 2,   4,   9,   26,  130, 1000],
+    low:    [5.0, 3.0, 1.5, 1.2, 1.0, 0.8, 0.5, 0.3, 0.3, 0.5, 0.8, 1.0, 1.2, 1.5, 3.0, 5.0],
+    medium: [12,  6.0, 3.0, 2.0, 1.5, 1.0, 0.8, 0.4, 0.4, 0.8, 1.0, 1.5, 2.0, 3.0, 6.0, 12],
+    high:   [50,  20,  10,  5.0, 3.0, 2.0, 0.5, 0.3, 0.3, 0.5, 2.0, 3.0, 5.0, 10,  20,  50],
   },
 };
 
@@ -86,6 +86,7 @@ interface BallAnim {
 }
 
 interface AnimState {
+  id: string;          // unique id for this ball
   ball: BallAnim;
   rowIdx: number;       // which row bounce we're at (0 = top, rows = landed)
   progress: number;     // 0..1 within current segment
@@ -95,6 +96,7 @@ interface AnimState {
 }
 
 const SEG_MS = 120; // ms per peg-to-peg hop
+const MULTI_DROP_DELAY = 300; // ms delay between each ball drop
 
 // ─── History entry ────────────────────────────────────────────────────────────
 interface HistEntry {
@@ -106,13 +108,14 @@ interface HistEntry {
 export default function PlinkoScreen() {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animRef = useRef<AnimState | null>(null);
+  const animsRef = useRef<AnimState[]>([]); // Support multiple balls
   const rafRef = useRef<number>(0);
 
   const [mainBalance, setMainBalance] = useState<number | null>(null);
   const [playBalance, setPlayBalance] = useState<number | null>(null);
   const [walletType, setWalletType] = useState<'main' | 'play'>('play');
   const [bet, setBet] = useState(10);
+  const [ballCount, setBallCount] = useState(1); // Number of balls to drop
   const [rows, setRows] = useState<Rows>(12);
   const [risk, setRisk] = useState<Risk>('medium');
   const [dropping, setDropping] = useState(false);
@@ -137,7 +140,7 @@ export default function PlinkoScreen() {
   }, [tab]);
 
   // ─── Draw board ─────────────────────────────────────────────────────────────
-  const drawBoard = useCallback((anim: AnimState | null) => {
+  const drawBoard = useCallback((anims: AnimState[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -190,8 +193,10 @@ export default function PlinkoScreen() {
       }
     }
 
-    // Draw ball
-    if (anim && !anim.done) {
+    // Draw all active balls
+    anims.forEach(anim => {
+      if (anim.done) return;
+      
       const { rowIdx, progress, ball } = anim;
       let bx: number, by: number;
 
@@ -223,55 +228,101 @@ export default function PlinkoScreen() {
         by = lastPeg.y * (1 - progress) + slotY * progress;
       }
 
-      const col = mulColor(ball.multiplier);
+      // Draw realistic 3D ball
       ctx.save();
-      // Glow
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = col;
+      
+      // Outer glow
+      const col = mulColor(ball.multiplier);
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = col + '66';
+      
+      // Create radial gradient for 3D effect
+      const gradient = ctx.createRadialGradient(
+        bx - ballR * 0.3, by - ballR * 0.3, ballR * 0.1,
+        bx, by, ballR
+      );
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(0.3, '#f0f0f0');
+      gradient.addColorStop(0.7, '#d0d0d0');
+      gradient.addColorStop(1, '#a0a0a0');
+      
+      // Draw ball with gradient
       ctx.beginPath();
       ctx.arc(bx, by, ballR, 0, Math.PI * 2);
-      ctx.fillStyle = col;
+      ctx.fillStyle = gradient;
       ctx.fill();
+      
+      // Add subtle border
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Highlight (shine effect)
+      ctx.beginPath();
+      ctx.arc(bx - ballR * 0.35, by - ballR * 0.35, ballR * 0.25, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fill();
+      
       ctx.restore();
-    }
+    });
   }, [rows, risk]);
+
 
   // ─── Animation loop ──────────────────────────────────────────────────────────
   const runLoop = useCallback(() => {
-    const anim = animRef.current;
-    if (!anim) return;
+    const anims = animsRef.current;
+    if (!anims.length) return;
 
-    if (!anim.done) {
-      const elapsed = Date.now() - anim.startMs;
-      const totalSeg = anim.ball.rows + 1; // rows pegs + drop to slot
-      const segIdx = Math.min(Math.floor(elapsed / SEG_MS), totalSeg - 1);
-      const segProgress = Math.min((elapsed - segIdx * SEG_MS) / SEG_MS, 1);
+    let allDone = true;
+    anims.forEach(anim => {
+      if (!anim.done) {
+        allDone = false;
+        const elapsed = Date.now() - anim.startMs;
+        const totalSeg = anim.ball.rows + 1; // rows pegs + drop to slot
+        const segIdx = Math.min(Math.floor(elapsed / SEG_MS), totalSeg - 1);
+        const segProgress = Math.min((elapsed - segIdx * SEG_MS) / SEG_MS, 1);
 
-      anim.rowIdx = segIdx;
-      anim.progress = segProgress;
+        anim.rowIdx = segIdx;
+        anim.progress = segProgress;
 
-      if (segIdx >= totalSeg - 1 && segProgress >= 1) {
-        anim.done = true;
-        anim.flashSlot = anim.ball.slot;
-        drawBoard(anim);
-        setDropping(false);
-        setLastResult({ multiplier: anim.ball.multiplier, payout: anim.ball.payout, bet: anim.ball.betAmount });
-        // Refresh balance
-        getProfile().then(p => {
-          setMainBalance(p.mainWallet.balance);
-          setPlayBalance(p.playWallet.balance);
-        }).catch(() => {});
-        return;
+        if (segIdx >= totalSeg - 1 && segProgress >= 1) {
+          anim.done = true;
+          anim.flashSlot = anim.ball.slot;
+        }
       }
+    });
+
+    drawBoard(anims);
+
+    // If all balls are done, stop animation and refresh balance
+    if (allDone) {
+      setDropping(false);
+      // Calculate total payout from all balls
+      const totalPayout = anims.reduce((sum, a) => sum + a.ball.payout, 0);
+      const totalBet = anims.reduce((sum, a) => sum + a.ball.betAmount, 0);
+      const avgMultiplier = totalPayout / totalBet;
+      setLastResult({ multiplier: avgMultiplier, payout: totalPayout, bet: totalBet });
+      
+      // Refresh balance
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet.balance);
+        setPlayBalance(p.playWallet.balance);
+      }).catch(() => {});
+      
+      // Clear animations after a delay
+      setTimeout(() => {
+        animsRef.current = [];
+        drawBoard([]);
+      }, 2000);
+      return;
     }
 
-    drawBoard(anim);
     rafRef.current = requestAnimationFrame(runLoop);
   }, [drawBoard]);
 
   // Initial draw
   useEffect(() => {
-    drawBoard(null);
+    drawBoard([]);
   }, [drawBoard]);
 
   // ─── Drop handler ────────────────────────────────────────────────────────────
@@ -280,21 +331,37 @@ export default function PlinkoScreen() {
     setError(null);
     setLastResult(null);
     setDropping(true);
+    animsRef.current = [];
+    
     try {
-      const result = await dropPlinko(bet, rows, risk, walletType);
-      const anim: AnimState = {
-        ball: { ...result, rows, risk },
-        rowIdx: 0,
-        progress: 0,
-        startMs: Date.now(),
-        done: false,
-        flashSlot: -1,
-      };
-      animRef.current = anim;
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(runLoop);
+      // Drop balls one by one with delay
+      for (let i = 0; i < ballCount; i++) {
+        const result = await dropPlinko(bet, rows, risk, walletType);
+        const anim: AnimState = {
+          id: `${Date.now()}-${i}`,
+          ball: { ...result, rows, risk },
+          rowIdx: 0,
+          progress: 0,
+          startMs: Date.now(),
+          done: false,
+          flashSlot: -1,
+        };
+        animsRef.current.push(anim);
+        
+        // Start animation loop on first ball
+        if (i === 0) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = requestAnimationFrame(runLoop);
+        }
+        
+        // Wait before dropping next ball (except for last one)
+        if (i < ballCount - 1) {
+          await new Promise(resolve => setTimeout(resolve, MULTI_DROP_DELAY));
+        }
+      }
     } catch (err: any) {
       setDropping(false);
+      animsRef.current = [];
       setError(err?.message ?? 'Something went wrong');
     }
   }
@@ -385,6 +452,16 @@ export default function PlinkoScreen() {
                 </div>
               </div>
 
+              {/* Ball count selector */}
+              <div>
+                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Number of Balls</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[1, 3, 5, 10].map(count => (
+                    <button key={count} onClick={() => setBallCount(count)} style={{ flex: 1, padding: '7px 0', borderRadius: 8, background: ballCount === count ? '#818cf8' : 'rgba(255,255,255,0.06)', border: `1px solid ${ballCount === count ? '#818cf8' : 'rgba(255,255,255,0.1)'}`, color: ballCount === count ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{count}</button>
+                  ))}
+                </div>
+              </div>
+
               {/* Bet amount */}
               <div>
                 <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Bet (ETB)</div>
@@ -407,7 +484,7 @@ export default function PlinkoScreen() {
                 disabled={dropping}
                 style={{ width: '100%', height: 48, borderRadius: 12, background: dropping ? 'rgba(129,140,248,0.3)' : 'linear-gradient(135deg,#818cf8,#6366f1)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 900, cursor: dropping ? 'not-allowed' : 'pointer', letterSpacing: '-0.2px', transition: 'opacity 0.15s', marginTop: 2 }}
               >
-                {dropping ? 'Dropping…' : '🎱 Drop Ball'}
+                {dropping ? 'Dropping…' : `🎱 Drop ${ballCount} Ball${ballCount > 1 ? 's' : ''} (${(bet * ballCount).toFixed(0)} ETB)`}
               </button>
 
               {/* Mini multiplier preview */}
