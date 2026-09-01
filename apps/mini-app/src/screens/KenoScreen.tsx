@@ -425,7 +425,7 @@ export default function KenoScreen() {
   );
 
   return (
-    <div style={{ minHeight:"100dvh", background:"linear-gradient(180deg,#0d1a14 0%,#08110d 100%)", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden" }}>
+    <div style={{ minHeight:"100dvh", background:"linear-gradient(180deg,#0d1a14 0%,#08110d 100%)", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden", overflowY:"auto" }}>
 
       {/* Top bar: Back | balance + ID | icons */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 8px", background:"rgba(0,0,0,0.45)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
@@ -558,7 +558,7 @@ export default function KenoScreen() {
       )}
 
       {/* Scrollable feed */}
-      <div style={{ flex:1, overflowY:"auto", minHeight:0 }}>
+      <div style={{ flex:1 }}>
         {tab === "game" && gameSubTab === "all" && (
           <>
             {myBets.map((b, i) => <MyBetFeedRow key={i} myBet={b} drawnSet={drawnSet} />)}
