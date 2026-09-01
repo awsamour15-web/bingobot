@@ -61,7 +61,7 @@ const GAMES: Game[] = [
   },
   {
     id: 'crash',
-    title: 'Crash',
+    title: 'Aviator',
     subtitle: 'Aviator style • Cash out before the crash',
     emoji: '🚀',
     gradient: 'linear-gradient(135deg, #351525 0%, #180b17 55%, #07070d 100%)',
@@ -289,7 +289,7 @@ export default function GamesLobbyScreen() {
           checkPlinkoAccess().catch(() => ({ allowed: false })),
         ]);
         if (!cancelled) {
-          setBalance(profile.mainWallet.balance);
+          setBalance(profile.mainWallet.balance + profile.playWallet.balance);
           setUsername(profile.username ?? null);
           setIsAgent(!!getAgentJwt());
           setIsSuspended(profile.is_suspended);

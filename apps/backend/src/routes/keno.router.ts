@@ -183,7 +183,7 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, round.id, 'Keno bet');
+    await WalletService.debitDual(playerId, betAmount, TxType.game_entry, round.id, 'Keno bet');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -206,12 +206,18 @@ router.post('/bet', kenoAccessMiddleware, async (req: Request, res: Response): P
   const { ReferralService } = await import('../services/referral.service.js');
   void ReferralService.maybeCreditInviteBonus(playerId);
 
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
+    select: { balance: true },
+  });
+  const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
+
   res.json({
-    betId: bet.id,
     roundId: round.id,
     pickedNumbers,
     betAmount,
     bettingEndsAt: round.betting_ends_at,
+    totalBalance,
   });
 });
 

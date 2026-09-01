@@ -131,6 +131,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: { phase: Phase; multiplie
   const particleIdRef = useRef(0);
   const starsRef = useRef<Star[]>([]);
   const bgImgRef = useRef<HTMLImageElement | null>(null);
+  const multiplierRef = useRef(multiplier);
   const [planePct, setPlanePct] = useState<{ x: number; y: number } | null>(null);
   const [planeTilt, setPlaneTilt] = useState(-20);
   const [planeFrame, setPlaneFrame] = useState(0);
@@ -157,6 +158,10 @@ function CrashGraph({ phase, multiplier, crashPoint }: { phase: Phase; multiplie
     const img = new Image(); img.src = bgSun;
     img.onload = () => { bgImgRef.current = img; };
   }, []);
+
+  useEffect(() => {
+    multiplierRef.current = multiplier;
+  }, [multiplier]);
 
   useEffect(() => {
     if (starsRef.current.length) return;
@@ -287,7 +292,8 @@ function CrashGraph({ phase, multiplier, crashPoint }: { phase: Phase; multiplie
 
       if (pts.length < 2) { animId = requestAnimationFrame(draw); return; }
 
-      const tipX = toX(last!.x), tipY = toY(last!.y);
+      const nowT = (Date.now() - startTimeRef.current) / 1000;
+      const tipX = toX(nowT), tipY = toY(multiplierRef.current);
 
       // Curve path helper (Catmull-Rom smooth)
       const curvePath = () => {
@@ -410,7 +416,7 @@ function CrashGraph({ phase, multiplier, crashPoint }: { phase: Phase; multiplie
           left: `${Math.min(planePct.x, 86)}%`,
           top: `${Math.max(Math.min(planePct.y, 88), 4)}%`,
           transform: 'translate(-50%, -100%)',
-          transition: isCrashed ? 'left 0.5s ease-in, top 0.5s ease-in' : 'left 0.1s linear, top 0.1s linear',
+          transition: isCrashed ? 'left 0.5s ease-in, top 0.5s ease-in' : 'none',
           pointerEvents: 'none', zIndex: 10,
         }}>
           <PlaneSVG crashed={isCrashed} tilt={planeTilt} frame={planeFrame} />
@@ -740,7 +746,7 @@ export default function CrashScreen() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(196,77,255,0.3)', borderRadius: 20, padding: '6px 14px' }}>
               <span style={{ fontSize: 13 }}>🚀</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Crash</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Aviator</span>
             </div>
             {[
               <svg key="home" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,

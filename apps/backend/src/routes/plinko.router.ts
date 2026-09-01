@@ -122,7 +122,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
 
   // Debit wallet before computing result
   try {
-    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, undefined, 'Plinko drop');
+    await WalletService.debitDual(playerId, betAmount, TxType.game_entry, undefined, 'Plinko drop');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: (err as Error).message });
@@ -162,13 +162,19 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const { ReferralService } = await import('../services/referral.service.js');
   void ReferralService.maybeCreditInviteBonus(playerId);
 
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
+    select: { balance: true },
+  });
+  const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
+
   res.json({
-    id: bet.id,
     path,
     slot,
     multiplier,
     payout,
     betAmount,
+    totalBalance,
   });
 });
 

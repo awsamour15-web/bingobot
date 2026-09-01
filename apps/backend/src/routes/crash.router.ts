@@ -130,7 +130,7 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
 
   // Debit wallet
   try {
-    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
+    await WalletService.debitDual(playerId, betAmount, TxType.game_entry, round.id, `Crash bet slot ${slotIdx}`);
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -165,7 +165,13 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   getCrashIo()?.emit('CRASH_BET_PLACED', { playerId, betAmount, slot: slotIdx });
   void player;
 
-  res.json({ roundId: round.id, betAmount, slot: slotIdx });
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
+    select: { balance: true },
+  });
+  const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
+
+  res.json({ roundId: round.id, betAmount, slot: slotIdx, totalBalance });
 });
 
 // ─── GET /api/crash/history ───────────────────────────────────────────────────

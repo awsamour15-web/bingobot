@@ -37,7 +37,7 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
 
   // Debit wallet first
   try {
-    await WalletService.debit(playerId, WalletType.play, betAmount, TxType.game_entry, undefined, 'Slots spin');
+    await WalletService.debitDual(playerId, betAmount, TxType.game_entry, undefined, 'Slots spin');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: err.message });
@@ -76,10 +76,11 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
   void ReferralService.maybeCreditInviteBonus(playerId);
 
   // Get updated balance
-  const wallet = await prisma.wallet.findUnique({
-    where: { player_id_type: { player_id: playerId, type: WalletType.play } },
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
     select: { balance: true },
   });
+  const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
 
   res.json({
     spinId: spinRecord.id,
@@ -87,7 +88,7 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
     multiplierReel: result.multiplierReel,
     paylineWins: result.paylineWins,
     totalWin: result.totalWin,
-    balance: Number(wallet?.balance ?? 0),
+    balance: totalBalance,
     canGamble: result.totalWin > 0,
   });
 });
@@ -134,10 +135,11 @@ router.post('/gamble', async (req: Request, res: Response): Promise<void> => {
     data: { gamble_result: result as unknown as object },
   });
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { player_id_type: { player_id: playerId, type: WalletType.play } },
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
     select: { balance: true },
   });
+  const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
 
   res.json({ ...result, balance: Number(wallet?.balance ?? 0) });
 });
