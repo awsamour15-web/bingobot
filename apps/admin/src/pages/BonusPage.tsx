@@ -23,7 +23,7 @@ type Tab = 'single' | 'bulk' | 'deposit' | 'active';
 type BonusPreset = { id: string; label: string; amount: number; wallet: WalletType; note: string };
 
 const BONUS_PRESETS: BonusPreset[] = [
-  { id: 'welcome',  label: 'Welcome Bonus',  amount: 20,  wallet: 'play', note: 'Welcome bonus for new player registration' },
+  { id: 'welcome',  label: 'Welcome Bonus',  amount: 10,  wallet: 'play', note: 'Welcome bonus for new player registration' },
   { id: 'deposit',  label: 'Deposit Boost',  amount: 50,  wallet: 'play', note: 'Deposit bonus awarded by admin' },
   { id: 'referral', label: 'Referral Bonus', amount: 30,  wallet: 'main', note: 'Referral commission payout' },
   { id: 'vip',      label: 'VIP Reward',     amount: 100, wallet: 'main', note: 'VIP loyalty reward' },

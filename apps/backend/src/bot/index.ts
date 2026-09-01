@@ -1111,13 +1111,13 @@ if (BOT_TOKEN) {
 
         await tx.wallet.update({
           where: { id: playWalletId },
-          data: { balance: { increment: 20 } },
+          data: { balance: { increment: 10 } },
         });
         await tx.transaction.create({
           data: {
             wallet_id: playWalletId,
             type: 'admin_credit',
-            amount: 20,
+            amount: 10,
             reference_id: `welcome_bonus_phone_${player.id}`,
             note: 'Welcome bonus',
           },
@@ -1131,7 +1131,7 @@ if (BOT_TOKEN) {
       }
 
       await ctx.reply(
-        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 20 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
+        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: await getMenuForUser(telegramId) },
       );
 

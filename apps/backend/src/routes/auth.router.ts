@@ -144,11 +144,11 @@ router.post(
         select: { id: true },
       });
 
-      // Create main and play wallets — play wallet gets 20 ETB welcome bonus
+      // Create main and play wallets — play wallet gets 10 ETB welcome bonus
       await tx.wallet.createMany({
         data: [
           { player_id: newPlayer.id, type: 'main', balance: 0 },
-          { player_id: newPlayer.id, type: 'play', balance: 20 },
+          { player_id: newPlayer.id, type: 'play', balance: 10 },
         ],
       });
 
@@ -162,9 +162,7 @@ router.post(
           data: {
             wallet_id: playWallet.id,
             type: 'admin_credit',
-            amount: 20,
-            reference_id: `welcome_bonus_${newPlayer.id}`,
-            note: 'Welcome bonus',
+            amount: 10,
           },
         });
       }
