@@ -227,19 +227,65 @@ function HistoryTab() {
   }, []);
   if (loading) return <div style={{ textAlign:"center", padding:40, color:"#475569" }}>Loading...</div>;
   if (!items.length) return <div style={{ textAlign:"center", padding:40, color:"#475569" }}>No history yet</div>;
+
   return (
     <div style={{ display:"flex", flexDirection:"column" }}>
+      {/* Header row */}
+      <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 14px 4px", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+        <span style={{ fontSize:12, color:"#6b8a7a", fontWeight:600 }}>Draw ID</span>
+        <span style={{ fontSize:12, color:"#6b8a7a", fontWeight:600 }}>Combination</span>
+      </div>
+
       {items.map(item => {
-        const won = (item.myBet?.payout ?? 0) > 0;
         const ps = new Set(item.myBet?.pickedNumbers ?? []);
+        const nums = item.drawnNumbers;
+        const row1 = nums.slice(0, 10);
+        const row2 = nums.slice(10, 20);
+        const drawId = item.id.slice(-8).toUpperCase();
+        const time = new Date(item.finishedAt).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+
         return (
-          <div key={item.id} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", padding:"10px 14px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ fontSize:11, color:"#475569" }}>{new Date(item.finishedAt).toLocaleString()}</span>
-              {item.myBet && <span style={{ fontSize:12, fontWeight:800, color:won?"#4ade80":"#ef4444" }}>{won?`+${item.myBet.payout?.toFixed(2)} ETB`:`-${item.myBet.betAmount} ETB`}</span>}
-            </div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>
-              {item.drawnNumbers.map(n => <span key={n} style={{ width:24, height:24, borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, background:ps.has(n)?"#1a4a2a":"rgba(255,255,255,0.06)", color:ps.has(n)?"#4ade80":"#64748b", border:`1px solid ${ps.has(n)?"#22c55e":"rgba(255,255,255,0.08)"}` }}>{n}</span>)}
+          <div key={item.id} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)", padding:"10px 10px" }}>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+              {/* Left: shield icon + ID + time */}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", minWidth:90, paddingTop:2 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.5C16.5 22.15 20 17.25 20 12V6L12 2z" fill="rgba(34,197,94,0.15)" stroke="#22c55e" strokeWidth="1.5"/>
+                    <path d="M9 12l2 2 4-4" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#22c55e" }}>{drawId}</span>
+                </div>
+                <span style={{ fontSize:11, color:"#4a6a58", fontWeight:500 }}>{time}</span>
+              </div>
+
+              {/* Right: 2 rows of 10 numbers */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", gap:3 }}>
+                <div style={{ display:"flex", gap:3 }}>
+                  {row1.map(n => (
+                    <div key={n} style={{
+                      flex:1, height:26, borderRadius:5,
+                      background: ps.has(n) ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)",
+                      border: `1px solid ${ps.has(n) ? "rgba(34,197,94,0.5)" : "rgba(255,255,255,0.1)"}`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:11, fontWeight:700,
+                      color: ps.has(n) ? "#4ade80" : "#94a3b8",
+                    }}>{n}</div>
+                  ))}
+                </div>
+                <div style={{ display:"flex", gap:3 }}>
+                  {row2.map(n => (
+                    <div key={n} style={{
+                      flex:1, height:26, borderRadius:5,
+                      background: ps.has(n) ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)",
+                      border: `1px solid ${ps.has(n) ? "rgba(34,197,94,0.5)" : "rgba(255,255,255,0.1)"}`,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:11, fontWeight:700,
+                      color: ps.has(n) ? "#4ade80" : "#94a3b8",
+                    }}>{n}</div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         );
