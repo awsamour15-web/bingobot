@@ -147,53 +147,71 @@ function DrawnBallDisplay({ drawnNumbers, pickedSet }: { drawnNumbers: number[];
   const prev = drawnNumbers.slice(0, -1);
   const isHit = latest !== null && pickedSet.has(latest);
 
+  // Split prev into rows of 6 (show last 12 prev = 2 rows)
+  const prevToShow = prev.slice(-12);
+  const rows: number[][] = [];
+  for (let i = 0; i < prevToShow.length; i += 6) rows.push(prevToShow.slice(i, i + 6));
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 14px 8px", gap:10, background:"rgba(0,0,0,0.25)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
-      {/* Draw counter */}
-      <div style={{ alignSelf:"flex-end", fontSize:12, fontWeight:700, color:"#4a6a58" }}>
+    <div style={{ position:"relative", flexShrink:0, background:"rgba(8,18,12,0.92)", borderBottom:"1px solid rgba(255,255,255,0.06)", overflow:"hidden", paddingBottom:10 }}>
+      {/* Radar rings */}
+      {[80,120,160].map(r => (
+        <div key={r} style={{ position:"absolute", left:"50%", top:"50%", width:r, height:r, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.04)", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
+      ))}
+
+      {/* Draw counter top-right */}
+      <div style={{ position:"absolute", top:10, right:14, fontSize:13, fontWeight:700, color:"#6a8a78", letterSpacing:"0.05em" }}>
         {drawnNumbers.length} / {TOTAL_DRAWN}
       </div>
+
       {/* Main ball */}
-      {latest !== null ? (
-        <div style={{
-          width:72, height:72, borderRadius:"50%",
-          background: isHit
-            ? "radial-gradient(circle at 35% 35%, #4ade80 0%, #15803d 55%, #052e16 100%)"
-            : "radial-gradient(circle at 35% 35%, #94a3b8 0%, #334155 55%, #0f172a 100%)",
-          boxShadow: isHit
-            ? "0 0 28px rgba(34,197,94,0.7), 0 0 8px rgba(34,197,94,0.4)"
-            : "0 0 22px rgba(99,129,200,0.45), 0 0 6px rgba(99,129,200,0.25)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:28, fontWeight:900, color:"#fff",
-          border: isHit ? "2px solid #22c55e" : "2px solid rgba(148,163,184,0.4)",
-          transition:"all 0.3s",
-          letterSpacing:"-0.5px",
-        }}>
-          {latest}
-        </div>
-      ) : (
-        <div style={{ width:72, height:72, borderRadius:"50%", background:"rgba(255,255,255,0.04)", border:"2px solid rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <span style={{ fontSize:24, color:"rgba(255,255,255,0.12)" }}>?</span>
-        </div>
-      )}
-      {/* Previous drawn numbers row */}
-      {prev.length > 0 && (
-        <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"center", maxWidth:320 }}>
-          {prev.slice(-10).map(n => {
+      <div style={{ display:"flex", justifyContent:"center", paddingTop:12, paddingBottom:10 }}>
+        {latest !== null ? (
+          <div style={{
+            width:80, height:80, borderRadius:"50%",
+            background: isHit
+              ? "radial-gradient(circle at 35% 30%, #6ee7a0 0%, #15803d 50%, #052e16 100%)"
+              : "radial-gradient(circle at 35% 30%, #cbd5e1 0%, #334155 50%, #0c1929 100%)",
+            boxShadow: isHit
+              ? "0 0 32px rgba(34,197,94,0.8), 0 4px 16px rgba(0,0,0,0.6)"
+              : "0 0 28px rgba(99,140,220,0.5), 0 4px 16px rgba(0,0,0,0.6)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:34, fontWeight:900, color:"#fff",
+            border: isHit ? "2.5px solid #4ade80" : "2.5px solid rgba(148,163,184,0.5)",
+            letterSpacing:"-0.5px",
+            textShadow:"0 2px 6px rgba(0,0,0,0.5)",
+          }}>
+            {latest}
+          </div>
+        ) : (
+          <div style={{ width:80, height:80, borderRadius:"50%", background:"rgba(255,255,255,0.04)", border:"2px solid rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:28, color:"rgba(255,255,255,0.12)" }}>?</span>
+          </div>
+        )}
+      </div>
+
+      {/* Previous drawn numbers — rows of 6 */}
+      {rows.map((row, ri) => (
+        <div key={ri} style={{ display:"flex", justifyContent:"center", gap:7, marginTop: ri === 0 ? 2 : 6, paddingLeft:14, paddingRight:14 }}>
+          {row.map(n => {
             const hit = pickedSet.has(n);
             return (
               <div key={n} style={{
-                width:30, height:30, borderRadius:"50%",
-                background: hit ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)",
-                border: hit ? "1.5px solid #22c55e" : "1.5px solid rgba(255,255,255,0.15)",
+                width:36, height:36, borderRadius:"50%",
+                background: hit
+                  ? "radial-gradient(circle at 35% 30%, #6ee7a0 0%, #15803d 55%, #052e16 100%)"
+                  : "radial-gradient(circle at 35% 30%, #94a3b8 0%, #1e3050 55%, #0c1929 100%)",
+                border: hit ? "1.5px solid #22c55e" : "1.5px solid rgba(99,130,180,0.35)",
+                boxShadow: hit ? "0 0 8px rgba(34,197,94,0.4)" : "0 2px 6px rgba(0,0,0,0.4)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:11, fontWeight:800,
-                color: hit ? "#4ade80" : "#94a3b8",
+                fontSize:12, fontWeight:800,
+                color: hit ? "#fff" : "#e2e8f0",
+                flexShrink:0,
               }}>{n}</div>
             );
           })}
         </div>
-      )}
+      ))}
     </div>
   );
 }
