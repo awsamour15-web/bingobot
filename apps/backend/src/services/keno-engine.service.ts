@@ -2,7 +2,7 @@
  * Keno Engine Service
  *
  * Round lifecycle:
- *   betting (30s) → drawing (20 numbers revealed 1/s) → finished (5s pause) → next round
+ *   betting (60s) → drawing (20 numbers revealed 1/s) → finished (5s pause) → next round
  *
  * Payout table (picks 1–10):
  *   matched / picked  → multiplier applied to bet
@@ -74,7 +74,7 @@ export class KenoEngine {
   }
 
   private async runRound(): Promise<void> {
-    const BETTING_MS = 10_000;
+    const BETTING_MS = 60_000;
     const DRAW_INTERVAL_MS = 2_000; // one number every 2s → 20 numbers in 40s
     const TOTAL_DRAW = 20;
     const FINISH_PAUSE_MS = 2_000;
