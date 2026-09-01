@@ -123,6 +123,62 @@ function BetControls({ amount, onChange }: { amount: number; onChange: (v: numbe
   );
 }
 
+function DrawnBallDisplay({ drawnNumbers, pickedSet }: { drawnNumbers: number[]; pickedSet: Set<number> }) {
+  const latest = drawnNumbers[drawnNumbers.length - 1] ?? null;
+  const prev = drawnNumbers.slice(0, -1);
+  const isHit = latest !== null && pickedSet.has(latest);
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 14px 8px", gap:10, background:"rgba(0,0,0,0.25)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+      {/* Draw counter */}
+      <div style={{ alignSelf:"flex-end", fontSize:12, fontWeight:700, color:"#4a6a58" }}>
+        {drawnNumbers.length} / {TOTAL_DRAWN}
+      </div>
+      {/* Main ball */}
+      {latest !== null ? (
+        <div style={{
+          width:72, height:72, borderRadius:"50%",
+          background: isHit
+            ? "radial-gradient(circle at 35% 35%, #4ade80 0%, #15803d 55%, #052e16 100%)"
+            : "radial-gradient(circle at 35% 35%, #94a3b8 0%, #334155 55%, #0f172a 100%)",
+          boxShadow: isHit
+            ? "0 0 28px rgba(34,197,94,0.7), 0 0 8px rgba(34,197,94,0.4)"
+            : "0 0 22px rgba(99,129,200,0.45), 0 0 6px rgba(99,129,200,0.25)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize:28, fontWeight:900, color:"#fff",
+          border: isHit ? "2px solid #22c55e" : "2px solid rgba(148,163,184,0.4)",
+          transition:"all 0.3s",
+          letterSpacing:"-0.5px",
+        }}>
+          {latest}
+        </div>
+      ) : (
+        <div style={{ width:72, height:72, borderRadius:"50%", background:"rgba(255,255,255,0.04)", border:"2px solid rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <span style={{ fontSize:24, color:"rgba(255,255,255,0.12)" }}>?</span>
+        </div>
+      )}
+      {/* Previous drawn numbers row */}
+      {prev.length > 0 && (
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"center", maxWidth:320 }}>
+          {prev.slice(-10).map(n => {
+            const hit = pickedSet.has(n);
+            return (
+              <div key={n} style={{
+                width:30, height:30, borderRadius:"50%",
+                background: hit ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)",
+                border: hit ? "1.5px solid #22c55e" : "1.5px solid rgba(255,255,255,0.15)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:11, fontWeight:800,
+                color: hit ? "#4ade80" : "#94a3b8",
+              }}>{n}</div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type HistEntry = { id: string; drawnNumbers: number[]; finishedAt: string; myBet: { pickedNumbers: number[]; betAmount: number; matched: number | null; payout: number | null } | null };
 function HistoryTab() {
   const [items, setItems] = useState<HistEntry[]>([]);
@@ -377,7 +433,7 @@ export default function KenoScreen() {
             {phase === "betting" && bettingEndsAt > 0
               ? <Countdown endsAt={bettingEndsAt} />
               : phase === "drawing"
-              ? <span style={{ fontSize:13, color:"#3b82f6", letterSpacing:"0.05em" }}>DRAWING</span>
+              ? <span style={{ fontSize:13, color:"#3b82f6", letterSpacing:"0.05em" }}>{drawnNumbers.length} / {TOTAL_DRAWN}</span>
               : phase === "finished"
               ? <span style={{ fontSize:13, color:"#22c55e" }}>DONE</span>
               : <span style={{ color:"#475569" }}>--:--</span>}
@@ -385,6 +441,11 @@ export default function KenoScreen() {
         </div>
         <div style={{ width:60 }} />
       </div>
+
+      {/* Draw ball display during drawing/finished phase */}
+      {(phase === "drawing" || phase === "finished") && drawnNumbers.length > 0 && (
+        <DrawnBallDisplay drawnNumbers={drawnNumbers} pickedSet={pickedSet} />
+      )}
 
       {/* Possible win card (when picks made) */}
       {picked.length > 0 && phase === "betting" && (
