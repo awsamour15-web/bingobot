@@ -136,7 +136,14 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const riskLevel = risk as RiskLevel;
   const { path, slot } = generatePath(numRows);
   const multiplierTable = MULTIPLIERS[numRows]![riskLevel];
-  const multiplier = multiplierTable[slot]!;
+
+  // Apply house edge from DB config (default 15% → RTP 85%)
+  const edgeCfg = await prisma.config.findUnique({ where: { key: 'house_edge_plinko' } });
+  const houseEdgePct = Math.min(50, Math.max(5, parseInt(edgeCfg?.value ?? '15', 10)));
+  const rtpScalar = (100 - houseEdgePct) / 100;
+
+  const rawMultiplier = multiplierTable[slot]!;
+  const multiplier = parseFloat((rawMultiplier * rtpScalar).toFixed(2));
   const payout = parseFloat((betAmount * multiplier).toFixed(2));
 
   // Credit winnings (if any)
