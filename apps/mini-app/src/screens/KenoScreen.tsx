@@ -217,6 +217,74 @@ function DrawnBallDisplay({ drawnNumbers, pickedSet }: { drawnNumbers: number[];
 }
 
 type HistEntry = { id: string; drawnNumbers: number[]; finishedAt: string; myBet: { pickedNumbers: number[]; betAmount: number; matched: number | null; payout: number | null } | null };
+
+function StatisticsTab() {
+  const [freq, setFreq] = useState<Record<number, number>>({});
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<"number"|"count">("number");
+
+  useEffect(() => {
+    (getKenoHistory() as Promise<any[]>).then(d => {
+      const counts: Record<number, number> = {};
+      for (let i = 1; i <= 80; i++) counts[i] = 0;
+      d.forEach(r => (r.drawnNumbers ?? []).forEach((n: number) => { counts[n] = (counts[n] ?? 0) + 1; }));
+      setFreq(counts);
+      setTotal(d.length);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ textAlign:"center", padding:40, color:"#475569" }}>Loading...</div>;
+
+  const maxCount = Math.max(...Object.values(freq), 1);
+  const entries = Array.from({ length: 80 }, (_, i) => i + 1);
+  const sorted = sortBy === "count"
+    ? [...entries].sort((a, b) => (freq[b] ?? 0) - (freq[a] ?? 0))
+    : entries;
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px 6px", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+        <span style={{ fontSize:12, color:"#6b8a7a", fontWeight:600 }}>Last {total} rounds</span>
+        <button
+          onClick={() => setSortBy(s => s === "number" ? "count" : "number")}
+          style={{ background:"none", border:"none", color:"#22c55e", fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}
+        >
+          Sort
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M6 12h12M10 18h4"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Rows */}
+      <div style={{ display:"flex", flexDirection:"column", gap:3, padding:"6px 10px" }}>
+        {sorted.map(n => {
+          const count = freq[n] ?? 0;
+          const pct = (count / maxCount) * 100;
+          return (
+            <div key={n} style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(255,255,255,0.04)", borderRadius:7, padding:"7px 10px" }}>
+              {/* Number badge */}
+              <div style={{ width:32, height:28, borderRadius:6, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:"#94a3b8", flexShrink:0 }}>
+                {n}
+              </div>
+              {/* Bar */}
+              <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.07)", borderRadius:2, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${pct}%`, background:"#22c55e", borderRadius:2, transition:"width 0.4s ease" }} />
+              </div>
+              {/* Count */}
+              <div style={{ width:28, textAlign:"right", fontSize:13, fontWeight:700, color:"#e2e8f0", flexShrink:0 }}>
+                {count}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function HistoryTab() {
   const [items, setItems] = useState<HistEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -670,7 +738,7 @@ export default function KenoScreen() {
         {tab === "game" && gameSubTab === "mybets" && <HistoryTab />}
         {tab === "history" && <HistoryTab />}
         {tab === "results" && <ResultsTab myBet={myBet} drawnNumbers={drawnNumbers} roundId={roundId} />}
-        {tab === "statistics" && <div style={{ textAlign:"center", padding:40, color:"#475569" }}>Statistics coming soon</div>}
+        {tab === "statistics" && <StatisticsTab />}
       </div>
     </div>
   );
