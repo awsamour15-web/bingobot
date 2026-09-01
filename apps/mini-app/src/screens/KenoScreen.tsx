@@ -42,7 +42,26 @@ function Countdown({ endsAt }: { endsAt: number }) {
 
 function PossibleWinCard({ betAmount, pickedNumbers }: { betAmount: number; pickedNumbers: number[] }) {
   const p = pickedNumbers.length;
-  if (p === 0) return null;
+
+  // Empty state: prompt to choose numbers
+  if (p === 0) {
+    return (
+      <div style={{ margin:"0 10px 8px", background:"rgba(20,30,24,0.95)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px", position:"relative", display:"flex", alignItems:"center", gap:12, minHeight:72 }}>
+        {/* Decorative balls */}
+        <div style={{ position:"relative", width:60, height:52, flexShrink:0 }}>
+          <div style={{ position:"absolute", top:0, left:18, width:24, height:24, borderRadius:"50%", background:"rgba(60,80,70,0.9)", border:"1px solid rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, color:"#8ab89a" }}>80</div>
+          <div style={{ position:"absolute", top:0, left:38, width:28, height:28, borderRadius:"50%", background:"rgba(30,50,70,0.95)", border:"1px solid rgba(100,160,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#c8ddf0" }}>10</div>
+          <div style={{ position:"absolute", bottom:0, left:0, width:36, height:36, borderRadius:"50%", background:"linear-gradient(135deg,#1a5c3a 0%,#0f3d25 100%)", border:"2px solid rgba(74,222,128,0.4)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#4ade80" }}>1</div>
+        </div>
+        <div>
+          <div style={{ fontSize:16, fontWeight:800, color:"#e2e8f0" }}>Choose {MAX_PICKS} numbers</div>
+          <div style={{ fontSize:13, color:"#4ade80", fontWeight:600, marginTop:2 }}>From 1 to 80</div>
+        </div>
+        <div style={{ position:"absolute", top:10, right:12, width:22, height:22, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.22)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color:"#8ab89a", fontWeight:700 }}>?</div>
+      </div>
+    );
+  }
+
   const possible = calcPossibleWin(betAmount, p);
   const rows: { match: number; mul: number }[] = [];
   for (let m = 1; m <= p; m++) { const mul = getMultiplier(p, m); if (mul > 0) rows.push({ match: m, mul }); }
@@ -448,8 +467,8 @@ export default function KenoScreen() {
         <DrawnBallDisplay drawnNumbers={drawnNumbers} pickedSet={pickedSet} />
       )}
 
-      {/* Possible win card (when picks made) */}
-      {picked.length > 0 && phase === "betting" && (
+      {/* Possible win card (always shown during betting) */}
+      {phase === "betting" && (
         <PossibleWinCard betAmount={betAmount} pickedNumbers={picked} />
       )}
 
