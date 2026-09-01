@@ -194,7 +194,7 @@ function DrawnBallDisplay({ drawnNumbers, pickedSet }: { drawnNumbers: number[];
 
       {/* Previous drawn numbers — top row: older 10, bottom row: newest 10 */}
       {rows.map((row, ri) => (
-        <div key={ri} style={{ display:"flex", justifyContent:"flex-end", gap:5, marginTop: ri === 0 ? 2 : 5, paddingLeft:8, paddingRight:8 }}>
+        <div key={ri} style={{ display:"flex", justifyContent:"flex-start", gap:5, marginTop: ri === 0 ? 2 : 5, paddingLeft:8, paddingRight:8 }}>
           {row.map(n => {
             const hit = pickedSet.has(n);
             return (
