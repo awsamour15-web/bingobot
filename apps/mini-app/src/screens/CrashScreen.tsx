@@ -736,6 +736,7 @@ export default function CrashScreen() {
         {/* Top row: logo | balance | avatar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: 16 }}>‹</button>
             <img src={aviatorLogo} alt="Aviator" style={{ height: 22 }} />
           </div>
           <div style={{ textAlign: 'center' }}>
