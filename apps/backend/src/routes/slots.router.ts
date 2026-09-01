@@ -141,7 +141,7 @@ router.post('/gamble', async (req: Request, res: Response): Promise<void> => {
   });
   const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
 
-  res.json({ ...result, balance: Number(wallet?.balance ?? 0) });
+  res.json({ ...result, balance: totalBalance });
 });
 
 // ─── GET /api/slots/history ───────────────────────────────────────────────────
