@@ -29,7 +29,9 @@ function Countdown({ endsAt }: { endsAt: number }) {
     const tick = () => {
       const rem = Math.max(0, endsAt - Date.now());
       const s = Math.ceil(rem / 1000);
-      setD(String(Math.floor(s / 60)).padStart(2, "0") + " : " + String(s % 60).padStart(2, "0"));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      setD(`${mm} : ${ss}`);
     };
     tick();
     const id = setInterval(tick, 250);
@@ -578,7 +580,6 @@ export default function KenoScreen() {
   const drawnSet = new Set(drawnNumbers);
   const pickedSet = new Set(picked);
   const canBet = phase === "betting" && !placing && picked.length > 0;
-  const roundShortId = roundId ? roundId.slice(-5) : null;
 
   if (access === "loading") return <div style={{ minHeight:"100dvh", background:"#0a1410" }} />;
   if (access === "denied") return (
@@ -593,56 +594,47 @@ export default function KenoScreen() {
   return (
     <div style={{ minHeight:"100dvh", background:"linear-gradient(180deg,#0d1a14 0%,#08110d 100%)", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden", overflowY:"auto" }}>
 
-      {/* Top bar: Back | balance + ID | icons */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 8px", background:"rgba(0,0,0,0.45)", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
-        <button onClick={() => navigate("/")} style={{ background:"none", border:"none", color:"#c8d8d0", fontSize:14, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:5, padding:0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Back
+      {/* Top bar: FAST KENO | balance + ID | menu */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 14px", background:"rgba(0,0,0,0.5)", borderBottom:"1px solid rgba(255,255,255,0.07)", flexShrink:0 }}>
+        {/* FAST KENO logo — tappable to go back */}
+        <button onClick={() => navigate("/")} style={{ background:"none", border:"none", cursor:"pointer", padding:0, lineHeight:1.05, textAlign:"left" }}>
+          <div style={{ fontSize:9, fontWeight:900, color:"#fff", letterSpacing:"0.16em" }}>FAST</div>
+          <div style={{ fontSize:18, fontWeight:900, color:"#22c55e", letterSpacing:"0.04em", marginTop:-1 }}>KENO</div>
         </button>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, padding:"5px 10px", display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:"#4ade80" }}>M:</span>
-              <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>{mainBalance !== null ? mainBalance.toFixed(2) : "0.00"}</span>
-            </div>
-            <div style={{ width:1, height:16, background:"rgba(255,255,255,0.15)" }}/>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:"#818cf8" }}>P:</span>
-              <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>{playBalance !== null ? playBalance.toFixed(2) : "0.00"}</span>
-            </div>
-            <span style={{ fontSize:11, color:"#6a8a78", fontWeight:600 }}>ETB</span>
+
+        {/* Balance pill + ID+checkmark */}
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:8, padding:"5px 12px", display:"flex", alignItems:"center", gap:5 }}>
+            <span style={{ fontSize:15, fontWeight:700, color:"#e2e8f0" }}>{mainBalance !== null ? mainBalance.toFixed(0) : "0"}</span>
+            <span style={{ fontSize:10, fontWeight:600, color:"#6a8a78", letterSpacing:"0.05em" }}>ETB</span>
           </div>
-          {roundShortId && (
-            <div style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#9ab8a8", fontWeight:600 }}>
-              <span>ID: {roundShortId}</span>
-              <span style={{ width:16, height:16, borderRadius:"50%", border:"2px solid #22c55e", display:"inline-flex", alignItems:"center", justifyContent:"center" }}>
-                <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </span>
+          <div style={{ background:"rgba(0,0,0,0.5)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:8, padding:"5px 10px", display:"flex", alignItems:"center", gap:6 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>ID: {roundId ? roundId.slice(-8) : "--------"}</span>
+            <div style={{ width:18, height:18, borderRadius:"50%", border:"2px solid #22c55e", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l3 3 5-5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
-          )}
+          </div>
         </div>
-        <div style={{ width:40 }} />
+
+        {/* Hamburger menu */}
+        <button style={{ background:"none", border:"none", cursor:"pointer", color:"#22c55e", padding:0, display:"flex", alignItems:"center" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
       </div>
 
-      {/* FAST KENO row + timer centered */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 14px 6px", flexShrink:0 }}>
-        <div style={{ lineHeight:1.1 }}>
-          <div style={{ fontSize:10, fontWeight:900, color:"#fff", letterSpacing:"0.12em" }}>FAST</div>
-          <div style={{ fontSize:18, fontWeight:900, color:"#22c55e", letterSpacing:"0.04em", marginTop:-1 }}>KENO</div>
-        </div>
-        {/* Timer pill */}
-        <div style={{ background:"rgba(0,0,0,0.55)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"center", minWidth:100 }}>
-          <span style={{ fontSize:18, fontWeight:900, color:"#e2e8f0", letterSpacing:"3px", fontFamily:"monospace" }}>
-            {phase === "betting" && bettingEndsAt > 0
-              ? <Countdown endsAt={bettingEndsAt} />
-              : phase === "drawing"
-              ? <span style={{ fontSize:13, color:"#3b82f6", letterSpacing:"0.05em" }}>{drawnNumbers.length} / {TOTAL_DRAWN}</span>
-              : phase === "finished"
-              ? <span style={{ fontSize:13, color:"#22c55e" }}>DONE</span>
-              : <span style={{ color:"#475569" }}>--:--</span>}
-          </span>
-        </div>
-        <div style={{ width:60 }} />
+      {/* Timer row — centered */}
+      <div style={{ display:"flex", justifyContent:"center", alignItems:"center", padding:"10px 14px 8px", flexShrink:0 }}>
+        <span style={{ fontSize:22, fontWeight:900, color:"#c8ddd2", letterSpacing:"6px", fontFamily:"'JetBrains Mono','Courier New',monospace" }}>
+          {phase === "betting" && bettingEndsAt > 0
+            ? <Countdown endsAt={bettingEndsAt} />
+            : phase === "drawing"
+            ? <span style={{ fontSize:16, letterSpacing:"2px", color:"#3b82f6" }}>{String(drawnNumbers.length).padStart(2,"0")} / {TOTAL_DRAWN}</span>
+            : phase === "finished"
+            ? <span style={{ fontSize:16, letterSpacing:"2px", color:"#22c55e" }}>DONE</span>
+            : <span style={{ color:"#2a4a38" }}>00 : 00</span>}
+        </span>
       </div>
 
       {/* Draw ball display during drawing/finished phase */}
