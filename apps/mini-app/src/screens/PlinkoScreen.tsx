@@ -68,7 +68,6 @@ export default function PlinkoScreen() {
 
   const [mainBalance, setMainBalance] = useState<number|null>(null);
   const [playBalance, setPlayBalance] = useState<number|null>(null);
-  const [walletType, setWalletType]   = useState<'main'|'play'>('play');
   const [bet,  setBet]   = useState(100);
   const [rows, setRows]  = useState<Rows>(16);
   const [risk, setRisk]  = useState<Risk>('high');
@@ -118,7 +117,7 @@ export default function PlinkoScreen() {
     autoTimerRef.current = setInterval(() => handleDrop(1), ms);
     return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, autoSpeed, bet, rows, risk, walletType]);
+  }, [autoPlay, autoSpeed, bet, rows, risk]);
 
   function spawnWinEffects(slotIdx: number, mult: number, slotX: number, slotY: number, slotW: number, col: string) {
     const big = mult >= 10, jackpot = mult >= 100;
@@ -406,7 +405,8 @@ export default function PlinkoScreen() {
   }, [dims, rows, risk, aimNorm]);
 
   async function handleDrop(count = 1) {
-    const balance = walletType==='main' ? mainBalance : playBalance;
+    const balance = (playBalance ?? 0) >= bet ? playBalance : mainBalance;
+    const walletType: 'play' | 'main' = (playBalance ?? 0) >= bet ? 'play' : 'main';
     if ((balance??0) < bet*count) { setError('Insufficient balance'); return; }
     setError(null); setDropping(true);
     try {
@@ -458,7 +458,10 @@ export default function PlinkoScreen() {
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
-  const balance = walletType==='main' ? mainBalance : playBalance;
+  // Auto-select wallet: play first, fall back to main
+  const activeWallet: 'play' | 'main' = (playBalance ?? 0) >= bet ? 'play' : 'main';
+  const balance = activeWallet === 'play' ? playBalance : mainBalance;
+  const totalBalance = (mainBalance ?? 0) + (playBalance ?? 0);
   const maxProfit = bet * (risk==='high' ? (rows===16?1000:170) : risk==='medium' ? (rows===16?110:33) : 16);
 
   if (accessAllowed === false) {
@@ -484,7 +487,7 @@ export default function PlinkoScreen() {
         </div>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:8,color:'#52525b',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.1em'}}>Balance</div>
-          <div style={{fontSize:14,fontWeight:900,color:'#facc15'}}>{balance!==null?balance.toFixed(0):'—'} <span style={{fontSize:9,color:'#78716c'}}>ETB</span></div>
+          <div style={{fontSize:14,fontWeight:900,color:'#facc15'}}>{totalBalance > 0 ? totalBalance.toFixed(0) : (balance !== null ? balance.toFixed(0) : '—')} <span style={{fontSize:9,color:'#78716c'}}>ETB</span></div>
         </div>
       </div>
 
@@ -587,15 +590,6 @@ export default function PlinkoScreen() {
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Wallet */}
-            <div style={{display:'flex',background:'#1c1c1f',borderRadius:10,border:'1px solid #3f3f46',padding:3,gap:2}}>
-              {(['main','play'] as const).map(w=>(
-                <button key={w} onClick={()=>setWalletType(w)} style={{flex:1,padding:'8px 0',borderRadius:7,background:walletType===w?'rgba(250,204,21,0.15)':'transparent',border:'none',color:walletType===w?'#facc15':'#52525b',fontSize:11,fontWeight:800,cursor:'pointer',textTransform:'capitalize'}}>
-                  {w==='main'?'💰':'🎮'} {w==='main'?'Main':'Play'}
-                </button>
-              ))}
             </div>
 
             {/* DROP button */}
