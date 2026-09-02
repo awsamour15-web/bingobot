@@ -5,6 +5,79 @@ import { getProfile, dropPlinko, getPlinkoHistory, checkPlinkoAccess } from '../
 type Risk = 'low' | 'medium' | 'high';
 type Rows = 8 | 12 | 16;
 
+// ─── Procedural audio ────────────────────────────────────────────────────────
+
+function createAudioCtx(): AudioContext | null {
+  try { return new (window.AudioContext || (window as any).webkitAudioContext)(); }
+  catch { return null; }
+}
+
+function playPegHit(ctx: AudioContext, vol = 0.18) {
+  try {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(900 + Math.random() * 300, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.06);
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+    o.start(); o.stop(ctx.currentTime + 0.08);
+  } catch {}
+}
+
+function playDrop(ctx: AudioContext) {
+  try {
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.12), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / data.length);
+    const src = ctx.createBufferSource();
+    const g = ctx.createGain();
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = 600; f.Q.value = 0.8;
+    src.buffer = buf; src.connect(f); f.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.35, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    src.start();
+  } catch {}
+}
+
+function playLand(ctx: AudioContext, multiplier: number) {
+  try {
+    const now = ctx.currentTime;
+    if (multiplier >= 10) {
+      // Jackpot fanfare
+      [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = freq;
+        const t = now + i * 0.07;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.22, t + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+        o.start(t); o.stop(t + 0.55);
+      });
+    } else if (multiplier >= 2) {
+      // Win chime
+      [523, 784].forEach((freq, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'triangle'; o.frequency.value = freq;
+        const t = now + i * 0.09;
+        g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.start(t); o.stop(t + 0.35);
+      });
+    } else {
+      // Thud
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(180, now); o.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+      g.gain.setValueAtTime(0.14, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      o.start(); o.stop(now + 0.18);
+    }
+  } catch {}
+}
+
 const MIN_BET = 5;
 const MAX_BET = 10_000;
 
@@ -64,6 +137,9 @@ export default function PlinkoScreen() {
   const floatTextsRef  = useRef<FloatText[]>([]);
   const slotBouncesRef = useRef<Map<number,SlotBounce>>(new Map());
   const rafRef = useRef<number>(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundOnRef2 = useRef(localStorage.getItem('soundOn') !== 'false');
+  const pegSoundThrottle = useRef(0);
   const [dims, setDims] = useState({ w: 380, h: 480 });
 
   const [mainBalance, setMainBalance] = useState<number|null>(null);
@@ -97,6 +173,19 @@ export default function PlinkoScreen() {
     const ro = new ResizeObserver(update);
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const unlock = () => {
+      if (audioCtxRef.current) return;
+      audioCtxRef.current = createAudioCtx();
+    };
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('mousedown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('mousedown', unlock);
+    };
   }, []);
 
   useEffect(() => {
@@ -264,6 +353,12 @@ export default function PlinkoScreen() {
                 ball.vx += (nx+tx*jitter)*imp; ball.vy += (ny+ty*jitter)*imp;
                 if (ball.vy < -60) ball.vy = -60;
                 pegHitsRef.current.push({ x:peg.x, y:peg.y, radius:pinR, maxRadius:pinR*3.8, alpha:1, color:ball.color });
+                // Throttled peg hit sound (max ~20/sec)
+                const nowMs2 = performance.now();
+                if (soundOnRef2.current && audioCtxRef.current && nowMs2 - pegSoundThrottle.current > 50) {
+                  pegSoundThrottle.current = nowMs2;
+                  playPegHit(audioCtxRef.current);
+                }
               }
             }
           }
@@ -280,6 +375,10 @@ export default function PlinkoScreen() {
             // Snap ball X to correct slot center for clean landing
             ball.x = slotsStartX + si * colSpacing + colSpacing / 2;
             spawnWinEffects(si, ball.multiplier, slotsStartX+si*colSpacing, slotY, colSpacing, slotColor(ball.multiplier));
+            // Land sound
+            if (soundOnRef2.current && audioCtxRef.current) {
+              playLand(audioCtxRef.current, ball.multiplier);
+            }
           }
         }
       }
@@ -442,6 +541,8 @@ export default function PlinkoScreen() {
           serverPath: result.path,
           lastPegRow: -1,
         });
+        // Drop whoosh
+        if (soundOnRef2.current && audioCtxRef.current) playDrop(audioCtxRef.current);
         if (i < count-1) await new Promise(r => setTimeout(r, count>10?80:140));
       }
     } catch(err: any) {
