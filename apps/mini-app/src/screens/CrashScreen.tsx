@@ -747,7 +747,7 @@ export default function CrashScreen() {
   const usernameInitial = (myUsername || 'P').charAt(0).toUpperCase();
 
   return (
-    <div style={{ height: '100dvh', background: '#0d0e14', color: '#f8fafc', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 430, margin: '0 auto', fontFamily: "'Inter', sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ height: '100dvh', background: '#0d0e14', color: '#f8fafc', display: 'flex', flexDirection: 'column', width: '100%', fontFamily: "'Inter', sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
       {showRules && <AviatorRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Deposit modal */}
