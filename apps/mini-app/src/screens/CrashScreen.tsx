@@ -102,10 +102,11 @@ interface CanvasProps {
   crashPoint: number | null;
   roundNumber: number;
   countdownRemaining: number;
+  activeBetsCount: number;
   onOpenRules: () => void;
 }
 
-function AviatorCanvas({ phase, multiplier, crashPoint, roundNumber, countdownRemaining, onOpenRules }: CanvasProps) {
+function AviatorCanvas({ phase, multiplier, crashPoint, roundNumber, countdownRemaining, activeBetsCount, onOpenRules }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameId = useRef<number>(0);
@@ -328,14 +329,8 @@ function AviatorCanvas({ phase, multiplier, crashPoint, roundNumber, countdownRe
 
       {/* Bottom-right: active players */}
       <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}>
-        <div style={{ display: 'flex', marginRight: -6 }}>
-          {['🧑‍✈️', '🐼', '🏇'].map((e, i) => (
-            <div key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: ['#f97316', '#1e293b', '#0284c7'][i], border: '1.5px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }}>
-              {e}
-            </div>
-          ))}
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginLeft: 10 }}>3,244</span>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399', display: 'inline-block', flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{activeBetsCount} {activeBetsCount === 1 ? 'bet' : 'bets'}</span>
       </div>
     </div>
   );
@@ -549,11 +544,15 @@ function LiveBetsFeed({ bets, multiplier, myUsername }: { bets: CrashBetEntry[];
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 8 }}>
         <div>
           <div style={{ display: 'flex', marginBottom: 4 }}>
-            {['🏇', '🐼', '🧑‍✈️'].map((e, i) => (
-              <div key={i} style={{ width: 24, height: 24, borderRadius: '50%', background: ['#ea580c', '#1e293b', '#0284c7'][i], border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}>
-                {e}
-              </div>
-            ))}
+            {bets.slice(0, 3).map((b, i) => {
+              const init = (b.username || 'P').charAt(0).toUpperCase();
+              const colors = ['#e5053a', '#0284c7', '#ea580c'];
+              return (
+                <div key={i} style={{ width: 24, height: 24, borderRadius: '50%', background: colors[i % 3], border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}>
+                  {init}
+                </div>
+              );
+            })}
           </div>
           <div style={{ fontSize: 12 }}>
             <span style={{ fontWeight: 700, color: '#fff' }}>{bets.length}</span>
@@ -804,6 +803,7 @@ export default function CrashScreen() {
           crashPoint={crashPoint}
           roundNumber={roundNumber}
           countdownRemaining={countdown}
+          activeBetsCount={bets.length}
           onOpenRules={() => setShowRules(true)}
         />
 
