@@ -593,7 +593,7 @@ export default function PlinkoScreen() {
             <div style={{display:'flex',background:'#1c1c1f',borderRadius:10,border:'1px solid #3f3f46',padding:3,gap:2}}>
               {(['main','play'] as const).map(w=>(
                 <button key={w} onClick={()=>setWalletType(w)} style={{flex:1,padding:'8px 0',borderRadius:7,background:walletType===w?'rgba(250,204,21,0.15)':'transparent',border:'none',color:walletType===w?'#facc15':'#52525b',fontSize:11,fontWeight:800,cursor:'pointer',textTransform:'capitalize'}}>
-                  {w==='main'?'💰':'🎮'} {w} · {(w==='main'?mainBalance:playBalance)?.toFixed(0)??'—'}
+                  {w==='main'?'💰':'🎮'} {w==='main'?'Main':'Play'}
                 </button>
               ))}
             </div>
