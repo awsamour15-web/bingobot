@@ -678,7 +678,7 @@ export function checkPlinkoAccess(): Promise<{ allowed: boolean }> {
 }
 
 export function dropPlinko(betAmount: number, rows: 8 | 12 | 16, risk: 'low' | 'medium' | 'high', walletType?: 'main' | 'play'): Promise<{
-  id: string; path: number[]; slot: number; multiplier: number; payout: number; betAmount: number;
+  id: string; path: number[]; slot: number; multiplier: number; payout: number; betAmount: number; totalBalance: number;
 }> {
   return apiRequest('POST', '/api/plinko/drop', { betAmount, rows, risk, walletType });
 }

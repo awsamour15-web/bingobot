@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProfile, dropPlinko, getPlinkoHistory } from '../lib/api';
+import { getProfile, dropPlinko, getPlinkoHistory, checkPlinkoAccess } from '../lib/api';
 
 type Risk = 'low' | 'medium' | 'high';
 type Rows = 8 | 12 | 16;
@@ -42,6 +42,7 @@ interface Ball {
   color: string; glowColor: string; betAmount: number; risk: Risk; rows: Rows;
   trail: {x:number;y:number;alpha:number}[]; status: 'falling'|'landed';
   landedSlot?: number; multiplier?: number; payout?: number;
+  serverSlot?: number; serverMultiplier?: number; serverPayout?: number;
 }
 interface PegHit { x:number;y:number;radius:number;maxRadius:number;alpha:number;color:string; }
 interface Particle { x:number;y:number;vx:number;vy:number;color:string;size:number;alpha:number;decay:number;shape:'circle'|'star'; }
@@ -76,6 +77,7 @@ export default function PlinkoScreen() {
   const [history,  setHistory]  = useState<HistEntry[]>([]);
   const [tab, setTab] = useState<'game'|'history'>('game');
   const [error, setError] = useState<string|null>(null);
+  const [accessAllowed, setAccessAllowed] = useState<boolean|null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
   // Resize observer
@@ -98,6 +100,7 @@ export default function PlinkoScreen() {
       setMainBalance(p.mainWallet.balance);
       setPlayBalance(p.playWallet.balance);
     }).catch(() => {});
+    checkPlinkoAccess().then(r => setAccessAllowed(r.allowed)).catch(() => setAccessAllowed(false));
   }, []);
 
   useEffect(() => {
@@ -241,8 +244,15 @@ export default function PlinkoScreen() {
           if (ball.x > w-ballR-6)  { ball.x = w-ballR-6;  ball.vx = -Math.abs(ball.vx)*0.6; }
           if (ball.y >= slotY) {
             ball.status = 'landed';
-            const si = Math.max(0, Math.min(slotCount-1, Math.floor((ball.x-slotsStartX)/colSpacing)));
-            ball.landedSlot = si; ball.multiplier = muls[si]??1; ball.payout = ball.betAmount*(muls[si]??1);
+            // Use server-authoritative slot and multiplier if available
+            const si = ball.serverSlot !== undefined
+              ? ball.serverSlot
+              : Math.max(0, Math.min(slotCount-1, Math.floor((ball.x-slotsStartX)/colSpacing)));
+            ball.landedSlot = si;
+            ball.multiplier = ball.serverMultiplier ?? (muls[si]??1);
+            ball.payout = ball.serverPayout ?? ball.betAmount*(muls[si]??1);
+            // Snap ball X to correct slot center for clean landing
+            ball.x = slotsStartX + si * colSpacing + colSpacing / 2;
             spawnWinEffects(si, ball.multiplier, slotsStartX+si*colSpacing, slotY, colSpacing, slotColor(ball.multiplier));
           }
         }
@@ -257,7 +267,6 @@ export default function PlinkoScreen() {
         setRecentResults(p => [{ m: tp/tb }, ...p].slice(0, 20));
         if (ballsRef.current.length === 0) {
           setDropping(false);
-          getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(()=>{});
         }
       }
 
@@ -376,26 +385,45 @@ export default function PlinkoScreen() {
     setError(null); setDropping(true);
     try {
       for (let i = 0; i < count; i++) {
-        await dropPlinko(bet, rows, risk, walletType);
+        // Call backend first — get authoritative path, slot, multiplier, payout
+        const result = await dropPlinko(bet, rows, risk, walletType);
+
+        // Update balance immediately from server response
+        setMainBalance(result.totalBalance);
+        setPlayBalance(result.totalBalance);
+
         const ballColors = risk==='high'
           ? { color:'#f43f5e', glowColor:'rgba(244,63,94,0.8)' }
           : risk==='medium'
           ? { color:'#f59e0b', glowColor:'rgba(245,158,11,0.8)' }
           : { color:'#10b981', glowColor:'rgba(16,185,129,0.8)' };
         const w = dims.w;
+        const { colSpacing, slotsStartX } = calcGeom(w, dims.h, rows);
+
+        // Compute target X from the server's slot so the ball lands there
+        const targetSlotX = slotsStartX + result.slot * colSpacing + colSpacing / 2;
+        // Bias initial vx toward target to guide the ball
         const spawnX = (aimNorm*0.8+0.1)*w + (Math.random()-0.5)*16;
+        const dx = targetSlotX - Math.max(30, Math.min(w-30, spawnX));
+
         ballsRef.current.push({
-          id: `${Date.now()}-${i}`,
+          id: result.id ?? `${Date.now()}-${i}`,
           x: Math.max(30, Math.min(w-30, spawnX)), y: 28,
-          vx: (Math.random()-0.5)*25, vy: Math.random()*20+40,
+          vx: (dx / dims.h) * 60 + (Math.random()-0.5)*10,
+          vy: Math.random()*20+40,
           radius: 6.5, ...ballColors, betAmount: bet, risk, rows,
           trail: [], status: 'falling',
+          // Attach server result so physics lands at correct slot
+          serverSlot: result.slot,
+          serverMultiplier: result.multiplier,
+          serverPayout: result.payout,
         });
         if (i < count-1) await new Promise(r => setTimeout(r, count>10?80:140));
       }
     } catch(err: any) {
       setDropping(false);
-      setError(err?.message ?? 'Something went wrong');
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Something went wrong';
+      setError(msg);
     }
   }
 
@@ -409,6 +437,17 @@ export default function PlinkoScreen() {
 
   const balance = walletType==='main' ? mainBalance : playBalance;
   const maxProfit = bet * (risk==='high' ? (rows===16?1000:170) : risk==='medium' ? (rows===16?110:33) : 16);
+
+  if (accessAllowed === false) {
+    return (
+      <div style={{minHeight:'100dvh',background:'#111114',color:'#f8fafc',fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,maxWidth:480,margin:'0 auto',textAlign:'center'}}>
+        <div style={{fontSize:48}}>🚫</div>
+        <div style={{fontSize:20,fontWeight:900,color:'#facc15'}}>Plinko Not Available</div>
+        <div style={{fontSize:13,color:'#71717a',maxWidth:280}}>Plinko is not available for your account yet. Contact support for access.</div>
+        <button onClick={()=>navigate('/')} style={{marginTop:8,background:'#27272a',border:'1px solid #3f3f46',color:'#d4d4d8',borderRadius:10,padding:'10px 24px',fontSize:13,fontWeight:700,cursor:'pointer'}}>← Back to Home</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{minHeight:'100dvh',background:'#111114',color:'#f8fafc',fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',maxWidth:480,margin:'0 auto'}}>
