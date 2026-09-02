@@ -75,6 +75,7 @@ export default function PlinkoScreen() {
   const [autoPlay, setAutoPlay]   = useState(false);
   const [autoSpeed, setAutoSpeed] = useState(1);
   const [isAiming, setIsAiming]   = useState(false);
+  const aimNormRef = useRef(0.5);
   const [aimNorm, setAimNorm]     = useState(0.5);
   const [recentResults, setRecentResults] = useState<{m:number}[]>([]);
   const [history,  setHistory]  = useState<HistEntry[]>([]);
@@ -201,7 +202,7 @@ export default function PlinkoScreen() {
       }
 
       // Aim indicator
-      const aimX = (aimNorm * 0.8 + 0.1) * w;
+      const aimX = (aimNormRef.current * 0.8 + 0.1) * w;
       ctx.save();
       ctx.strokeStyle = 'rgba(250,204,21,0.35)'; ctx.setLineDash([4,4]);
       ctx.beginPath(); ctx.moveTo(aimX, 10); ctx.lineTo(aimX, topPad); ctx.stroke();
@@ -402,7 +403,7 @@ export default function PlinkoScreen() {
     afId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(afId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dims, rows, risk, aimNorm]);
+  }, [dims, rows, risk]);
 
   async function handleDrop(count = 1) {
     const balance = (playBalance ?? 0) >= bet ? playBalance : mainBalance;
@@ -453,7 +454,9 @@ export default function PlinkoScreen() {
   function handleAim(clientX: number) {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    setAimNorm(Math.max(0, Math.min(1, (clientX-rect.left)/rect.width)));
+    const v = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    aimNormRef.current = v;
+    setAimNorm(v);
   }
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
