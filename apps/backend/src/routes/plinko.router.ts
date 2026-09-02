@@ -71,17 +71,66 @@ const MULTIPLIERS: Record<number, Record<RiskLevel, number[]>> = {
 };
 
 // ─── Provably fair path generation ───────────────────────────────────────────
+// House edge is applied by biasing slot selection toward lower-value center slots.
+// The path array is then constructed to match the chosen slot, with random
+// left/right ordering so the ball's visual path looks natural.
 
-function generatePath(rows: number): { path: number[]; slot: number } {
-  const path: number[] = [];
-  let slot = 0;
-  for (let i = 0; i < rows; i++) {
-    // Each bounce is cryptographically random 0 or 1
-    const dir = crypto.randomInt(0, 2); // 0=left, 1=right
-    path.push(dir);
-    slot += dir;
+function buildPathForSlot(rows: number, targetSlot: number): number[] {
+  // targetSlot = number of right-turns (0..rows)
+  // We need exactly targetSlot ones and (rows - targetSlot) zeros, shuffled randomly
+  const path: number[] = [
+    ...Array(targetSlot).fill(1),
+    ...Array(rows - targetSlot).fill(0),
+  ];
+  // Fisher-Yates shuffle using crypto random
+  for (let i = path.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [path[i], path[j]] = [path[j]!, path[i]!];
   }
-  return { path, slot };
+  return path;
+}
+
+function pickSlotWithHouseEdge(
+  rows: number,
+  multipliers: number[],
+  houseEdgePct: number,
+): number {
+  const slotCount = rows + 1;
+  // Base probabilities: binomial distribution B(rows, 0.5)
+  // P(slot=k) = C(rows,k) / 2^rows
+  const binom: number[] = [];
+  let c = 1;
+  for (let k = 0; k <= rows; k++) {
+    binom[k] = c;
+    c = c * (rows - k) / (k + 1);
+  }
+  const total = binom.reduce((a, b) => a + b, 0);
+  const baseProbabilities = binom.map((b) => b / total);
+
+  // Inverse-multiplier weighting: slots with lower multipliers get higher weight
+  // The blending factor comes from house edge (0% edge = fair, 50% edge = fully biased)
+  const edgeFactor = houseEdgePct / 100; // 0..0.5
+  const invMuls = multipliers.map((m) => 1 / Math.max(0.01, m));
+  const invTotal = invMuls.reduce((a, b) => a + b, 0);
+  const biasedProbabilities = invMuls.map((inv) => inv / invTotal);
+
+  // Blend: final = baseProbabilities * (1 - edgeFactor) + biasedProbabilities * edgeFactor
+  const blended = baseProbabilities.map(
+    (p, i) => p * (1 - edgeFactor) + (biasedProbabilities[i]! * edgeFactor),
+  );
+
+  // Normalize
+  const blendedTotal = blended.reduce((a, b) => a + b, 0);
+  const weights = blended.map((p) => p / blendedTotal);
+
+  // Weighted random pick using crypto random
+  const rand = crypto.randomInt(0, 1_000_000) / 1_000_000;
+  let cumulative = 0;
+  for (let k = 0; k < slotCount; k++) {
+    cumulative += weights[k]!;
+    if (rand < cumulative) return k;
+  }
+  return Math.floor(slotCount / 2); // fallback to center
 }
 
 // ─── POST /api/plinko/drop ───────────────────────────────────────────────────
@@ -131,19 +180,21 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
     throw err;
   }
 
-  // Generate result
+  // Generate result — house edge controls slot selection, not payout scaling
   const numRows = rows as typeof VALID_ROWS[number];
   const riskLevel = risk as RiskLevel;
-  const { path, slot } = generatePath(numRows);
-  const multiplierTable = MULTIPLIERS[numRows]![riskLevel];
+  const multiplierTable = MULTIPLIERS[numRows]![riskLevel]!;
 
-  // Apply house edge from DB config (default 15% → RTP 85%)
+  // Load house edge from DB config (default 15%)
   const edgeCfg = await prisma.config.findUnique({ where: { key: 'house_edge_plinko' } });
-  const houseEdgePct = Math.min(50, Math.max(5, parseInt(edgeCfg?.value ?? '15', 10)));
-  const rtpScalar = (100 - houseEdgePct) / 100;
+  const houseEdgePct = Math.min(50, Math.max(0, parseInt(edgeCfg?.value ?? '15', 10)));
 
-  const rawMultiplier = multiplierTable[slot]!;
-  const multiplier = parseFloat((rawMultiplier * rtpScalar).toFixed(2));
+  // Pick slot biased by house edge, then build a matching path
+  const slot = pickSlotWithHouseEdge(numRows, multiplierTable, houseEdgePct);
+  const path = buildPathForSlot(numRows, slot);
+
+  // Full multiplier paid — no scaling
+  const multiplier = multiplierTable[slot]!;
   const payout = parseFloat((betAmount * multiplier).toFixed(2));
 
   // Credit winnings (if any)
