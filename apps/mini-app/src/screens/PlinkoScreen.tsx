@@ -9,9 +9,9 @@ const MIN_BET = 5;
 const MAX_BET = 10_000;
 
 const MULTIPLIERS: Record<Rows, Record<Risk, number[]>> = {
-  8:  { low:[5.6,2.1,1.1,1,0.5,1,1.1,2.1,5.6], medium:[13,3,1.3,0.7,0.4,0.7,1.3,3,13], high:[29,4,1.5,0.3,0.2,0.3,1.5,4,29] },
-  12: { low:[10,3,1.6,1.4,1.1,1,0.5,1,1.1,1.4,1.6,3,10], medium:[33,11,4,2,1.1,0.6,0.3,0.6,1.1,2,4,11,33], high:[170,24,8.1,2,0.7,0.2,0.2,0.2,0.7,2,8.1,24,170] },
-  16: { low:[16,9,2,1.4,1.4,1.2,1.1,1,0.5,1,1.1,1.2,1.4,1.4,2,9,16], medium:[110,41,10,5,3,1.5,1,0.5,0.3,0.5,1,1.5,3,5,10,41,110], high:[1000,130,26,9,4,2,0.2,0.2,0.2,0.2,0.2,2,4,9,26,130,1000] },
+  8:  { low:[2.5,1.2,0.9,0.7,0.4,0.7,0.9,1.2,2.5], medium:[4,1.7,0.8,0.5,0.3,0.5,0.8,1.7,4], high:[8,2.5,1,0.3,0.2,0.3,1,2.5,8] },
+  12: { low:[3.5,1.7,1,0.8,0.6,0.4,0.4,0.6,0.8,1,1.7,3.5], medium:[7,3,1.5,1,0.6,0.3,0.3,0.6,1,1.5,3,7], high:[20,8,3,1.5,0.6,0.2,0.2,0.6,1.5,3,8,20] },
+  16: { low:[4,2.5,1.2,0.9,0.8,0.6,0.4,0.2,0.2,0.4,0.6,0.8,0.9,1.2,2.5,4], medium:[10,5,2.5,1.5,1,0.7,0.5,0.3,0.3,0.5,0.7,1,1.5,2.5,5,10], high:[40,15,8,4,2.5,1.5,0.4,0.2,0.2,0.4,1.5,2.5,4,8,15,40] },
 };
 
 function slotColor(m: number): string {
@@ -462,7 +462,7 @@ export default function PlinkoScreen() {
   const activeWallet: 'play' | 'main' = (playBalance ?? 0) >= bet ? 'play' : 'main';
   const balance = activeWallet === 'play' ? playBalance : mainBalance;
   const totalBalance = (mainBalance ?? 0) + (playBalance ?? 0);
-  const maxProfit = bet * (risk==='high' ? (rows===16?1000:170) : risk==='medium' ? (rows===16?110:33) : 16);
+  const maxProfit = bet * Math.max(...MULTIPLIERS[rows][risk]);
 
   if (accessAllowed === false) {
     return (
