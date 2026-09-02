@@ -43,6 +43,10 @@ interface Ball {
   trail: {x:number;y:number;alpha:number}[]; status: 'falling'|'landed';
   landedSlot?: number; multiplier?: number; payout?: number;
   serverSlot?: number; serverMultiplier?: number; serverPayout?: number;
+  // server path for guided steering: array of 0 (left) or 1 (right) per row
+  serverPath?: number[];
+  // track which row the ball last hit a peg in (for path steering)
+  lastPegRow?: number;
 }
 interface PegHit { x:number;y:number;radius:number;maxRadius:number;alpha:number;color:string; }
 interface Particle { x:number;y:number;vx:number;vy:number;color:string;size:number;alpha:number;decay:number;shape:'circle'|'star'; }
@@ -174,7 +178,7 @@ export default function PlinkoScreen() {
       const dpr = window.devicePixelRatio || 1;
       if (canvas.width !== w*dpr || canvas.height !== h*dpr) { canvas.width = w*dpr; canvas.height = h*dpr; }
       ctx.save(); ctx.scale(dpr, dpr);
-      const { topPad, colSpacing, pegs, pinR, ballR, slotY, slotH, slotsStartX, slotCount } = calcGeom(w, h, rows);
+      const { topPad, rowSpacing, colSpacing, pegs, pinR, ballR, slotY, slotH, slotsStartX, slotCount } = calcGeom(w, h, rows);
       const muls = MULTIPLIERS[rows][risk];
 
       // BG
@@ -211,17 +215,31 @@ export default function PlinkoScreen() {
       ctx.restore();
 
       // Physics sub-steps
-      const SUB = 4, subDt = dt/SUB, gravity = 680, restitution = 0.58;
+      const SUB = 4, subDt = dt/SUB, gravity = 680, restitution = 0.52;
       for (let s = 0; s < SUB; s++) {
         for (let i = ballsRef.current.length-1; i >= 0; i--) {
           const ball = ballsRef.current[i]!; if (ball.status !== 'falling') continue;
           ball.vy += gravity * subDt;
-          ball.vx *= (1 - 0.12*subDt); ball.vy *= (1 - 0.02*subDt);
+          ball.vx *= (1 - 0.10*subDt); ball.vy *= (1 - 0.02*subDt);
           ball.x += ball.vx * subDt; ball.y += ball.vy * subDt;
           if (s === 0 && Math.random() > 0.3) {
             ball.trail.unshift({ x: ball.x, y: ball.y, alpha: 0.75 });
             if (ball.trail.length > 10) ball.trail.pop();
           }
+
+          // Compute pyramid wall limits at current Y
+          // Row 0 spans colSpacing*2 (3 pegs), row r spans colSpacing*(r+2) (r+3 pegs)
+          // Interpolate based on how far down the ball is
+          const rowFrac = Math.max(0, Math.min(1, (ball.y - topPad) / (rowSpacing * rows)));
+          const bottomHalfW = (rows + 2) * colSpacing * 0.5;
+          const topHalfW = 2 * colSpacing * 0.5; // row 0 has 3 pins = span 2*colSpacing
+          const halfW = topHalfW + (bottomHalfW - topHalfW) * rowFrac;
+          const wallLeft  = w/2 - halfW - ballR;
+          const wallRight = w/2 + halfW + ballR;
+
+          if (ball.x < wallLeft)  { ball.x = wallLeft;  ball.vx =  Math.abs(ball.vx)*0.5; }
+          if (ball.x > wallRight) { ball.x = wallRight; ball.vx = -Math.abs(ball.vx)*0.5; }
+
           for (const peg of pegs) {
             const dx = ball.x-peg.x, dy = ball.y-peg.y;
             const distSq = dx*dx+dy*dy, minD = ballR+pinR;
@@ -231,17 +249,25 @@ export default function PlinkoScreen() {
               const ov = minD-dist; ball.x += nx*ov; ball.y += ny*ov;
               const van = ball.vx*nx+ball.vy*ny;
               if (van < 0) {
-                const jitter = (Math.random()-0.5)*0.15;
+                // Path-guided steering: if we have a server path, steer based on it
+                let jitter = (Math.random()-0.5)*0.12;
+                if (ball.serverPath && peg.row !== undefined && peg.row !== ball.lastPegRow) {
+                  const dir = ball.serverPath[peg.row]; // 0=left, 1=right
+                  if (dir !== undefined) {
+                    // Bias jitter toward path direction: positive = right, negative = left
+                    jitter = dir === 1 ? 0.25 + Math.random()*0.1 : -0.25 - Math.random()*0.1;
+                  }
+                  ball.lastPegRow = peg.row;
+                }
                 const tx = -ny, ty = nx;
                 const imp = -(1+restitution)*van;
                 ball.vx += (nx+tx*jitter)*imp; ball.vy += (ny+ty*jitter)*imp;
-                if (ball.vy < -80) ball.vy = -80;
+                if (ball.vy < -60) ball.vy = -60;
                 pegHitsRef.current.push({ x:peg.x, y:peg.y, radius:pinR, maxRadius:pinR*3.8, alpha:1, color:ball.color });
               }
             }
           }
-          if (ball.x < ballR+6)    { ball.x = ballR+6;    ball.vx =  Math.abs(ball.vx)*0.6; }
-          if (ball.x > w-ballR-6)  { ball.x = w-ballR-6;  ball.vx = -Math.abs(ball.vx)*0.6; }
+
           if (ball.y >= slotY) {
             ball.status = 'landed';
             // Use server-authoritative slot and multiplier if available
@@ -398,25 +424,22 @@ export default function PlinkoScreen() {
           ? { color:'#f59e0b', glowColor:'rgba(245,158,11,0.8)' }
           : { color:'#10b981', glowColor:'rgba(16,185,129,0.8)' };
         const w = dims.w;
-        const { colSpacing, slotsStartX } = calcGeom(w, dims.h, rows);
 
-        // Compute target X from the server's slot so the ball lands there
-        const targetSlotX = slotsStartX + result.slot * colSpacing + colSpacing / 2;
-        // Bias initial vx toward target to guide the ball
-        const spawnX = (aimNorm*0.8+0.1)*w + (Math.random()-0.5)*16;
-        const dx = targetSlotX - Math.max(30, Math.min(w-30, spawnX));
+        // Spawn at pyramid apex (center top) — path steering guides it to correct slot
+        const spawnX = w / 2 + (Math.random()-0.5)*8;
 
         ballsRef.current.push({
           id: result.id ?? `${Date.now()}-${i}`,
-          x: Math.max(30, Math.min(w-30, spawnX)), y: 28,
-          vx: (dx / dims.h) * 60 + (Math.random()-0.5)*10,
-          vy: Math.random()*20+40,
+          x: spawnX, y: 28,
+          vx: (Math.random()-0.5)*8,
+          vy: Math.random()*15+35,
           radius: 6.5, ...ballColors, betAmount: bet, risk, rows,
           trail: [], status: 'falling',
-          // Attach server result so physics lands at correct slot
           serverSlot: result.slot,
           serverMultiplier: result.multiplier,
           serverPayout: result.payout,
+          serverPath: result.path,
+          lastPegRow: -1,
         });
         if (i < count-1) await new Promise(r => setTimeout(r, count>10?80:140));
       }
