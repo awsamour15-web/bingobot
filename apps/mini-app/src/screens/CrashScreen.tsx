@@ -4,7 +4,7 @@ import { socket } from '../lib/socket';
 import { getCrashState, placeCrashBet, getCrashHistory, getProfile } from '../lib/api';
 import type { CrashBetEntry, CrashHistoryEntry } from '../lib/api';
 import { getJwtFromStorage } from '../lib/auth-storage';
-import aviatorLogo from '../assets/avi/aviator-logo.svg';
+import aviatorLogo from '../assets/avi/logo-yEkF9SfW.svg';
 import bgSun from '../assets/avi/bg-sun.svg';
 import plane0 from '../assets/avi/plane-anim-0.svg';
 import plane1 from '../assets/avi/plane-anim-1.svg';
@@ -21,15 +21,23 @@ interface MyBet {
   payout: number | null;
 }
 
+interface Particle {
+  x: number; y: number;
+  vx: number; vy: number;
+  size: number; alpha: number;
+  color: string; life: number;
+}
+
 const MIN_BET = 5;
 const MAX_BET = 10_000;
+const planeFrames = [plane0, plane1, plane2, plane3];
 
-function fmtMul(v: number): string { return v.toFixed(2) + 'x'; } // Updated
+function fmtMul(v: number): string { return v.toFixed(2) + 'x'; }
 
-// ─── Rules Modal ──────────────────────────────────────────────────────────────
+// ─── Rules Modal ─────────────────────────────────────────────────────────────
 function AviatorRulesModal({ onClose }: { onClose: () => void }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: '#060a14', overflowY: 'auto', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: '#0d0e14', overflowY: 'auto', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif" }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>✈️ How to Play</span>
         <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 10, padding: '7px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>✕ Close</button>
@@ -41,7 +49,7 @@ function AviatorRulesModal({ onClose }: { onClose: () => void }) {
           { title: '⚡ AUTO CASH OUT', body: 'Set a target multiplier. If the plane reaches it, your bet cashes out automatically.' },
         ].map(s => (
           <section key={s.title}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#c44dff', letterSpacing: '0.08em', marginBottom: 8 }}>{s.title}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#e5053a', letterSpacing: '0.08em', marginBottom: 8 }}>{s.title}</div>
             <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.75 }}>{s.body}</div>
           </section>
         ))}
@@ -50,521 +58,541 @@ function AviatorRulesModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Plane frames ─────────────────────────────────────────────────────────────
-const planeFrames = [plane0, plane1, plane2, plane3];
-function PlaneSVG({ crashed, tilt, frame }: { crashed: boolean; tilt: number; frame: number }) {
-  return (
-    <div style={{
-      transform: `rotate(${tilt}deg)`,
-      transition: crashed ? 'transform 0.5s ease-in' : 'transform 0.18s ease-out',
-      filter: crashed
-        ? 'drop-shadow(0 0 16px #e8073f) brightness(0.7)'
-        : 'drop-shadow(0 0 14px rgba(180,100,255,0.9)) drop-shadow(0 0 4px rgba(255,180,80,0.6))',
-    }}>
-      <img src={planeFrames[frame % 4]} alt="plane" width={100} height={58} style={{ display: 'block', objectFit: 'contain' }} />
-    </div>
-  );
-}
-
-interface Particle { id: number; x: number; y: number; age: number; size: number; }
-interface Star { x: number; y: number; speed: number; size: number; alpha: number; }
-
-// ─── Countdown bar ────────────────────────────────────────────────────────────
-function CountdownBar() {
-  const [pct, setPct] = useState(100);
-  const startRef = useRef(Date.now());
-  useEffect(() => {
-    startRef.current = Date.now();
-    const id = setInterval(() => {
-      const p = Math.max(0, 100 - ((Date.now() - startRef.current) / 10000) * 100);
-      setPct(p);
-      if (p <= 0) clearInterval(id);
-    }, 80);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <div style={{ width: 140, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden', margin: '8px auto 0' }}>
-      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#c44dff,#8822dd)', borderRadius: 4, transition: 'width 0.08s linear' }} />
-    </div>
-  );
-}
-
-// ─── History chips row ────────────────────────────────────────────────────────
-function HistoryChips({ items }: { items: CrashHistoryEntry[] }) {
+// ─── History Pills ────────────────────────────────────────────────────────────
+function HistoryPills({ items }: { items: CrashHistoryEntry[] }) {
   if (!items.length) return null;
-  const show = items.slice(0, 8);
-  const midIdx = Math.floor(show.length / 2);
+  const getPillColor = (v: number) => {
+    if (v >= 10) return '#e879f9';
+    if (v >= 2) return '#c084fc';
+    return '#38bdf8';
+  };
   return (
-    <div style={{ display: 'flex', gap: 5, overflowX: 'auto', padding: '4px 2px', scrollbarWidth: 'none', alignItems: 'center' }}>
-      {show.map((r, i) => {
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', padding: '4px 2px', scrollbarWidth: 'none' }}>
+      {items.slice(0, 20).map((r, i) => {
         const v = r.crashPoint ?? 0;
-        const isMid = i === midIdx;
-        const color = v < 2 ? '#f5a623' : v < 10 ? '#c44dff' : '#ff4d8f';
+        const color = getPillColor(v);
         return (
           <div key={r.id ?? i} style={{
-            flexShrink: 0, padding: '5px 12px', borderRadius: 999,
-            background: isMid ? 'rgba(196,77,255,0.25)' : 'rgba(255,255,255,0.06)',
-            border: isMid ? '1.5px solid #c44dff' : '1px solid rgba(255,255,255,0.1)',
-            fontSize: 11, fontWeight: 800,
-            color: isMid ? '#fff' : color,
-            boxShadow: isMid ? '0 0 10px rgba(196,77,255,0.4)' : 'none',
+            flexShrink: 0, padding: '3px 10px', borderRadius: 999,
+            fontSize: 12, fontWeight: 700, color,
+            cursor: 'pointer',
           }}>
             {fmtMul(v)}
           </div>
         );
       })}
-      <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
-      </div>
     </div>
   );
 }
 
-// ─── Crash Graph ──────────────────────────────────────────────────────────────
-function CrashGraph({ phase, multiplier, crashPoint }: { phase: Phase; multiplier: number; crashPoint: number | null }) {
+// ─── Countdown bar ────────────────────────────────────────────────────────────
+function CountdownBar({ remaining }: { remaining: number }) {
+  const pct = Math.max(0, Math.min(100, (remaining / 10) * 100));
+  return (
+    <div style={{ width: 192, height: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 999, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', padding: '2px' }}>
+      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #eab308, #ef4444, #dc2626)', borderRadius: 999, transition: 'width 0.3s linear', boxShadow: '0 0 10px rgba(220,38,38,0.6)' }} />
+    </div>
+  );
+}
+
+// ─── Aviator Canvas ───────────────────────────────────────────────────────────
+interface CanvasProps {
+  phase: Phase;
+  multiplier: number;
+  crashPoint: number | null;
+  roundNumber: number;
+  countdownRemaining: number;
+  onOpenRules: () => void;
+}
+
+function AviatorCanvas({ phase, multiplier, crashPoint, roundNumber, countdownRemaining, onOpenRules }: CanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pointsRef = useRef<{ x: number; y: number }[]>([]);
-  const startTimeRef = useRef(Date.now());
-  const particlesRef = useRef<Particle[]>([]);
-  const particleIdRef = useRef(0);
-  const starsRef = useRef<Star[]>([]);
-  const bgImgRef = useRef<HTMLImageElement | null>(null);
+  const animFrameId = useRef<number>(0);
+  const planePos = useRef<{ x: number; y: number; angle: number }>({ x: 0, y: 0, angle: 0 });
+  const particles = useRef<Particle[]>([]);
+  const crashProgress = useRef<number>(0);
+  const planeImages = useRef<HTMLImageElement[]>([]);
+  const imagesLoaded = useRef(false);
   const multiplierRef = useRef(multiplier);
-  const [planePct, setPlanePct] = useState<{ x: number; y: number } | null>(null);
-  const [planeTilt, setPlaneTilt] = useState(-20);
-  const [planeFrame, setPlaneFrame] = useState(0);
-  const frameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isCrashed = phase === 'crashed';
-  const displayVal = isCrashed ? (crashPoint ?? multiplier) : multiplier;
+  const phaseRef = useRef(phase);
+
+  useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   useEffect(() => {
-    const handleResize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const parent = canvas.parentElement;
-      if (!parent) return;
-      // Set internal resolution to match display size
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const srcs = [plane0, plane1, plane2, plane3];
+    let loaded = 0;
+    planeImages.current = srcs.map(src => {
+      const img = new Image();
+      img.onload = () => { loaded++; if (loaded === 4) imagesLoaded.current = true; };
+      img.src = src;
+      return img;
+    });
   }, []);
-  useEffect(() => {
-    const img = new Image(); img.src = bgSun;
-    img.onload = () => { bgImgRef.current = img; };
-  }, []);
-
-  useEffect(() => {
-    multiplierRef.current = multiplier;
-  }, [multiplier]);
-
-  useEffect(() => {
-    if (starsRef.current.length) return;
-    starsRef.current = Array.from({ length: 80 }, () => ({
-      x: Math.random() * 480, y: Math.random() * 280,
-      speed: 8 + Math.random() * 60,
-      size: Math.random() > 0.7 ? 1.1 + Math.random() * 0.7 : 0.3 + Math.random() * 0.5,
-      alpha: 0.15 + Math.random() * 0.7,
-    }));
-  }, []);
-
-  useEffect(() => {
-    if (phase === 'running') {
-      frameTimerRef.current = setInterval(() => setPlaneFrame(f => (f + 1) % 4), 110);
-    } else {
-      if (frameTimerRef.current) clearInterval(frameTimerRef.current);
-      setPlaneFrame(0);
-    }
-    return () => { if (frameTimerRef.current) clearInterval(frameTimerRef.current); };
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase === 'waiting' || phase === 'idle') {
-      pointsRef.current = []; startTimeRef.current = Date.now();
-      setPlanePct(null); setPlaneTilt(-20); particlesRef.current = [];
-    }
-    if (phase === 'running') {
-      startTimeRef.current = Date.now(); pointsRef.current = []; particlesRef.current = [];
-    }
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== 'running' && phase !== 'crashed') return;
-    const t = (Date.now() - startTimeRef.current) / 1000;
-    const pts = pointsRef.current;
-    const last = pts[pts.length - 1];
-    if (!last || Math.abs(multiplier - last.y) > 0.02 || t - last.x > 0.15) {
-      pts.push({ x: t, y: multiplier });
-      if (pts.length > 400) pts.splice(0, pts.length - 400);
-    }
-  }, [multiplier, phase]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    let lastT = Date.now(), animId = 0, crashAge = 0;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const draw = () => {
-      const now = Date.now();
-      const dt = Math.min((now - lastT) / 1000, 0.05);
-      lastT = now;
-      if (isCrashed) crashAge = Math.min(crashAge + dt * 1.6, 1);
+    let width = 0, height = 0;
 
-      const ctx = canvas.getContext('2d')!;
-      const W = canvas.width, H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
-      // BG: deep navy
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      if (isCrashed) {
-        bg.addColorStop(0, '#1a0520'); bg.addColorStop(1, '#080108');
-      } else {
-        bg.addColorStop(0, '#0d0b28'); bg.addColorStop(0.6, '#0a0820'); bg.addColorStop(1, '#06050f');
-      }
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-
-      // Subtle grid lines
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      ctx.lineWidth = 1;
-      for (let gx = 0; gx < W; gx += W / 8) {
-        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
-      }
-      for (let gy = 0; gy < H; gy += H / 6) {
-        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
-      }
-
-      // Stars
-      starsRef.current.forEach(s => {
-        if (phase === 'running') {
-          s.x -= s.speed * dt;
-          if (s.x < 0) { s.x = W + 5; s.y = Math.random() * H; }
-        }
-        const tw = s.alpha * (0.5 + 0.5 * Math.sin(now / 900 + s.x * 0.5));
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fillStyle = isCrashed ? `rgba(255,140,140,${tw * 0.3})` : `rgba(180,180,255,${tw * 0.7})`;
-        ctx.fill();
-      });
-
-      // Padding for axes
-      const pL = 46, pB = 30, pT = 12, pR = 10;
-      const gW = W - pL - pR, gH = H - pT - pB;
-      const pts = pointsRef.current;
-      const last = pts[pts.length - 1];
-      const maxT = last ? Math.max(last.x, 2) : 16;
-      const rawM = last ? Math.max(last.y, 1.5) : 4;
-      const lvls = [1.5, 2, 3, 4, 5, 8, 10, 15, 20, 30, 50];
-      const maxM = lvls.find(l => l >= rawM * 1.2) ?? rawM * 1.3;
-
-      const toX = (t: number) => pL + (t / maxT) * gW;
-      const toY = (m: number) => H - pB - ((m - 1) / Math.max(maxM - 1, 0.1)) * gH;
-
-      // Y axis labels
-      const ySteps = [1, 2, 3, 4, 5].filter(v => v <= maxM + 0.5);
-      ctx.fillStyle = 'rgba(100,180,220,0.7)';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ySteps.forEach(v => {
-        const y = toY(v);
-        if (y >= pT && y <= H - pB + 4) {
-          ctx.fillText(v.toFixed(2) + 'x', pL - 6, y + 3);
-          ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-          ctx.lineWidth = 0.5;
-          ctx.beginPath(); ctx.moveTo(pL, y); ctx.lineTo(W - pR, y); ctx.stroke();
-        }
-      });
-
-      // X axis labels (time)
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(100,180,220,0.7)';
-      const xCount = Math.min(8, Math.floor(maxT / 2));
-      for (let i = 0; i <= xCount; i++) {
-        const t = (i / xCount) * maxT;
-        const x = toX(t);
-        if (x >= pL && x <= W - pR) {
-          ctx.fillText(Math.round(t) + 's', x, H - pB + 14);
-        }
-      }
-
-      if (pts.length < 2) { animId = requestAnimationFrame(draw); return; }
-
-      const nowT = (Date.now() - startTimeRef.current) / 1000;
-      const tipX = toX(nowT), tipY = toY(multiplierRef.current);
-
-      // Curve path helper (Catmull-Rom smooth)
-      const curvePath = () => {
-        ctx.moveTo(toX(pts[0]!.x), toY(pts[0]!.y));
-        if (pts.length === 2) { ctx.lineTo(toX(pts[1]!.x), toY(pts[1]!.y)); return; }
-        for (let i = 0; i < pts.length - 1; i++) {
-          const p0 = pts[Math.max(i - 1, 0)]!, p1 = pts[i]!, p2 = pts[i + 1]!, p3 = pts[Math.min(i + 2, pts.length - 1)]!;
-          const t = 0.45;
-          const cp1x = toX(p1.x) + (toX(p2.x) - toX(p0.x)) * t / 3;
-          const cp1y = toY(p1.y) + (toY(p2.y) - toY(p0.y)) * t / 3;
-          const cp2x = toX(p2.x) - (toX(p3.x) - toX(p1.x)) * t / 3;
-          const cp2y = toY(p2.y) - (toY(p3.y) - toY(p1.y)) * t / 3;
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, toX(p2.x), toY(p2.y));
-        }
-      };
-
-      // Fill gradient under curve (pink/magenta)
-      const fill = ctx.createLinearGradient(0, tipY, 0, H - pB);
-      if (isCrashed) {
-        fill.addColorStop(0, 'rgba(232,7,63,0.3)'); fill.addColorStop(1, 'rgba(232,7,63,0)');
-      } else {
-        fill.addColorStop(0, 'rgba(196,77,255,0.25)'); fill.addColorStop(0.5, 'rgba(255,60,200,0.08)'); fill.addColorStop(1, 'rgba(196,77,255,0)');
-      }
-      ctx.beginPath(); ctx.moveTo(toX(pts[0]!.x), H - pB); curvePath(); ctx.lineTo(tipX, H - pB); ctx.closePath();
-      ctx.fillStyle = fill; ctx.fill();
-
-      // Outer glow
-      ctx.beginPath(); curvePath();
-      ctx.strokeStyle = isCrashed ? 'rgba(232,7,63,0.2)' : 'rgba(255,60,200,0.18)';
-      ctx.lineWidth = 18; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
-
-      ctx.beginPath(); curvePath();
-      ctx.strokeStyle = isCrashed ? 'rgba(232,7,63,0.4)' : 'rgba(220,80,255,0.35)';
-      ctx.lineWidth = 8; ctx.stroke();
-
-      // Main curve (pink/magenta)
-      ctx.beginPath(); curvePath();
-      const lineGrad = ctx.createLinearGradient(toX(pts[0]!.x), 0, tipX, 0);
-      if (isCrashed) {
-        lineGrad.addColorStop(0, '#ff6688'); lineGrad.addColorStop(1, '#ff2244');
-      } else {
-        lineGrad.addColorStop(0, '#dd44ff'); lineGrad.addColorStop(0.5, '#ff44cc'); lineGrad.addColorStop(1, '#ff88cc');
-      }
-      ctx.strokeStyle = lineGrad;
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = isCrashed ? '#ef4444' : '#ee44ff';
-      ctx.shadowBlur = isCrashed ? 6 : 16;
-      ctx.stroke(); ctx.shadowBlur = 0;
-
-      // Engine exhaust particles
-      if (!isCrashed) {
-        for (let i = 0; i < 2; i++) {
-          particlesRef.current.push({
-            id: particleIdRef.current++,
-            x: tipX - 2 + (Math.random() - 0.5) * 5,
-            y: tipY + 1 + (Math.random() - 0.5) * 4,
-            age: 0, size: 1.5 + Math.random() * 2,
-          });
-        }
-        if (particlesRef.current.length > 70) particlesRef.current.splice(0, 10);
-      }
-      particlesRef.current = particlesRef.current.filter(p => p.age < 1);
-      particlesRef.current.forEach(p => {
-        p.age += dt * 1.2; p.x -= dt * 45; p.y += (Math.random() - 0.5) * dt * 5;
-        const lf = 1 - p.age, r = p.size * (1 + p.age * 2);
-        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,${Math.round(160 * lf)},${Math.round(50 * lf)},${lf * 0.5})`;
-        ctx.fill();
-      });
-
-      // Tip dot (pink glow)
-      if (!isCrashed) {
-        const pulse = (now % 1000) / 1000;
-        ctx.beginPath(); ctx.arc(tipX, tipY, 7 + pulse * 10, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255,80,220,${(1 - pulse) * 0.3})`; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.beginPath(); ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff80dd'; ctx.shadowColor = '#ee44ff'; ctx.shadowBlur = 20; ctx.fill(); ctx.shadowBlur = 0;
-      }
-
-      // Crash explosion
-      if (isCrashed && last) {
-        [1, 0.65, 0.4].forEach((d, i) => {
-          const a2 = Math.max(0, crashAge - (1 - d) * 0.25);
-          const ring = a2 * (28 + i * 16), alpha = Math.max(0, (1 - a2) * (0.5 - i * 0.1));
-          if (ring <= 0) return;
-          ctx.beginPath(); ctx.arc(tipX, tipY, ring, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255,${50 - i * 10},${30 - i * 5},${alpha})`;
-          ctx.lineWidth = 2.5 - i * 0.5; ctx.shadowColor = '#ff2020'; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
-        });
-      }
-
-      // Tilt calculation
-      if (pts.length >= 2) {
-        const prev = pts[Math.max(0, pts.length - 4)]!;
-        const dx = toX(last!.x) - toX(prev.x), dy = toY(last!.y) - toY(prev.y);
-        setPlaneTilt(isCrashed ? 55 : Math.max(-40, Math.min(4, (Math.atan2(dy, dx) * 180) / Math.PI)));
-      }
-      setPlanePct({ x: (tipX / W) * 100, y: (tipY / H) * 100 });
-
-      if (phase === 'running' || phase === 'crashed') animId = requestAnimationFrame(draw);
+    const handleResize = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = rect.width; height = rect.height;
+      canvas.width = width * dpr; canvas.height = height * dpr;
+      canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+      ctx.scale(dpr, dpr);
     };
 
-    animId = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(animId); };
-  }, [phase, isCrashed]);
+    handleResize();
+    const ro = new ResizeObserver(handleResize);
+    if (containerRef.current) ro.observe(containerRef.current);
+
+    const spawnExhaust = (x: number, y: number, angle: number) => {
+      const tailX = x + Math.cos(angle) * -42 - Math.sin(angle) * 4;
+      const tailY = y + Math.sin(angle) * -42 + Math.cos(angle) * 4;
+      for (let i = 0; i < 2; i++) {
+        const isFire = Math.random() < 0.45;
+        particles.current.push({
+          x: tailX + (Math.random() - 0.5) * 4,
+          y: tailY + (Math.random() - 0.5) * 4,
+          vx: -Math.cos(angle) * (2.5 + Math.random() * 2) + (Math.random() - 0.5) * 1.5,
+          vy: -Math.sin(angle) * (2.5 + Math.random() * 2) + (Math.random() - 0.5) * 1.5,
+          size: isFire ? 2.5 + Math.random() * 3 : 3 + Math.random() * 6,
+          alpha: 0.85, color: isFire ? '#ff5500' : '#e5053a', life: 1,
+        });
+      }
+      if (particles.current.length > 120) particles.current = particles.current.slice(-100);
+    };
+
+    const updateParticles = () => {
+      for (let i = particles.current.length - 1; i >= 0; i--) {
+        const p = particles.current[i]!;
+        p.x += p.vx; p.y += p.vy; p.size += 0.25; p.alpha -= 0.025; p.life -= 0.025;
+        if (p.alpha <= 0 || p.life <= 0) { particles.current.splice(i, 1); continue; }
+        ctx.save();
+        ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    };
+
+    const drawTrajectory = (sx: number, sy: number, ex: number, ey: number, isCrash = false) => {
+      const cpX = sx + (ex - sx) * 0.42, cpY = sy;
+      ctx.save();
+      if (!isCrash) {
+        const g = ctx.createLinearGradient(0, ey, 0, sy);
+        g.addColorStop(0, 'rgba(215,8,48,0.85)');
+        g.addColorStop(0.5, 'rgba(188,6,42,0.88)');
+        g.addColorStop(1, 'rgba(145,4,30,0.92)');
+        ctx.fillStyle = g;
+      } else {
+        ctx.fillStyle = 'rgba(175,15,25,0.45)';
+      }
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(cpX, cpY, ex, ey);
+      ctx.lineTo(ex, sy); ctx.lineTo(sx, sy); ctx.closePath(); ctx.fill();
+
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(cpX, cpY, ex, ey);
+      ctx.strokeStyle = isCrash ? '#ef4444' : '#ff144c';
+      ctx.lineWidth = 3.5; ctx.shadowColor = isCrash ? '#dc2626' : '#e5053a'; ctx.shadowBlur = 12;
+      ctx.stroke(); ctx.restore();
+    };
+
+    const drawPlane = (x: number, y: number, angle: number, frame: number, alpha = 1.0, scale = 0.72) => {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.globalAlpha = alpha;
+      const img = planeImages.current[frame % 4];
+      if (img && img.complete && img.naturalWidth > 0) {
+        const w = 150 * scale, h = 75 * scale;
+        ctx.drawImage(img, -w * 0.52, -h * 0.5, w, h);
+      } else {
+        ctx.fillStyle = '#e5053a';
+        ctx.beginPath(); ctx.ellipse(0, 0, 24, 8, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+      const startX = 0, startY = height;
+      const maxX = width - 65, maxY = 45;
+      const currentPhase = phaseRef.current;
+      const currentMult = multiplierRef.current;
+
+      if (currentPhase === 'running') {
+        crashProgress.current = 0;
+        const t = Math.min(1, Math.max(0, (currentMult - 1) / 4.0));
+        const progress = Math.min(0.92, 0.24 + Math.pow(t, 0.52) * 0.68);
+        const hover = Math.sin(Date.now() / 260) * 3;
+        const cx = startX + (maxX - startX) * progress;
+        const cy = startY - (startY - maxY) * Math.pow(progress, 0.78) + hover;
+        const angle = -0.26 + Math.cos(Date.now() / 320) * 0.03;
+        planePos.current = { x: cx, y: cy, angle };
+        drawTrajectory(startX, startY, cx, cy);
+        spawnExhaust(cx, cy, angle);
+        updateParticles();
+        drawPlane(cx, cy, angle, Math.floor(Date.now() / 65) % 4);
+      } else if (currentPhase === 'crashed') {
+        crashProgress.current += 1;
+        const cp = crashProgress.current;
+        const lx = planePos.current.x, ly = planePos.current.y;
+        const fx = lx + cp * 14, fy = ly - cp * 12;
+        if (cp < 45) {
+          drawTrajectory(startX, startY, fx, fy, true);
+          drawPlane(fx, fy, -0.65, Math.floor(Date.now() / 45) % 4, 0.85);
+        }
+        updateParticles();
+      } else {
+        crashProgress.current = 0;
+        particles.current = [];
+        planePos.current = { x: startX, y: startY, angle: 0 };
+        drawPlane(35, startY - 18, -0.05, 0, 0.55);
+      }
+
+      animFrameId.current = requestAnimationFrame(render);
+    };
+
+    animFrameId.current = requestAnimationFrame(render);
+    return () => { cancelAnimationFrame(animFrameId.current); ro.disconnect(); };
+  }, []); // run once — phase/multiplier read via refs
+
+  const displayVal = phase === 'crashed' ? (crashPoint ?? multiplier) : multiplier;
+
+  const multColor = displayVal >= 10 ? '#fbbf24' : displayVal >= 2 ? '#f87171' : '#ffffff';
+  const multGlow = displayVal >= 10
+    ? '0 0 25px rgba(251,191,36,0.6)'
+    : displayVal >= 2 ? '0 0 20px rgba(248,113,113,0.5)' : '0 0 15px rgba(255,255,255,0.4)';
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      animation: isCrashed ? 'screenShake 0.5s cubic-bezier(.36,.07,.19,.97) both' : 'none'
-    }}>
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', height: 256, background: '#000', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', flexShrink: 0 }}>
+      {/* Sunburst bg */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <img src={bgSun} alt="" style={{
+          position: 'absolute', left: 0, bottom: 0,
+          width: 1800, height: 1800,
+          transform: 'translate(-50%, 50%)',
+          opacity: phase === 'running' ? 0.22 : 0.1,
+          animation: 'aviSpin 90s linear infinite',
+        }} />
+      </div>
 
-      {/* Plane */}
-      {(phase === 'running' || phase === 'crashed') && planePct && (
-        <div style={{
-          position: 'absolute',
-          left: `${Math.min(planePct.x, 86)}%`,
-          top: `${Math.max(Math.min(planePct.y, 88), 4)}%`,
-          transform: 'translate(-50%, -100%)',
-          transition: isCrashed ? 'left 0.5s ease-in, top 0.5s ease-in' : 'none',
-          pointerEvents: 'none', zIndex: 10,
-        }}>
-          <PlaneSVG crashed={isCrashed} tilt={planeTilt} frame={planeFrame} />
-        </div>
+      {/* Cyan atmospheric glow during flight */}
+      {phase === 'running' && (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 65% 55% at 52% 48%, rgba(56,189,248,0.42) 0%, rgba(14,165,233,0.18) 35%, transparent 80%)' }} />
       )}
 
-      {/* Multiplier overlay */}
-      <div style={{ position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 20 }}>
-        {phase === 'waiting' && (
-          <div style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600 }}>
-            <div style={{ letterSpacing: '0.05em' }}>Next round starting...</div>
-            <CountdownBar />
+      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+
+      {/* Top-left: round badge */}
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px rgba(239,68,68,0.8)', animation: 'aviPulse 1.5s ease-in-out infinite', display: 'inline-block' }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', fontFamily: 'monospace' }}>#{roundNumber}</span>
+      </div>
+
+      {/* Top-right: provably fair / rules */}
+      <button onClick={onOpenRules} style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', color: '#d1d5db', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+        <span style={{ color: '#34d399' }}>✓</span> How to Play
+      </button>
+
+      {/* Center HUD */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 10 }}>
+        {phase === 'running' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span style={{ fontSize: 'clamp(52px,14vw,80px)', fontWeight: 900, lineHeight: 1, color: multColor, textShadow: multGlow, letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums' }}>
+              {fmtMul(displayVal)}
+            </span>
           </div>
         )}
-        {(phase === 'running' || phase === 'crashed') && (
-          <>
-            <div style={{
-              fontSize: 'clamp(48px,14vw,72px)', fontWeight: 900,
-              color: isCrashed ? '#ef4444' : '#ffffff', lineHeight: 1,
-              letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums',
-              textShadow: isCrashed
-                ? '0 0 50px rgba(239,68,68,0.9)'
-                : '0 2px 20px rgba(255,255,255,0.3), 0 0 40px rgba(196,77,255,0.4)',
-              animation: isCrashed ? 'crashShake 0.4s ease-out' : undefined,
-            }}>
+        {phase === 'crashed' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'aviZoomIn 0.2s ease-out' }}>
+            <span style={{ fontSize: 'clamp(52px,14vw,80px)', fontWeight: 900, lineHeight: 1, color: '#ef4444', textShadow: '0 0 35px rgba(220,38,38,0.6)', letterSpacing: '-2px', fontVariantNumeric: 'tabular-nums' }}>
               {fmtMul(displayVal)}
-            </div>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', marginTop: 5, color: isCrashed ? '#ef4444' : 'rgba(150,200,255,0.8)', textTransform: 'uppercase' }}>
-              {isCrashed ? 'FLEW AWAY!' : 'CURRENT MULTIPLIER'}
-            </div>
-          </>
+            </span>
+            <span style={{ color: '#ef4444', fontWeight: 800, fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', marginTop: 6 }}>Flew away!</span>
+          </div>
         )}
-        {phase === 'idle' && <div style={{ color: '#2a3040', fontSize: 20, fontWeight: 700 }}>—</div>}
+        {phase === 'waiting' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 'clamp(40px,12vw,68px)', fontWeight: 900, color: '#fff', textShadow: '0 0 25px rgba(255,255,255,0.2)', lineHeight: 1 }}>
+              {countdownRemaining.toFixed(1)}s
+            </span>
+            <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase' }}>Next round starting</span>
+            <CountdownBar remaining={countdownRemaining} />
+          </div>
+        )}
+      </div>
+
+      {/* Bottom-right: active players */}
+      <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.75)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}>
+        <div style={{ display: 'flex', marginRight: -6 }}>
+          {['🧑‍✈️', '🐼', '🏇'].map((e, i) => (
+            <div key={i} style={{ width: 20, height: 20, borderRadius: '50%', background: ['#f97316', '#1e293b', '#0284c7'][i], border: '1.5px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }}>
+              {e}
+            </div>
+          ))}
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginLeft: 10 }}>3,244</span>
       </div>
     </div>
   );
 }
 
-// ─── Bottom Bet Panel (3-column Aviator style) ────────────────────────────────
+// ─── Bet Panel ────────────────────────────────────────────────────────────────
 interface BetPanelProps {
-  phase: Phase; multiplier: number; myBet1: MyBet | null; myBet2: MyBet | null;
-  onBet: (amount: number, auto: number, slot: 1 | 2) => void; onCashout: (slot: 1 | 2) => void;
-  placing1: boolean; placing2: boolean; cashingOut1: boolean; cashingOut2: boolean;
+  slot: 1 | 2;
+  phase: Phase; multiplier: number;
+  myBet: MyBet | null;
+  onBet: (amount: number, auto: number | null, slot: 1 | 2) => void;
+  onCashout: (slot: 1 | 2) => void;
+  placing: boolean; cashingOut: boolean;
+  userBalance: number;
 }
 
-function BetPanel({ phase, multiplier, myBet1, myBet2, onBet, onCashout, placing1, placing2, cashingOut1, cashingOut2 }: BetPanelProps) {
-  const [amount1, setAmount1] = useState(100);
-  const [amount2, setAmount2] = useState(100);
-  const [autoCashout1, setAutoCashout1] = useState(5.0);
-  const [autoCashout2, setAutoCashout2] = useState(5.0);
-  const AUTO_PRESETS = [1.5, 2.0, 5.0, 10.0];
-  const QUICK_BETS = [10, 50, 100, 500];
+function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, cashingOut, userBalance }: BetPanelProps) {
+  const [mode, setMode] = useState<'bet' | 'auto'>('bet');
+  const [amount, setAmount] = useState(100);
+  const [autoCashout, setAutoCashout] = useState(2.0);
+  const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(true);
+  const [minimized, setMinimized] = useState(false);
+  const PRESETS = [16, 40, 80, 400];
 
-  const renderSlot = (slot: 1 | 2) => {
-    const myBet = slot === 1 ? myBet1 : myBet2;
-    const placing = slot === 1 ? placing1 : placing2;
-    const cashingOut = slot === 1 ? cashingOut1 : cashingOut2;
-    const amount = slot === 1 ? amount1 : amount2;
-    const setAmount = slot === 1 ? setAmount1 : setAmount2;
-    const autoCashout = slot === 1 ? autoCashout1 : autoCashout2;
-    const setAutoCashout = slot === 1 ? setAutoCashout1 : setAutoCashout2;
+  const adj = (d: number) => setAmount(a => Math.max(MIN_BET, Math.min(MAX_BET, a + d)));
 
-    const canBet = phase === 'waiting' && !myBet && !placing;
-    const canCashout = phase === 'running' && myBet && myBet.cashoutAt === null && !cashingOut;
-    const cashedOut = myBet && myBet.cashoutAt !== null;
-    const adj = (d: number) => setAmount(a => Math.max(MIN_BET, Math.min(MAX_BET, a + d)));
+  const isBetPlaced = Boolean(myBet && myBet.cashoutAt === null);
+  const isCashedOut = Boolean(myBet && myBet.cashoutAt !== null);
+  const currentCashoutVal = isBetPlaced ? +(myBet!.betAmount * multiplier).toFixed(2) : 0;
 
-    return (
-      <div key={slot} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ fontSize: 9, color: 'rgba(150,180,220,0.5)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center' }}>BET {slot}</div>
+  const canBet = phase === 'waiting' && !myBet && !placing;
+  const canCashout = phase === 'running' && myBet && myBet.cashoutAt === null && !cashingOut;
 
-        {/* Amount row */}
-        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, overflow: 'hidden' }}>
-          <button onClick={() => adj(-10)} disabled={!canBet} style={{ width: 30, height: 34, background: 'none', border: 'none', color: canBet ? '#fff' : '#3a4455', fontSize: 18, fontWeight: 300, cursor: canBet ? 'pointer' : 'default', flexShrink: 0 }}>−</button>
-          <div style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
-            {amount.toFixed(2)} <span style={{ fontSize: 9, color: 'rgba(150,180,220,0.7)', fontWeight: 600 }}>ETB</span>
-          </div>
-          <button onClick={() => adj(10)} disabled={!canBet} style={{ width: 30, height: 34, background: 'none', border: 'none', color: canBet ? '#fff' : '#3a4455', fontSize: 18, fontWeight: 300, cursor: canBet ? 'pointer' : 'default', flexShrink: 0 }}>+</button>
-        </div>
-
-        {/* Quick bets */}
-        <div style={{ display: 'flex', gap: 3 }}>
-          {QUICK_BETS.map(q => (
-            <button key={q} onClick={() => canBet && setAmount(q)} style={{ flex: 1, padding: '4px 0', borderRadius: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(200,220,255,0.8)', fontSize: 9, fontWeight: 700, cursor: canBet ? 'pointer' : 'default' }}>{q}</button>
-          ))}
-        </div>
-
-        {/* Auto cashout */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 9, color: 'rgba(150,180,220,0.5)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', flexShrink: 0 }}>Auto</span>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, overflow: 'hidden' }}>
-            <button onClick={() => setAutoCashout(v => Math.max(1.1, parseFloat((v - 0.5).toFixed(2))))} style={{ width: 24, height: 28, background: 'none', border: 'none', color: '#fff', fontSize: 14, fontWeight: 300, cursor: 'pointer', flexShrink: 0 }}>−</button>
-            <div style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>{autoCashout.toFixed(2)}x</div>
-            <button onClick={() => setAutoCashout(v => parseFloat((v + 0.5).toFixed(2)))} style={{ width: 24, height: 28, background: 'none', border: 'none', color: '#fff', fontSize: 14, fontWeight: 300, cursor: 'pointer', flexShrink: 0 }}>+</button>
-          </div>
-        </div>
-
-        {/* Auto cashout presets */}
-        <div style={{ display: 'flex', gap: 3 }}>
-          {AUTO_PRESETS.map(p => (
-            <button key={p} onClick={() => setAutoCashout(p)} style={{ flex: 1, padding: '3px 0', borderRadius: 4, background: autoCashout === p ? 'rgba(196,77,255,0.2)' : 'rgba(255,255,255,0.07)', border: autoCashout === p ? '1px solid rgba(196,77,255,0.5)' : '1px solid rgba(255,255,255,0.1)', color: autoCashout === p ? '#dd88ff' : 'rgba(200,220,255,0.8)', fontSize: 8, fontWeight: 700, cursor: 'pointer' }}>{p.toFixed(1)}x</button>
-          ))}
-        </div>
-
-        {/* Action button */}
-        {canCashout ? (
-          <button onClick={() => onCashout(slot)} style={{ borderRadius: 12, border: 'none', background: 'linear-gradient(145deg,#9d1fcc,#7a15aa)', color: '#fff', cursor: 'pointer', padding: '8px 6px', boxShadow: '0 4px 24px rgba(160,40,220,0.5)', animation: 'cashPulse 1s ease-in-out infinite', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}>CASH OUT</div>
-            <div style={{ fontSize: 16, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{(myBet!.betAmount * multiplier).toFixed(2)}</div>
-          </button>
-        ) : cashedOut ? (
-          <button disabled style={{ borderRadius: 12, border: 'none', background: 'rgba(34,197,94,0.12)', color: '#4ade80', fontSize: 11, fontWeight: 800, cursor: 'default', padding: '14px 6px', textAlign: 'center' }}>
-            ✓ {fmtMul(myBet!.cashoutAt!)}
-          </button>
-        ) : canBet ? (
-          <button onClick={() => onBet(amount, autoCashout, slot)} style={{ borderRadius: 12, border: 'none', background: 'linear-gradient(145deg,#9d1fcc,#7a15aa)', color: '#fff', fontSize: 13, fontWeight: 900, cursor: 'pointer', padding: '12px 6px', boxShadow: '0 4px 24px rgba(160,40,220,0.45)', animation: 'betGlow 2s ease-in-out infinite', textAlign: 'center', letterSpacing: '0.06em' }}>
-            {placing ? '...' : 'BET'}
-          </button>
-        ) : (
-          <button disabled style={{ borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.05)', color: '#3a4455', fontSize: 11, fontWeight: 800, cursor: 'default', padding: '12px 6px', textAlign: 'center' }}>
-            {phase === 'running' && myBet ? 'In Round' : 'Next Round'}
-          </button>
-        )}
-      </div>
-    );
+  const handleMainBtn = () => {
+    if (phase === 'waiting') {
+      if (isBetPlaced) return; // cancel not yet supported
+      onBet(amount, mode === 'auto' && autoCashoutEnabled ? autoCashout : null, slot);
+    } else if (phase === 'running' && canCashout) {
+      onCashout(slot);
+    }
   };
 
+  if (minimized && slot === 2) {
+    return (
+      <div style={{ background: '#141518', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Bet Panel 2</span>
+        <button onClick={() => setMinimized(false)} style={{ width: 24, height: 24, borderRadius: 6, background: '#24262b', border: '1px solid rgba(255,255,255,0.05)', color: '#d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>+</button>
+      </div>
+    );
+  }
+
+  const borderColor = isBetPlaced && phase === 'running' ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.05)';
+  const boxShadow = isBetPlaced && phase === 'running' ? '0 0 20px rgba(245,158,11,0.12)' : undefined;
+
   return (
-    <div style={{ background: 'rgba(10,8,22,0.97)', borderTop: '1px solid rgba(255,255,255,0.07)', padding: '10px 10px 14px' }}>
+    <div style={{ background: '#141518', borderRadius: 16, border: `1px solid ${borderColor}`, padding: '10px', display: 'flex', flexDirection: 'column', gap: 8, boxShadow }}>
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ width: 24 }} />
+        <div style={{ background: '#0e0f12', padding: 2, borderRadius: 999, display: 'inline-flex', border: '1px solid rgba(255,255,255,0.05)' }}>
+          {(['bet', 'auto'] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)} style={{ padding: '2px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: mode === m ? '#2c2e33' : 'transparent', color: mode === m ? '#fff' : '#6b7280', transition: 'all 0.15s' }}>
+              {m.charAt(0).toUpperCase() + m.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div style={{ width: 24, display: 'flex', justifyContent: 'flex-end' }}>
+          {slot === 2 && <button onClick={() => setMinimized(true)} style={{ width: 24, height: 24, borderRadius: 6, background: '#202227', border: '1px solid rgba(255,255,255,0.05)', color: '#9ca3af', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>}
+        </div>
+      </div>
+
+      {/* Controls + Action */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        {renderSlot(1)}
-        {renderSlot(2)}
+        {/* Left: stepper + presets */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ background: '#0e0f12', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 999, padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button onClick={() => adj(-10)} disabled={isBetPlaced || phase === 'running'} style={{ width: 24, height: 24, borderRadius: '50%', background: '#23252a', border: 'none', color: '#d1d5db', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (isBetPlaced || phase === 'running') ? 0.2 : 1 }}>−</button>
+            <span style={{ flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{amount.toFixed(2)}</span>
+            <button onClick={() => adj(10)} disabled={isBetPlaced || phase === 'running'} style={{ width: 24, height: 24, borderRadius: '50%', background: '#23252a', border: 'none', color: '#d1d5db', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (isBetPlaced || phase === 'running') ? 0.2 : 1 }}>+</button>
+          </div>
+
+          {mode === 'bet' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+              {PRESETS.map(p => (
+                <button key={p} onClick={() => canBet && setAmount(p)} style={{ padding: '4px 0', borderRadius: 999, fontSize: 11, fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)', background: amount === p ? '#2f3138' : '#1c1d22', color: amount === p ? '#fff' : '#6b7280', cursor: canBet ? 'pointer' : 'default', opacity: canBet ? 1 : 0.4 }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div style={{ background: '#0e0f12', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => setAutoCashoutEnabled(v => !v)} style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${autoCashoutEnabled ? '#10b981' : 'rgba(255,255,255,0.2)'}`, background: autoCashoutEnabled ? '#10b981' : 'transparent', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 10 }}>
+                  {autoCashoutEnabled ? '✓' : ''}
+                </button>
+                <span style={{ fontSize: 11, color: '#d1d5db', fontWeight: 600 }}>Auto</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <input type="number" step="0.1" min="1.05" value={autoCashout} onChange={e => setAutoCashout(Math.max(1.05, +e.target.value))} style={{ width: 48, textAlign: 'right', background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }}>x</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right: action button */}
+        <div style={{ display: 'flex', minHeight: 82 }}>
+          {/* WAITING — no bet */}
+          {phase === 'waiting' && !isBetPlaced && (
+            <button onClick={handleMainBtn} style={{ width: '100%', borderRadius: 12, border: '1.5px solid #3ddc63', background: '#28a745', color: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px', boxShadow: '0 0 18px rgba(40,167,69,0.3)', transition: 'all 0.15s' }}>
+              <span style={{ fontSize: 20, fontWeight: 700 }}>{placing ? '...' : 'Bet'}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{amount.toFixed(2)} ETB</span>
+            </button>
+          )}
+          {/* WAITING — bet placed */}
+          {phase === 'waiting' && isBetPlaced && (
+            <div style={{ width: '100%', borderRadius: 12, border: '1.5px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 8, textAlign: 'center' }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#ef4444' }}>Waiting</span>
+              <span style={{ fontSize: 11, color: '#fca5a5', marginTop: 2 }}>for flight</span>
+            </div>
+          )}
+          {/* RUNNING — active bet cashout */}
+          {phase === 'running' && isBetPlaced && !isCashedOut && (
+            <button onClick={handleMainBtn} style={{ width: '100%', borderRadius: 12, border: '1.5px solid #fcd34d', background: '#ff7700', color: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 8, boxShadow: '0 0 24px rgba(255,119,0,0.5)', animation: 'aviCashPulse 1s ease-in-out infinite' }}>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>Cash Out</span>
+              <span style={{ fontSize: 14, fontWeight: 900, fontFamily: 'monospace', marginTop: 2 }}>{currentCashoutVal.toFixed(2)} ETB</span>
+            </button>
+          )}
+          {/* RUNNING — cashed out */}
+          {isCashedOut && (
+            <div style={{ width: '100%', borderRadius: 12, border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 8, textAlign: 'center' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Cashed Out</span>
+              <span style={{ fontSize: 16, fontWeight: 900, color: '#6ee7b7', fontFamily: 'monospace' }}>+{myBet!.payout?.toFixed(2)} ETB</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }}>@ {myBet!.cashoutAt?.toFixed(2)}x</span>
+            </div>
+          )}
+          {/* RUNNING — no bet */}
+          {phase === 'running' && !isBetPlaced && !isCashedOut && (
+            <div style={{ width: '100%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', background: '#0e0f12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 8, textAlign: 'center' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Flight Active</span>
+              <span style={{ fontSize: 10, color: '#4b5563', marginTop: 2 }}>Waiting for next round</span>
+            </div>
+          )}
+          {/* CRASHED */}
+          {phase === 'crashed' && (
+            <div style={{ width: '100%', borderRadius: 12, border: `1px solid ${isCashedOut ? 'rgba(52,211,153,0.4)' : myBet ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`, background: isCashedOut ? 'rgba(52,211,153,0.15)' : myBet ? 'rgba(239,68,68,0.15)' : '#0e0f12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 8, textAlign: 'center' }}>
+              {isCashedOut ? (
+                <>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase' }}>Won Round</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#6ee7b7', fontFamily: 'monospace' }}>+{myBet!.payout?.toFixed(2)} ETB</span>
+                </>
+              ) : myBet ? (
+                <>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#f87171', textTransform: 'uppercase' }}>Flew Away</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#f87171', fontFamily: 'monospace' }}>−{myBet.betAmount.toFixed(2)} ETB</span>
+                </>
+              ) : (
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Preparing next round...</span>
+              )}
+            </div>
+          )}
+          {/* IDLE */}
+          {(phase === 'idle') && (
+            <div style={{ width: '100%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', background: '#0e0f12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 12, color: '#4b5563', fontWeight: 600 }}>—</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Bet Row ──────────────────────────────────────────────────────────────────
-function BetRow({ bet, isMe }: { bet: CrashBetEntry; isMe: boolean }) {
-  const cashed = bet.cashoutAt !== null;
-  const init = (bet.username || 'P').charAt(0).toUpperCase();
+// ─── Live Bets Feed ───────────────────────────────────────────────────────────
+function LiveBetsFeed({ bets, multiplier, myUsername }: { bets: CrashBetEntry[]; multiplier: number; myUsername: string }) {
+  const [tab, setTab] = useState<'all' | 'mine'>('all');
+
+  const mask = (name: string) => {
+    if (!name) return 'u***1';
+    const c = name.replace(/^@/, '');
+    return c.length <= 2 ? `${c[0]}***${c[c.length - 1] || '0'}` : `${c[0]}***${c[c.length - 1]}`;
+  };
+
+  const getMultBadge = (m: number) => {
+    const [bg, color, border] = m < 2 ? ['rgba(56,189,248,0.15)', '#38bdf8', 'rgba(56,189,248,0.2)']
+      : m < 10 ? ['rgba(192,132,252,0.15)', '#c084fc', 'rgba(192,132,252,0.2)']
+      : ['rgba(232,121,249,0.15)', '#e879f9', 'rgba(232,121,249,0.2)'];
+    return <span style={{ padding: '2px 8px', borderRadius: 999, background: bg, color, border: `1px solid ${border}`, fontSize: 11, fontWeight: 700 }}>{m.toFixed(2)}x</span>;
+  };
+
+  const displayBets = tab === 'all' ? [...bets].sort((a, b) => {
+    if (a.cashoutAt && !b.cashoutAt) return 1;
+    if (!a.cashoutAt && b.cashoutAt) return -1;
+    return b.betAmount - a.betAmount;
+  }) : bets.filter(b => b.username === (myUsername || 'You'));
+
+  const totalWin = displayBets.reduce((s, b) => b.cashoutAt && b.payout ? s + b.payout : s, 0);
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', padding: '7px 12px', borderBottom: '1px solid rgba(255,255,255,0.03)', background: isMe ? 'rgba(196,77,255,0.04)' : 'transparent', gap: 8 }}>
-      <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: isMe ? 'linear-gradient(135deg,#c44dff,#8822dd)' : 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 900 }}>{init}</div>
-      <div style={{ flex: 1, fontSize: 12, color: isMe ? '#c44dff' : '#6b7a8d', fontWeight: isMe ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isMe ? 'You' : bet.username}</div>
-      <div style={{ fontSize: 12, color: '#8892a4', minWidth: 44, textAlign: 'right' }}>{bet.betAmount}</div>
-      <div style={{ fontSize: 12, minWidth: 46, textAlign: 'right', color: cashed ? '#22c55e' : '#3a4455', fontWeight: 700 }}>{cashed ? fmtMul(bet.cashoutAt!) : '—'}</div>
-      <div style={{ fontSize: 12, minWidth: 54, textAlign: 'right', color: cashed ? '#4ade80' : '#ef4444', fontWeight: 700 }}>{cashed ? `+${bet.payout ?? ''}` : 'BUST'}</div>
+    <div style={{ background: '#141518', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {(['all', 'mine'] as const).map(k => (
+          <button key={k} onClick={() => setTab(k)} style={{ padding: '4px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: tab === k ? '#2c2d30' : 'transparent', color: tab === k ? '#fff' : '#6b7280', transition: 'all 0.15s' }}>
+            {k === 'all' ? 'All Bets' : 'My Bets'}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', paddingBottom: 8 }}>
+        <div>
+          <div style={{ display: 'flex', marginBottom: 4 }}>
+            {['🏇', '🐼', '🧑‍✈️'].map((e, i) => (
+              <div key={i} style={{ width: 24, height: 24, borderRadius: '50%', background: ['#ea580c', '#1e293b', '#0284c7'][i], border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }}>
+                {e}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 12 }}>
+            <span style={{ fontWeight: 700, color: '#fff' }}>{bets.length}</span>
+            <span style={{ color: '#6b7280' }}> Bets</span>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>{totalWin.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Total win ETB</div>
+        </div>
+      </div>
+
+      <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.05)' }} />
+
+      {/* Column headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '5fr 3fr 2fr 2fr', gap: 8, padding: '0 12px', fontSize: 11, color: '#4b5563', fontWeight: 600 }}>
+        <span>Player</span><span style={{ textAlign: 'right' }}>Bet ETB</span><span style={{ textAlign: 'center' }}>X</span><span style={{ textAlign: 'right' }}>Win ETB</span>
+      </div>
+
+      {/* Rows */}
+      <div style={{ maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {displayBets.length === 0 ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: '#374151', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Waiting for bets...</div>
+        ) : displayBets.map((bet, i) => {
+          const isMe = bet.username === (myUsername || 'You');
+          const init = (bet.username || 'P').charAt(0).toUpperCase();
+          return (
+            <div key={`${bet.username}-${i}`} style={{ display: 'grid', gridTemplateColumns: '5fr 3fr 2fr 2fr', gap: 8, alignItems: 'center', padding: '6px 12px', borderRadius: 12, background: '#101114' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: isMe ? 'linear-gradient(135deg,#e5053a,#9f1239)' : '#1e293b', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700 }}>{init}</div>
+                <span style={{ fontSize: 12, fontWeight: 500, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mask(bet.username)}</span>
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 500, color: '#fff', fontFamily: 'monospace' }}>{bet.betAmount.toFixed(2)}</div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>{bet.cashoutAt ? getMultBadge(bet.cashoutAt) : null}</div>
+              <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#34d399', fontFamily: 'monospace' }}>{bet.cashoutAt && bet.payout ? bet.payout.toFixed(2) : null}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -576,6 +604,8 @@ export default function CrashScreen() {
   const [multiplier, setMultiplier] = useState(1.0);
   const [crashPoint, setCrashPoint] = useState<number | null>(null);
   const [roundId, setRoundId] = useState<string | null>(null);
+  const [roundNumber, setRoundNumber] = useState(0);
+  const [countdown, setCountdown] = useState(10);
   const [myBet1, setMyBet1] = useState<MyBet | null>(null);
   const [myBet2, setMyBet2] = useState<MyBet | null>(null);
   const [bets, setBets] = useState<CrashBetEntry[]>([]);
@@ -586,14 +616,13 @@ export default function CrashScreen() {
   const [cashingOut2, setCashingOut2] = useState(false);
   const placingRef1 = useRef(false);
   const placingRef2 = useRef(false);
-  const [betTab, setBetTab] = useState<'all' | 'mine'>('all');
   const [myUsername, setMyUsername] = useState('');
   const [mainBalance, setMainBalance] = useState<number | null>(null);
   const [playBalance, setPlayBalance] = useState<number | null>(null);
-  const [autoCashoutAt, setAutoCashoutAt] = useState(5.0);
   const [showRules, setShowRules] = useState(false);
   const [depositModal, setDepositModal] = useState(false);
   const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const audio = new Audio(bgMusic);
@@ -610,36 +639,49 @@ export default function CrashScreen() {
     const a = new Audio(crashSound); a.volume = kind === 'finish' ? 0.85 : 0.55; a.currentTime = 0; void a.play().catch(() => {});
   }, []);
 
+  const startCountdown = useCallback((from = 10) => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setCountdown(from);
+    const start = Date.now();
+    countdownRef.current = setInterval(() => {
+      const remaining = Math.max(0, from - (Date.now() - start) / 1000);
+      setCountdown(remaining);
+      if (remaining <= 0 && countdownRef.current) clearInterval(countdownRef.current);
+    }, 80);
+  }, []);
+
   useEffect(() => {
     getCrashState().then(s => {
       const p = s.phase === 'idle' ? 'idle' : s.phase as Phase;
       setPhase(p);
-      if (s.round) setRoundId(s.round.id);
+      if (s.round) { setRoundId(s.round.id); if ((s.round as any).roundNumber) setRoundNumber((s.round as any).roundNumber); }
       if (s.round?.crashPoint) setCrashPoint(s.round.crashPoint);
       if (p === 'running' && s.round?.currentMultiplier) setMultiplier(s.round.currentMultiplier);
+      if (p === 'waiting') startCountdown(10);
       if (s.myBet) setMyBet1(s.myBet);
       if (s.myBet2) setMyBet2(s.myBet2);
       setBets(s.bets);
     }).catch(() => {});
     getCrashHistory().then(setHistory).catch(() => {});
-    getProfile().then(p => {
-      setMainBalance(p.mainWallet.balance);
-      setPlayBalance(p.playWallet.balance);
-    }).catch(() => {});
+    getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(() => {});
     try {
       const jwt = getJwtFromStorage() ?? '';
       const payload = JSON.parse(atob(jwt.split('.')[1]!));
       setMyUsername(payload.username ?? '');
     } catch { /* ignore */ }
-  }, []);
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const onBettingOpen = (d: { roundId: string }) => {
-      setPhase('waiting'); setRoundId(d.roundId); setMultiplier(1.0);
-      setCrashPoint(null); setMyBet1(null); setBets([]);
+    const onBettingOpen = (d: { roundId: string; roundNumber?: number }) => {
+      setPhase('waiting'); setRoundId(d.roundId); if (d.roundNumber) setRoundNumber(d.roundNumber);
+      setMultiplier(1.0); setCrashPoint(null); setMyBet1(null); setMyBet2(null); setBets([]);
+      startCountdown(10);
     };
     const onStarted = (d: { roundId: string }) => {
-      setPhase('running'); setRoundId(d.roundId); setMultiplier(1.0); playRoundSound('start');
+      setPhase('running'); setRoundId(d.roundId); setMultiplier(1.0);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      playRoundSound('start');
     };
     const onTick = (d: { multiplier: number }) => setMultiplier(d.multiplier);
     const onCashedOut = (d: { username: string; multiplier: number; payout: number }) => {
@@ -662,26 +704,22 @@ export default function CrashScreen() {
       (socket as any).off('CRASH_CASHED_OUT', onCashedOut);
       (socket as any).off('CRASH_ENDED', onEnded);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playRoundSound, startCountdown]);
 
-  const handleBet = useCallback(async (amount: number, autoCashout: number, slot: 1 | 2) => {
+  const handleBet = useCallback(async (amount: number, auto: number | null, slot: 1 | 2) => {
     const isSlot1 = slot === 1;
     const currentBet = isSlot1 ? myBet1 : myBet2;
     const placingRef = isSlot1 ? placingRef1 : placingRef2;
     const setPlacing = isSlot1 ? setPlacing1 : setPlacing2;
     const setMyBet = isSlot1 ? setMyBet1 : setMyBet2;
-
     if (currentBet || placingRef.current) return;
     placingRef.current = true; setPlacing(true);
     try {
-      const res = await placeCrashBet(amount, slot, autoCashout);
+      const res = await placeCrashBet(amount, slot, auto ?? undefined);
       setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
       setBets(prev => [{ username: myUsername || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
       setRoundId(res.roundId);
-      getProfile().then(p => {
-        setMainBalance(p.mainWallet.balance);
-        setPlayBalance(p.playWallet.balance);
-      }).catch(() => {});
+      getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(() => {});
     } catch (err: any) {
       const msg: string = err?.message ?? '';
       if (!msg.toLowerCase().includes('already')) {
@@ -696,141 +734,97 @@ export default function CrashScreen() {
     if (!roundId) return;
     const setCashingOut = slot === 1 ? setCashingOut1 : setCashingOut2;
     const setMyBet = slot === 1 ? setMyBet1 : setMyBet2;
-
     setCashingOut(true);
     (socket as any).emit('CRASH_CASHOUT', { roundId, slot }, (res: any) => {
       setCashingOut(false);
       if (res?.ok) {
         setMyBet(prev => prev ? { ...prev, cashoutAt: res.multiplier, payout: res.payout } : prev);
-        getProfile().then(p => {
-          setMainBalance(p.mainWallet.balance);
-          setPlayBalance(p.playWallet.balance);
-        }).catch(() => {});
+        getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(() => {});
       }
     });
   }, [roundId]);
 
   const usernameInitial = (myUsername || 'P').charAt(0).toUpperCase();
-  const liveBets = bets;
-  const myBets = bets.filter(b => b.username === (myUsername || 'You'));
 
   return (
-    <div style={{ height: '100dvh', background: '#080614', color: '#f8fafc', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 430, margin: '0 auto', fontFamily: "'Inter', sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ height: '100dvh', background: '#0d0e14', color: '#f8fafc', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 430, margin: '0 auto', fontFamily: "'Inter', sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
       {showRules && <AviatorRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Deposit modal */}
       {depositModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ background: 'linear-gradient(145deg,#140a28,#0d0618)', border: '1px solid rgba(196,77,255,0.3)', borderRadius: 24, padding: '32px 24px', maxWidth: 320, width: '100%', textAlign: 'center' }}>
+          <div style={{ background: 'linear-gradient(145deg,#0d0e14,#0d0e14)', border: '1px solid rgba(229,5,58,0.3)', borderRadius: 24, padding: '32px 24px', maxWidth: 320, width: '100%', textAlign: 'center' }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>💳</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>ቀሪ ሂሳብ አይበቃም!</div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 24, lineHeight: 1.6 }}>Insufficient balance. Deposit to play Aviator.</div>
-            <button onClick={() => { setDepositModal(false); navigate('/wallet'); }} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#c44dff,#8822dd)', color: '#fff', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>Deposit Now</button>
+            <button onClick={() => { setDepositModal(false); navigate('/wallet'); }} style={{ width: '100%', padding: '13px 0', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#e5053a,#9f1239)', color: '#fff', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>Deposit Now</button>
             <button onClick={() => setDepositModal(false)} style={{ width: '100%', padding: '11px 0', borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#64748b', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
           </div>
         </div>
       )}
 
       {/* ── Header ── */}
-      <div style={{ flexShrink: 0, background: 'rgba(8,6,20,0.98)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '8px 14px' }}>
-        {/* Top row: logo | balance | avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: 16 }}>‹</button>
-            <img src={aviatorLogo} alt="Aviator" style={{ height: 22 }} />
+      <header style={{ flexShrink: 0, background: 'rgba(18,20,28,0.95)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '8px 14px', position: 'sticky', top: 0, zIndex: 30, backdropFilter: 'blur(8px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Left: back + logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: 18 }}>‹</button>
+            <img src={aviatorLogo} alt="Aviator" style={{ height: 22, filter: 'drop-shadow(0 0 15px rgba(229,5,58,0.5))' }} />
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 9, color: 'rgba(150,180,220,0.6)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>BALANCE</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
-              <div style={{ fontSize: 13, fontWeight: 900, color: '#4ade80' }}>
-                M: {mainBalance !== null ? mainBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 900, color: '#818cf8' }}>
-                P: {playBalance !== null ? playBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
-              </div>
-            </div>
+
+          {/* Center: balance */}
+          <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 999, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Balance</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24', fontFamily: 'monospace' }}>
+              {mainBalance !== null ? mainBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+            </span>
+            <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 700, fontFamily: 'monospace' }}>
+              P: {playBalance !== null ? playBalance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
+            </span>
           </div>
+
+          {/* Right: avatar */}
           <div style={{ position: 'relative' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#8822dd,#c44dff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 14 }}>{usernameInitial}</div>
-            <div style={{ position: 'absolute', bottom: 1, right: 1, width: 9, height: 9, borderRadius: '50%', background: '#22c55e', border: '2px solid #080614' }} />
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#e5053a,#9f1239)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 14 }}>{usernameInitial}</div>
+            <div style={{ position: 'absolute', bottom: 1, right: 1, width: 9, height: 9, borderRadius: '50%', background: '#22c55e', border: '2px solid #0d0e14' }} />
           </div>
         </div>
-
-      </div>
+      </header>
 
       {/* ── Scrollable body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', scrollbarWidth: 'none' }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', scrollbarWidth: 'none', padding: '10px 10px 16px', gap: 10 }}>
 
-        {/* History chips */}
-        <div style={{ padding: '8px 14px 4px', flexShrink: 0 }}>
-          <HistoryChips items={history} />
+        {/* History pills */}
+        <HistoryPills items={history} />
+
+        {/* Canvas */}
+        <AviatorCanvas
+          phase={phase}
+          multiplier={multiplier}
+          crashPoint={crashPoint}
+          roundNumber={roundNumber}
+          countdownRemaining={countdown}
+          onOpenRules={() => setShowRules(true)}
+        />
+
+        {/* Bet panels */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <BetPanel slot={1} phase={phase} multiplier={multiplier} myBet={myBet1} onBet={handleBet} onCashout={handleCashout} placing={placing1} cashingOut={cashingOut1} userBalance={mainBalance ?? 0} />
+          <BetPanel slot={2} phase={phase} multiplier={multiplier} myBet={myBet2} onBet={handleBet} onCashout={handleCashout} placing={placing2} cashingOut={cashingOut2} userBalance={mainBalance ?? 0} />
         </div>
 
-        {/* Graph */}
-        <div style={{ margin: '4px 10px 0', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(196,77,255,0.15)', boxShadow: '0 0 30px rgba(196,77,255,0.08)', flexShrink: 0, height: 280 }}>
-          <CrashGraph phase={phase} multiplier={multiplier} crashPoint={crashPoint} />
-        </div>
-
-        {/* Bet panel */}
-        <div style={{ flexShrink: 0 }}>
-          <BetPanel
-            phase={phase}
-            multiplier={multiplier}
-            myBet1={myBet1}
-            myBet2={myBet2}
-            onBet={handleBet}
-            onCashout={handleCashout}
-            placing1={placing1}
-            placing2={placing2}
-            cashingOut1={cashingOut1}
-            cashingOut2={cashingOut2}
-          />
-        </div>
-
-        {/* Bets table */}
-        <div style={{ margin: '0 10px 16px', background: 'rgba(12,9,26,0.9)', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            {(['all', 'mine'] as const).map(k => (
-              <button key={k} onClick={() => setBetTab(k)} style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: betTab === k ? '2px solid #c44dff' : '2px solid transparent', color: betTab === k ? '#fff' : '#4a5568', padding: '10px 0', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
-                {k === 'all' ? `Live Bets (${liveBets.length})` : 'My Bets'}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.7fr 0.85fr 0.85fr', padding: '7px 12px 4px', fontSize: 9, fontWeight: 800, color: '#2a3040', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            <span>Player</span><span style={{ textAlign: 'right' }}>Bet</span><span style={{ textAlign: 'right' }}>Cashout</span><span style={{ textAlign: 'right' }}>Payout</span>
-          </div>
-          <div style={{ maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'none' }}>
-            {(betTab === 'all' ? liveBets : myBets).length === 0
-              ? <div style={{ padding: '20px 12px', textAlign: 'center', color: '#2a3040', fontSize: 12 }}>{betTab === 'all' ? 'No bets this round yet' : 'No bets yet'}</div>
-              : (betTab === 'all' ? liveBets : myBets).map((bet, i) => <BetRow key={`${bet.username}-${i}`} bet={bet} isMe={bet.username === (myUsername || 'You')} />)
-            }
-          </div>
-        </div>
+        {/* Live bets feed */}
+        <LiveBetsFeed bets={bets} multiplier={multiplier} myUsername={myUsername} />
       </div>
 
       <style>{`
-        @keyframes screenShake {
-          0%, 100% { transform: translate(0, 0); }
-          10%, 30%, 50%, 70%, 90% { transform: translate(-4px, -2px); }
-          20%, 40%, 60%, 80% { transform: translate(4px, 2px); }
-        }
-        @keyframes crashShake {
-          0%{transform:translate(-50%,-50%) translateX(0)}
-          20%{transform:translate(-50%,-50%) translateX(-6px)}
-          40%{transform:translate(-50%,-50%) translateX(6px)}
-          60%{transform:translate(-50%,-50%) translateX(-4px)}
-          80%{transform:translate(-50%,-50%) translateX(4px)}
-          100%{transform:translate(-50%,-50%) translateX(0)}
-        }
-        @keyframes betGlow {
-          0%,100%{box-shadow:0 4px 20px rgba(196,77,255,0.4)}
-          50%{box-shadow:0 4px 32px rgba(196,77,255,0.7)}
-        }
-        @keyframes cashPulse {
-          0%,100%{box-shadow:0 4px 20px rgba(160,40,220,0.45);transform:scale(1)}
-          50%{box-shadow:0 4px 36px rgba(196,77,255,0.75);transform:scale(1.02)}
-        }
+        @keyframes aviSpin { from { transform: translate(-50%,50%) rotate(0deg); } to { transform: translate(-50%,50%) rotate(360deg); } }
+        @keyframes aviPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes aviZoomIn { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
+        @keyframes aviCashPulse { 0%,100%{box-shadow:0 0 20px rgba(255,119,0,0.4);transform:scale(1)} 50%{box-shadow:0 0 32px rgba(255,119,0,0.7);transform:scale(1.02)} }
         ::-webkit-scrollbar{display:none}
+        input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+        input[type=number]{-moz-appearance:textfield}
       `}</style>
     </div>
   );
