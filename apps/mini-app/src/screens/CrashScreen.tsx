@@ -624,6 +624,11 @@ export default function CrashScreen() {
   const [cashingOut2, setCashingOut2] = useState(false);
   const placingRef1 = useRef(false);
   const placingRef2 = useRef(false);
+
+  const myBet1Ref = useRef<MyBet | null>(null);
+  const myBet2Ref = useRef<MyBet | null>(null);
+  const myUsernameRef = useRef('');
+
   const [myUsername, setMyUsername] = useState('');
   const [mainBalance, setMainBalance] = useState<number | null>(null);
   const [playBalance, setPlayBalance] = useState<number | null>(null);
@@ -631,6 +636,11 @@ export default function CrashScreen() {
   const [depositModal, setDepositModal] = useState(false);
   const bgAudioRef = useRef<HTMLAudioElement | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep refs in sync with state so handleBet never reads stale closure values
+  useEffect(() => { myBet1Ref.current = myBet1; }, [myBet1]);
+  useEffect(() => { myBet2Ref.current = myBet2; }, [myBet2]);
+  useEffect(() => { myUsernameRef.current = myUsername; }, [myUsername]);
 
   useEffect(() => {
     const audio = new Audio(bgMusic);
@@ -666,8 +676,8 @@ export default function CrashScreen() {
       if (s.round?.crashPoint) setCrashPoint(s.round.crashPoint);
       if (p === 'running' && s.round?.currentMultiplier) setMultiplier(s.round.currentMultiplier);
       if (p === 'waiting') startCountdown(10);
-      if (s.myBet) setMyBet1(s.myBet);
-      if (s.myBet2) setMyBet2(s.myBet2);
+      if (s.myBet) { setMyBet1(s.myBet); myBet1Ref.current = s.myBet; }
+      if (s.myBet2) { setMyBet2(s.myBet2); myBet2Ref.current = s.myBet2; }
       setBets(s.bets);
     }).catch(() => {});
     getCrashHistory().then(setHistory).catch(() => {});
@@ -687,7 +697,10 @@ export default function CrashScreen() {
         if (prev !== d.roundId) {
           setPhase('waiting');
           if (d.roundNumber) setRoundNumber(d.roundNumber);
-          setMultiplier(1.0); setCrashPoint(null); setMyBet1(null); setMyBet2(null); setBets([]);
+          setMultiplier(1.0); setCrashPoint(null);
+          setMyBet1(null); myBet1Ref.current = null;
+          setMyBet2(null); myBet2Ref.current = null;
+          setBets([]);
           startCountdown(10);
         }
         return d.roundId;
@@ -723,17 +736,18 @@ export default function CrashScreen() {
 
   const handleBet = useCallback(async (amount: number, auto: number | null, slot: 1 | 2) => {
     const isSlot1 = slot === 1;
-    const currentBet = isSlot1 ? myBet1 : myBet2;
+    const currentBet = isSlot1 ? myBet1Ref.current : myBet2Ref.current;
     const placingRef = isSlot1 ? placingRef1 : placingRef2;
     const setPlacing = isSlot1 ? setPlacing1 : setPlacing2;
     const setMyBet = isSlot1 ? setMyBet1 : setMyBet2;
+    // Hard guard — ref is synchronous, prevents double-fire even across re-renders
     if (currentBet || placingRef.current) return;
     placingRef.current = true; setPlacing(true);
     // Optimistically mark bet as placed to prevent double-submit
     setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
     try {
       const res = await placeCrashBet(amount, slot, auto ?? undefined);
-      setBets(prev => [{ username: myUsername || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
+      setBets(prev => [{ username: myUsernameRef.current || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
       setRoundId(res.roundId);
       getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(() => {});
     } catch (err: any) {
@@ -749,16 +763,14 @@ export default function CrashScreen() {
           if (s.round) setRoundId(s.round.id);
         }).catch(() => setMyBet(null));
       } else if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || status === 402) {
-        // Roll back optimistic bet on payment failure
         setMyBet(null);
         setDepositModal(true);
       } else {
-        // Roll back on any other error
         setMyBet(null);
         alert(msg || 'Failed to place bet');
       }
     } finally { placingRef.current = false; setPlacing(false); }
-  }, [myUsername, myBet1, myBet2]);
+  }, []); // no deps — reads everything via refs
 
   const handleCashout = useCallback((slot: 1 | 2) => {
     if (!roundId) return;
