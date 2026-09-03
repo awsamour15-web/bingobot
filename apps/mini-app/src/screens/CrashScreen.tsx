@@ -355,6 +355,8 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
   const [minimized, setMinimized] = useState(false);
   const PRESETS = [16, 40, 80, 400];
   const MAX_AUTO_CASHOUT = 40.0;
+  // Local dedup ref — blocks any re-entrant calls before parent state updates
+  const submittingRef = useRef(false);
 
   const adj = (d: number) => setAmount(a => Math.max(MIN_BET, Math.min(MAX_BET, a + d)));
 
@@ -365,9 +367,13 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
   const canBet = phase === 'waiting' && !myBet && !placing;
   const canCashout = phase === 'running' && myBet && myBet.cashoutAt === null && !cashingOut;
 
+  // Reset submitting ref whenever the bet state changes (placed or cleared)
+  useEffect(() => { submittingRef.current = false; }, [myBet, placing]);
+
   const handleMainBtn = () => {
     if (phase === 'waiting') {
-      if (isBetPlaced) return; // cancel not yet supported
+      if (isBetPlaced || submittingRef.current || placing) return;
+      submittingRef.current = true;
       onBet(amount, mode === 'auto' && autoCashoutEnabled ? autoCashout : null, slot);
     } else if (phase === 'running' && canCashout) {
       onCashout(slot);
@@ -449,8 +455,8 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
         <div style={{ display: 'flex', minHeight: 70 }}>
           {/* WAITING — no bet */}
           {phase === 'waiting' && !isBetPlaced && (
-            <button onClick={handleMainBtn} style={{ width: '100%', borderRadius: 10, border: '1.5px solid #3ddc63', background: '#28a745', color: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '6px 4px', boxShadow: '0 0 14px rgba(40,167,69,0.3)', transition: 'all 0.15s' }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>{placing ? '...' : 'Bet'}</span>
+            <button onClick={handleMainBtn} disabled={!canBet || submittingRef.current} style={{ width: '100%', borderRadius: 10, border: '1.5px solid #3ddc63', background: '#28a745', color: '#fff', cursor: canBet && !submittingRef.current ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '6px 4px', boxShadow: '0 0 14px rgba(40,167,69,0.3)', transition: 'all 0.15s', opacity: !canBet || submittingRef.current ? 0.6 : 1, pointerEvents: !canBet || submittingRef.current ? 'none' : 'auto' }}>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{placing || submittingRef.current ? '...' : 'Bet'}</span>
               <span style={{ fontSize: 11, fontWeight: 700, marginTop: 1 }}>{amount} ETB</span>
             </button>
           )}
