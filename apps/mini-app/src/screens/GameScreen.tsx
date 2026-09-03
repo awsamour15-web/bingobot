@@ -101,6 +101,20 @@ export default function GameScreen() {
       setRounds(prev => prev.filter(r => r.id !== payload.roundId));
     }
 
+    // Re-fetch rounds on socket reconnect so the lobby stays in sync
+    function onReconnect() {
+      getRounds().then(data => {
+        const filtered = data
+          .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))
+          .sort((a, b) => Number(a.stake) - Number(b.stake));
+        setRounds(filtered);
+        const counts: Record<string, number> = {};
+        filtered.forEach(r => { counts[r.id] = r.player_count; });
+        setLiveCounts(counts);
+      }).catch(() => {});
+    }
+
+    socket.on('connect', onReconnect);
     socket.on('PLAYER_JOINED', onPlayerJoined);
     socket.on('CARTELA_TAKEN', onCartelaTaken);
     socket.on('ROUND_STARTED', onRoundStarted);
@@ -108,6 +122,7 @@ export default function GameScreen() {
     socket.on('ROUND_CANCELLED', onRoundVoidOrCancelled);
 
     return () => {
+      socket.off('connect', onReconnect);
       socket.off('PLAYER_JOINED', onPlayerJoined);
       socket.off('CARTELA_TAKEN', onCartelaTaken);
       socket.off('ROUND_STARTED', onRoundStarted);

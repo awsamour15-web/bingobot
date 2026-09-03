@@ -264,6 +264,12 @@ export default function CartelaScreen() {
     if (!socket.connected) socket.connect();
     socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
 
+    // Re-join the round room on socket reconnect so cartela availability stays live
+    const onReconnect = () => {
+      socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
+    };
+    socket.on('connect', onReconnect);
+
     const onJoined = (p: PlayerJoinedPayload) => {
       setRound(r => r ? { ...r, player_count: p.playerCount } : r);
     };
@@ -390,6 +396,7 @@ export default function CartelaScreen() {
     }, 3000);
 
     return () => {
+      socket.off('connect', onReconnect);
       socket.off('PLAYER_JOINED', onJoined);
       socket.off('CARTELA_TAKEN', onCartelaTaken);
       (socket as any).off('CARTELA_RESERVED', onCartelaReserved);

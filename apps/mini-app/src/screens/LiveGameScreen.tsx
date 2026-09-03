@@ -328,6 +328,36 @@ export default function LiveGameScreen() {
     if (!socket.connected) socket.connect();
     socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
 
+    // Re-join the round room whenever the socket reconnects so events keep flowing
+    // without requiring a manual page refresh.
+    const onReconnect = () => {
+      socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
+      // Also re-sync state immediately after reconnect to fill any missed events
+      Promise.all([
+        getRound(roundId!).catch(() => null),
+        getCalledNumbers(roundId!).catch(() => [] as number[]),
+      ]).then(([r, nums]) => {
+        if (!r) return;
+        const mergedSet = new Set(nums);
+        setGame((g) => {
+          if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
+          const last = nums[nums.length - 1] ?? g.lastCalled;
+          if (r.status === 'active') {
+            return { ...g, phase: 'active', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
+          }
+          if (r.status === 'completed') {
+            return { ...g, phase: 'won', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
+          }
+          if (r.status === 'void' || r.status === 'cancelled') {
+            return { ...g, phase: r.status === 'void' ? 'void' : 'cancelled', endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled — stake refunded.', calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
+          }
+          return g;
+        });
+      }).catch(() => {});
+    };
+
+    socket.on('connect', onReconnect);
+
     const onNumber = (p: NumberCalledPayload) => {
       setGame((g) => {
         // Ignore any stray NUMBER_CALLED events after the round is over
@@ -412,6 +442,7 @@ export default function LiveGameScreen() {
     socket.on('ROUND_CANCELLED', onCancelled);
     socket.on('WIN_REJECTED', onRejected);
     return () => {
+      socket.off('connect', onReconnect);
       socket.off('NUMBER_CALLED', onNumber);
       socket.off('ROUND_STARTED', onStarted);
       socket.off('PLAYER_JOINED', onJoined);
