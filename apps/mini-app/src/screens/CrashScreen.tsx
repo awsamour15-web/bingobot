@@ -354,6 +354,7 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
   const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(true);
   const [minimized, setMinimized] = useState(false);
   const PRESETS = [16, 40, 80, 400];
+  const MAX_AUTO_CASHOUT = 20.0;
 
   const adj = (d: number) => setAmount(a => Math.max(MIN_BET, Math.min(MAX_BET, a + d)));
 
@@ -421,6 +422,7 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
               ))}
             </div>
           ) : (
+            <>
             <div style={{ background: '#0e0f12', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button onClick={() => setAutoCashoutEnabled(v => !v)} style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${autoCashoutEnabled ? '#10b981' : 'rgba(255,255,255,0.2)'}`, background: autoCashoutEnabled ? '#10b981' : 'transparent', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 10 }}>
@@ -429,10 +431,17 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
                 <span style={{ fontSize: 11, color: '#d1d5db', fontWeight: 600 }}>Auto</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <input type="number" step="0.1" min="1.05" value={autoCashout} onChange={e => setAutoCashout(Math.max(1.05, +e.target.value))} style={{ width: 48, textAlign: 'right', background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }} />
+                <input type="number" step="0.1" min="1.05" max={MAX_AUTO_CASHOUT} value={autoCashout} onChange={e => setAutoCashout(Math.min(MAX_AUTO_CASHOUT, Math.max(1.05, +e.target.value)))} style={{ width: 48, textAlign: 'right', background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399', fontFamily: 'monospace' }}>x</span>
               </div>
             </div>
+            {/* Auto cashout presets */}
+            <div style={{ display: 'flex', gap: 3 }}>
+              {[1.5, 2, 5, 10, 20].map(p => (
+                <button key={p} onClick={() => setAutoCashout(p)} style={{ flex: 1, padding: '3px 0', borderRadius: 4, background: autoCashout === p ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', border: autoCashout === p ? '1px solid rgba(52,211,153,0.4)' : '1px solid rgba(255,255,255,0.08)', color: autoCashout === p ? '#34d399' : '#6b7280', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>{p}x</button>
+              ))}
+            </div>
+            </>
           )}
         </div>
 

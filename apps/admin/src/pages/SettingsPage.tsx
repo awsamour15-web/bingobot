@@ -31,6 +31,7 @@ function HouseEdgeSection() {
   const [slots, setSlots] = useState('15');
   const [keno, setKeno] = useState('15');
   const [plinko, setPlinko] = useState('15');
+  const [crashMaxMult, setCrashMaxMult] = useState('20');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [fb, setFb] = useState<Record<string, { type: 'success' | 'error'; msg: string } | null>>({});
@@ -41,6 +42,7 @@ function HouseEdgeSection() {
       setSlots(data.find(e => e.key === 'house_edge_slots')?.value ?? '15');
       setKeno(data.find(e => e.key === 'house_edge_keno')?.value ?? '15');
       setPlinko(data.find(e => e.key === 'house_edge_plinko')?.value ?? '15');
+      setCrashMaxMult(data.find(e => e.key === 'crash_max_multiplier')?.value ?? '20');
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -61,6 +63,22 @@ function HouseEdgeSection() {
     } finally { setSaving(p => ({ ...p, [game]: false })); }
   }
 
+  async function saveCrashMaxMult() {
+    const n = parseFloat(crashMaxMult);
+    if (isNaN(n) || n < 2 || n > 1000) {
+      setFb(p => ({ ...p, crash_max_mult: { type: 'error', msg: 'Must be 2–1000' } }));
+      return;
+    }
+    setSaving(p => ({ ...p, crash_max_mult: true }));
+    setFb(p => ({ ...p, crash_max_mult: null }));
+    try {
+      await updateConfig('crash_max_multiplier', String(n));
+      setFb(p => ({ ...p, crash_max_mult: { type: 'success', msg: `Max multiplier set to ${n}x` } }));
+    } catch (e: unknown) {
+      setFb(p => ({ ...p, crash_max_mult: { type: 'error', msg: (e as Error).message ?? 'Failed' } }));
+    } finally { setSaving(p => ({ ...p, crash_max_mult: false })); }
+  }
+
   const games = [
     { key: 'crash', label: 'Aviator', icon: '✈️', color: '#ef4444', val: crash, set: setCrash },
     { key: 'slots', label: 'Slots',   icon: '🎰', color: '#f59e0b', val: slots, set: setSlots },
@@ -69,70 +87,112 @@ function HouseEdgeSection() {
   ];
 
   return (
-    <div>
-      <p style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
         Controls the profit margin per game. Takes effect on the next round/spin.
       </p>
+
       {loading ? <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {games.map(g => {
-            const n = parseInt(g.val, 10) || 0;
-            const rtp = 100 - n;
-            return (
-              <div key={g.key} style={{
-                background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
-                borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
-              }}>
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{
-                      fontSize: 20, width: 38, height: 38, borderRadius: 10,
-                      background: `${g.color}18`, border: `1px solid ${g.color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>{g.icon}</span>
-                    <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>{g.label}</span>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            {games.map(g => {
+              const n = parseInt(g.val, 10) || 0;
+              const rtp = 100 - n;
+              return (
+                <div key={g.key} style={{
+                  background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
+                  borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        fontSize: 20, width: 38, height: 38, borderRadius: 10,
+                        background: `${g.color}18`, border: `1px solid ${g.color}30`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>{g.icon}</span>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>{g.label}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={statBox(g.color)}>
+                        <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Edge</span>
+                        <span style={{ fontSize: 18, fontWeight: 900, color: g.color }}>{n}%</span>
+                      </div>
+                      <div style={statBox('#4ade80')}>
+                        <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>RTP</span>
+                        <span style={{ fontSize: 18, fontWeight: 900, color: '#4ade80' }}>{rtp}%</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <div style={statBox(g.color)}>
-                      <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Edge</span>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: g.color }}>{n}%</span>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>
+                      <span>5% (player-friendly)</span><span>50% (house-max)</span>
                     </div>
-                    <div style={statBox('#4ade80')}>
-                      <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>RTP</span>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: '#4ade80' }}>{rtp}%</span>
-                    </div>
+                    <input type="range" min={5} max={50} step={1} value={g.val}
+                      onChange={e => g.set(e.target.value)}
+                      disabled={saving[g.key]}
+                      style={{ width: '100%', accentColor: g.color }} />
+                  </div>
+                  {fb[g.key] && <Alert type={fb[g.key]!.type}>{fb[g.key]!.msg}</Alert>}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input type="number" min={5} max={50} value={g.val}
+                      onChange={e => g.set(e.target.value)}
+                      disabled={saving[g.key]}
+                      style={{ ...inputCss, width: 72, textAlign: 'center', fontWeight: 700 }} />
+                    <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>%</span>
+                    <Btn onClick={() => save(g.key, g.val)} disabled={!!saving[g.key]} fullWidth>
+                      {saving[g.key] ? 'Saving…' : 'Save'}
+                    </Btn>
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Slider */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>
-                    <span>5% (player-friendly)</span><span>50% (house-max)</span>
-                  </div>
-                  <input type="range" min={5} max={50} step={1} value={g.val}
-                    onChange={e => g.set(e.target.value)}
-                    disabled={saving[g.key]}
-                    style={{ width: '100%', accentColor: g.color }} />
-                </div>
-
-                {fb[g.key] && <Alert type={fb[g.key]!.type}>{fb[g.key]!.msg}</Alert>}
-
-                {/* Input + save */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input type="number" min={5} max={50} value={g.val}
-                    onChange={e => g.set(e.target.value)}
-                    disabled={saving[g.key]}
-                    style={{ ...inputCss, width: 72, textAlign: 'center', fontWeight: 700 }} />
-                  <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>%</span>
-                  <Btn onClick={() => save(g.key, g.val)} disabled={!!saving[g.key]} fullWidth>
-                    {saving[g.key] ? 'Saving…' : 'Save'}
-                  </Btn>
+          {/* ── Aviator Max Multiplier ── */}
+          <div style={{
+            background: 'var(--c-bg-card)', border: '1px solid rgba(239,68,68,0.25)',
+            borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+            maxWidth: 420,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{
+                fontSize: 20, width: 38, height: 38, borderRadius: 10,
+                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>🚀</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>Aviator Max Multiplier</div>
+                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
+                  Cap the highest possible crash point. Default: 20x. Range: 2–1000.
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <div style={{ marginLeft: 'auto', ...statBox('#ef4444') }}>
+                <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Max</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: '#ef4444' }}>{parseFloat(crashMaxMult) || 20}x</span>
+              </div>
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>
+                <span>2x (min)</span><span>1000x (max)</span>
+              </div>
+              <input type="range" min={2} max={100} step={1} value={Math.min(100, parseFloat(crashMaxMult) || 20)}
+                onChange={e => setCrashMaxMult(e.target.value)}
+                disabled={saving['crash_max_mult']}
+                style={{ width: '100%', accentColor: '#ef4444' }} />
+            </div>
+            {fb['crash_max_mult'] && <Alert type={fb['crash_max_mult']!.type}>{fb['crash_max_mult']!.msg}</Alert>}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="number" min={2} max={1000} step={0.5} value={crashMaxMult}
+                onChange={e => setCrashMaxMult(e.target.value)}
+                disabled={saving['crash_max_mult']}
+                style={{ ...inputCss, width: 88, textAlign: 'center', fontWeight: 700 }} />
+              <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>x</span>
+              <Btn onClick={saveCrashMaxMult} disabled={!!saving['crash_max_mult']} fullWidth>
+                {saving['crash_max_mult'] ? 'Saving…' : 'Save'}
+              </Btn>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

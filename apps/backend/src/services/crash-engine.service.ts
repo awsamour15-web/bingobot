@@ -11,6 +11,7 @@ import { TxType, WalletType } from '@fidel/shared';
 const BETTING_WINDOW_MS = 10_000; // 10s for players to place bets
 const TICK_INTERVAL_MS = 100;     // broadcast multiplier every 100ms
 const DEFAULT_HOUSE_EDGE = 0.15;  // default 15% — overridden by DB config
+const DEFAULT_MAX_MULTIPLIER = 20.0; // default 20x cap — overridden by DB config
 
 // ─── Callbacks ───────────────────────────────────────────────────────────────
 
@@ -73,7 +74,11 @@ export class CrashEngine {
     // 2. Generate crash point (provably fair) using DB-configured house edge
     const edgeConfig = await prisma.config.findUnique({ where: { key: 'house_edge_crash' } });
     const houseEdge = Math.min(0.50, Math.max(0.05, parseInt(edgeConfig?.value ?? '15', 10) / 100));
-    const crashPoint = this.generateCrashPoint(houseEdge);
+
+    const maxMultConfig = await prisma.config.findUnique({ where: { key: 'crash_max_multiplier' } });
+    const maxMultiplier = Math.min(1000, Math.max(2, parseFloat(maxMultConfig?.value ?? String(DEFAULT_MAX_MULTIPLIER))));
+
+    const crashPoint = this.generateCrashPoint(houseEdge, maxMultiplier);
 
     // 3. Open betting window
     this.onBettingOpen?.(roundId, BETTING_WINDOW_MS);
@@ -167,12 +172,13 @@ export class CrashEngine {
 
   // ─── Provably fair crash point ────────────────────────────────────────────
 
-  private generateCrashPoint(houseEdge = DEFAULT_HOUSE_EDGE): number {
+  private generateCrashPoint(houseEdge = DEFAULT_HOUSE_EDGE, maxMultiplier = DEFAULT_MAX_MULTIPLIER): number {
     // Provably fair: P(crash ≥ x) = (1 - houseEdge) / x
     const rand = crypto.randomInt(1, 1_000_000) / 1_000_000;
     if (rand < houseEdge) return 1.0; // instant crash (house edge floor)
     const raw = (1 - houseEdge) / (1 - rand);
-    return Math.max(1.0, parseFloat(raw.toFixed(2)));
+    const capped = Math.min(maxMultiplier, raw);
+    return Math.max(1.0, parseFloat(capped.toFixed(2)));
   }
 
   /** Multiplier grows exponentially: e^(0.00006 * elapsedMs) — reaches ~2x at ~11.5s */
