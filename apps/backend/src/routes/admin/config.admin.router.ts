@@ -52,6 +52,15 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     }
   }
 
+  // Validate crash max multiplier
+  if (key === 'crash_max_multiplier') {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || parsed < 2 || parsed > 1000) {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: 'crash_max_multiplier must be between 2 and 1000' });
+      return;
+    }
+  }
+
   const config = await prisma.config.upsert({
     where: { key },
     update: { value, updated_at: new Date() },

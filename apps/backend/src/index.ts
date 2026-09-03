@@ -266,6 +266,24 @@ const HOST = '0.0.0.0';
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`Backend listening on port ${PORT}`);
+  // Seed default config values if not already set
+  void (async () => {
+    try {
+      const prismaLib = await import('./lib/prisma.js');
+      const db = prismaLib.default;
+      const defaults: { key: string; value: string }[] = [
+        { key: 'crash_max_multiplier', value: '40' },
+        { key: 'house_edge_crash',     value: '15' },
+      ];
+      for (const { key, value } of defaults) {
+        await db.config.upsert({
+          where: { key },
+          update: {},          // don't overwrite if already set by admin
+          create: { key, value },
+        });
+      }
+    } catch { /* non-fatal */ }
+  })();
   // Start auto-round scheduler after server is up
   RoundScheduler.start();
   // Start cleanup service for expired reservations

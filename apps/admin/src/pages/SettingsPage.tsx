@@ -42,7 +42,7 @@ function HouseEdgeSection() {
       setSlots(data.find(e => e.key === 'house_edge_slots')?.value ?? '15');
       setKeno(data.find(e => e.key === 'house_edge_keno')?.value ?? '15');
       setPlinko(data.find(e => e.key === 'house_edge_plinko')?.value ?? '15');
-      setCrashMaxMult(data.find(e => e.key === 'crash_max_multiplier')?.value ?? '20');
+      setCrashMaxMult(data.find(e => e.key === 'crash_max_multiplier')?.value ?? '40');
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);

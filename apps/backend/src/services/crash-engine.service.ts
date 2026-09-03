@@ -11,7 +11,7 @@ import { TxType, WalletType } from '@fidel/shared';
 const BETTING_WINDOW_MS = 10_000; // 10s for players to place bets
 const TICK_INTERVAL_MS = 100;     // broadcast multiplier every 100ms
 const DEFAULT_HOUSE_EDGE = 0.15;  // default 15% — overridden by DB config
-const DEFAULT_MAX_MULTIPLIER = 20.0; // default 20x cap — overridden by DB config
+const DEFAULT_MAX_MULTIPLIER = 40.0; // default 40x cap — overridden by DB config
 
 // ─── Callbacks ───────────────────────────────────────────────────────────────
 

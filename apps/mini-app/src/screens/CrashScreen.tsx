@@ -354,7 +354,7 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
   const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(true);
   const [minimized, setMinimized] = useState(false);
   const PRESETS = [16, 40, 80, 400];
-  const MAX_AUTO_CASHOUT = 20.0;
+  const MAX_AUTO_CASHOUT = 40.0;
 
   const adj = (d: number) => setAmount(a => Math.max(MIN_BET, Math.min(MAX_BET, a + d)));
 
@@ -437,7 +437,7 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
             </div>
             {/* Auto cashout presets */}
             <div style={{ display: 'flex', gap: 2 }}>
-              {[2, 5, 10, 20].map(p => (
+              {[2, 5, 10, 40].map(p => (
                 <button key={p} onClick={() => setAutoCashout(p)} style={{ flex: 1, padding: '2px 0', borderRadius: 4, background: autoCashout === p ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', border: autoCashout === p ? '1px solid rgba(52,211,153,0.4)' : '1px solid rgba(255,255,255,0.08)', color: autoCashout === p ? '#34d399' : '#6b7280', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>{p}x</button>
               ))}
             </div>
