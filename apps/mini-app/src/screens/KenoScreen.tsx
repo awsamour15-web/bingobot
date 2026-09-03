@@ -10,16 +10,25 @@ const MAX_PICKS = 10;
 const TOTAL_NUMBERS = 80;
 const TOTAL_DRAWN = 20;
 
+// PAYOUT_TABLE[picked][matched] — mirrors the backend keno-engine payout table
 const PAYOUT_TABLE: Record<number, Record<number, number>> = {
-  1:{1:3.5}, 2:{2:10}, 3:{3:50}, 4:{4:80},
-  5:{5:150}, 6:{6:500}, 7:{7:1000}, 8:{8:2000},
-  9:{9:5000}, 10:{10:10000},
+  1:  { 1: 3.5 },
+  2:  { 1: 1,   2: 10 },
+  3:  {          2: 2,    3: 50 },
+  4:  {          2: 1.5,  3: 10,   4: 80 },
+  5:  {          2: 1,    3: 3,    4: 30,   5: 150 },
+  6:  {                   3: 2,    4: 15,   5: 60,   6: 500 },
+  7:  { 0: 1,             3: 2,    4: 4,    5: 20,   6: 80,   7: 1000 },
+  8:  { 0: 1,                      4: 5,    5: 15,   6: 50,   7: 200,  8: 2000 },
+  9:  { 0: 2,                      4: 2,    5: 10,   6: 25,   7: 125,  8: 1000, 9: 5000 },
+  10: { 0: 2,                               5: 5,    6: 30,   7: 100,  8: 300,  9: 2000, 10: 10000 },
 };
 
 function getMultiplier(p: number, m: number): number { return PAYOUT_TABLE[p]?.[m] ?? 0; }
 function calcPossibleWin(bet: number, p: number): number {
   if (p < 1) return 0;
-  const best = Math.max(...Object.values(PAYOUT_TABLE[p] ?? {}));
+  const vals = Object.values(PAYOUT_TABLE[p] ?? {});
+  const best = vals.length ? Math.max(...vals) : 0;
   return Math.round(bet * best * 100) / 100;
 }
 
@@ -64,7 +73,7 @@ function PossibleWinCard({ betAmount, pickedNumbers }: { betAmount: number; pick
 
   const possible = calcPossibleWin(betAmount, p);
   const rows: { match: number; mul: number }[] = [];
-  for (let m = 1; m <= p; m++) { const mul = getMultiplier(p, m); if (mul > 0) rows.push({ match: m, mul }); }
+  for (let m = 0; m <= p; m++) { const mul = getMultiplier(p, m); if (mul > 0) rows.push({ match: m, mul }); }
   const show = rows.slice(-3);
   return (
     <div style={{ margin:"0 10px 8px", background:"rgba(20,30,24,0.95)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"10px 12px", position:"relative" }}>
