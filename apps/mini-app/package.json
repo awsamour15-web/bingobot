@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc && vite build",
+    "build": "pnpm --filter @fidel/shared build && tsc && vite build",
     "type-check": "tsc --noEmit",
     "dev": "vite",
     "preview": "vite preview",
@@ -12,6 +12,8 @@
   "dependencies": {
     "@fidel/shared": "workspace:*",
     "@twa-dev/sdk": "^8.0.2",
+    "lucide-react": "^1.40.0",
+    "motion": "^13.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.1",
