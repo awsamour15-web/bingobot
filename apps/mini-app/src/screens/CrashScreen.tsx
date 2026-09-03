@@ -729,25 +729,32 @@ export default function CrashScreen() {
     const setMyBet = isSlot1 ? setMyBet1 : setMyBet2;
     if (currentBet || placingRef.current) return;
     placingRef.current = true; setPlacing(true);
+    // Optimistically mark bet as placed to prevent double-submit
+    setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
     try {
       const res = await placeCrashBet(amount, slot, auto ?? undefined);
-      setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
       setBets(prev => [{ username: myUsername || 'You', betAmount: amount, cashoutAt: null, payout: null }, ...prev]);
       setRoundId(res.roundId);
       getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(() => {});
     } catch (err: any) {
       const msg: string = err?.message ?? '';
-      const isAlready = msg.toLowerCase().includes('already') || err?.status === 409 || err?.code === 'ALREADY_BET';
+      const status: number = err?.status ?? 0;
+      const isAlready = status === 409 || msg.toLowerCase().includes('already');
       if (isAlready) {
-        // Bet already exists server-side — sync state so UI reflects it correctly
+        // Server already has the bet — sync actual state
         getCrashState().then(s => {
           const bet = slot === 1 ? s.myBet : s.myBet2;
           if (bet) setMyBet({ betAmount: bet.betAmount, cashoutAt: bet.cashoutAt, payout: bet.payout });
+          else setMyBet(null);
           if (s.round) setRoundId(s.round.id);
-        }).catch(() => {});
-      } else if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('deposit')) {
+        }).catch(() => setMyBet(null));
+      } else if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || status === 402) {
+        // Roll back optimistic bet on payment failure
+        setMyBet(null);
         setDepositModal(true);
       } else {
+        // Roll back on any other error
+        setMyBet(null);
         alert(msg || 'Failed to place bet');
       }
     } finally { placingRef.current = false; setPlacing(false); }
