@@ -352,7 +352,7 @@ function BetPanel({ slot, phase, multiplier, myBet, onBet, onCashout, placing, c
   const [amount, setAmount] = useState(100);
   const [autoCashout, setAutoCashout] = useState(2.0);
   const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(true);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(slot === 2); // slot 2 starts minimized
   const PRESETS = [16, 40, 80, 400];
   const MAX_AUTO_CASHOUT = 40.0;
   // Local dedup ref — blocks any re-entrant calls before parent state updates
@@ -749,6 +749,9 @@ export default function CrashScreen() {
     // Hard guard — ref is synchronous, prevents double-fire even across re-renders
     if (currentBet || placingRef.current) return;
     placingRef.current = true; setPlacing(true);
+    // Update ref synchronously so concurrent calls to the other slot can't race through
+    if (isSlot1) myBet1Ref.current = { betAmount: amount, cashoutAt: null, payout: null };
+    else myBet2Ref.current = { betAmount: amount, cashoutAt: null, payout: null };
     // Optimistically mark bet as placed to prevent double-submit
     setMyBet({ betAmount: amount, cashoutAt: null, payout: null });
     try {
@@ -769,9 +772,11 @@ export default function CrashScreen() {
           if (s.round) setRoundId(s.round.id);
         }).catch(() => setMyBet(null));
       } else if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || status === 402) {
+        if (isSlot1) myBet1Ref.current = null; else myBet2Ref.current = null;
         setMyBet(null);
         setDepositModal(true);
       } else {
+        if (isSlot1) myBet1Ref.current = null; else myBet2Ref.current = null;
         setMyBet(null);
         alert(msg || 'Failed to place bet');
       }
