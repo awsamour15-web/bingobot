@@ -861,11 +861,8 @@ export default function CrashScreen() {
           onOpenRules={() => setShowRules(true)}
         />
 
-        {/* Bet panels */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
-          <BetPanel slot={1} phase={phase} multiplier={multiplier} myBet={myBet1} onBet={handleBet} onCashout={handleCashout} placing={placing1} cashingOut={cashingOut1} userBalance={mainBalance ?? 0} />
-          <BetPanel slot={2} phase={phase} multiplier={multiplier} myBet={myBet2} onBet={handleBet} onCashout={handleCashout} placing={placing2} cashingOut={cashingOut2} userBalance={mainBalance ?? 0} />
-        </div>
+        {/* Bet panel — single slot until multi-bet system is fixed */}
+        <BetPanel slot={1} phase={phase} multiplier={multiplier} myBet={myBet1} onBet={handleBet} onCashout={handleCashout} placing={placing1} cashingOut={cashingOut1} userBalance={mainBalance ?? 0} />
 
         {/* Live bets feed */}
         <LiveBetsFeed bets={bets} multiplier={multiplier} myUsername={myUsername} />
