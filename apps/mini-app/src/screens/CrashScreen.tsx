@@ -682,9 +682,16 @@ export default function CrashScreen() {
 
   useEffect(() => {
     const onBettingOpen = (d: { roundId: string; roundNumber?: number }) => {
-      setPhase('waiting'); setRoundId(d.roundId); if (d.roundNumber) setRoundNumber(d.roundNumber);
-      setMultiplier(1.0); setCrashPoint(null); setMyBet1(null); setMyBet2(null); setBets([]);
-      startCountdown(10);
+      // Only reset if this is actually a new round
+      setRoundId(prev => {
+        if (prev !== d.roundId) {
+          setPhase('waiting');
+          if (d.roundNumber) setRoundNumber(d.roundNumber);
+          setMultiplier(1.0); setCrashPoint(null); setMyBet1(null); setMyBet2(null); setBets([]);
+          startCountdown(10);
+        }
+        return d.roundId;
+      });
     };
     const onStarted = (d: { roundId: string }) => {
       setPhase('running'); setRoundId(d.roundId); setMultiplier(1.0);
@@ -730,10 +737,18 @@ export default function CrashScreen() {
       getProfile().then(p => { setMainBalance(p.mainWallet.balance); setPlayBalance(p.playWallet.balance); }).catch(() => {});
     } catch (err: any) {
       const msg: string = err?.message ?? '';
-      if (!msg.toLowerCase().includes('already')) {
-        if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('deposit')) {
-          setDepositModal(true);
-        } else { alert(msg || 'Failed to place bet'); }
+      const isAlready = msg.toLowerCase().includes('already') || err?.status === 409 || err?.code === 'ALREADY_BET';
+      if (isAlready) {
+        // Bet already exists server-side — sync state so UI reflects it correctly
+        getCrashState().then(s => {
+          const bet = slot === 1 ? s.myBet : s.myBet2;
+          if (bet) setMyBet({ betAmount: bet.betAmount, cashoutAt: bet.cashoutAt, payout: bet.payout });
+          if (s.round) setRoundId(s.round.id);
+        }).catch(() => {});
+      } else if (msg.includes('ቀሪ ሂሳብ') || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('deposit')) {
+        setDepositModal(true);
+      } else {
+        alert(msg || 'Failed to place bet');
       }
     } finally { placingRef.current = false; setPlacing(false); }
   }, [myUsername, myBet1, myBet2]);
