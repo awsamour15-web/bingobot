@@ -396,4 +396,86 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// ─── POST /api/wallet/redeem-coupon ──────────────────────────────────────────
+// Simple promo code redemption. Codes are stored as system settings in DB or
+// env-defined. Currently supports env-defined codes for a fast rollout.
+
+router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player!.playerId;
+  const { code } = req.body as { code?: string };
+
+  if (!code || typeof code !== 'string' || code.trim() === '') {
+    res.status(400).json({ error: 'INVALID_CODE', message: 'Coupon code is required' });
+    return;
+  }
+
+  const normalizedCode = code.trim().toUpperCase();
+
+  // Load active coupon definitions from DB (SystemSetting table)
+  let coupons: Array<{ code: string; amount: number; maxUses: number | null }> = [];
+  try {
+    const setting = await prisma.systemSetting.findUnique({ where: { key: 'active_coupons' } });
+    if (setting?.value) {
+      coupons = JSON.parse(setting.value as string) as typeof coupons;
+    }
+  } catch {
+    // ignore parse errors — no coupons available
+  }
+
+  const coupon = coupons.find((c) => c.code === normalizedCode);
+  if (!coupon) {
+    res.status(404).json({ error: 'COUPON_NOT_FOUND', message: 'Invalid or expired coupon code' });
+    return;
+  }
+
+  // Check if player already redeemed this code
+  const wallets = await prisma.wallet.findMany({ where: { player_id: playerId }, select: { id: true } });
+  const walletIds = wallets.map((w) => w.id);
+
+  const alreadyUsed = await prisma.transaction.findFirst({
+    where: {
+      wallet_id: { in: walletIds },
+      type: 'bonus' as any,
+      description: { contains: `COUPON:${normalizedCode}` },
+    },
+  });
+  if (alreadyUsed) {
+    res.status(409).json({ error: 'ALREADY_REDEEMED', message: 'You have already used this coupon' });
+    return;
+  }
+
+  // Check global usage count if maxUses is set
+  if (coupon.maxUses !== null) {
+    const globalUses = await prisma.transaction.count({
+      where: {
+        type: 'bonus' as any,
+        description: { contains: `COUPON:${normalizedCode}` },
+      },
+    });
+    if (globalUses >= coupon.maxUses) {
+      res.status(410).json({ error: 'COUPON_EXHAUSTED', message: 'This coupon has reached its maximum uses' });
+      return;
+    }
+  }
+
+  try {
+    await WalletService.credit(
+      playerId,
+      WalletType.play,
+      coupon.amount,
+      'bonus' as any,
+      undefined,
+      `COUPON:${normalizedCode} — promo credit`,
+    );
+    res.status(200).json({
+      success: true,
+      amount: coupon.amount,
+      message: `🎁 ${coupon.amount} ETB bonus added to your play wallet!`,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Redemption failed';
+    res.status(500).json({ error: 'REDEEM_FAILED', message });
+  }
+});
+
 export default router;

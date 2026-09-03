@@ -731,3 +731,9 @@ export function revealMinesweeperCell(gameId: string, row: number, col: number):
 export function getMinesweeperHistory(): Promise<MinesweeperHistoryEntry[]> {
   return apiRequest('GET', '/api/minesweeper/history');
 }
+
+// ─── Coupon redemption ────────────────────────────────────────────────────────
+
+export function redeemCoupon(code: string): Promise<{ success: boolean; amount: number; message: string }> {
+  return apiRequest('POST', '/api/wallet/redeem-coupon', { code });
+}
