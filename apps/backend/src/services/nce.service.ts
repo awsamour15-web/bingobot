@@ -65,6 +65,23 @@ export class NumberCallingEngine {
   clearGridCache(roundId: string): void { this.gridCache.delete(roundId); }
 
   /**
+   * Inject an override grid for a specific cartela within a round's cache.
+   * Used by the mock bot to set a winning grid WITHOUT mutating the global
+   * cartelaDefinition table (which would corrupt grids for real players).
+   *
+   * The cache entry only contains the override; detectAndHandleWin will fetch
+   * any remaining cartelas from DB on the next pass (partial-cache fill logic).
+   */
+  setGridOverride(roundId: string, cartelaNumber: number, grid: number[]): void {
+    let gridMap = this.gridCache.get(roundId);
+    if (!gridMap) {
+      gridMap = new Map();
+      this.gridCache.set(roundId, gridMap);
+    }
+    gridMap.set(cartelaNumber, grid);
+  }
+
+  /**
    * Start (or resume) calling numbers for a round.
    *
    * - On fresh start: generates a shuffled 1–75 sequence from scratch.
@@ -281,9 +298,12 @@ export class NumberCallingEngine {
       });
       if (!entries.length) return false;
 
-      // Use cached grid map; always re-fetch if cache was cleared (e.g. by mock bot injection)
+      // Use cached grid map. If the cache exists, it may have partial overrides
+      // (e.g. from mock-bot injection). For any entry whose cartela is not yet
+      // in the map, fetch from DB and populate so we never miss a real winner.
       let gridMap = this.gridCache.get(roundId);
       if (!gridMap) {
+        // No cache at all — fetch everything from DB
         const cartelaNumbers = [...new Set(entries.map((e) => e.cartela_number))];
         const cartelas = await prisma.cartelaDefinition.findMany({
           where: { cartela_number: { in: cartelaNumbers } },
@@ -291,6 +311,20 @@ export class NumberCallingEngine {
         });
         gridMap = new Map(cartelas.map((c) => [c.cartela_number, c.grid as number[]]));
         this.gridCache.set(roundId, gridMap);
+      } else {
+        // Cache exists but may be missing some cartelas (partial override).
+        // Fetch only the missing ones from DB.
+        const missingNums = [...new Set(entries.map((e) => e.cartela_number))]
+          .filter((n) => !gridMap!.has(n));
+        if (missingNums.length > 0) {
+          const cartelas = await prisma.cartelaDefinition.findMany({
+            where: { cartela_number: { in: missingNums } },
+            select: { cartela_number: true, grid: true },
+          });
+          for (const c of cartelas) {
+            gridMap.set(c.cartela_number, c.grid as number[]);
+          }
+        }
       }
 
       const winnerMap = new Map<string, { cartelaNumber: number }>();

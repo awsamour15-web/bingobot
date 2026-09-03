@@ -176,18 +176,14 @@ async function tryInjectWin(roundId: string, calledSet: Set<number>): Promise<vo
   try {
     const winningGrid = buildWinningGrid(winLine);
 
-    // Upsert the cartela definition with the winning grid
-    await prisma.cartelaDefinition.upsert({
-      where: { cartela_number: info.cartelaNumber },
-      update: { grid: winningGrid },
-      create: { cartela_number: info.cartelaNumber, grid: winningGrid },
-    });
-
-    // Invalidate NCE's cached grid so it re-reads on next win-check
-    nce.clearGridCache(roundId);
+    // Inject the winning grid directly into NCE's in-memory cache for this round.
+    // This avoids permanently overwriting the global cartelaDefinition row which
+    // would corrupt that cartela for ALL future rounds (causing false wins for
+    // real players who happen to hold the same cartela number later).
+    nce.setGridOverride(roundId, info.cartelaNumber, winningGrid);
 
     console.log(
-      `[MockBot] Injected winning grid for player ${info.playerId} ` +
+      `[MockBot] Injected winning grid (cache only) for player ${info.playerId} ` +
       `cartela #${info.cartelaNumber} in round ${roundId} | win line: ${winLine.join(',')}`,
     );
   } catch (err) {
