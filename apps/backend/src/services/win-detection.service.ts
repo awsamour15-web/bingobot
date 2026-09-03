@@ -1,7 +1,7 @@
 // Win Detection Service — multi-winner claim-window support
 // Requirements: 1.1–1.5, 2.1–2.4, 3.1–3.5, 4.1–4.4, 5.1–5.3, 9.1–9.4
 
-import { GameStatus, TxType, WalletType } from '@fidel/shared';
+import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { nce } from './nce.service.js';
@@ -37,40 +37,57 @@ type OnRoundWonCb = (
 
 let onRoundWonCb: OnRoundWonCb | undefined;
 
-// ─── Winning patterns (5×5 grid, row-major) ──────────────────────────────────
-// Valid wins: any single row, any single column, either diagonal, or 4 corners.
+// ─── Pattern → line indices ──────────────────────────────────────────────────
 
-const WINNING_LINE_INDICES: number[][] = [
-  // 5 rows
+const ROWS: number[][] = [
   [0, 1, 2, 3, 4],
   [5, 6, 7, 8, 9],
   [10, 11, 12, 13, 14],
   [15, 16, 17, 18, 19],
   [20, 21, 22, 23, 24],
-  // 5 columns
+];
+const COLUMNS: number[][] = [
   [0, 5, 10, 15, 20],
   [1, 6, 11, 16, 21],
   [2, 7, 12, 17, 22],
   [3, 8, 13, 18, 23],
   [4, 9, 14, 19, 24],
-  // 2 diagonals
+];
+const DIAGONALS: number[][] = [
   [0, 6, 12, 18, 24],
   [4, 8, 12, 16, 20],
-  // 4 corners
-  [0, 4, 20, 24],
 ];
+const CORNERS: number[][] = [[0, 4, 20, 24]];
+const FULL_HOUSE: number[][] = [Array.from({ length: 25 }, (_, i) => i)];
+
+function getLinesForPattern(pattern: WinPattern): number[][] {
+  switch (pattern) {
+    case WinPattern.row:            return ROWS;
+    case WinPattern.column:         return COLUMNS;
+    case WinPattern.diagonal_tl_br: return [[0, 6, 12, 18, 24]];
+    case WinPattern.diagonal_tr_bl: return [[4, 8, 12, 16, 20]];
+    case WinPattern.corners:        return CORNERS;
+    case WinPattern.full_house:     return FULL_HOUSE;
+    case WinPattern.any_line:
+    default:
+      return [...ROWS, ...COLUMNS, ...DIAGONALS, ...CORNERS];
+  }
+}
 
 // ─── Pure win check ───────────────────────────────────────────────────────────
 
-export function checkWin(grid: number[], calledNums: Set<number>): CheckWinResult {
-  for (const lineIndices of WINNING_LINE_INDICES) {
+export function checkWin(
+  grid: number[],
+  calledNums: Set<number>,
+  pattern: WinPattern = WinPattern.any_line,
+): CheckWinResult {
+  const lines = getLinesForPattern(pattern);
+  for (const lineIndices of lines) {
     const lineValues = lineIndices.map((i) => grid[i] ?? 0);
-    // Index 12 is the free space (stored as 0 in DB) — always counts as called.
-    // Only index 12 is treated as a free space; other 0-values are NOT free.
     const isComplete = lineValues.every((v, pos) => {
       const idx = lineIndices[pos]!;
       if (idx === 12) return true; // free space — always marked
-      return v !== 0 && calledNums.has(v); // non-free cell: must have a valid number that was called
+      return v !== 0 && calledNums.has(v);
     });
     if (isComplete) return { won: true, winningLine: lineValues };
   }
@@ -273,15 +290,15 @@ export const WinDetectionService = {
     const calledSet = new Set(calledRows.map((c) => c.number));
     console.log(`[WinDetection] Checking player=${playerId} round=${roundId} cartelas=${cartelaNumbers} calledCount=${calledSet.size}`);
 
-    // 5. Check win on any cartela
-    // Grid may contain "FREE"/"Free" string at index 12 — cast safely
+    // 5. Check win on any cartela using the round's winning pattern
+    const pattern = (round.winning_pattern ?? 'any_line') as WinPattern;
     let winningCartelaNumber: number | null = null;
     for (const cartela of cartelas) {
       const grid = (cartela.grid as unknown[]).map((v, i) =>
         i === 12 ? 0 : typeof v === 'number' ? v : 0,
       );
-      const result = checkWin(grid, calledSet);
-      console.log(`[WinDetection] cartela=${cartela.cartela_number} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
+      const result = checkWin(grid, calledSet, pattern);
+      console.log(`[WinDetection] cartela=${cartela.cartela_number} pattern=${pattern} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
       if (result.won) {
         winningCartelaNumber = cartela.cartela_number;
         break;

@@ -52,6 +52,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     active_cartela_count: activeCartelaCount,
     derash: Number(r.derash),
     start_time: r.start_time.toISOString(),
+    winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
   }));
 
   // Short cache — stale-while-revalidate lets the client show instantly on revisit
@@ -100,6 +101,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     winner_cartela_number: round.winner_cartela_number ?? undefined,
     max_cartelas_per_player: maxCartelasPerPlayer,
     active_cartela_count: activeCartelaCount,
+    winning_pattern: (round.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
   };
 
   res.status(200).json(detail);

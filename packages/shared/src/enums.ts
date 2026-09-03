@@ -40,3 +40,34 @@ export const AdminRole = {
   admin: 'admin' as AdminRole,
   super_admin: 'super_admin' as AdminRole,
 };
+
+// Winning patterns for bingo rounds
+export type WinPattern =
+  | 'any_line'        // any single row, column, or diagonal
+  | 'row'             // any single row
+  | 'column'          // any single column
+  | 'diagonal_tl_br'  // top-left → bottom-right diagonal (indices 0,6,12,18,24)
+  | 'diagonal_tr_bl'  // top-right → bottom-left diagonal (indices 4,8,12,16,20)
+  | 'corners'         // 4 corners only (indices 0,4,20,24)
+  | 'full_house';     // all 25 cells (blackout)
+
+export const WinPattern = {
+  any_line:       'any_line'       as WinPattern,
+  row:            'row'            as WinPattern,
+  column:         'column'         as WinPattern,
+  diagonal_tl_br: 'diagonal_tl_br' as WinPattern,
+  diagonal_tr_bl: 'diagonal_tr_bl' as WinPattern,
+  corners:        'corners'        as WinPattern,
+  full_house:     'full_house'     as WinPattern,
+};
+
+/** Human-readable label for display */
+export const WIN_PATTERN_LABELS: Record<WinPattern, string> = {
+  any_line:       'Any Line',
+  row:            'Any Row',
+  column:         'Any Column',
+  diagonal_tl_br: 'Diagonal ↘',
+  diagonal_tr_bl: 'Diagonal ↙',
+  corners:        '4 Corners',
+  full_house:     'Full House',
+};

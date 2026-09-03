@@ -4,7 +4,7 @@
 import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
-import { GameStatus } from '@fidel/shared';
+import { GameStatus, WinPattern } from '@fidel/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
 
 const STAKE_LEVELS = [10, 20, 50];
@@ -255,6 +255,16 @@ export const RoundScheduler = {
       const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
       const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
 
+      // Patterns rotated per round — excludes full_house (too rare for auto-rounds)
+      const AUTO_PATTERNS: WinPattern[] = [
+        WinPattern.any_line,
+        WinPattern.row,
+        WinPattern.column,
+        WinPattern.diagonal_tl_br,
+        WinPattern.diagonal_tr_bl,
+        WinPattern.corners,
+      ];
+
       for (const stake of STAKE_LEVELS) {
         if (pendingStakes.has(stake)) continue;
         if (activeStakes.has(stake)) {
@@ -262,6 +272,7 @@ export const RoundScheduler = {
           continue;
         }
         const startTime = new Date(Date.now() + LEAD_TIME_MS);
+        const winning_pattern = AUTO_PATTERNS[Math.floor(Math.random() * AUTO_PATTERNS.length)]!;
         try {
           const round = await prisma.gameRound.create({
             data: {
@@ -271,9 +282,10 @@ export const RoundScheduler = {
               start_time: startTime,
               commission_pct: commissionPct,
               derash: 0,
+              winning_pattern,
             },
           });
-          console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
+          console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | pattern=${winning_pattern} | starts=${startTime.toISOString()}`);
           if (RoundScheduler._onRoundsReplenished) RoundScheduler._onRoundsReplenished();
           // Trigger mock bot auto-join (non-blocking)
           void MockPlayerBotService.onRoundPending(round.id);

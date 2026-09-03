@@ -14,6 +14,7 @@ import type {
   PlayerJoinedPayload,
   WinRejectedPayload,
 } from '../lib/api';
+import { WIN_PATTERN_LABELS, WinPattern } from '@fidel/shared';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = [
@@ -35,6 +36,7 @@ interface GameState {
   derash: number;
   winnerInfo: RoundWonPayload | null;
   endMessage: string | null;
+  winningPattern: WinPattern;
 }
 
 function getColIndex(n: number) { return Math.floor((n - 1) / 15); }
@@ -121,6 +123,7 @@ export default function LiveGameScreen() {
     derash: 0,
     winnerInfo: null,
     endMessage: null,
+    winningPattern: WinPattern.any_line,
   });
 
   // ─── Preload all 75 number sounds into memory once ──────────────────────
@@ -252,6 +255,7 @@ export default function LiveGameScreen() {
           playerCount: r.player_count,
           derash: r.derash,
           calledOrder: mergedOrder,
+          winningPattern: (r.winning_pattern ?? WinPattern.any_line) as WinPattern,
           phase:
             r.status === 'active' ? 'active'
             : r.status === 'completed' ? 'won'
@@ -342,11 +346,12 @@ export default function LiveGameScreen() {
         setGame((g) => {
           if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
           const last = nums[nums.length - 1] ?? g.lastCalled;
+          const wp = (r.winning_pattern ?? WinPattern.any_line) as WinPattern;
           if (r.status === 'active') {
-            return { ...g, phase: 'active', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
+            return { ...g, phase: 'active', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled, winningPattern: wp };
           }
           if (r.status === 'completed') {
-            return { ...g, phase: 'won', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
+            return { ...g, phase: 'won', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled, winningPattern: wp };
           }
           if (r.status === 'void' || r.status === 'cancelled') {
             return { ...g, phase: r.status === 'void' ? 'void' : 'cancelled', endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled — stake refunded.', calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
@@ -380,7 +385,7 @@ export default function LiveGameScreen() {
       playSound(p.number);
     };
     const onStarted = (p: RoundStartedPayload) =>
-      setGame((g) => ({ ...g, phase: 'active', derash: p.derash, playerCount: p.playerCount }));
+      setGame((g) => ({ ...g, phase: 'active', derash: p.derash, playerCount: p.playerCount, winningPattern: (p.winningPattern ?? WinPattern.any_line) as WinPattern }));
     const onJoined = (p: PlayerJoinedPayload) =>
       setGame((g) => ({ ...g, playerCount: p.playerCount }));
     const onWon = (p: RoundWonPayload) => {
@@ -474,6 +479,7 @@ export default function LiveGameScreen() {
           if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
 
           const last = nums[nums.length - 1] ?? g.lastCalled;
+          const wp = (r.winning_pattern ?? WinPattern.any_line) as WinPattern;
           if (r.status === 'active') {
             return {
               ...g,
@@ -483,6 +489,7 @@ export default function LiveGameScreen() {
               calledNumbers: mergedSet,
               calledOrder: nums,
               lastCalled: last ?? g.lastCalled,
+              winningPattern: wp,
             };
           }
 
@@ -495,6 +502,7 @@ export default function LiveGameScreen() {
               calledNumbers: mergedSet,
               calledOrder: nums,
               lastCalled: last ?? g.lastCalled,
+              winningPattern: wp,
             };
           }
 
@@ -579,27 +587,34 @@ export default function LiveGameScreen() {
     const v = g[i];
     return v !== undefined && v !== 0 && marked.has(v);
   }
+
+  // Returns the indices that form winning lines for the given pattern
+  function getLinesForPattern(p: WinPattern): number[][] {
+    const ROWS = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24]];
+    const COLS = [[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24]];
+    switch (p) {
+      case WinPattern.row:            return ROWS;
+      case WinPattern.column:         return COLS;
+      case WinPattern.diagonal_tl_br: return [[0,6,12,18,24]];
+      case WinPattern.diagonal_tr_bl: return [[4,8,12,16,20]];
+      case WinPattern.corners:        return [[0,4,20,24]];
+      case WinPattern.full_house:     return [Array.from({ length: 25 }, (_, i) => i)];
+      default:                        return [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20], [0,4,20,24]];
+    }
+  }
+
   function hasWinForGrid(g: number[]) {
     if (!g.length) return false;
-    // Any single row
-    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarkedForGrid(g, r*5+c))) return true;
-    // Any single column
-    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarkedForGrid(g, r*5+c))) return true;
-    // Diagonals
-    if ([0,6,12,18,24].every((i) => isMarkedForGrid(g, i))) return true;
-    if ([4,8,12,16,20].every((i) => isMarkedForGrid(g, i))) return true;
-    // 4 corners
-    if ([0,4,20,24].every((i) => isMarkedForGrid(g, i))) return true;
-    return false;
+    const lines = getLinesForPattern(game.winningPattern);
+    return lines.some(line => line.every(i => isMarkedForGrid(g, i)));
   }
   function winCellsForGrid(g: number[]) {
     const w = new Set<number>();
     if (!g.length) return w;
-    for (let r = 0; r < 5; r++) if ([0,1,2,3,4].every((c) => isMarkedForGrid(g, r*5+c))) [0,1,2,3,4].forEach((c) => w.add(r*5+c));
-    for (let c = 0; c < 5; c++) if ([0,1,2,3,4].every((r) => isMarkedForGrid(g, r*5+c))) [0,1,2,3,4].forEach((r) => w.add(r*5+c));
-    if ([0,6,12,18,24].every((i) => isMarkedForGrid(g, i))) [0,6,12,18,24].forEach((i) => w.add(i));
-    if ([4,8,12,16,20].every((i) => isMarkedForGrid(g, i))) [4,8,12,16,20].forEach((i) => w.add(i));
-    if ([0,4,20,24].every((i) => isMarkedForGrid(g, i))) [0,4,20,24].forEach((i) => w.add(i));
+    const lines = getLinesForPattern(game.winningPattern);
+    for (const line of lines) {
+      if (line.every(i => isMarkedForGrid(g, i))) line.forEach(i => w.add(i));
+    }
     return w;
   }
 
@@ -683,6 +698,14 @@ export default function LiveGameScreen() {
             <div style={{ fontSize: 14, fontWeight: 900, color: '#f0f4ff' }}>{value}</div>
           </div>
         ))}
+      </div>
+
+      {/* ── PATTERN BADGE ── */}
+      <div style={{ background: 'rgba(251,191,36,0.12)', borderBottom: '1px solid rgba(251,191,36,0.25)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '5px 10px' }}>
+        <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>WIN CONDITION</span>
+        <span style={{ fontSize: 11, fontWeight: 900, color: '#fcd34d' }}>
+          {WIN_PATTERN_LABELS[game.winningPattern] ?? 'Any Line'}
+        </span>
       </div>
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }

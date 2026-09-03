@@ -45,6 +45,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     winner_player_id: r.winner_player_id ?? undefined,
     winner_cartela_number: r.winner_cartela_number ?? undefined,
     commission_pct: r.commission_pct,
+    winning_pattern: r.winning_pattern ?? 'any_line',
     winners: r.round_winners.map((w) => ({
       playerId: w.player_id,
       username: w.player.username,

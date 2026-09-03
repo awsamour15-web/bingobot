@@ -84,6 +84,7 @@ model GameRound {
   commission_pct        Float
   winner_player_id      String?
   winner_cartela_number Int?
+  winning_pattern       String               @default("any_line")
   called_numbers        CalledNumber[]
   cartela_reservations  CartelaReservation[]
   winner                Player?              @relation("RoundWinner", fields: [winner_player_id], references: [id])

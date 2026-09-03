@@ -1,5 +1,7 @@
 // WebSocket event payload types (Socket.IO)
 
+import type { WinPattern } from './enums.js';
+
 // ---------------------------------------------------------------------------
 // Server → Client events
 // ---------------------------------------------------------------------------
@@ -14,6 +16,7 @@ export interface RoundStartedPayload {
   roundId: string;
   playerCount: number;
   derash: number;
+  winningPattern: WinPattern;
 }
 
 export interface RoundWonPayload {

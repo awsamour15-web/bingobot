@@ -1,7 +1,7 @@
 // Number Calling Engine (NCE)
 // Requirements: 16.1, 16.2, 16.3, 16.4
 
-import { GameStatus, TxType, WalletType } from '@fidel/shared';
+import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { shuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';
@@ -26,7 +26,7 @@ export type OnRoundVoid = (roundId: string) => void | Promise<void>;
 
 export type OnRoundStarted = (
   roundId: string,
-  payload: { playerCount: number; derash: number },
+  payload: { playerCount: number; derash: number; winningPattern: WinPattern },
 ) => void | Promise<void>;
 
 // ─── NCE ─────────────────────────────────────────────────────────────────────
@@ -141,6 +141,7 @@ export class NumberCallingEngine {
         await this.onRoundStarted(roundId, {
           playerCount: round._count.round_entries,
           derash: Number(round.derash),
+          winningPattern: (round.winning_pattern ?? 'any_line') as WinPattern,
         });
       }
     }
@@ -174,6 +175,9 @@ export class NumberCallingEngine {
         if (this.onNumberCalled) {
           await this.onNumberCalled(roundId, payload);
         }
+
+        // Guard: stop may have been triggered while awaiting onNumberCalled
+        if (!this.activeTimers.has(roundId) || this.stoppingRounds.has(roundId)) return;
 
         consecutiveErrors = 0;
         sequenceIndex += 1;
@@ -274,17 +278,22 @@ export class NumberCallingEngine {
   private async detectAndHandleWin(roundId: string): Promise<boolean> {
     // Re-entry guard: if we're already stopping/distributing for this round, bail out
     if (this.stoppingRounds.has(roundId)) return true;
+    // Lock immediately — before any await — so concurrent callNext ticks bail out
+    this.stoppingRounds.add(roundId);
 
     try {
       // Fast pre-check: skip all detection work if the round is no longer active
       const roundStatus = await prisma.gameRound.findUnique({
         where: { id: roundId },
-        select: { status: true },
+        select: { status: true, winning_pattern: true },
       });
       if (!roundStatus || roundStatus.status !== 'active') {
         console.log(`[NCE] detectAndHandleWin skipped — round ${roundId} status=${roundStatus?.status}`);
-        return roundStatus?.status !== 'active'; // true stops the loop for completed/void rounds
+        this.stoppingRounds.delete(roundId);
+        return roundStatus?.status !== 'active';
       }
+
+      const pattern = (roundStatus.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern;
 
       const calledRows = await prisma.calledNumber.findMany({
         where: { round_id: roundId },
@@ -296,7 +305,10 @@ export class NumberCallingEngine {
         where: { round_id: roundId, is_watching: false },
         select: { player_id: true, cartela_number: true },
       });
-      if (!entries.length) return false;
+      if (!entries.length) {
+        this.stoppingRounds.delete(roundId);
+        return false;
+      }
 
       // Use cached grid map. If the cache exists, it may have partial overrides
       // (e.g. from mock-bot injection). For any entry whose cartela is not yet
@@ -331,19 +343,20 @@ export class NumberCallingEngine {
       for (const entry of entries) {
         const grid = gridMap.get(entry.cartela_number);
         if (!grid) continue;
-        if (this.gridHasWin(grid, calledSet)) {
+        // Only record the first winning cartela per player (one share per player)
+        if (!winnerMap.has(entry.player_id) && this.gridHasWin(grid, calledSet, pattern)) {
           winnerMap.set(entry.player_id, { cartelaNumber: entry.cartela_number });
         }
       }
 
-      if (winnerMap.size === 0) return false;
+      if (winnerMap.size === 0) {
+        this.stoppingRounds.delete(roundId); // no winner — release lock
+        return false;
+      }
 
       console.log(`[NCE] Win detected round=${roundId} winners=${winnerMap.size} — distributing immediately`);
 
-      // Mark as stopping FIRST — prevents any concurrent callNext from proceeding
-      this.stoppingRounds.add(roundId);
-
-      // Stop NCE timer synchronously before the async distribution
+      // stoppingRounds already set at top of function — stop the timer now
       this.stop(roundId);
 
       try {
@@ -361,24 +374,28 @@ export class NumberCallingEngine {
       return true;
     } catch (err) {
       console.error(`[NCE] detectAndHandleWin error round=${roundId}:`, err);
-      // Only clear stoppingRounds if we hadn't set it yet (set happens after winnerMap check)
-      this.stoppingRounds.delete(roundId);
+      this.stoppingRounds.delete(roundId); // always release lock on error
       return false;
     }
   }
 
-  private gridHasWin(grid: number[], calledSet: Set<number>): boolean {
-    const LINES = [
-      // rows
-      [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
-      // columns
-      [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
-      // diagonals
-      [0,6,12,18,24],[4,8,12,16,20],
-      // 4 corners
-      [0,4,20,24],
-    ];
-    for (const line of LINES) {
+  private gridHasWin(grid: number[], calledSet: Set<number>, pattern: WinPattern): boolean {
+    const ROWS = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24]];
+    const COLS = [[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24]];
+
+    let lines: number[][];
+    switch (pattern) {
+      case WinPattern.row:            lines = ROWS; break;
+      case WinPattern.column:         lines = COLS; break;
+      case WinPattern.diagonal_tl_br: lines = [[0,6,12,18,24]]; break;
+      case WinPattern.diagonal_tr_bl: lines = [[4,8,12,16,20]]; break;
+      case WinPattern.corners:        lines = [[0,4,20,24]]; break;
+      case WinPattern.full_house:     lines = [Array.from({ length: 25 }, (_, i) => i)]; break;
+      case WinPattern.any_line:
+      default:                        lines = [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20], [0,4,20,24]];
+    }
+
+    for (const line of lines) {
       if (line.every((i) => {
         if (i === 12) return true; // free space
         const v = grid[i] ?? 0;

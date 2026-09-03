@@ -1,6 +1,6 @@
 // API payload shapes for all REST endpoints
 
-import type { WalletType, TxType, GameStatus, AdminRole } from './enums.js';
+import type { WalletType, TxType, GameStatus, AdminRole, WinPattern } from './enums.js';
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -54,6 +54,7 @@ export interface RoundListItem {
   active_cartela_count?: number | undefined;
   derash: number;
   start_time: string;
+  winning_pattern: WinPattern;
 }
 
 export interface RoundDetail extends RoundListItem {
@@ -183,6 +184,7 @@ export interface AdminRound {
   winner_player_id?: string | undefined;
   winner_cartela_number?: number | undefined;
   commission_pct: number;
+  winning_pattern: WinPattern;
   winners?: Array<{
     playerId: string;
     username: string;

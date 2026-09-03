@@ -91,6 +91,7 @@ export const GameRoundService = {
     stake: number,
     startTime: Date,
     maxPlayers: number,
+    winningPattern = 'any_line',
   ): Promise<string> {
     const commissionRow = await prisma.config.findUnique({
       where: { key: 'platform_commission_pct' },
@@ -105,6 +106,7 @@ export const GameRoundService = {
         start_time: startTime,
         commission_pct: commissionPct,
         derash: 0,
+        winning_pattern: winningPattern,
       },
     });
 
