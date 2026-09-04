@@ -218,10 +218,7 @@ export default function KenoScreen() {
           <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: C.textWhite, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             ← Back
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span style={{ fontStyle: 'italic', fontWeight: 900, fontSize: 18, color: C.textWhite }}>FAST</span>
-            <span style={{ fontStyle: 'italic', fontWeight: 900, fontSize: 18, color: C.green, textShadow: '0 0 8px rgba(34,197,94,0.4)' }}>KENO</span>
-          </div>
+          <img src="/keno-logo.svg" alt="Fast Keno" style={{ height: 28, width: 'auto' }} />
           <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 999, padding: '3px 10px' }}>
             <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
           </div>

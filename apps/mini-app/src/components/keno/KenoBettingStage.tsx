@@ -79,11 +79,47 @@ export function KenoBettingStage({
         {spots === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {/* Ball cluster */}
-              <div style={{ position: 'relative', width: 64, height: 52, flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: 0, left: 16, width: 24, height: 24, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 60%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#94a3b8' }}>80</div>
-                <div style={{ position: 'absolute', top: 0, right: 4, width: 24, height: 24, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 60%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#94a3b8' }}>10</div>
-                <div style={{ position: 'absolute', bottom: 0, left: 0, width: 40, height: 40, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #166534 0%, #0f3822 55%, #051c10 100%)', border: '2px solid #1ee068', boxShadow: '0 0 14px rgba(30,224,104,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 900, color: '#fff' }}>1</div>
+              {/* Ball cluster — matches asset: dark navy balls 80 & 10, large teal glassy ball 1 */}
+              <div style={{ position: 'relative', width: 72, height: 62, flexShrink: 0 }}>
+                {/* Ball 80 — small dark navy */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 10,
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.7), inset 2px 2px 4px rgba(120,160,200,0.25), inset -2px -2px 5px rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(80,120,160,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 900, color: '#d0e4f0', fontFamily: 'monospace',
+                }}>
+                  <div style={{ position: 'absolute', top: 4, left: 7, width: 10, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
+                  80
+                </div>
+                {/* Ball 10 — medium dark navy */}
+                <div style={{
+                  position: 'absolute', top: 0, right: 2,
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
+                  boxShadow: '0 5px 12px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(120,160,200,0.3), inset -2px -2px 6px rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(80,120,160,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 900, color: '#d0e4f0', fontStyle: 'italic', fontFamily: 'monospace',
+                }}>
+                  <div style={{ position: 'absolute', top: 5, left: 9, width: 14, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
+                  10
+                </div>
+                {/* Ball 1 — large teal glassy */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0,
+                  width: 46, height: 46, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 38% 30%, #2a6a50 0%, #0d3828 50%, #041c14 100%)',
+                  boxShadow: '0 0 18px rgba(30,224,104,0.5), 0 6px 16px rgba(0,0,0,0.8), inset 2px 2px 6px rgba(100,240,160,0.2), inset -3px -3px 8px rgba(0,0,0,0.8)',
+                  border: '2px solid rgba(30,224,104,0.6)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, fontWeight: 900, color: '#3dba6a', fontFamily: 'monospace',
+                }}>
+                  <div style={{ position: 'absolute', top: 6, left: 10, width: 18, height: 9, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', transform: 'rotate(-25deg)' }} />
+                  1
+                </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 17, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>

@@ -158,22 +158,25 @@ export function KenoDrawArena({ drawnNumbers, currentBall, userPickedNumbers, on
               exit={{ scale: 0.55, opacity: 0 }}
               transition={{ duration: 0.45, times: [0, 0.55, 1], ease: 'easeOut' }}
               style={{
-                width: 64, height: 64, borderRadius: '50%',
+                width: 68, height: 68, borderRadius: '50%',
                 background: pickedSet.has(centerNum)
-                  ? 'radial-gradient(circle at 35% 30%, #22c55e 0%, #166534 45%, #062414 100%)'
-                  : 'radial-gradient(circle at 35% 30%, #c8d8e8 0%, #2a3d58 45%, #0a1828 100%)',
+                  ? 'radial-gradient(circle at 38% 30%, #2a6a50 0%, #0d3828 50%, #041c14 100%)'
+                  : 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
                 border: pickedSet.has(centerNum)
-                  ? '2px solid rgba(74,222,128,0.8)'
-                  : '2px solid rgba(140,170,210,0.5)',
+                  ? '2px solid rgba(30,224,104,0.65)'
+                  : '1.5px solid rgba(80,130,170,0.35)',
                 boxShadow: pickedSet.has(centerNum)
-                  ? '0 0 28px rgba(34,197,94,0.75), 0 4px 14px rgba(0,0,0,0.7)'
-                  : '0 0 22px rgba(60,110,200,0.45), 0 4px 14px rgba(0,0,0,0.7)',
+                  ? '0 0 30px rgba(34,197,94,0.7), 0 6px 18px rgba(0,0,0,0.8), inset 2px 2px 6px rgba(100,240,160,0.2), inset -3px -3px 8px rgba(0,0,0,0.8)'
+                  : '0 0 22px rgba(60,110,200,0.4), 0 6px 18px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(120,160,200,0.25), inset -3px -3px 8px rgba(0,0,0,0.8)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28, fontWeight: 900, color: '#fff', fontFamily: 'monospace',
-                letterSpacing: '-0.5px',
-                zIndex: 20,
+                fontSize: 28, fontWeight: 900,
+                color: pickedSet.has(centerNum) ? '#3dba6a' : '#d0e4f0',
+                fontFamily: 'monospace', letterSpacing: '-0.5px',
+                zIndex: 20, position: 'relative',
               }}
             >
+              {/* glass highlight */}
+              <div style={{ position: 'absolute', top: 9, left: 15, width: 24, height: 11, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', transform: 'rotate(-25deg)', pointerEvents: 'none' }} />
               {centerNum}
             </motion.div>
           )}
@@ -227,15 +230,19 @@ function TrayRow({ balls, startGlobalIdx: _start, pickedSet }: TrayRowProps) {
             transition={{ type: 'spring', stiffness: 400, damping: 22 }}
             style={{
               height: 28, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 26%, #415562 0%, #1a2a33 52%, #081115 100%)',
+              background: isHit
+                ? 'radial-gradient(circle at 38% 30%, #2a6a50 0%, #0d3828 50%, #041c14 100%)'
+                : 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
               boxShadow: isHit
-                ? '0 0 10px rgba(34,197,94,0.8), inset -1px -2px 3px rgba(0,0,0,0.8), inset 1px 1px 2px rgba(255,255,255,0.35)'
-                : 'inset -1px -2px 3px rgba(0,0,0,0.8), inset 1px 1px 2px rgba(255,255,255,0.35), 0 2px 5px rgba(0,0,0,0.6)',
+                ? '0 0 10px rgba(34,197,94,0.75), inset 2px 2px 3px rgba(100,240,160,0.15), inset -2px -2px 4px rgba(0,0,0,0.8)'
+                : 'inset 2px 2px 3px rgba(120,160,200,0.2), inset -2px -2px 4px rgba(0,0,0,0.8), 0 2px 5px rgba(0,0,0,0.6)',
               border: isHit
-                ? '1.5px solid rgba(34,197,94,0.8)'
-                : '1px solid rgba(255,255,255,0.1)',
+                ? '1.5px solid rgba(30,224,104,0.7)'
+                : '1px solid rgba(80,120,160,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: 'monospace',
+              fontSize: 10, fontWeight: 800,
+              color: isHit ? '#3dba6a' : '#d0e4f0',
+              fontFamily: 'monospace',
               position: 'relative',
             }}
           >
@@ -247,6 +254,8 @@ function TrayRow({ balls, startGlobalIdx: _start, pickedSet }: TrayRowProps) {
                 boxShadow: '0 0 5px #1ee068',
               }} />
             )}
+            {/* glass gloss */}
+            <div style={{ position: 'absolute', top: 3, left: 5, width: 9, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', transform: 'rotate(-20deg)', pointerEvents: 'none' }} />
             {num}
           </motion.div>
         );

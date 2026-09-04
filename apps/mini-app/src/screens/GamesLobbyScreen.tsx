@@ -142,6 +142,7 @@ const GAMES: Game[] = [
     title: 'Fast Keno',
     subtitle: 'Pick 1–10 numbers • Draw every 45s',
     emoji: '🔢',
+    logoSrc: '/keno-logo.svg',
     gradient: 'linear-gradient(135deg,#003322 0%,#001a11 55%,#000d09 100%)',
     glowColor: 'rgba(34,197,94,0.3)',
     route: '/keno',
@@ -312,16 +313,24 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
         borderRadius: '50%', background: game.glowColor, filter: 'blur(32px)', pointerEvents: 'none',
       }} />
 
-      {/* top: emoji + tags */}
+      {/* top: emoji/logo + tags */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{
-          width: 46, height: 46, borderRadius: 14,
-          background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, flexShrink: 0,
-          boxShadow: '0 6px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
-        }}>{game.emoji}</div>
+        {(game as any).logoSrc ? (
+          <img
+            src={(game as any).logoSrc}
+            alt={game.title}
+            style={{ height: 46, width: 'auto', maxWidth: 140, objectFit: 'contain', flexShrink: 0 }}
+          />
+        ) : (
+          <div style={{
+            width: 46, height: 46, borderRadius: 14,
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, flexShrink: 0,
+            boxShadow: '0 6px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}>{game.emoji}</div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
           {game.badge && (
@@ -345,9 +354,11 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
 
       {/* title + subtitle */}
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.3px', marginBottom: 3 }}>
-          {game.title}
-        </div>
+        {!(game as any).logoSrc && (
+          <div style={{ fontSize: 15, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.3px', marginBottom: 3 }}>
+            {game.title}
+          </div>
+        )}
         {game.category !== 'coming' && (
           <div style={{ fontSize: 10, color: 'rgba(203,213,225,0.65)', fontWeight: 500, lineHeight: 1.4 }}>
             {game.subtitle}
