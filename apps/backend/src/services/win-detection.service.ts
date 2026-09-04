@@ -1,9 +1,10 @@
 // Win Detection Service — multi-winner claim-window support
 // Requirements: 1.1–1.5, 2.1–2.4, 3.1–3.5, 4.1–4.4, 5.1–5.3, 9.1–9.4
 
-import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
+import { GameStatus, TxType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
-import { WalletService } from './wallet.service.js';
+
+type WinPattern = string;
 import { nce } from './nce.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,35 +63,58 @@ const FULL_HOUSE: number[][] = [Array.from({ length: 25 }, (_, i) => i)];
 
 function getLinesForPattern(pattern: WinPattern): number[][] {
   switch (pattern) {
-    case WinPattern.row:            return ROWS;
-    case WinPattern.column:         return COLUMNS;
-    case WinPattern.diagonal_tl_br: return [[0, 6, 12, 18, 24]];
-    case WinPattern.diagonal_tr_bl: return [[4, 8, 12, 16, 20]];
-    case WinPattern.corners:        return CORNERS;
-    case WinPattern.full_house:     return FULL_HOUSE;
-    case WinPattern.any_line:
+    case 'row':            return ROWS;
+    case 'column':         return COLUMNS;
+    case 'diagonal_tl_br': return [[0, 6, 12, 18, 24]];
+    case 'diagonal_tr_bl': return [[4, 8, 12, 16, 20]];
+    case 'corners':        return CORNERS;
+    case 'full_house':     return FULL_HOUSE;
+    case 'any_line':
     default:
-      return [...ROWS, ...COLUMNS, ...DIAGONALS, ...CORNERS];
+      return [...ROWS, ...COLUMNS, ...DIAGONALS];
   }
 }
 
+// ─── Parse winning pattern field (single string or JSON array) ───────────────
+
+export function parseWinPatterns(raw: string): WinPattern[] {
+  // Try JSON array first: ["row","corners"]
+  if (raw.trimStart().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed as WinPattern[];
+      }
+    } catch {
+      // fall through to single-value
+    }
+  }
+  return [raw as WinPattern];
+}
+
 // ─── Pure win check ───────────────────────────────────────────────────────────
+// When multiple patterns are given, the cartela wins if ANY one pattern is satisfied.
 
 export function checkWin(
   grid: number[],
   calledNums: Set<number>,
-  pattern: WinPattern = WinPattern.any_line,
+  pattern: WinPattern | WinPattern[] = 'any_line',
 ): CheckWinResult {
-  const lines = getLinesForPattern(pattern);
-  for (const lineIndices of lines) {
-    const lineValues = lineIndices.map((i) => grid[i] ?? 0);
-    const isComplete = lineValues.every((v, pos) => {
-      const idx = lineIndices[pos]!;
-      if (idx === 12) return true; // free space — always marked
-      return v !== 0 && calledNums.has(v);
-    });
-    if (isComplete) return { won: true, winningLine: lineValues };
+  const patterns = Array.isArray(pattern) ? pattern : [pattern];
+
+  for (const p of patterns) {
+    const lines = getLinesForPattern(p);
+    for (const lineIndices of lines) {
+      const lineValues = lineIndices.map((i) => grid[i] ?? 0);
+      const isComplete = lineValues.every((v, pos) => {
+        const idx = lineIndices[pos]!;
+        if (idx === 12) return true; // free space — always marked
+        return v !== 0 && calledNums.has(v);
+      });
+      if (isComplete) return { won: true, winningLine: lineValues };
+    }
   }
+
   return { won: false };
 }
 
@@ -290,15 +314,15 @@ export const WinDetectionService = {
     const calledSet = new Set(calledRows.map((c) => c.number));
     console.log(`[WinDetection] Checking player=${playerId} round=${roundId} cartelas=${cartelaNumbers} calledCount=${calledSet.size}`);
 
-    // 5. Check win on any cartela using the round's winning pattern
-    const pattern = (round.winning_pattern ?? 'any_line') as WinPattern;
+    // 5. Check win — always use any_line (any row, column, or diagonal wins)
+    const patterns: WinPattern[] = ['any_line'];
     let winningCartelaNumber: number | null = null;
     for (const cartela of cartelas) {
       const grid = (cartela.grid as unknown[]).map((v, i) =>
         i === 12 ? 0 : typeof v === 'number' ? v : 0,
       );
-      const result = checkWin(grid, calledSet, pattern);
-      console.log(`[WinDetection] cartela=${cartela.cartela_number} pattern=${pattern} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
+      const result = checkWin(grid, calledSet, patterns);
+      console.log(`[WinDetection] cartela=${cartela.cartela_number} patterns=${JSON.stringify(patterns)} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
       if (result.won) {
         winningCartelaNumber = cartela.cartela_number;
         break;

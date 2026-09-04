@@ -255,15 +255,8 @@ export const RoundScheduler = {
       const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
       const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
 
-      // Patterns rotated per round — excludes full_house (too rare for auto-rounds)
-      const AUTO_PATTERNS: WinPattern[] = [
-        WinPattern.any_line,
-        WinPattern.row,
-        WinPattern.column,
-        WinPattern.diagonal_tl_br,
-        WinPattern.diagonal_tr_bl,
-        WinPattern.corners,
-      ];
+      // Always use any_line — any row, column, or diagonal wins
+      const winning_pattern = WinPattern.any_line;
 
       for (const stake of STAKE_LEVELS) {
         if (pendingStakes.has(stake)) continue;
@@ -272,7 +265,7 @@ export const RoundScheduler = {
           continue;
         }
         const startTime = new Date(Date.now() + LEAD_TIME_MS);
-        const winning_pattern = AUTO_PATTERNS[Math.floor(Math.random() * AUTO_PATTERNS.length)]!;
+        const winning_pattern = WinPattern.any_line;
         try {
           const round = await prisma.gameRound.create({
             data: {

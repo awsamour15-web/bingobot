@@ -5,6 +5,7 @@ import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { shuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';
+import { parseWinPatterns } from './win-detection.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -285,7 +286,7 @@ export class NumberCallingEngine {
       // Fast pre-check: skip all detection work if the round is no longer active
       const roundStatus = await prisma.gameRound.findUnique({
         where: { id: roundId },
-        select: { status: true, winning_pattern: true },
+        select: { status: true },
       });
       if (!roundStatus || roundStatus.status !== 'active') {
         console.log(`[NCE] detectAndHandleWin skipped — round ${roundId} status=${roundStatus?.status}`);
@@ -293,7 +294,8 @@ export class NumberCallingEngine {
         return roundStatus?.status !== 'active';
       }
 
-      const pattern = (roundStatus.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern;
+      // Always use any_line — any row, column, or diagonal wins
+      const pattern: WinPattern[] = [WinPattern.any_line];
 
       const calledRows = await prisma.calledNumber.findMany({
         where: { round_id: roundId },
@@ -379,32 +381,34 @@ export class NumberCallingEngine {
     }
   }
 
-  private gridHasWin(grid: number[], calledSet: Set<number>, pattern: WinPattern): boolean {
+  private gridHasWin(grid: number[], calledSet: Set<number>, pattern: WinPattern | WinPattern[]): boolean {
     const ROWS = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24]];
     const COLS = [[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24]];
 
-    let lines: number[][];
-    switch (pattern) {
-      case WinPattern.row:            lines = ROWS; break;
-      case WinPattern.column:         lines = COLS; break;
-      case WinPattern.diagonal_tl_br: lines = [[0,6,12,18,24]]; break;
-      case WinPattern.diagonal_tr_bl: lines = [[4,8,12,16,20]]; break;
-      case WinPattern.corners:        lines = [[0,4,20,24]]; break;
-      case WinPattern.full_house:     lines = [Array.from({ length: 25 }, (_, i) => i)]; break;
-      case WinPattern.any_line:
-      default:                        lines = [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20], [0,4,20,24]];
-    }
+    const getLines = (p: WinPattern): number[][] => {
+      switch (p) {
+        case WinPattern.row:            return ROWS;
+        case WinPattern.column:         return COLS;
+        case WinPattern.diagonal_tl_br: return [[0,6,12,18,24]];
+        case WinPattern.diagonal_tr_bl: return [[4,8,12,16,20]];
+        case WinPattern.corners:        return [[0,4,20,24]];
+        case WinPattern.full_house:     return [Array.from({ length: 25 }, (_, i) => i)];
+        case WinPattern.any_line:
+        default:                        return [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20], [0,4,20,24]];
+      }
+    };
 
-    for (const line of lines) {
-      if (line.every((i) => {
+    const lineComplete = (line: number[]) =>
+      line.every((i) => {
         if (i === 12) return true; // free space
         const v = grid[i] ?? 0;
         return v !== 0 && calledSet.has(v);
-      })) {
-        return true;
-      }
-    }
-    return false;
+      });
+
+    const patterns = Array.isArray(pattern) ? pattern : [pattern];
+
+    // ANY pattern satisfied = win
+    return patterns.some((p) => getLines(p).some(lineComplete));
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────
