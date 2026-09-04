@@ -382,6 +382,16 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
       `PENDING: Awaiting admin approval — phone: ${phone.trim()}`,
     );
 
+    // Create a pendingWithdrawal record so the admin panel can see and process it
+    await prisma.pendingWithdrawal.create({
+      data: {
+        player_id: playerId,
+        amount,
+        phone: phone.trim(),
+        status: 'pending',
+      },
+    });
+
     res.status(200).json({
       success: true,
       message: 'Withdrawal request submitted for approval',
