@@ -60,9 +60,9 @@ export function KenoBettingStage({
   const isUrgent = countdown <= 10;
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none', gap: 6 }}>
       {/* Timer */}
-      <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ margin: '2px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{
           fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.1em',
           color: isUrgent ? '#ef4444' : '#22d3ee',
@@ -73,94 +73,94 @@ export function KenoBettingStage({
       </div>
 
       {/* Card */}
-      <div style={{ width: '100%', height: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
+      <div style={{ width: '100%', flex: 1, background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 12, padding: '8px 8px', display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
 
         {/* Header */}
         {spots === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 2px', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* Ball cluster — matches asset: dark navy balls 80 & 10, large teal glassy ball 1 */}
-              <div style={{ position: 'relative', width: 72, height: 62, flexShrink: 0 }}>
+              <div style={{ position: 'relative', width: 56, height: 48, flexShrink: 0 }}>
                 {/* Ball 80 — small dark navy */}
                 <div style={{
-                  position: 'absolute', top: 0, left: 10,
-                  width: 28, height: 28, borderRadius: '50%',
+                  position: 'absolute', top: 0, left: 8,
+                  width: 22, height: 22, borderRadius: '50%',
                   background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.7), inset 2px 2px 4px rgba(120,160,200,0.25), inset -2px -2px 5px rgba(0,0,0,0.7)',
+                  boxShadow: '0 3px 8px rgba(0,0,0,0.7), inset 1px 1px 3px rgba(120,160,200,0.25), inset -1px -1px 4px rgba(0,0,0,0.7)',
                   border: '1px solid rgba(80,120,160,0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 900, color: '#d0e4f0', fontFamily: 'monospace',
+                  fontSize: 8, fontWeight: 900, color: '#d0e4f0', fontFamily: 'monospace',
                 }}>
-                  <div style={{ position: 'absolute', top: 4, left: 7, width: 10, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
+                  <div style={{ position: 'absolute', top: 3, left: 5, width: 8, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
                   80
                 </div>
                 {/* Ball 10 — medium dark navy */}
                 <div style={{
-                  position: 'absolute', top: 0, right: 2,
-                  width: 36, height: 36, borderRadius: '50%',
+                  position: 'absolute', top: 0, right: 0,
+                  width: 28, height: 28, borderRadius: '50%',
                   background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
-                  boxShadow: '0 5px 12px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(120,160,200,0.3), inset -2px -2px 6px rgba(0,0,0,0.7)',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.8), inset 1px 1px 4px rgba(120,160,200,0.3), inset -1px -1px 5px rgba(0,0,0,0.7)',
                   border: '1px solid rgba(80,120,160,0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 900, color: '#d0e4f0', fontStyle: 'italic', fontFamily: 'monospace',
+                  fontSize: 10, fontWeight: 900, color: '#d0e4f0', fontStyle: 'italic', fontFamily: 'monospace',
                 }}>
-                  <div style={{ position: 'absolute', top: 5, left: 9, width: 14, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
+                  <div style={{ position: 'absolute', top: 4, left: 7, width: 11, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
                   10
                 </div>
                 {/* Ball 1 — large teal glassy */}
                 <div style={{
                   position: 'absolute', bottom: 0, left: 0,
-                  width: 46, height: 46, borderRadius: '50%',
+                  width: 36, height: 36, borderRadius: '50%',
                   background: 'radial-gradient(circle at 38% 30%, #2a6a50 0%, #0d3828 50%, #041c14 100%)',
-                  boxShadow: '0 0 18px rgba(30,224,104,0.5), 0 6px 16px rgba(0,0,0,0.8), inset 2px 2px 6px rgba(100,240,160,0.2), inset -3px -3px 8px rgba(0,0,0,0.8)',
-                  border: '2px solid rgba(30,224,104,0.6)',
+                  boxShadow: '0 0 14px rgba(30,224,104,0.5), 0 5px 12px rgba(0,0,0,0.8), inset 1px 1px 5px rgba(100,240,160,0.2), inset -2px -2px 6px rgba(0,0,0,0.8)',
+                  border: '1.5px solid rgba(30,224,104,0.6)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 20, fontWeight: 900, color: '#3dba6a', fontFamily: 'monospace',
+                  fontSize: 16, fontWeight: 900, color: '#3dba6a', fontFamily: 'monospace',
                 }}>
-                  <div style={{ position: 'absolute', top: 6, left: 10, width: 18, height: 9, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', transform: 'rotate(-25deg)' }} />
+                  <div style={{ position: 'absolute', top: 5, left: 8, width: 14, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', transform: 'rotate(-25deg)' }} />
                   1
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 17, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>From 1 to 80</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>From 1 to 80</span>
               </div>
             </div>
             {onOpenInfo && (
-              <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
+              <button onClick={onOpenInfo} style={{ width: 24, height: 24, borderRadius: 6, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 12, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {/* Possible win row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 13, color: C.textMid, fontWeight: 600 }}>Possible win</span>
-                <span style={{ fontSize: 20, fontWeight: 900, color: C.green }}>{possibleWin > 0 ? possibleWin.toLocaleString() : '0'}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 11, color: C.textMid, fontWeight: 600 }}>Possible win</span>
+                <span style={{ fontSize: 16, fontWeight: 900, color: C.green }}>{possibleWin > 0 ? possibleWin.toLocaleString() : '0'}</span>
               </div>
               {onOpenInfo && (
-                <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
+                <button onClick={onOpenInfo} style={{ width: 24, height: 24, borderRadius: 6, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 12, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
               )}
             </div>
             {/* Pay table row */}
             {payEntries.length > 0 && (
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '6px 10px', border: `1px solid rgba(255,255,255,0.06)` }}>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 2 }}>
-                  <span style={{ width: 44, fontSize: 11, color: C.textDim }}>Match</span>
-                  {payEntries.map(p => <span key={p.hits} style={{ width: 28, textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.textMid, fontFamily: 'monospace' }}>{p.hits}</span>)}
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 6, padding: '4px 8px', border: `1px solid rgba(255,255,255,0.06)` }}>
+                <div style={{ display: 'flex', gap: 3, marginBottom: 1 }}>
+                  <span style={{ width: 40, fontSize: 9, color: C.textDim }}>Match</span>
+                  {payEntries.map(p => <span key={p.hits} style={{ width: 24, textAlign: 'center', fontSize: 9, fontWeight: 700, color: C.textMid, fontFamily: 'monospace' }}>{p.hits}</span>)}
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <span style={{ width: 44, fontSize: 11, color: C.textDim }}>Pays</span>
-                  {payEntries.map(p => <span key={p.hits} style={{ width: 28, textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>x{p.mul}</span>)}
+                <div style={{ display: 'flex', gap: 3 }}>
+                  <span style={{ width: 40, fontSize: 9, color: C.textDim }}>Pays</span>
+                  {payEntries.map(p => <span key={p.hits} style={{ width: 24, textAlign: 'center', fontSize: 9, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>x{p.mul}</span>)}
                 </div>
               </div>
             )}
             {/* Selected numbers tray */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
               {Array.from({ length: 10 }).map((_, idx) => {
                 const num = selectedNumbers[idx];
                 return (
-                  <div key={idx} style={{ height: 34, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, fontFamily: 'monospace', background: num !== undefined ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${num !== undefined ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}`, color: num !== undefined ? C.textWhite : 'transparent' }}>
+                  <div key={idx} style={{ height: 28, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, fontFamily: 'monospace', background: num !== undefined ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${num !== undefined ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}`, color: num !== undefined ? C.textWhite : 'transparent' }}>
                     {num ?? '·'}
                   </div>
                 );
@@ -170,7 +170,7 @@ export function KenoBettingStage({
         )}
 
         {/* 80-number grid */}
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gridTemplateRows: 'repeat(8, 1fr)', gap: 2, margin: '2px 0' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gridTemplateRows: 'repeat(8, 1fr)', gap: 1.5, margin: '1px 0' }}>
           {Array.from({ length: 80 }, (_, i) => i + 1).map(num => {
             const isSel = selectedNumbers.includes(num);
             const isHot = HOT_NUMBERS.includes(num);
@@ -184,11 +184,11 @@ export function KenoBettingStage({
                 position: 'relative',
                 height: '100%',
                 minHeight: 0,
-                borderRadius: 4,
+                borderRadius: 3,
                   border: `1px solid ${isSel ? C.cellPickedBorder : C.cellBorder}`,
                   background: isSel ? C.cellPicked : C.cell,
                   color: isSel ? '#fff' : '#8a9ab0',
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
@@ -201,8 +201,8 @@ export function KenoBettingStage({
                   userSelect: 'none',
                 }}
               >
-                {!isSel && isHot && <span style={{ position: 'absolute', top: 2, right: 2, width: 5, height: 5, borderRadius: '50%', background: C.red }} />}
-                {!isSel && isCold && <span style={{ position: 'absolute', top: 2, left: 2, width: 5, height: 5, borderRadius: '50%', background: C.blue }} />}
+                {!isSel && isHot && <span style={{ position: 'absolute', top: 1, right: 1, width: 4, height: 4, borderRadius: '50%', background: C.red }} />}
+                {!isSel && isCold && <span style={{ position: 'absolute', top: 1, left: 1, width: 4, height: 4, borderRadius: '50%', background: C.blue }} />}
                 {num}
               </motion.button>
             );
@@ -210,21 +210,21 @@ export function KenoBettingStage({
         </div>
 
         {/* Bet controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={dec} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>-</button>
-          <div style={{ flex: 1, height: 42, background: 'rgba(0,0,0,0.4)', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: C.textWhite, fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <button onClick={dec} style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 18, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>-</button>
+          <div style={{ flex: 1, height: 36, background: 'rgba(0,0,0,0.4)', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: C.textWhite, fontFamily: 'monospace' }}>
             {betAmount % 1 === 0 ? betAmount : betAmount.toFixed(2)}
           </div>
-          <button onClick={inc} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
-          <button onClick={() => onChangeBet(betAmount * 2)} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
-          <button onClick={() => onChangeBet(Math.min(Math.max(1, Math.floor(userBalance)), 500))} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
-          <button onClick={onOpenSettings} style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
+          <button onClick={inc} style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 18, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
+          <button onClick={() => onChangeBet(betAmount * 2)} style={{ padding: '0 10px', height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
+          <button onClick={() => onChangeBet(Math.min(Math.max(1, Math.floor(userBalance)), 500))} style={{ padding: '0 10px', height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
+          <button onClick={onOpenSettings} style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
         </div>
 
         {/* BET button */}
         <button
           onClick={onPlaceBet}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 12, background: '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', marginTop: 2 }}
+          style={{ width: '100%', padding: '10px 0', borderRadius: 10, background: '#1ea855', border: 'none', color: '#fff', fontSize: 15, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer' }}
         >
           BET
         </button>

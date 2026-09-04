@@ -262,7 +262,7 @@ export default function KenoScreen() {
       {/* ── Scrollable content area ── */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* ── Main content: Betting stage or Draw arena ── */}
-        <div style={{ flexShrink: 0, padding: '8px 10px', minHeight: '60%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flexShrink: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column', height: showArena ? 'auto' : '40%' }}>
           {showArena ? (
             <KenoDrawArena
               drawnNumbers={drawnNumbers}
