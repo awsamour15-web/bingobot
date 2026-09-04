@@ -882,10 +882,11 @@ export default function LiveGameScreen() {
                           <div key={idx} style={{
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             aspectRatio: '1', borderRadius: 2,
-                            background: isW ? '#22c55e' : isM ? '#3b82f6cc' : 'rgba(255,255,255,0.05)',
+                            background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#3b82f6cc' : 'rgba(255,255,255,0.05)',
                             color: isW || isM ? '#fff' : '#4a6080',
                             fontSize: 6.5, fontWeight: isW ? 900 : isM ? 700 : 500,
-                            border: isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
+                            border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
+                            boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : 'none',
                             transition: 'background 0.15s',
                           }}>
                             {val ? <span style={{ fontSize: '6.5px' }}>{val}</span> : isFree ? <span style={{ fontSize: '7.5px' }}>★</span> : ''}
@@ -1018,12 +1019,12 @@ export default function LiveGameScreen() {
                           borderRadius: 3, fontWeight: isW ? 700 : isM ? 600 : 500,
                           color: isW || isM ? '#fff' : '#52657d',
                           background: isW
-                            ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                            ? 'linear-gradient(135deg,#f59e0b,#d97706)'
                             : isM
                               ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
                               : 'rgba(255,255,255,0.04)',
-                          border: isW ? '1px solid #86efac' : '0.5px solid rgba(255,255,255,0.05)',
-                          boxShadow: isW ? '0 0 6px rgba(34,197,94,0.2)' : 'none',
+                          border: isW ? '1px solid #fcd34d' : '0.5px solid rgba(255,255,255,0.05)',
+                          boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : 'none',
                           fontSize: 8,
                         }}>
                           {isFree ? '★' : val}
