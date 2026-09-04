@@ -111,11 +111,11 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
   return (
     <div style={{
-      width: '100%', background: 'rgba(6,14,18,0.98)',
-      border: '1px solid rgba(30,224,104,0.13)', borderRadius: 16,
+      width: '100%', height: '100%', background: 'rgba(6,14,18,0.98)',
+      border: 'none', borderRadius: 0,
       position: 'relative', overflow: 'hidden',
       display: 'flex', flexDirection: 'column', gap: 8,
-      padding: '12px 10px', minHeight: 218,
+      padding: '12px 10px',
     }}>
 
       {/* Radar rings — subtle */}
@@ -172,7 +172,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
       </div>
 
       {/* Centre stage */}
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 88 }}>
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 0 }}>
 
         {/* Ripple — only during pop */}
         <AnimatePresence>
@@ -236,7 +236,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
       </div>
 
       {/* Ball trays */}
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
         <TrayRow balls={trayRow2} pickedSet={pickedSet} />
         <TrayRow balls={trayRow1} pickedSet={pickedSet} />
       </div>
