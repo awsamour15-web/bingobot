@@ -846,13 +846,15 @@ function CouponPanel() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
-    setLoading(true);
     listCoupons()
       .then(data => { setCoupons(data); setLoading(false); })
       .catch(e => { setError(e.message ?? 'Failed to load coupons'); setLoading(false); });
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    setLoading(true);
+    load();
+  }, [load]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -861,7 +863,7 @@ function CouponPanel() {
     if (!amt || amt <= 0) { setError('Amount must be > 0'); return; }
     setSaving(true); setError(null); setSuccess(null);
     try {
-      await createCoupon({
+      const created = await createCoupon({
         code: code.trim().toUpperCase(),
         amount: amt,
         wallet,
@@ -870,6 +872,8 @@ function CouponPanel() {
       });
       setSuccess('Coupon created');
       setCode(''); setAmount(''); setMaxUses(''); setDescription('');
+      // Optimistically add and then refresh for accurate usage counts
+      setCoupons(prev => [...prev, { ...created, usedCount: 0 }]);
       load();
     } catch (e: any) { setError(e.message ?? 'Failed'); }
     finally { setSaving(false); }

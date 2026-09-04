@@ -28,8 +28,6 @@ async function saveCoupons(coupons: CouponDef[]): Promise<void> {
     create: { key: SETTING_KEY, value: JSON.stringify(coupons) },
   });
 }
-
-// GET /api/admin/coupons — list all coupons with usage counts
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const coupons = await loadCoupons();
 
