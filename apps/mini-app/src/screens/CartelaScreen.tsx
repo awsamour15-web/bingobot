@@ -642,13 +642,7 @@ export default function CartelaScreen() {
             </div>
           ))}
         </div>
-        {/* Win pattern badge */}
-        {round?.winning_pattern && (
-          <div style={{ marginTop: 6, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 8, padding: '5px 10px', textAlign: 'center' }}>
-            <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>WIN: </span>
-            <span style={{ fontSize: 11, fontWeight: 900, color: '#fcd34d' }}>{WIN_PATTERN_LABELS[round.winning_pattern as import('@fidel/shared').WinPattern] ?? round.winning_pattern}</span>
-          </div>
-        )}
+        {/* Win pattern badge — hidden */}
       </div>
 
       {/* ── Error Banner ── */}

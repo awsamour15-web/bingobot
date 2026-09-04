@@ -700,13 +700,7 @@ export default function LiveGameScreen() {
         ))}
       </div>
 
-      {/* ── PATTERN BADGE ── */}
-      <div style={{ background: 'rgba(251,191,36,0.12)', borderBottom: '1px solid rgba(251,191,36,0.25)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '5px 10px' }}>
-        <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>WIN CONDITION</span>
-        <span style={{ fontSize: 11, fontWeight: 900, color: '#fcd34d' }}>
-          {WIN_PATTERN_LABELS[game.winningPattern] ?? 'Any Line'}
-        </span>
-      </div>
+      {/* ── PATTERN BADGE — hidden ── */}
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
 @keyframes lastCalledPulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
