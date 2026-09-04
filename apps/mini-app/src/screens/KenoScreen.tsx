@@ -54,6 +54,10 @@ export default function KenoScreen() {
   const [myBet, setMyBet] = useState<KenoState['myBet']>(null);
   const [balance, setBalance] = useState<number>(0);
 
+  // Snapshot of drawn numbers at mount time — shown in tray without animation
+  const [initialDrawnNumbers, setInitialDrawnNumbers] = useState<number[] | undefined>(undefined);
+  const initializedRef = useRef(false);
+
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
   const [showDrawArena, setShowDrawArena] = useState<boolean>(false);
@@ -94,7 +98,14 @@ export default function KenoScreen() {
       setPhase(s.phase);
       setRoundId(s.round?.id ?? null);
       setBettingEndsAt(s.round?.bettingEndsAt ? new Date(s.round.bettingEndsAt).getTime() : 0);
-      setDrawnNumbers(s.round?.drawnNumbers ?? []);
+      const nums = s.round?.drawnNumbers ?? [];
+      setDrawnNumbers(nums);
+      // First sync: snapshot already-drawn balls so arena shows them instantly
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        setInitialDrawnNumbers(nums);
+        if (nums.length > 0) setShowDrawArena(true);
+      }
       setBets(s.bets.map(b => ({ username: b.username, pickedCount: b.pickedCount, betAmount: b.betAmount, matched: b.matched, payout: b.payout })));
       setMyBet(s.myBet);
     } catch { /* ignore */ }
@@ -134,6 +145,8 @@ export default function KenoScreen() {
     const onBettingOpen = ({ roundId: rid, endsAt }: KenoBettingOpenPayload) => {
       setPhase('betting'); setRoundId(rid); setBettingEndsAt(endsAt);
       setDrawnNumbers([]); setCurrentBall(null); setMyBet(null); setBets([]);
+      setInitialDrawnNumbers([]);
+      initializedRef.current = false;
       setShowDrawArena(false);
     };
 
@@ -253,6 +266,7 @@ export default function KenoScreen() {
         ) : (
           <KenoDrawArena
             drawnNumbers={drawnNumbers}
+            initialDrawnNumbers={initialDrawnNumbers}
             currentBall={currentBall}
             userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
             onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
