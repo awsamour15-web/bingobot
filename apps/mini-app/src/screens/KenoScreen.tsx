@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../lib/socket";
 import { getKenoState, placeKenoBet, getKenoHistory, checkKenoAccess, getProfile } from "../lib/api";
@@ -106,26 +107,84 @@ const DOT_CELLS: Record<number, string> = {
 
 function NumberGrid({ picked, drawn, phase, onToggle }: { picked: Set<number>; drawn: Set<number>; phase: KenoState["phase"]; onToggle: (n: number) => void }) {
   const canPick = phase === "betting";
+  // Track the latest drawn number to trigger the pop animation
+  const [justDrawn, setJustDrawn] = useState<number | null>(null);
+  const prevDrawnRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    // Find the newly added number by diffing against previous drawn set
+    let newest: number | null = null;
+    drawn.forEach(n => { if (!prevDrawnRef.current.has(n)) newest = n; });
+    prevDrawnRef.current = new Set(drawn);
+    if (newest !== null) {
+      setJustDrawn(newest);
+      const t = setTimeout(() => setJustDrawn(null), 600);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [drawn]);
+
   return (
     <div style={{ display:"grid", gridTemplateColumns:"repeat(10, 1fr)", gap:3, padding:"6px 8px" }}>
       {Array.from({ length: TOTAL_NUMBERS }, (_, i) => i + 1).map(n => {
         const isPicked = picked.has(n), isDrawn = drawn.has(n);
         const isHit = isPicked && isDrawn;
         const isMiss = isPicked && !isDrawn && (phase === "drawing" || phase === "finished");
+        const isNew = n === justDrawn;
+
         let bg = "rgba(255,255,255,0.055)", border = "rgba(255,255,255,0.09)", color = "#9ab8a8", shadow = "none";
         if (isHit) { bg="#1a5c30"; border="#22c55e"; color="#4ade80"; shadow="0 0 8px rgba(34,197,94,0.45)"; }
         else if (isMiss) { bg="rgba(255,255,255,0.03)"; border="rgba(255,255,255,0.05)"; color="#3a5a48"; }
-        else if (isDrawn) { bg="rgba(59,130,246,0.15)"; border="rgba(59,130,246,0.35)"; color="#93c5fd"; }
+        else if (isDrawn) { bg="rgba(34,197,94,0.13)"; border="rgba(34,197,94,0.4)"; color="#6ee7a0"; }
         else if (isPicked) { bg="#1a5c30"; border="#22c55e"; color="#e2e8f0"; shadow="0 0 6px rgba(34,197,94,0.3)"; }
         const dot = DOT_CELLS[n];
+
+        // Flash color: gold/amber for a hit, emerald for regular draw
+        const flashColor = isHit ? "rgba(251,191,36,0.55)" : "rgba(34,197,94,0.45)";
+        const litShadow = isHit
+          ? "0 0 14px rgba(251,191,36,0.7), 0 0 4px rgba(251,191,36,0.5)"
+          : "0 0 12px rgba(34,197,94,0.65), 0 0 4px rgba(34,197,94,0.4)";
+
         return (
-          <button key={n} onClick={() => canPick && onToggle(n)} disabled={!canPick}
-            style={{ position:"relative", height:34, borderRadius:5, background:bg, border:`1px solid ${border}`, color, fontSize:12, fontWeight:700, cursor:canPick?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.12s", boxShadow:shadow, outline:"none", padding:0, fontFamily:"inherit", WebkitTapHighlightColor:"transparent", userSelect:"none" }}>
+          <motion.button
+            key={n}
+            onClick={() => canPick && onToggle(n)}
+            disabled={!canPick}
+            animate={isNew ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+            transition={isNew ? { duration: 0.35, ease: "easeOut" } : { duration: 0.12 }}
+            style={{
+              position: "relative", height: 34, borderRadius: 5,
+              background: bg, border: `1px solid ${border}`, color,
+              fontSize: 12, fontWeight: 700,
+              cursor: canPick ? "pointer" : "default",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: isNew ? litShadow : (shadow === "none" ? undefined : shadow),
+              outline: "none", padding: 0, fontFamily: "inherit",
+              WebkitTapHighlightColor: "transparent", userSelect: "none",
+              transformOrigin: "center",
+            }}
+          >
             {n}
+            {/* Flash overlay — appears only on the pop frame */}
+            <AnimatePresence>
+              {isNew && (
+                <motion.span
+                  key={`flash-${n}`}
+                  initial={{ opacity: 0.9 }}
+                  animate={{ opacity: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.45 }}
+                  style={{
+                    position: "absolute", inset: 0, borderRadius: 5,
+                    background: flashColor, pointerEvents: "none",
+                  }}
+                />
+              )}
+            </AnimatePresence>
             {dot && !isPicked && !isDrawn && (
               <span style={{ position:"absolute", top:3, right:3, width:5, height:5, borderRadius:"50%", background:dot, boxShadow:`0 0 3px ${dot}` }} />
             )}
-          </button>
+          </motion.button>
         );
       })}
     </div>
@@ -590,9 +649,9 @@ export default function KenoScreen() {
   const pickedSet = new Set(picked);
   const canBet = phase === "betting" && !placing && picked.length > 0;
 
-  if (access === "loading") return <div style={{ minHeight:"100dvh", background:"#0a1410" }} />;
+  if (access === "loading") return <div style={{ minHeight:"100dvh", background:"#0a121a" }} />;
   if (access === "denied") return (
-    <div style={{ minHeight:"100dvh", background:"#0a1410", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, padding:24, textAlign:"center", fontFamily:"Inter,-apple-system,sans-serif", color:"#fff" }}>
+    <div style={{ minHeight:"100dvh", background:"#0a121a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, padding:24, textAlign:"center", fontFamily:"Inter,-apple-system,sans-serif", color:"#fff" }}>
       <div style={{ fontSize:48 }}>??</div>
       <div style={{ fontSize:20, fontWeight:800 }}>Keno Coming Soon</div>
       <div style={{ fontSize:14, color:"#6b8a7a", lineHeight:1.7 }}>Currently in early access.</div>
@@ -601,7 +660,7 @@ export default function KenoScreen() {
   );
 
   return (
-    <div style={{ minHeight:"100dvh", background:"linear-gradient(180deg,#0d1a14 0%,#08110d 100%)", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden", overflowY:"auto" }}>
+    <div style={{ minHeight:"100dvh", background:"#0a121a", display:"flex", flexDirection:"column", fontFamily:"Inter,-apple-system,BlinkMacSystemFont,sans-serif", color:"#fff", maxWidth:480, margin:"0 auto", overflowX:"hidden", overflowY:"auto" }}>
 
       {/* Top bar: FAST KENO | balance + ID | menu */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 14px", background:"rgba(0,0,0,0.5)", borderBottom:"1px solid rgba(255,255,255,0.07)", flexShrink:0 }}>
