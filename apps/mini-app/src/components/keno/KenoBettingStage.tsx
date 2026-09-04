@@ -60,20 +60,20 @@ export function KenoBettingStage({
   const isUrgent = countdown <= 10;
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
       {/* Timer */}
-      <div style={{ margin: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{
-          fontFamily: 'monospace', fontSize: 30, fontWeight: 900, letterSpacing: '0.15em',
+          fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.1em',
           color: isUrgent ? '#ef4444' : '#22d3ee',
-          textShadow: isUrgent ? '0 0 16px rgba(239,68,68,0.8)' : '0 0 12px rgba(34,211,238,0.75)',
+          textShadow: isUrgent ? '0 0 10px rgba(239,68,68,0.6)' : '0 0 8px rgba(34,211,238,0.5)',
         }}>
           {timer}
         </span>
       </div>
 
       {/* Card */}
-      <div style={{ width: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ width: '100%', height: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
 
         {/* Header */}
         {spots === 0 ? (
@@ -170,7 +170,7 @@ export function KenoBettingStage({
         )}
 
         {/* 80-number grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2, margin: '2px 0' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gridTemplateRows: 'repeat(8, 1fr)', gap: 2, margin: '2px 0' }}>
           {Array.from({ length: 80 }, (_, i) => i + 1).map(num => {
             const isSel = selectedNumbers.includes(num);
             const isHot = HOT_NUMBERS.includes(num);
@@ -180,10 +180,11 @@ export function KenoBettingStage({
                 key={num}
                 whileTap={{ scale: 0.85 }}
                 onClick={() => onToggleNumber(num)}
-                style={{
-                  position: 'relative',
-                  height: 33,
-                  borderRadius: 4,
+              style={{
+                position: 'relative',
+                height: '100%',
+                minHeight: 0,
+                borderRadius: 4,
                   border: `1px solid ${isSel ? C.cellPickedBorder : C.cellBorder}`,
                   background: isSel ? C.cellPicked : C.cell,
                   color: isSel ? '#fff' : '#8a9ab0',
