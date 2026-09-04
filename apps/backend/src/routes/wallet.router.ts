@@ -316,6 +316,47 @@ router.post('/deposit/webhook', async (req: Request, res: Response): Promise<voi
   }
 });
 
+// ─── GET /api/wallet/pending ─────────────────────────────────────────────────
+// Returns the player's own pending (and recent) deposits and withdrawals
+
+router.get('/pending', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player!.playerId;
+
+  const [deposits, withdrawals] = await Promise.all([
+    prisma.pendingDeposit.findMany({
+      where: { player_id: playerId },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+      select: { id: true, amount: true, status: true, created_at: true, tx_number: true },
+    }),
+    prisma.pendingWithdrawal.findMany({
+      where: { player_id: playerId },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+      select: { id: true, amount: true, status: true, created_at: true, phone: true },
+    }),
+  ]);
+
+  res.json({
+    deposits: deposits.map((d) => ({
+      id: d.id,
+      type: 'deposit' as const,
+      amount: Number(d.amount),
+      status: d.status,
+      tx_number: d.tx_number,
+      created_at: d.created_at.toISOString(),
+    })),
+    withdrawals: withdrawals.map((w) => ({
+      id: w.id,
+      type: 'withdrawal' as const,
+      amount: Number(w.amount),
+      status: w.status,
+      phone: w.phone,
+      created_at: w.created_at.toISOString(),
+    })),
+  });
+});
+
 // ─── POST /api/wallet/withdraw ────────────────────────────────────────────────
 
 router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
@@ -446,7 +487,7 @@ router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void>
     where: {
       wallet_id: { in: walletIds },
       type: 'bonus' as any,
-      description: { contains: `COUPON:${normalizedCode}` },
+      note: { contains: `COUPON:${normalizedCode}` },
     },
   });
   if (alreadyUsed) {
@@ -459,7 +500,7 @@ router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void>
     const globalUses = await prisma.transaction.count({
       where: {
         type: 'bonus' as any,
-        description: { contains: `COUPON:${normalizedCode}` },
+        note: { contains: `COUPON:${normalizedCode}` },
       },
     });
     if (globalUses >= coupon.maxUses) {

@@ -5,7 +5,10 @@ import {
   getDepositAccounts,
   verifyManualDeposit,
   withdrawFunds,
+  getPendingRequests,
   type DepositAccountOption,
+  type PendingDepositItem,
+  type PendingWithdrawalItem,
 } from '../lib/api';
 import { initAuth } from '../lib/auth';
 import { formatMoney } from '../lib/format';
@@ -167,6 +170,10 @@ export default function WalletScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
+  // ── Pending requests state ─────────────────────────────────────────────────
+  const [pendingDeposits,    setPendingDeposits]    = useState<PendingDepositItem[]>([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<PendingWithdrawalItem[]>([]);
+
   // ── Deposit state ──────────────────────────────────────────────────────────
   const [depositAccounts,  setDepositAccounts]  = useState<DepositAccountOption[]>([]);
   const [depositAmount,    setDepositAmount]    = useState('');
@@ -216,7 +223,17 @@ export default function WalletScreen() {
   // ── Load transactions when history tab opens ───────────────────────────────
   const loadTx = useCallback(async (page: number) => {
     setTxLoading(true);
-    try { setTxData(await getWalletTransactions(page)); } catch {}
+    try {
+      const [txResult, pendingResult] = await Promise.allSettled([
+        getWalletTransactions(page),
+        getPendingRequests(),
+      ]);
+      if (txResult.status === 'fulfilled') setTxData(txResult.value);
+      if (pendingResult.status === 'fulfilled') {
+        setPendingDeposits(pendingResult.value.deposits);
+        setPendingWithdrawals(pendingResult.value.withdrawals);
+      }
+    } catch {}
     finally { setTxLoading(false); }
   }, []);
 
@@ -784,7 +801,77 @@ export default function WalletScreen() {
             <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>⏳ Loading... / በመጫን ላይ...</div>
           )}
 
-          {!txLoading && (!txData || txData.items.length === 0) && (
+          {/* ── Pending requests section ─────────────────────────────────── */}
+          {!txLoading && (pendingDeposits.length > 0 || pendingWithdrawals.length > 0) && (() => {
+            const STATUS_COLOR: Record<string, { bg: string; text: string; label: string }> = {
+              pending:  { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: '⏳ Pending / በሂደት ላይ' },
+              approved: { bg: 'rgba(52,211,153,0.15)', text: '#34d399', label: '✅ Approved / ተቀብሏል' },
+              claimed:  { bg: 'rgba(52,211,153,0.15)', text: '#34d399', label: '✅ Credited / ተሰጥቷል' },
+              rejected: { bg: 'rgba(248,113,113,0.15)', text: '#f87171', label: '❌ Rejected / ተሰርዟል' },
+              cancelled:{ bg: 'rgba(248,113,113,0.15)', text: '#f87171', label: '❌ Cancelled / ተሰርዟል' },
+            };
+
+            const allPending = [
+              ...pendingDeposits.map(d => ({ ...d, kind: 'deposit' as const })),
+              ...pendingWithdrawals.map(w => ({ ...w, kind: 'withdrawal' as const })),
+            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            return (
+              <div style={{ margin: '0 16px 20px' }}>
+                <div style={{ color: C.muted, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                  Pending Requests / ጥያቄዎች
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {allPending.map(item => {
+                    const s = STATUS_COLOR[item.status] ?? { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: '⏳ Pending / በሂደት ላይ' };
+                    const isDeposit = item.kind === 'deposit';
+                    return (
+                      <div key={item.id} style={{
+                        background: C.surface, borderRadius: 14,
+                        padding: '13px 16px', border: `1px solid ${C.border}`,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: C.text }}>
+                              {isDeposit ? '⬇ Deposit / ዲፖዚት' : '⬆ Withdrawal / ወጪ'}
+                            </span>
+                            <span style={{
+                              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                              background: s.bg, color: s.text,
+                            }}>
+                              {s.label}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: C.dim }}>
+                            {new Date(item.created_at).toLocaleDateString('am-ET', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {!isDeposit && (item as PendingWithdrawalItem).phone && (
+                              <span style={{ color: C.muted }}> · {(item as PendingWithdrawalItem).phone}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontWeight: 900, fontSize: 16, whiteSpace: 'nowrap', marginLeft: 10,
+                          color: isDeposit ? C.green : C.red,
+                        }}>
+                          {isDeposit ? '+' : '-'}{formatMoney(item.amount)} ETB
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Divider ──────────────────────────────────────────────────── */}
+          {!txLoading && txData?.items && txData.items.length > 0 && (pendingDeposits.length > 0 || pendingWithdrawals.length > 0) && (
+            <div style={{ margin: '0 16px 16px', color: C.muted, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Transaction History / ግብይት ታሪክ
+            </div>
+          )}
+
+          {!txLoading && (!txData || txData.items.length === 0) && pendingDeposits.length === 0 && pendingWithdrawals.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>
               <div style={{ fontSize: 36, marginBottom: 10 }}>📭</div>
               No transactions found / ምንም ግብይት አልተገኘም

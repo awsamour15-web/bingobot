@@ -449,6 +449,28 @@ export function withdrawFunds(amount: number, phone: string, receiverName?: stri
   return apiRequest<void>('POST', '/api/wallet/withdraw', { amount, phone, receiverName });
 }
 
+export interface PendingDepositItem {
+  id: string;
+  type: 'deposit';
+  amount: number;
+  status: string;
+  tx_number: string | null;
+  created_at: string;
+}
+
+export interface PendingWithdrawalItem {
+  id: string;
+  type: 'withdrawal';
+  amount: number;
+  status: string;
+  phone: string;
+  created_at: string;
+}
+
+export function getPendingRequests(): Promise<{ deposits: PendingDepositItem[]; withdrawals: PendingWithdrawalItem[] }> {
+  return apiRequest('GET', '/api/wallet/pending');
+}
+
 // ---------------------------------------------------------------------------
 // Referral
 // ---------------------------------------------------------------------------
