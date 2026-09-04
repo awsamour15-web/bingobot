@@ -268,6 +268,7 @@ export const AgentService = {
         },
       },
       orderBy: { created_at: 'desc' },
+      take: 500, // cap to prevent unbounded payload
     });
 
     const withdrawalRequests = await prisma.agentCommissionWithdrawal.findMany({
@@ -321,43 +322,44 @@ export const AgentService = {
       throw new Error('Phone number is required');
     }
 
-    const agent = await prisma.agent.findUnique({
-      where: { id: agentId },
-      select: { is_active: true, commission_balance: true },
-    });
-
-    if (!agent) {
-      throw new Error('Agent not found');
-    }
-    if (!agent.is_active) {
-      throw new Error('Agent account is suspended');
-    }
-    if (Number(agent.commission_balance) < amount) {
-      throw new Error('Insufficient commission balance');
+    // Validate Ethiopian phone format
+    if (!/^(09|07)\d{8}$/.test(normalizedPhone)) {
+      throw new Error('Phone number must be a valid Ethiopian number (09xxxxxxxx or 07xxxxxxxx)');
     }
 
-    const updated = await prisma.agent.update({
-      where: { id: agentId },
-      data: {
-        commission_balance: { decrement: new Decimal(amount.toFixed(2)) },
-      },
-    });
+    // Atomic check-and-debit inside a single transaction to prevent TOCTOU race
+    let withdrawal: { id: string; amount: { toString(): string }; phone: string; status: string; created_at: Date; tx_number: string | null };
 
-    const withdrawal = await prisma.agentCommissionWithdrawal.create({
-      data: {
-        agent_id: agentId,
-        amount: new Decimal(amount.toFixed(2)),
-        phone: normalizedPhone,
-        status: 'pending',
-      },
-    });
+    try {
+      withdrawal = await prisma.$transaction(async (tx) => {
+        // Re-read agent inside the transaction with a lock to prevent concurrent overdraft
+        const agents = await tx.$queryRaw<Array<{ id: string; is_active: boolean; commission_balance: string }>>`
+          SELECT id, is_active, commission_balance FROM agents WHERE id = ${agentId} FOR UPDATE
+        `;
+        const agent = agents[0];
 
-    if (Number(updated.commission_balance) < 0) {
-      await prisma.agent.update({
-        where: { id: agentId },
-        data: { commission_balance: { increment: new Decimal(amount.toFixed(2)) } },
+        if (!agent) throw new Error('Agent not found');
+        if (!agent.is_active) throw new Error('Agent account is suspended');
+
+        const balance = parseFloat(agent.commission_balance);
+        if (balance < amount) throw new Error('Insufficient commission balance');
+
+        await tx.agent.update({
+          where: { id: agentId },
+          data: { commission_balance: { decrement: new Decimal(amount.toFixed(2)) } },
+        });
+
+        return tx.agentCommissionWithdrawal.create({
+          data: {
+            agent_id: agentId,
+            amount: new Decimal(amount.toFixed(2)),
+            phone: normalizedPhone,
+            status: 'pending',
+          },
+        });
       });
-      throw new Error('Withdrawal amount exceeds available commission balance');
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Withdrawal failed');
     }
 
     return {

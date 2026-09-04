@@ -14,11 +14,25 @@ declare global {
   }
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the secret used to sign/verify admin JWTs.
+ * Prefers JWT_ADMIN_SECRET (separate key for admin tokens) and falls back to
+ * JWT_SECRET for backward compatibility during a rolling deployment.
+ * Using a dedicated admin secret means a leaked player JWT cannot be replayed
+ * against admin endpoints even if the token payload were manipulated.
+ */
+function getAdminJwtSecret(): string | undefined {
+  return process.env['JWT_ADMIN_SECRET'] ?? process.env['JWT_SECRET'];
+}
+
 // ─── JWT Admin Middleware ─────────────────────────────────────────────────────
 
 /**
- * Reads `Authorization: Bearer <token>`, verifies with JWT_SECRET, and
- * attaches `{ adminId, role }` to `req.admin`. Returns 401 on any failure.
+ * Reads `Authorization: Bearer <token>`, verifies with JWT_ADMIN_SECRET
+ * (falling back to JWT_SECRET), and attaches `{ adminId, role }` to
+ * `req.admin`. Returns 401 on any failure.
  */
 export function jwtAdminMiddleware(
   req: Request,
@@ -33,7 +47,7 @@ export function jwtAdminMiddleware(
   }
 
   const token = authHeader.slice(7);
-  const jwtSecret = process.env['JWT_SECRET'];
+  const jwtSecret = getAdminJwtSecret();
 
   if (!jwtSecret) {
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Server configuration error' });

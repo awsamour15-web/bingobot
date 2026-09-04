@@ -136,20 +136,35 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   // ── JWT auth middleware on every socket connection ──────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  io.use((socket: any, next: (err?: Error) => void) => {
+  io.use(async (socket: any, next: (err?: Error) => void) => {
     const token = socket.handshake.auth?.token as string | undefined;
 
     if (!token) {
       return next(new Error('MISSING_TOKEN'));
     }
 
+    let payload: JwtPayload;
     try {
-      const payload = jwt.verify(token, jwtSecret) as JwtPayload;
-      socket.data.playerId = payload.playerId as string;
-      next();
+      payload = jwt.verify(token, jwtSecret) as JwtPayload;
     } catch {
-      next(new Error('INVALID_TOKEN'));
+      return next(new Error('INVALID_TOKEN'));
     }
+
+    // Enforce suspension on WebSocket connections — a suspended player holding
+    // a valid JWT must not be able to receive game events or submit claims.
+    try {
+      const player = await prisma.player.findUnique({
+        where: { id: payload.playerId },
+        select: { is_suspended: true },
+      });
+      if (!player) return next(new Error('PLAYER_NOT_FOUND'));
+      if (player.is_suspended) return next(new Error('PLAYER_SUSPENDED'));
+    } catch {
+      return next(new Error('AUTH_ERROR'));
+    }
+
+    socket.data.playerId = payload.playerId as string;
+    next();
   });
 
   // ── Redis subscriber for cross-process pub/sub fan-out ──────────────────────

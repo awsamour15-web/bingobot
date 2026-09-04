@@ -31,6 +31,38 @@ const depositRateLimit = rateLimit({
   },
 });
 
+// ─── Rate limiter — 3 req/10min per player for withdrawals ───────────────────
+
+const withdrawRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req: Request) => req.player?.playerId ?? req.ip ?? 'unknown',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({
+      error: 'TOO_MANY_REQUESTS',
+      message: 'Too many withdrawal requests. Please try again later.',
+    });
+  },
+});
+
+// ─── Rate limiter — 5 attempts/15min per player for coupon redemption ────────
+
+const couponRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req: Request) => req.player?.playerId ?? req.ip ?? 'unknown',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({
+      error: 'TOO_MANY_REQUESTS',
+      message: 'Too many coupon attempts. Please try again later.',
+    });
+  },
+});
+
 // ─── GET /api/wallet/transactions ────────────────────────────────────────────
 
 router.get('/transactions', async (req: Request, res: Response): Promise<void> => {
@@ -283,7 +315,13 @@ router.post('/deposit/webhook', async (req: Request, res: Response): Promise<voi
   const webhookSecret = process.env['PAYMENT_WEBHOOK_SECRET'];
   const providedSecret = req.headers['x-webhook-secret'] as string | undefined;
 
-  if (webhookSecret && providedSecret !== webhookSecret) {
+  // Secret must always be configured — reject if missing to prevent open endpoint
+  if (!webhookSecret) {
+    res.status(503).json({ error: 'NOT_CONFIGURED', message: 'Webhook endpoint not configured' });
+    return;
+  }
+
+  if (providedSecret !== webhookSecret) {
     res.status(401).json({ error: 'UNAUTHORIZED', message: 'Invalid webhook secret' });
     return;
   }
@@ -359,7 +397,7 @@ router.get('/pending', async (req: Request, res: Response): Promise<void> => {
 
 // ─── POST /api/wallet/withdraw ────────────────────────────────────────────────
 
-router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
+router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player!.playerId;
   const { amount, phone } = req.body as { amount?: number; phone?: string };
 
@@ -383,6 +421,16 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
     res.status(400).json({
       error: 'PHONE_REQUIRED',
       message: 'Phone number is required for withdrawal',
+    });
+    return;
+  }
+
+  // Validate Ethiopian phone number format: 09xxxxxxxx or 07xxxxxxxx (10 digits)
+  const normalizedPhone = phone.trim();
+  if (!/^(09|07)\d{8}$/.test(normalizedPhone)) {
+    res.status(400).json({
+      error: 'INVALID_PHONE',
+      message: 'Phone number must be a valid Ethiopian number (e.g. 09xxxxxxxx or 07xxxxxxxx)',
     });
     return;
   }
@@ -420,7 +468,7 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
       amount,
       TxType.withdrawal,
       undefined,
-      `PENDING: Awaiting admin approval — phone: ${phone.trim()}`,
+      `PENDING: Awaiting admin approval — phone: ${normalizedPhone}`,
     );
 
     // Create a pendingWithdrawal record so the admin panel can see and process it
@@ -428,7 +476,7 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
       data: {
         player_id: playerId,
         amount,
-        phone: phone.trim(),
+        phone: normalizedPhone,
         status: 'pending',
       },
     });
@@ -451,7 +499,7 @@ router.post('/withdraw', async (req: Request, res: Response): Promise<void> => {
 // Simple promo code redemption. Codes are stored as system settings in DB or
 // env-defined. Currently supports env-defined codes for a fast rollout.
 
-router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void> => {
+router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player!.playerId;
   const { code } = req.body as { code?: string };
 

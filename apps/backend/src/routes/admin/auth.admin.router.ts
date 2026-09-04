@@ -25,7 +25,8 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const jwtSecret = process.env['JWT_SECRET'];
+  // Use JWT_ADMIN_SECRET if set (separate key from player tokens), fall back to JWT_SECRET
+  const jwtSecret = process.env['JWT_ADMIN_SECRET'] ?? process.env['JWT_SECRET'];
   if (!jwtSecret) {
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Server configuration error' });
     return;

@@ -58,6 +58,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'amount must be > 0' });
     return;
   }
+  if (amount > 10_000) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Coupon amount cannot exceed 10,000 ETB' });
+    return;
+  }
 
   const normalized = code.trim().toUpperCase();
   const coupons = await loadCoupons();

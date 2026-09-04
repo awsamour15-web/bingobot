@@ -25,6 +25,30 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
+  // Allowlist of permitted config keys — reject anything not in this set
+  const ALLOWED_CONFIG_KEYS = new Set([
+    'claim_window_ms',
+    'call_interval_ms',
+    'house_edge_crash',
+    'house_edge_slots',
+    'house_edge_keno',
+    'house_edge_plinko',
+    'crash_max_multiplier',
+    'min_players_to_start',
+    'max_cartelas_per_player',
+    'active_cartela_count',
+    'deposit_telebirr_number',
+    'deposit_receiver_name',
+    'keno_allowed_ids',
+    'plinko_allowed_usernames',
+    'active_coupons',
+  ]);
+
+  if (!ALLOWED_CONFIG_KEYS.has(key)) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: `Unknown config key: ${key}` });
+    return;
+  }
+
   // Requirements: 8.3 — validate claim_window_ms range
   if (key === 'claim_window_ms') {
     const parsed = parseInt(value, 10);
@@ -92,6 +116,11 @@ router.post('/admins', requireSuperAdmin, async (req: Request, res: Response): P
     return;
   }
 
+  if (password.length < 12) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Password must be at least 12 characters' });
+    return;
+  }
+
   if (!Object.values(AdminRole).includes(role as AdminRole)) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid role' });
     return;
@@ -122,6 +151,10 @@ router.patch('/admins/:id', requireSuperAdmin, async (req: Request, res: Respons
   const data: Record<string, unknown> = {};
 
   if (password) {
+    if (password.length < 12) {
+      res.status(400).json({ error: 'BAD_REQUEST', message: 'Password must be at least 12 characters' });
+      return;
+    }
     data['password_hash'] = await bcrypt.hash(password, 12);
   }
   if (role) {

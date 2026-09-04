@@ -994,6 +994,21 @@ if (BOT_TOKEN) {
         }
       }
 
+      // If the user is not yet registered, immediately prompt for phone number
+      const registered = await isRegistered(telegramId);
+      if (!registered) {
+        await ctx.reply(
+          '👋 Welcome to Fidel Bingo!\n\n📱 To get started, please share your phone number by tapping the button below.',
+          {
+            reply_markup: new Keyboard()
+              .requestContact('📲 Share Phone Number')
+              .resized()
+              .oneTime(),
+          },
+        );
+        return;
+      }
+
       // Send the persistent main menu keyboard
       await ctx.reply(
         '👋 Welcome to Fidel Bingo! Choose an Option below.',

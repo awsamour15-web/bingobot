@@ -72,6 +72,15 @@ router.post('/verify-phone', async (req: Request, res: Response): Promise<void> 
 
   const phone = body.phone.trim();
 
+  // Validate Ethiopian phone format (09xxxxxxxx or 07xxxxxxxx)
+  if (!/^(09|07)\d{8}$/.test(phone)) {
+    res.status(400).json({
+      error: 'INVALID_PHONE',
+      message: 'Phone must be a valid Ethiopian number (09xxxxxxxx or 07xxxxxxxx)',
+    });
+    return;
+  }
+
   await prisma.player.update({
     where: { id: playerId },
     data: { phone, phone_verified: true },

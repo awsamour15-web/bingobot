@@ -62,7 +62,7 @@ router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> =
     res.json(result);
   } catch (err) {
     console.error('[Admin API] Error fetching withdrawals:', err);
-    res.status(500).json({ error: 'INTERNAL_ERROR', message: String(err) });
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to fetch withdrawals' });
   }
 });
 

@@ -70,11 +70,24 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const roundId = await GameRoundService.create(
-    Number(stake),
-    new Date(startTime),
-    Number(maxPlayers),
-  );
+  const stakeNum = Number(stake);
+  const maxPlayersNum = Number(maxPlayers);
+  const startDate = new Date(startTime);
+
+  if (!Number.isFinite(stakeNum) || stakeNum <= 0 || stakeNum > 10_000) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'stake must be a positive number up to 10,000' });
+    return;
+  }
+  if (!Number.isInteger(maxPlayersNum) || maxPlayersNum < 2 || maxPlayersNum > 10_000) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'maxPlayers must be an integer between 2 and 10,000' });
+    return;
+  }
+  if (isNaN(startDate.getTime())) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'startTime must be a valid ISO date string' });
+    return;
+  }
+
+  const roundId = await GameRoundService.create(stakeNum, startDate, maxPlayersNum);
 
   const round = await prisma.gameRound.findUniqueOrThrow({
     where: { id: roundId },

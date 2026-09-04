@@ -3,6 +3,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '../lib/prisma.js';
 
 // ─── Type augmentation ────────────────────────────────────────────────────────
 
@@ -19,12 +20,15 @@ declare global {
 /**
  * Reads `Authorization: Bearer <token>`, verifies with JWT_SECRET, and
  * attaches `{ playerId }` to `req.player`. Returns 401 on any failure.
+ * Also checks that the player account is not suspended on every request —
+ * this ensures suspension takes effect immediately without waiting for the
+ * token to expire (up to 24h).
  */
-export function jwtAuthMiddleware(
+export async function jwtAuthMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const authHeader = req.headers['authorization'];
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -46,14 +50,34 @@ export function jwtAuthMiddleware(
     return;
   }
 
+  let payload: { playerId: string };
   try {
-    const payload = jwt.verify(token, jwtSecret) as { playerId: string };
-    req.player = { playerId: payload.playerId };
-    next();
+    payload = jwt.verify(token, jwtSecret) as { playerId: string };
   } catch {
     res.status(401).json({
       error: 'UNAUTHORIZED',
       message: 'Invalid or expired token',
     });
+    return;
   }
+
+  // Per-request suspension check — ensures suspended players are blocked
+  // immediately even if they hold a valid, non-expired JWT.
+  const player = await prisma.player.findUnique({
+    where: { id: payload.playerId },
+    select: { id: true, is_suspended: true },
+  });
+
+  if (!player) {
+    res.status(401).json({ error: 'UNAUTHORIZED', message: 'Player not found' });
+    return;
+  }
+
+  if (player.is_suspended) {
+    res.status(403).json({ error: 'PLAYER_SUSPENDED', message: 'Your account has been suspended.' });
+    return;
+  }
+
+  req.player = { playerId: payload.playerId };
+  next();
 }

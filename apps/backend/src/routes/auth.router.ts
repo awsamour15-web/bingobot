@@ -61,13 +61,19 @@ router.post(
 
     // ── Step 1: Verify initData ──────────────────────────────────────────────
     let telegramUser: { id: number; first_name: string; username?: string };
-    
-    // Development mode: accept mock initData for testing
-    const isDevelopment = process.env['NODE_ENV'] === 'development';
+
+    // Development-only mock bypass — strictly blocked in production
+    const isProduction = process.env['NODE_ENV'] === 'production';
     const isMockData = body.initData === 'mock_init_data_for_development';
-    
-    if (isDevelopment && isMockData) {
-      // Mock user for development
+
+    if (isMockData && isProduction) {
+      // Explicitly reject mock data in production regardless of any other env state
+      res.status(401).json({ error: 'INVALID_TELEGRAM_AUTH', message: 'Invalid initData' });
+      return;
+    }
+
+    if (isMockData && !isProduction) {
+      // Mock user for local development only
       telegramUser = {
         id: 999999999,
         first_name: 'Dev User',
@@ -194,7 +200,8 @@ router.post(
 
     const response: LoginResponse = { token, playerId: player.id };
 
-    if (agentRecord) {
+    // Only issue agent token for active agents
+    if (agentRecord?.is_active) {
       const agentToken = jwt.sign(
         { agentId: agentRecord.id, role: 'agent' },
         jwtSecret,

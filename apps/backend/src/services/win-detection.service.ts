@@ -133,31 +133,39 @@ async function distributeWinnings(
   roundId: string,
   winners: Map<string, { cartelaNumber: number }>,
 ): Promise<void> {
-  // Mark closing early so any concurrent calls bail out
+  // Snapshot the winners map immediately so the timer callback always has a
+  // consistent view even if the in-memory state is mutated after this point.
+  const winnersSnapshot = new Map(winners);
+
+  // Mark closing early so any concurrent calls in this process bail out
   const state = claimWindows.get(roundId);
   if (state) state.closing = true;
 
   try {
-    // All credits + round update inside a single transaction
+    // All credits + round update inside a single transaction.
+    // The FOR UPDATE lock on the round row acts as a distributed mutex —
+    // only one instance can proceed past it; others will see status !== active
+    // and return early, making this safe in multi-instance deployments.
     await prisma.$transaction(async (tx) => {
-      // 1. Lock the round row
+      // 1. Lock the round row — distributed mutex across all instances
       const rounds = await tx.$queryRaw<Array<{ id: string; status: string; derash: string }>>`
         SELECT id, status, derash FROM game_rounds WHERE id = ${roundId} FOR UPDATE
       `;
       const round = rounds[0];
-      if (!round || round.status !== GameStatus.active) return; // already completed/cancelled
+      // Guard: if another instance already completed this round, bail out
+      if (!round || round.status !== GameStatus.active) return;
 
       const derash = Math.round(parseFloat(round.derash)); // work in integer birr units
-      const winnerCount = winners.size;
+      const winnerCount = winnersSnapshot.size;
       const splitAmount = Math.floor(derash / winnerCount);
       const remainder = derash - splitAmount * winnerCount;
 
       // Lexicographically smallest player ID receives the remainder
-      const sortedIds = [...winners.keys()].sort();
+      const sortedIds = [...winnersSnapshot.keys()].sort();
       const smallestId = sortedIds[0]!;
 
       // 2. Insert RoundWinner rows
-      const winnerRows = [...winners.entries()].map(([playerId, { cartelaNumber }]) => ({
+      const winnerRows = [...winnersSnapshot.entries()].map(([playerId, { cartelaNumber }]) => ({
         round_id: roundId,
         player_id: playerId,
         cartela_number: cartelaNumber,
@@ -166,12 +174,11 @@ async function distributeWinnings(
 
       await tx.roundWinner.createMany({ data: winnerRows });
 
-      // 3. Credit each winner's main wallet (using tx-aware raw updates to stay in transaction)
-      for (const [playerId, { cartelaNumber: _c }] of winners.entries()) {
+      // 3. Credit each winner's main wallet (inside transaction for atomicity)
+      for (const [playerId] of winnersSnapshot.entries()) {
         const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
         if (amount <= 0) continue;
 
-        // Find main wallet
         const wallets = await tx.$queryRaw<Array<{ id: string }>>`
           SELECT id FROM wallets WHERE player_id = ${playerId} AND type = 'main' LIMIT 1
         `;
@@ -187,8 +194,8 @@ async function distributeWinnings(
         });
       }
 
-      // 4. Update GameRound
-      const smallestWinner = winners.get(smallestId)!;
+      // 4. Update GameRound — marks it completed so no other instance can re-enter
+      const smallestWinner = winnersSnapshot.get(smallestId)!;
       await tx.gameRound.update({
         where: { id: roundId },
         data: {
@@ -200,13 +207,11 @@ async function distributeWinnings(
       });
     });
 
-    // ── After commit: stop number calling, emit ROUND_WON, notify, schedule next round ──
-    // Note: when called from NCE directly, the timer is already stopped before this runs.
-    // Calling stop() again is safe (idempotent) but only needed for the claim-window path.
+    // ── After commit: stop number calling, emit ROUND_WON, notify ────────────
     nce.stop(roundId);
 
     // Build payload — need usernames
-    const playerIds = [...winners.keys()];
+    const playerIds = [...winnersSnapshot.keys()];
     const players = await prisma.player.findMany({
       where: { id: { in: playerIds } },
       select: { id: true, username: true },
@@ -215,14 +220,14 @@ async function distributeWinnings(
 
     const round = await prisma.gameRound.findUnique({ where: { id: roundId } });
     const totalDerash = round ? Number(round.derash) : 0;
-    const winnerCount = winners.size;
+    const winnerCount = winnersSnapshot.size;
 
-    const sortedIds = [...winners.keys()].sort();
+    const sortedIds = [...winnersSnapshot.keys()].sort();
     const smallestId = sortedIds[0]!;
     const splitAmount = Math.floor(totalDerash / winnerCount);
     const remainder = totalDerash - splitAmount * winnerCount;
 
-    const winnersPayload = [...winners.entries()].map(([playerId, { cartelaNumber }]) => ({
+    const winnersPayload = [...winnersSnapshot.entries()].map(([playerId, { cartelaNumber }]) => ({
       playerId,
       username: usernameMap.get(playerId) ?? 'Unknown',
       cartelaNumber,
@@ -249,7 +254,7 @@ async function distributeWinnings(
 
   } catch (err) {
     console.error('[WinDetectionService] distribution error:', err);
-    throw err; // re-throw so callers (NCE) know distribution failed
+    throw err;
   } finally {
     claimWindows.delete(roundId);
   }

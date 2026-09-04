@@ -194,6 +194,13 @@ router.post('/:id/credit', async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
+  // Cap manual adjustments to prevent runaway credits from a compromised admin account
+  const MAX_ADMIN_ADJUSTMENT = 100_000; // 100,000 ETB
+  if (Math.abs(amount) > MAX_ADMIN_ADJUSTMENT) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: `Adjustment amount cannot exceed ${MAX_ADMIN_ADJUSTMENT} ETB` });
+    return;
+  }
+
   if (!Object.values(WalletType).includes(walletType as WalletType)) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'Invalid walletType' });
     return;

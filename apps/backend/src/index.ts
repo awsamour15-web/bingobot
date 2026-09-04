@@ -38,6 +38,7 @@ import crashRouter from './routes/crash.router.js';
 import slotsRouter from './routes/slots.router.js';
 import kenoRouter from './routes/keno.router.js';
 import plinkoRouter from './routes/plinko.router.js';
+import helmet from 'helmet';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
@@ -55,6 +56,24 @@ const app: Express = express();
 // Trust the first proxy (required on Render/Heroku/etc. for rate limiting and IP detection)
 app.set('trust proxy', 1);
 
+// ─── Security headers via helmet ─────────────────────────────────────────────
+// Applied before CORS so helmet doesn't override our manual CORS headers.
+app.use(helmet({
+  // CSP disabled — the frontend is a separate origin (Vercel/Telegram), so there
+  // is no server-rendered HTML here to protect. Enable per-route if needed.
+  contentSecurityPolicy: false,
+  // HSTS — tell browsers to use HTTPS for 1 year
+  hsts: { maxAge: 31_536_000, includeSubDomains: true },
+  // Prevent MIME-type sniffing
+  noSniff: true,
+  // Don't send X-Powered-By
+  hidePoweredBy: true,
+  // Deny framing entirely (pure API server)
+  frameguard: { action: 'deny' },
+  // XSS filter for older browsers
+  xssFilter: true,
+}));
+
 const allowedOrigins = process.env['CORS_ORIGIN']
   ? process.env['CORS_ORIGIN'].split(',').map((o) => o.trim())
   : [
@@ -67,21 +86,23 @@ const allowedOrigins = process.env['CORS_ORIGIN']
 // including on error responses (401, 502, etc.) that would otherwise strip them.
 app.use((req, res, next) => {
   const origin = req.headers['origin'];
-  
-  // Allow Telegram WebView origins (they don't send standard Origin headers)
-  // Also allow configured origins
+
   if (origin && allowedOrigins.includes(origin)) {
+    // Known origin — allow with credentials
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   } else if (!origin || origin === 'null') {
-    // Telegram WebView and some mobile browsers don't send Origin header
-    // Allow requests without origin (common in Telegram Mini Apps)
+    // Telegram WebView / mobile — no Origin header sent.
+    // Use wildcard but do NOT set Allow-Credentials (browsers block credentialed
+    // requests to '*' anyway, so this is safe and spec-compliant).
     res.setHeader('Access-Control-Allow-Origin', '*');
+    // intentionally omit Access-Control-Allow-Credentials
   }
-  
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Unknown origin — no CORS headers → browser will block the request
+
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,X-Telegram-Init-Data');
 
   // Respond immediately to preflight
   if (req.method === 'OPTIONS') {
@@ -167,8 +188,23 @@ app.use(notFoundHandler);
 // ─── Global Error Handler (must be last) ─────────────────────────────────────
 app.use(errorHandler);
 
+// ─── Internal-secret guard for ops endpoints ─────────────────────────────────
+function requireInternalSecret(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  const secret = process.env['INTERNAL_OPS_SECRET'];
+  if (!secret) {
+    res.status(503).json({ error: 'NOT_CONFIGURED', message: 'Ops endpoints disabled — INTERNAL_OPS_SECRET not set' });
+    return;
+  }
+  const provided = req.headers['x-internal-secret'];
+  if (provided !== secret) {
+    res.status(401).json({ error: 'UNAUTHORIZED', message: 'Invalid internal secret' });
+    return;
+  }
+  next();
+}
+
 // ─── Bot health check endpoint ─────────────────────────────────────────────────
-app.get('/bot-status', async (_req, res): Promise<void> => {
+app.get('/bot-status', requireInternalSecret, async (_req, res): Promise<void> => {
   try {
     if (!bot) {
       res.json({ status: 'no_bot', message: 'Bot not initialized' });
@@ -204,7 +240,7 @@ app.get('/bot-status', async (_req, res): Promise<void> => {
 });
 
 // ─── Force bot restart endpoint (emergency use) ────────────────────────────────
-app.post('/force-restart-bot', async (_req, res): Promise<void> => {
+app.post('/force-restart-bot', requireInternalSecret, async (_req, res): Promise<void> => {
   try {
     if (!bot) {
       res.json({ status: 'no_bot', message: 'Bot not initialized' });
