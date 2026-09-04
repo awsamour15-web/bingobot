@@ -146,7 +146,6 @@ export function KenoBettingStage({
                 onClick={() => onToggleNumber(num)}
                 style={{
                   position: 'relative',
-                  aspectRatio: '1',
                   height: 33,
                   borderRadius: 4,
                   border: `1px solid ${isSel ? C.cellPickedBorder : C.cellBorder}`,
