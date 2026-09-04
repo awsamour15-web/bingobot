@@ -176,10 +176,12 @@ export default function WalletScreen() {
   const [accountsLoading,  setAccountsLoading]  = useState(false);
 
   // ── Withdraw state ─────────────────────────────────────────────────────────
-  const [withdrawAmount,  setWithdrawAmount]  = useState('');
-  const [withdrawPhone,   setWithdrawPhone]   = useState('');
-  const [withdrawLoading, setWithdrawLoading] = useState(false);
-  const [withdrawResult,  setWithdrawResult]  = useState<{ type: 'success' | 'error' | 'info'; msg: string } | null>(null);
+  const [withdrawAmount,   setWithdrawAmount]   = useState('');
+  const [withdrawPhone,    setWithdrawPhone]    = useState('');
+  const [withdrawName,     setWithdrawName]     = useState('');
+  const [withdrawConfirm,  setWithdrawConfirm]  = useState(false);
+  const [withdrawLoading,  setWithdrawLoading]  = useState(false);
+  const [withdrawResult,   setWithdrawResult]   = useState<{ type: 'success' | 'error' | 'info'; msg: string } | null>(null);
 
   // ── Load profile ───────────────────────────────────────────────────────────
   const loadProfile = useCallback(async () => {
@@ -257,8 +259,8 @@ export default function WalletScreen() {
     }
   };
 
-  // ── Withdraw submit ────────────────────────────────────────────────────────
-  const handleWithdraw = async () => {
+  // ── Withdraw: validate → show confirm step ────────────────────────────────
+  const handleWithdrawReview = () => {
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount <= 0) {
       setWithdrawResult({ type: 'error', msg: 'Please enter a valid amount / ትክክለኛ መጠን ያስገቡ' });
@@ -272,17 +274,31 @@ export default function WalletScreen() {
       setWithdrawResult({ type: 'error', msg: 'Please enter your phone number / ስልክ ቁጥርዎን ያስገቡ' });
       return;
     }
+    if (!withdrawName.trim()) {
+      setWithdrawResult({ type: 'error', msg: 'Please enter the receiver name / ተቀባዩን ስም ያስገቡ' });
+      return;
+    }
+    setWithdrawResult(null);
+    setWithdrawConfirm(true);
+  };
+
+  // ── Withdraw: confirmed submit ─────────────────────────────────────────────
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
     setWithdrawLoading(true);
     setWithdrawResult(null);
     try {
-      await withdrawFunds(amount, withdrawPhone.trim());
+      await withdrawFunds(amount, withdrawPhone.trim(), withdrawName.trim());
       setWithdrawResult({ type: 'success', msg: `✅ Withdrawal request of ${amount} ETB sent. Pending admin approval. / ጥያቄ ተልኳል።` });
       setWithdrawAmount('');
       setWithdrawPhone('');
+      setWithdrawName('');
+      setWithdrawConfirm(false);
       setTimeout(() => getProfile().then(setProfile).catch(() => {}), 1500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Withdrawal failed / ወጪ አልተሳካም';
       setWithdrawResult({ type: 'error', msg });
+      setWithdrawConfirm(false);
     } finally {
       setWithdrawLoading(false);
     }
@@ -424,6 +440,7 @@ export default function WalletScreen() {
                 setTab(t.id);
                 setDepositResult(null);
                 setWithdrawResult(null);
+                setWithdrawConfirm(false);
               }}
               style={{
                 flex: 1, padding: '9px 4px', border: 'none',
@@ -657,6 +674,7 @@ export default function WalletScreen() {
           </div>
 
           {/* Phone */}
+          {/* Phone */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 18px' }}>
             <Step n={2} label="Enter your Telebirr phone number / የTelebirr ስልክ ቁጥር ያስገቡ" />
             <Input
@@ -670,20 +688,89 @@ export default function WalletScreen() {
             </div>
           </div>
 
+          {/* Receiver name */}
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 18px' }}>
+            <Step n={3} label="Enter receiver name / ተቀባዩን ስም ያስገቡ" />
+            <Input
+              value={withdrawName}
+              onChange={v => { setWithdrawName(v); setWithdrawResult(null); }}
+              placeholder="ለምሳሌ: Almaz Tadesse"
+            />
+            <div style={{ color: C.muted, fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+              Full name as registered on Telebirr / በTelebirr ላይ የተመዘገበ ሙሉ ስም
+            </div>
+          </div>
+
           {/* Result & submit */}
           {withdrawResult && <Alert type={withdrawResult.type} msg={withdrawResult.msg} />}
 
           <Btn
-            onClick={handleWithdraw}
+            onClick={handleWithdrawReview}
             disabled={withdrawLoading || mainBal < 100}
             color={C.red}
             style={{ color: withdrawLoading || mainBal < 100 ? C.dim : '#fff' }}
           >
-            {withdrawLoading ? '⏳ Processing... / እየተሰራ ነው...' : '📤 Request Withdrawal / ወጪ ጠይቅ'}
+            📤 Review Withdrawal / ያረጋግጡ
           </Btn>
 
           {mainBal < 100 && (
             <Alert type="error" msg="Insufficient balance. Minimum withdrawal is ETB 100. / ዝቅተኛ ወጪ ETB 100 ነው። ቀሪ ሂሳብ በቂ አይደለም።" />
+          )}
+
+          {/* ── Confirmation overlay ──────────────────────────────────────── */}
+          {withdrawConfirm && (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 999,
+              background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            }}>
+              <div style={{
+                background: C.surface, borderRadius: '20px 20px 0 0',
+                padding: '24px 20px 36px', width: '100%', maxWidth: 480,
+                border: `1px solid ${C.border}`,
+              }}>
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{ fontSize: 40, marginBottom: 8 }}>📤</div>
+                  <div style={{ color: C.text, fontWeight: 900, fontSize: 20 }}>Confirm Withdrawal / ወጪ ያረጋግጡ</div>
+                  <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>Please review before submitting / ከማስገባትዎ በፊት ያረጋግጡ</div>
+                </div>
+
+                {[
+                  { label: 'Amount / መጠን',       value: `${formatMoney(parseFloat(withdrawAmount))} ETB`, color: C.red },
+                  { label: 'Phone / ስልክ',         value: withdrawPhone, color: C.text },
+                  { label: 'Receiver / ተቀባይ ስም', value: withdrawName,  color: C.text },
+                ].map(row => (
+                  <div key={row.label} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '11px 14px', marginBottom: 8,
+                    background: C.surface2, borderRadius: 12,
+                    border: `1px solid ${C.border}`,
+                  }}>
+                    <span style={{ color: C.muted, fontSize: 13 }}>{row.label}</span>
+                    <span style={{ color: row.color, fontWeight: 800, fontSize: 15 }}>{row.value}</span>
+                  </div>
+                ))}
+
+                {withdrawResult && <div style={{ marginTop: 8, marginBottom: 4 }}><Alert type={withdrawResult.type} msg={withdrawResult.msg} /></div>}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
+                  <button
+                    onClick={() => { setWithdrawConfirm(false); setWithdrawResult(null); }}
+                    disabled={withdrawLoading}
+                    style={{
+                      padding: '14px 0', borderRadius: 14, border: `1px solid ${C.border}`,
+                      background: C.surface2, color: C.muted,
+                      fontWeight: 800, fontSize: 15, cursor: 'pointer',
+                    }}
+                  >
+                    ✏️ Edit / ቀይር
+                  </button>
+                  <Btn onClick={handleWithdraw} disabled={withdrawLoading} color={C.red} style={{ color: withdrawLoading ? C.dim : '#fff' }}>
+                    {withdrawLoading ? '⏳ ...' : '✅ Confirm / አረጋግጥ'}
+                  </Btn>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

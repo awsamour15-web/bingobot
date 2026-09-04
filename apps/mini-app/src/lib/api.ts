@@ -445,8 +445,8 @@ export function verifyManualDeposit(amount: number, receipt: string): Promise<Ma
   return apiRequest<ManualDepositResponse>('POST', '/api/wallet/deposit/manual', { amount, receipt });
 }
 
-export function withdrawFunds(amount: number, phone: string): Promise<void> {
-  return apiRequest<void>('POST', '/api/wallet/withdraw', { amount, phone });
+export function withdrawFunds(amount: number, phone: string, receiverName?: string): Promise<void> {
+  return apiRequest<void>('POST', '/api/wallet/withdraw', { amount, phone, receiverName });
 }
 
 // ---------------------------------------------------------------------------
