@@ -328,7 +328,7 @@ export const AgentService = {
     }
 
     // Atomic check-and-debit inside a single transaction to prevent TOCTOU race
-    let withdrawal: { id: string; amount: { toString(): string }; phone: string; status: string; created_at: Date; tx_number: string | null };
+    let withdrawal: { id: string; amount: { toString(): string }; phone: string; status: 'pending' | 'approved' | 'rejected'; created_at: Date; tx_number: string | null };
 
     try {
       withdrawal = await prisma.$transaction(async (tx) => {
