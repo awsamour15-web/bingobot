@@ -31,11 +31,10 @@ function randomPick(count: number): number[] {
 }
 
 const C = {
-  bg: '#0d1117',
-  topbar: 'rgba(10,15,20,0.98)',
+  bg: '#080d10',
+  topbar: 'rgba(6,10,14,0.98)',
   border: 'rgba(255,255,255,0.07)',
   green: '#22c55e',
-  greenLight: '#4ade80',
   textWhite: '#e2e8f0',
   textDim: '#4a6a58',
   yellow: '#f5a623',
@@ -54,10 +53,6 @@ export default function KenoScreen() {
   const [myBet, setMyBet] = useState<KenoState['myBet']>(null);
   const [balance, setBalance] = useState<number>(0);
 
-  // Snapshot of drawn numbers at mount time — shown in tray without animation
-  const [initialDrawnNumbers, setInitialDrawnNumbers] = useState<number[] | undefined>(undefined);
-  const initializedRef = useRef(false);
-
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
   const [showDrawArena, setShowDrawArena] = useState<boolean>(false);
@@ -69,6 +64,10 @@ export default function KenoScreen() {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [countdown, setCountdown] = useState<number>(0);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Snapshot from first REST call — pre-populates tray without animation
+  const [initialDrawnNumbers, setInitialDrawnNumbers] = useState<number[] | undefined>(undefined);
+  const initializedRef = useRef(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -85,7 +84,7 @@ export default function KenoScreen() {
       .catch(() => setAccess('denied'));
   }, []);
 
-  // ── profile / balance ──────────────────────────────────────────────────────
+  // ── balance ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (access !== 'allowed') return;
     getProfile().then(p => setBalance((p.playWallet?.balance ?? p.mainWallet?.balance) ?? 0)).catch(() => {});
@@ -100,7 +99,6 @@ export default function KenoScreen() {
       setBettingEndsAt(s.round?.bettingEndsAt ? new Date(s.round.bettingEndsAt).getTime() : 0);
       const nums = s.round?.drawnNumbers ?? [];
       setDrawnNumbers(nums);
-      // First sync: snapshot already-drawn balls so arena shows them instantly
       if (!initializedRef.current) {
         initializedRef.current = true;
         setInitialDrawnNumbers(nums);
@@ -149,16 +147,13 @@ export default function KenoScreen() {
       initializedRef.current = false;
       setShowDrawArena(false);
     };
-
     const onNumberDrawn = ({ drawnSoFar, number }: KenoNumberDrawnPayload) => {
       setPhase('drawing'); setShowDrawArena(true);
       setDrawnNumbers(drawnSoFar); setCurrentBall(number);
     };
-
     const onRoundFinished = ({ drawnNumbers: nums }: KenoRoundFinishedPayload) => {
       setPhase('finished'); setDrawnNumbers(nums); setCurrentBall(null);
-      void syncState();
-      loadHistory();
+      void syncState(); loadHistory();
       if (myBetRef.current) {
         getKenoState().then(s => {
           if ((s.myBet?.payout ?? 0) > 0) showToast(`🎉 You won ${s.myBet!.payout} ETB!`);
@@ -176,7 +171,7 @@ export default function KenoScreen() {
     };
   }, [access, syncState, loadHistory, showToast]);
 
-  // ── bet ────────────────────────────────────────────────────────────────────
+  // ── place bet ──────────────────────────────────────────────────────────────
   const handlePlaceBet = async () => {
     const nums = selectedNumbers.length > 0 ? selectedNumbers : randomPick(5);
     if (balance < betAmount) { showToast('Insufficient balance'); return; }
@@ -193,18 +188,22 @@ export default function KenoScreen() {
     if (phase !== 'betting') return;
     setSelectedNumbers(prev => {
       if (prev.includes(n)) return prev.filter(x => x !== n);
-      if (prev.length >= 10) { showToast('Max 10 numbers per ticket'); return prev; }
+      if (prev.length >= 10) { showToast('Max 10 numbers'); return prev; }
       return [...prev, n].sort((a, b) => a - b);
     });
   };
 
-  // ── access loading/denied ──────────────────────────────────────────────────
+  // ── access states ──────────────────────────────────────────────────────────
   if (access === 'loading') {
-    return <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textDim, fontSize: 14 }}>Loading…</div>;
+    return (
+      <div style={{ height: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textDim, fontSize: 14 }}>
+        Loading…
+      </div>
+    );
   }
   if (access === 'denied') {
     return (
-      <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 }}>
+      <div style={{ height: '100dvh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 }}>
         <div style={{ fontSize: 40 }}>🔒</div>
         <div style={{ fontSize: 16, fontWeight: 700, color: C.textWhite }}>Keno Unavailable</div>
         <div style={{ fontSize: 13, color: C.textDim, textAlign: 'center' }}>Fast Keno is not available for your account yet.</div>
@@ -214,44 +213,63 @@ export default function KenoScreen() {
   }
 
   const tabs: { id: NavTab; label: string }[] = [
-    { id: 'GAME', label: '▶ GAME' },
-    { id: 'HISTORY', label: '↺ HISTORY' },
-    { id: 'RESULTS', label: '✓ RESULTS' },
-    { id: 'STATISTICS', label: '▦ STATS' },
+    { id: 'GAME',       label: '▶ GAME'   },
+    { id: 'HISTORY',    label: '↺ HIST'   },
+    { id: 'RESULTS',    label: '✓ RES'    },
+    { id: 'STATISTICS', label: '▦ STATS'  },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
+  const showArena = showDrawArena || phase === 'drawing' || phase === 'finished';
 
   return (
-    <div style={{ minHeight: '100dvh', background: C.bg, color: C.textWhite, display: 'flex', flexDirection: 'column', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    // Full-screen fixed container — no scroll on the outer shell
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: C.bg, color: C.textWhite,
+      display: 'flex', flexDirection: 'column',
+      fontFamily: "'Inter', -apple-system, sans-serif",
+      overflow: 'hidden',
+    }}>
 
-      {/* Header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 40, background: C.topbar, borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
-          <button onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: C.textWhite, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+      {/* ── Header (fixed height) ── */}
+      <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '4px 0' }}>
             ← Back
           </button>
-          <img src="/keno-logo.svg" alt="Fast Keno" style={{ height: 28, width: 'auto' }} />
-          <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 999, padding: '3px 10px' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
+          <img src="/keno-logo.svg" alt="Fast Keno" style={{ height: 26, width: 'auto' }} />
+          <div style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${C.green}33`, borderRadius: 999, padding: '3px 10px' }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
           </div>
         </div>
-        {roundId && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 8px', fontSize: 11 }}>
-            <span style={{ color: C.textDim }}>Round:</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#94a3b8' }}>{roundId.slice(-8).toUpperCase()}</span>
-            <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, color: phaseBadgeColor, border: `1px solid ${phaseBadgeColor}33`, background: `${phaseBadgeColor}15` }}>
-              {phase.toUpperCase()}
-            </span>
-          </div>
-        )}
+        {/* Round status strip */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 6px', fontSize: 10 }}>
+          {roundId ? (
+            <>
+              <span style={{ color: C.textDim }}>Round</span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>{roundId.slice(-8).toUpperCase()}</span>
+              <span style={{ padding: '1px 7px', borderRadius: 999, fontSize: 9, fontWeight: 800, color: phaseBadgeColor, border: `1px solid ${phaseBadgeColor}44`, background: `${phaseBadgeColor}18` }}>
+                {phase.toUpperCase()}
+              </span>
+            </>
+          ) : (
+            <span style={{ color: C.textDim }}>Connecting…</span>
+          )}
+        </div>
       </div>
 
-      {/* Main */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 10px 32px' }}>
-
-        {/* Betting board or draw arena */}
-        {(phase === 'betting' || phase === 'idle') && !showDrawArena ? (
+      {/* ── Main content area — full screen minus header ── */}
+      <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {showArena ? (
+          <KenoDrawArena
+            drawnNumbers={drawnNumbers}
+            initialDrawnNumbers={initialDrawnNumbers}
+            currentBall={currentBall}
+            userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
+            onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
+          />
+        ) : (
           <KenoBettingStage
             countdown={countdown}
             selectedNumbers={selectedNumbers}
@@ -263,18 +281,13 @@ export default function KenoScreen() {
             onOpenInfo={() => setInfoOpen(true)}
             userBalance={balance}
           />
-        ) : (
-          <KenoDrawArena
-            drawnNumbers={drawnNumbers}
-            initialDrawnNumbers={initialDrawnNumbers}
-            currentBall={currentBall}
-            userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
-            onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
-          />
         )}
+      </div>
 
-        {/* Nav tabs */}
-        <div style={{ borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center' }}>
+      {/* ── Bottom section: tabs (minimal height) + scrollable content ── */}
+      <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '35%', padding: '0 10px 0', borderTop: `1px solid ${C.border}` }}>
+        {/* Tab bar */}
+        <div style={{ flexShrink: 0, background: C.topbar, display: 'flex', borderBottom: `1px solid ${C.border}` }}>
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -282,11 +295,11 @@ export default function KenoScreen() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  flex: 1, padding: '8px 4px', background: 'none', border: 'none',
+                  flex: 1, padding: '7px 2px', background: 'none', border: 'none',
                   borderBottom: isActive ? `2px solid ${C.green}` : '2px solid transparent',
                   color: isActive ? C.green : C.textDim,
                   fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em',
-                  transition: 'color 0.15s',
+                  transition: 'color 0.12s',
                 }}
               >
                 {tab.label}
@@ -295,28 +308,30 @@ export default function KenoScreen() {
           })}
         </div>
 
-        {/* Tab content */}
-        {activeTab === 'GAME' && <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />}
-        {activeTab === 'HISTORY' && (
-          <KenoHistoryTab
-            history={history}
-            onReplayBet={(nums, bet) => {
-              setSelectedNumbers(nums); setBetAmount(bet); setActiveTab('GAME');
-              showToast(`Loaded ${nums.length} numbers on board`);
-            }}
-          />
-        )}
-        {activeTab === 'RESULTS' && <KenoHistoryTab history={history} />}
-        {activeTab === 'STATISTICS' && (
-          <KenoStatsTab
-            history={history}
-            selectedNumbers={selectedNumbers}
-            onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
-          />
-        )}
-      </main>
+        {/* Scrollable tab content */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 0 env(safe-area-inset-bottom, 8px)' }}>
+          {activeTab === 'GAME' && <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />}
+          {activeTab === 'HISTORY' && (
+            <KenoHistoryTab
+              history={history}
+              onReplayBet={(nums, bet) => {
+                setSelectedNumbers(nums); setBetAmount(bet); setActiveTab('GAME');
+                showToast(`Loaded ${nums.length} numbers on board`);
+              }}
+            />
+          )}
+          {activeTab === 'RESULTS' && <KenoHistoryTab history={history} />}
+          {activeTab === 'STATISTICS' && (
+            <KenoStatsTab
+              history={history}
+              selectedNumbers={selectedNumbers}
+              onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
+            />
+          )}
+        </div>
+      </div>
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       <KenoQuickPickModal
         isOpen={quickPickOpen}
         onClose={() => setQuickPickOpen(false)}
@@ -326,16 +341,16 @@ export default function KenoScreen() {
       />
       <KenoInfoModal isOpen={infoOpen} onClose={() => setInfoOpen(false)} />
 
-      {/* Toast */}
+      {/* ── Toast ── */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 600 }}
+            exit={{ opacity: 0, y: 12 }}
+            style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 600, pointerEvents: 'none' }}
           >
-            <div style={{ padding: '8px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, background: '#111e22', border: '1px solid rgba(255,255,255,0.12)', color: C.textWhite, whiteSpace: 'nowrap', boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}>
+            <div style={{ padding: '8px 18px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: '#0e1c22', border: `1px solid ${C.border}`, color: C.textWhite, whiteSpace: 'nowrap', boxShadow: '0 4px 20px rgba(0,0,0,0.7)' }}>
               {toast}
             </div>
           </motion.div>
