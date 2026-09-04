@@ -583,3 +583,11 @@ model PlinkoBet {
   @@index([created_at])
   @@map("plinko_bets")
 }
+
+model SystemSetting {
+  key        String   @id
+  value      String
+  updated_at DateTime @updatedAt
+
+  @@map("system_settings")
+}
