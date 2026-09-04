@@ -265,7 +265,7 @@ export default function WalletScreen() {
       return;
     }
     if (amount < 100) {
-      setWithdrawResult({ type: 'error', msg: 'Minimum withdrawal is ETB 100 / ዝቅተኛ ስደር ETB 100 ነው' });
+      setWithdrawResult({ type: 'error', msg: 'Minimum withdrawal is ETB 100 / ዝቅተኛ ወጪ ETB 100 ነው' });
       return;
     }
     if (!withdrawPhone.trim()) {
@@ -281,7 +281,7 @@ export default function WalletScreen() {
       setWithdrawPhone('');
       setTimeout(() => getProfile().then(setProfile).catch(() => {}), 1500);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Withdrawal failed / ስደር አልተሳካም';
+      const msg = err instanceof Error ? err.message : 'Withdrawal failed / ወጪ አልተሳካም';
       setWithdrawResult({ type: 'error', msg });
     } finally {
       setWithdrawLoading(false);
@@ -324,7 +324,7 @@ export default function WalletScreen() {
     },
     {
       id: 'withdraw',
-      label: 'Withdraw / ስደር',
+      label: 'Withdraw / ወጪ',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 19V5M5 12l7-7 7 7" />
@@ -448,7 +448,7 @@ export default function WalletScreen() {
       {tab === 'balance' && (
         <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { label: 'Main Wallet / ዋና ቦርሳ', val: mainBal, icon: '🏦', color: C.amber, desc: 'Deposit & Withdraw / ዲፖዚት እና ስደር' },
+            { label: 'Main Wallet / ዋና ቦርሳ', val: mainBal, icon: '🏦', color: C.amber, desc: 'Deposit & Withdraw / ዲፖዚት እና ወጪ' },
             { label: 'Play Wallet / ጨዋታ ቦርሳ', val: playBal, icon: '🎮', color: C.green, desc: 'Games only / ጨዋታ ብቻ' },
           ].map(w => (
             <div key={w.label} style={{
@@ -482,7 +482,7 @@ export default function WalletScreen() {
               padding: '14px 0', borderRadius: 14, border: `1px solid rgba(248,113,113,0.3)`,
               background: C.redDim, color: C.red, fontWeight: 800, fontSize: 15, cursor: 'pointer',
             }}>
-              ⬆ Withdraw / ስደር
+              ⬆ Withdraw / ወጪ
             </button>
           </div>
         </div>
@@ -586,11 +586,7 @@ export default function WalletScreen() {
           </Btn>
 
           {/* Info note */}
-          <div style={{ background: C.blueDim, border: `1px solid rgba(96,165,250,0.2)`, borderRadius: 12, padding: '12px 14px' }}>
-            <div style={{ color: C.blue, fontSize: 13, lineHeight: 1.6 }}>
-              ℹ️ <strong>Note / ማሳሰቢያ:</strong> Deposits of ETB 50 and above require admin approval. Your balance is usually updated within 1–5 minutes. / ETB 50 እና ከዚያ በላይ ዲፖዚት የአስተዳዳሪ ፈቃድ ይጠይቃል። ሂሳብዎ ብዙ ጊዜ በ1-5 ደቂቃ ይዘምናል።
-            </div>
-          </div>
+
         </div>
       )}
 
@@ -615,18 +611,16 @@ export default function WalletScreen() {
             background: C.amberDim, border: `1px solid rgba(245,158,11,0.25)`,
             borderRadius: 14, padding: '13px 16px',
           }}>
-            <div style={{ color: C.amber, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>📋 Withdrawal Rules / የስደር ህጎች</div>
+            <div style={{ color: C.amber, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>📋 Withdrawal Rules / የወጪ ህጎች</div>
             <ul style={{ color: C.text, fontSize: 13, margin: 0, paddingLeft: 16, lineHeight: 1.7 }}>
-              <li>Minimum withdrawal: <strong>ETB 100</strong> / ዝቅተኛ ስደር</li>
-              <li>Minimum deposit required: <strong>ETB 200</strong> / ቢያንስ ዲፖዚት ያስፈልጋል</li>
-              <li>Withdrawal requires admin approval / ስደር የአስተዳዳሪ ፈቃድ ይጠይቃል</li>
+              <li>Minimum withdrawal: <strong>ETB 100</strong> / ዝቅተኛ ወጪ</li>
               <li>Sent to your Telebirr number / ወደ Telebirr ቁጥርዎ ይላካል</li>
             </ul>
           </div>
 
           {/* Amount */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 18px' }}>
-            <Step n={1} label="Enter amount to withdraw / የሚያስደሩትን መጠን ያስገቡ" />
+            <Step n={1} label="Enter amount to withdraw /  መጠን ያስገቡ" />
             <Input
               value={withdrawAmount}
               onChange={v => { setWithdrawAmount(v); setWithdrawResult(null); }}
@@ -685,11 +679,11 @@ export default function WalletScreen() {
             color={C.red}
             style={{ color: withdrawLoading || mainBal < 100 ? C.dim : '#fff' }}
           >
-            {withdrawLoading ? '⏳ Processing... / እየተሰራ ነው...' : '📤 Request Withdrawal / ስደር ጠይቅ'}
+            {withdrawLoading ? '⏳ Processing... / እየተሰራ ነው...' : '📤 Request Withdrawal / ወጪ ጠይቅ'}
           </Btn>
 
           {mainBal < 100 && (
-            <Alert type="error" msg="Insufficient balance. Minimum withdrawal is ETB 100. / ዝቅተኛ ስደር ETB 100 ነው። ቀሪ ሂሳብ በቂ አይደለም።" />
+            <Alert type="error" msg="Insufficient balance. Minimum withdrawal is ETB 100. / ዝቅተኛ ወጪ ETB 100 ነው። ቀሪ ሂሳብ በቂ አይደለም።" />
           )}
         </div>
       )}
