@@ -18,6 +18,7 @@ interface Game {
   title: string;
   subtitle: string;
   emoji: string;
+  logoSrc?: string;
   gradient: string;
   glowColor: string;
   badge?: string;
@@ -315,9 +316,9 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
 
       {/* top: emoji/logo + tags */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-        {(game as any).logoSrc ? (
+        {game.logoSrc ? (
           <img
-            src={(game as any).logoSrc}
+            src={game.logoSrc}
             alt={game.title}
             style={{ height: 46, width: 'auto', maxWidth: 140, objectFit: 'contain', flexShrink: 0 }}
           />
@@ -354,7 +355,7 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
 
       {/* title + subtitle */}
       <div style={{ flex: 1 }}>
-        {!(game as any).logoSrc && (
+        {!game.logoSrc && (
           <div style={{ fontSize: 15, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.3px', marginBottom: 3 }}>
             {game.title}
           </div>
