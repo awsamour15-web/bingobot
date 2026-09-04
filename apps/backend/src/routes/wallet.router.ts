@@ -473,7 +473,7 @@ router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void>
     // ignore parse errors — no coupons available
   }
 
-  const coupon = coupons.find((c) => c.code === normalizedCode);
+  const coupon = coupons.find((c: any) => c.code === normalizedCode);
   if (!coupon) {
     res.status(404).json({ error: 'COUPON_NOT_FOUND', message: 'Invalid or expired coupon code' });
     return;
@@ -509,10 +509,13 @@ router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void>
     }
   }
 
+  const targetWallet = (coupon as any).wallet === 'main' ? WalletType.main : WalletType.play;
+  const walletLabel = targetWallet === WalletType.main ? 'main' : 'play';
+
   try {
     await WalletService.credit(
       playerId,
-      WalletType.play,
+      targetWallet,
       coupon.amount,
       'bonus' as any,
       undefined,
@@ -521,7 +524,7 @@ router.post('/redeem-coupon', async (req: Request, res: Response): Promise<void>
     res.status(200).json({
       success: true,
       amount: coupon.amount,
-      message: `🎁 ${coupon.amount} ETB bonus added to your play wallet!`,
+      message: `🎁 ${coupon.amount} ETB bonus added to your ${walletLabel} wallet!`,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Redemption failed';

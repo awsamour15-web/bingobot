@@ -759,3 +759,28 @@ export interface GamesStatsResponse {
 export function getGamesStats(): Promise<GamesStatsResponse> {
   return adminApiRequest<GamesStatsResponse>('GET', '/api/admin/games/stats');
 }
+
+// ---------------------------------------------------------------------------
+// Coupons
+// ---------------------------------------------------------------------------
+
+export interface Coupon {
+  code: string;
+  amount: number;
+  wallet: 'main' | 'play';
+  maxUses: number | null;
+  description: string;
+  usedCount: number;
+}
+
+export function listCoupons(): Promise<Coupon[]> {
+  return adminApiRequest<Coupon[]>('GET', '/api/admin/coupons');
+}
+
+export function createCoupon(data: Omit<Coupon, 'usedCount'>): Promise<Coupon> {
+  return adminApiRequest<Coupon>('POST', '/api/admin/coupons', data);
+}
+
+export function deleteCoupon(code: string): Promise<{ success: boolean }> {
+  return adminApiRequest('DELETE', `/api/admin/coupons/${encodeURIComponent(code)}`);
+}

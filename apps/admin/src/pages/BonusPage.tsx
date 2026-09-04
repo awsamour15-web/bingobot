@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
-import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution } from '../lib/api';
+import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon } from '../lib/api';
 import {
   getPlayers, creditPlayer, listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
   createPromotion, getConfig, updateConfig,
   updatePromotion, setPromotionStatus, deletePromotion,
+  listCoupons, createCoupon, deleteCoupon,
 } from '../lib/api';
 import {
   C, Btn, Card, CardHeader, Field, PageHeader, StatCard,
@@ -14,7 +15,7 @@ import {
 } from '../components/ui';
 
 type WalletType = 'main' | 'play';
-type Tab = 'single' | 'bulk' | 'deposit' | 'active';
+type Tab = 'single' | 'bulk' | 'deposit' | 'active' | 'coupons';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Single-player bonus (unchanged feature, kept intact)
@@ -826,6 +827,155 @@ function DepositBonusPanel() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Coupon Panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CouponPanel() {
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Form state
+  const [code, setCode] = useState('');
+  const [amount, setAmount] = useState('');
+  const [wallet, setWallet] = useState<'main' | 'play'>('play');
+  const [maxUses, setMaxUses] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    listCoupons()
+      .then(data => { setCoupons(data); setLoading(false); })
+      .catch(e => { setError(e.message ?? 'Failed to load coupons'); setLoading(false); });
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim()) { setError('Code is required'); return; }
+    const amt = Number(amount);
+    if (!amt || amt <= 0) { setError('Amount must be > 0'); return; }
+    setSaving(true); setError(null); setSuccess(null);
+    try {
+      await createCoupon({
+        code: code.trim().toUpperCase(),
+        amount: amt,
+        wallet,
+        maxUses: maxUses ? Number(maxUses) : null,
+        description: description.trim(),
+      });
+      setSuccess('Coupon created');
+      setCode(''); setAmount(''); setMaxUses(''); setDescription('');
+      load();
+    } catch (e: any) { setError(e.message ?? 'Failed'); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(c: string) {
+    if (!confirm(`Delete coupon "${c}"?`)) return;
+    setDeleting(c); setError(null); setSuccess(null);
+    try {
+      await deleteCoupon(c);
+      setSuccess(`Coupon "${c}" deleted`);
+      load();
+    } catch (e: any) { setError(e.message ?? 'Failed'); }
+    finally { setDeleting(null); }
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 18, alignItems: 'start' }}>
+      {/* Create form */}
+      <Card>
+        <CardHeader title="Create Coupon" subtitle="Players can redeem these in the mini-app" />
+        {error && <Alert type="error">{error}</Alert>}
+        {success && <Alert type="success">{success}</Alert>}
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="Code (e.g. FIDEL50)">
+            <input
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              placeholder="FIDEL50"
+              maxLength={24}
+              style={inputCss}
+              required
+            />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Field label="Amount (ETB)">
+              <input type="number" min={1} value={amount} onChange={e => setAmount(e.target.value)} style={inputCss} required />
+            </Field>
+            <Field label="Wallet">
+              <select value={wallet} onChange={e => setWallet(e.target.value as 'main' | 'play')} style={selectCss}>
+                <option value="play">Play Wallet</option>
+                <option value="main">Main Wallet</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Max Uses (blank = unlimited)">
+            <input type="number" min={1} value={maxUses} onChange={e => setMaxUses(e.target.value)} placeholder="Unlimited" style={inputCss} />
+          </Field>
+          <Field label="Description (optional)">
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Weekend promo" style={inputCss} />
+          </Field>
+          <Btn type="submit" variant="primary" disabled={saving}>
+            {saving ? 'Creating…' : '+ Create Coupon'}
+          </Btn>
+        </form>
+      </Card>
+
+      {/* Coupon list */}
+      <Card>
+        <CardHeader title="Active Coupons" subtitle={`${coupons.length} coupon${coupons.length !== 1 ? 's' : ''}`} />
+        <Table>
+          <thead>
+            <tr>
+              <Th>Code</Th>
+              <Th>Amount</Th>
+              <Th>Wallet</Th>
+              <Th>Uses</Th>
+              <Th>Description</Th>
+              <Th><span /></Th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? <TrLoading cols={6} /> : !coupons.length ? <TrEmpty cols={6} message="No coupons yet." /> :
+              coupons.map(c => (
+                <tr key={c.code}>
+                  <Td><span style={{ fontFamily: 'monospace', fontWeight: 800, color: C.primary }}>{c.code}</span></Td>
+                  <Td>{c.amount} ETB</Td>
+                  <Td><Badge variant={c.wallet === 'play' ? 'info' : 'success'}>{c.wallet}</Badge></Td>
+                  <Td>
+                    {c.usedCount}{c.maxUses !== null ? `/${c.maxUses}` : ''}
+                    {c.maxUses !== null && c.usedCount >= c.maxUses && (
+                      <> <Badge variant="danger">Exhausted</Badge></>
+                    )}
+                  </Td>
+                  <Td style={{ color: C.muted, fontSize: 12 }}>{c.description || '—'}</Td>
+                  <Td>
+                    <Btn
+                      variant="danger"
+                      size="sm"
+                      disabled={deleting === c.code}
+                      onClick={() => handleDelete(c.code)}
+                    >
+                      {deleting === c.code ? '…' : 'Delete'}
+                    </Btn>
+                  </Td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </Table>
+      </Card>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main export
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -864,9 +1014,12 @@ export function BonusPage() {
         <Btn variant={tab === 'deposit' ? 'primary' : 'outline'} onClick={() => setTab('deposit')}>
           💰 Deposit Bonus
         </Btn>
+        <Btn variant={tab === 'coupons' ? 'primary' : 'outline'} onClick={() => setTab('coupons')}>
+          🎟️ Coupons
+        </Btn>
       </div>
 
-      {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : <DepositBonusPanel />}
+      {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : tab === 'coupons' ? <CouponPanel /> : <DepositBonusPanel />}
     </div>
   );
 }

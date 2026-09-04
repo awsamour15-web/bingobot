@@ -33,6 +33,7 @@ import adminCartelasRouter from './routes/admin/cartelas.admin.router.js';
 import broadcastTargetsRouter from './routes/admin/broadcast-targets.admin.router.js';
 import adminMockPlayersRouter from './routes/admin/mock-players.admin.router.js';
 import adminGamesRouter from './routes/admin/games.admin.router.js';
+import adminCouponsRouter from './routes/admin/coupons.admin.router.js';
 import crashRouter from './routes/crash.router.js';
 import slotsRouter from './routes/slots.router.js';
 import kenoRouter from './routes/keno.router.js';
@@ -120,6 +121,7 @@ app.use('/api/admin/cartelas', jwtAdminMiddleware, adminCartelasRouter);
 app.use('/api/admin/broadcast-targets', jwtAdminMiddleware, broadcastTargetsRouter);
 app.use('/api/admin/mock-players', jwtAdminMiddleware, adminMockPlayersRouter);
 app.use('/api/admin/games', jwtAdminMiddleware, adminGamesRouter);
+app.use('/api/admin/coupons', jwtAdminMiddleware, adminCouponsRouter);
 // broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
