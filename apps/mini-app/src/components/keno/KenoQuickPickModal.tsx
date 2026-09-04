@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { X, Dices, RotateCcw, Flame, Snowflake } from 'lucide-react';
 import { HOT_NUMBERS, COLD_NUMBERS } from './types';
 
 interface Props {
@@ -10,44 +8,42 @@ interface Props {
   onClear: () => void;
 }
 
+const btnBase: React.CSSProperties = {
+  borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '8px 0',
+};
+
 export function KenoQuickPickModal({ isOpen, onClose, onQuickPick, onSelectSpecific, onClear }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
-      <div className="w-full max-w-md bg-[#0d171a] border border-[#1b3036] rounded-2xl p-4 shadow-2xl flex flex-col gap-4 text-slate-100">
-        <div className="flex items-center justify-between border-b border-[#182c31] pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Dices className="w-4 h-4" />
-            </div>
-            <span className="font-extrabold text-base">Quick Picks</span>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: '#0d1117', borderRadius: '16px 16px 0 0', padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 20 }}>🎲</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0' }}>Quick Picks</span>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-[#142327] hover:bg-[#1a2e33] flex items-center justify-center text-slate-400 hover:text-slate-200">
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Pick Random Numbers</span>
-          <div className="grid grid-cols-4 gap-1.5">
+        {/* Quick pick spots */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#4a6a58', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pick Random Numbers</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
             {[1, 2, 3, 4, 5, 7, 8, 10].map(spots => (
-              <button key={spots} onClick={() => { onQuickPick(spots); onClose(); }} className="py-2 rounded-xl bg-[#142327] hover:bg-[#1e343a] text-xs font-bold text-emerald-400 border border-[#1e3338] transition-all">
+              <button key={spots} onClick={() => { onQuickPick(spots); onClose(); }} style={{ ...btnBase, background: 'rgba(255,255,255,0.05)', color: '#4ade80' }}>
                 Pick {spots}
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-1.5 mt-1">
-            <button onClick={() => { onSelectSpecific(HOT_NUMBERS.slice(0, 5)); onClose(); }} className="py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-1">
-              <Flame className="w-3.5 h-3.5" /> Hot 5
-            </button>
-            <button onClick={() => { onSelectSpecific(COLD_NUMBERS.slice(0, 5)); onClose(); }} className="py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-bold flex items-center justify-center gap-1">
-              <Snowflake className="w-3.5 h-3.5" /> Cold 5
-            </button>
-            <button onClick={() => { onClear(); onClose(); }} className="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold flex items-center justify-center gap-1">
-              <RotateCcw className="w-3.5 h-3.5" /> Clear
-            </button>
-          </div>
+        </div>
+
+        {/* Hot / Cold / Clear */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <button onClick={() => { onSelectSpecific(HOT_NUMBERS.slice(0, 5)); onClose(); }} style={{ ...btnBase, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>🔥 Hot 5</button>
+          <button onClick={() => { onSelectSpecific(COLD_NUMBERS.slice(0, 5)); onClose(); }} style={{ ...btnBase, background: 'rgba(100,180,255,0.08)', border: '1px solid rgba(100,180,255,0.2)', color: '#93c5fd' }}>❄️ Cold 5</button>
+          <button onClick={() => { onClear(); onClose(); }} style={{ ...btnBase, background: 'rgba(255,255,255,0.05)', color: '#94a3b8' }}>↺ Clear</button>
         </div>
       </div>
     </div>

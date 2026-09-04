@@ -1,5 +1,16 @@
 import type { BetFeedItem } from './types';
 
+const C = {
+  card: '#131920',
+  border: 'rgba(255,255,255,0.07)',
+  green: '#22c55e',
+  greenLight: '#4ade80',
+  textWhite: '#e2e8f0',
+  textMid: '#8ab89a',
+  textDim: '#4a6a58',
+  yellow: '#f5a623',
+};
+
 interface Props {
   bets: BetFeedItem[];
   drawnNumbers: number[];
@@ -11,39 +22,39 @@ export function KenoBetFeed({ bets, drawnNumbers, phase }: Props) {
 
   if (!bets.length) {
     return (
-      <div className="bg-[#0b1416] border border-[#142327] rounded-xl p-6 text-center text-slate-400 text-xs flex flex-col items-center gap-1">
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', color: C.textDim, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
         <span>No tickets placed yet for this round.</span>
-        <span className="text-[11px] text-slate-500">Pick numbers and tap BET to enter!</span>
+        <span style={{ fontSize: 12, color: '#33463e' }}>Pick numbers and tap BET to enter!</span>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto pr-1">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
       {bets.map((bet, i) => {
         const isWon = (bet.payout ?? 0) > 0;
         return (
-          <div key={i} className="bg-[#0b1416] border border-[#142327] rounded-xl p-2.5 flex flex-col gap-2">
-            <span className="text-xs font-bold text-[#2bd671] font-mono">{bet.username}</span>
-            {/* number slots — show pickedCount filled with dim placeholders */}
-            <div className="grid grid-cols-10 gap-1">
+          <div key={i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>{bet.username}</span>
+            {/* number slots */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3 }}>
               {Array.from({ length: 10 }).map((_, idx) => (
-                <div key={idx} className={`h-8 rounded-md flex items-center justify-center font-mono font-bold text-xs ${idx < bet.pickedCount ? 'bg-[#18282c] text-slate-100 border border-[#23383e]' : 'bg-[#080e10] border border-[#101b1e]'}`}>
+                <div key={idx} style={{
+                  height: 30, borderRadius: 5,
+                  background: idx < bet.pickedCount ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.3)',
+                  border: `1px solid ${idx < bet.pickedCount ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, color: '#94a3b8',
+                }}>
                   {idx < bet.pickedCount ? '·' : ''}
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-between text-xs font-bold pt-0.5">
-              <span className="text-slate-100 font-mono">Bet {bet.betAmount}</span>
-              <div>
-                {phase === 'betting' || phase === 'drawing' ? (
-                  <span className="text-[#eab308]">Waiting</span>
-                ) : isWon ? (
-                  <span className="text-[#1ee068]">Won {bet.payout?.toLocaleString()}</span>
-                ) : (
-                  <span className="text-slate-500">No Win</span>
-                )}
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontWeight: 700 }}>
+              <span style={{ color: C.textWhite, fontFamily: 'monospace' }}>Bet {bet.betAmount}</span>
+              <span style={{ color: phase === 'betting' || phase === 'drawing' ? C.yellow : isWon ? C.green : C.textDim }}>
+                {phase === 'betting' || phase === 'drawing' ? 'Waiting' : isWon ? `Won ${bet.payout?.toLocaleString()}` : 'No Win'}
+              </span>
             </div>
           </div>
         );

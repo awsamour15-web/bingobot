@@ -1,6 +1,23 @@
 import { motion } from 'motion/react';
-import { Settings, Minus, Plus } from 'lucide-react';
 import { PAYOUT_TABLE, HOT_NUMBERS, COLD_NUMBERS, bestMultiplier } from './types';
+
+const C = {
+  bg: '#0d1117',
+  card: '#131920',
+  cell: '#161d28',
+  cellBorder: 'rgba(255,255,255,0.08)',
+  cellPicked: '#1a4a2a',
+  cellPickedBorder: '#22c55e',
+  green: '#22c55e',
+  greenLight: '#4ade80',
+  textWhite: '#e2e8f0',
+  textMid: '#8ab89a',
+  textDim: '#4a6a58',
+  border: 'rgba(255,255,255,0.07)',
+  yellow: '#f5a623',
+  red: '#ef4444',
+  blue: 'rgba(100,180,255,0.8)',
+};
 
 interface Props {
   countdown: number;
@@ -20,7 +37,7 @@ export function KenoBettingStage({
 }: Props) {
   const mins = Math.floor(countdown / 60);
   const secs = countdown % 60;
-  const timer = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const timer = `${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
 
   const spots = selectedNumbers.length;
   const payConfig = spots > 0 ? PAYOUT_TABLE[spots] ?? {} : {};
@@ -40,78 +57,76 @@ export function KenoBettingStage({
     else onChangeBet(betAmount + 10);
   };
 
+  const isUrgent = countdown <= 10;
+
   return (
-    <div className="w-full flex flex-col items-center select-none">
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
       {/* Timer */}
-      <div className="my-2 w-full flex items-center justify-center">
-        <motion.span
-          animate={countdown <= 10
-            ? { scale: [1, 1.08, 1], color: ['#ef4444', '#f87171', '#ef4444'], textShadow: ['0 0 12px rgba(239,68,68,0.75)', '0 0 20px rgba(239,68,68,0.95)', '0 0 12px rgba(239,68,68,0.75)'] }
-            : { scale: [1, 1.02, 1], color: '#22d3ee', textShadow: '0 0 12px rgba(34,211,238,0.75)' }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-          className="font-mono text-3xl font-black tracking-widest"
-        >
+      <div style={{ margin: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{
+          fontFamily: 'monospace', fontSize: 30, fontWeight: 900, letterSpacing: '0.15em',
+          color: isUrgent ? '#ef4444' : '#22d3ee',
+          textShadow: isUrgent ? '0 0 16px rgba(239,68,68,0.8)' : '0 0 12px rgba(34,211,238,0.75)',
+        }}>
           {timer}
-        </motion.span>
+        </span>
       </div>
 
-      <div className="w-full bg-[#0d1618] border border-[#162529] rounded-2xl p-3 shadow-xl flex flex-col gap-2.5">
+      {/* Card */}
+      <div style={{ width: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
         {/* Header */}
         {spots === 0 ? (
-          <div className="flex items-center justify-between py-1 px-1">
-            <div className="flex items-center gap-3">
-              <div className="relative w-16 h-14 flex items-center justify-center">
-                <div className="absolute top-0 left-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-slate-200" style={{ background: 'radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 60%, #0f172a 100%)', boxShadow: 'inset -1px -1px 3px rgba(0,0,0,0.8)' }}>80</div>
-                <div className="absolute top-0 right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-slate-200" style={{ background: 'radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 60%, #0f172a 100%)', boxShadow: 'inset -1px -1px 3px rgba(0,0,0,0.8)' }}>10</div>
-                <div className="relative z-10 w-11 h-11 rounded-full flex items-center justify-center font-black text-lg text-white" style={{ background: 'radial-gradient(circle at 35% 30%, #166534 0%, #0f3822 55%, #051c10 100%)', boxShadow: '0 0 16px rgba(30,224,104,0.45), inset 1px 1px 3px rgba(255,255,255,0.4)', border: '2px solid #1ee068' }}>1</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Ball cluster */}
+              <div style={{ position: 'relative', width: 64, height: 52, flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 0, left: 16, width: 24, height: 24, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 60%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#94a3b8' }}>80</div>
+                <div style={{ position: 'absolute', top: 0, right: 4, width: 24, height: 24, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #475569 0%, #1e293b 60%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#94a3b8' }}>10</div>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, width: 40, height: 40, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #166534 0%, #0f3822 55%, #051c10 100%)', border: '2px solid #1ee068', boxShadow: '0 0 14px rgba(30,224,104,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 900, color: '#fff' }}>1</div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-black text-white tracking-tight">Choose 10 numbers</span>
-                <span className="text-sm font-bold text-[#1ee068]">From 1 to 80</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 17, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>From 1 to 80</span>
               </div>
             </div>
             {onOpenInfo && (
-              <button onClick={onOpenInfo} className="w-7 h-7 rounded-lg bg-[#142327] hover:bg-[#1c3238] text-[#1ee068] flex items-center justify-center border border-[#1d353b] font-black text-sm">?</button>
+              <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-sm font-medium text-slate-400">Possible win</span>
-                <span className="text-xl font-black text-[#1ee068]">{possibleWin > 0 ? possibleWin.toLocaleString() : '0'}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Possible win row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontSize: 13, color: C.textMid, fontWeight: 600 }}>Possible win</span>
+                <span style={{ fontSize: 20, fontWeight: 900, color: C.green }}>{possibleWin > 0 ? possibleWin.toLocaleString() : '0'}</span>
               </div>
               {onOpenInfo && (
-                <button onClick={onOpenInfo} className="w-7 h-7 rounded-lg bg-[#142327] hover:bg-[#1c3238] text-[#1ee068] flex items-center justify-center border border-[#1d353b] font-black text-sm">?</button>
+                <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
               )}
             </div>
+            {/* Pay table row */}
             {payEntries.length > 0 && (
-              <div className="bg-[#091113] rounded-lg px-3 py-1.5 border border-[#142327]">
-                <div className="flex flex-col gap-0.5 text-xs font-mono">
-                  <div className="flex items-center gap-4 text-slate-400">
-                    <span className="w-12 font-sans">Match</span>
-                    <div className="flex items-center gap-5">{payEntries.map(p => <span key={p.hits} className="w-6 text-center font-bold text-slate-200">{p.hits}</span>)}</div>
-                  </div>
-                  <div className="flex items-center gap-4 text-slate-300">
-                    <span className="w-12 font-sans text-slate-400">Pays</span>
-                    <div className="flex items-center gap-5">{payEntries.map(p => <span key={p.hits} className="w-6 text-center font-bold text-emerald-400">x{p.mul}</span>)}</div>
-                  </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '6px 10px', border: `1px solid rgba(255,255,255,0.06)` }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 2 }}>
+                  <span style={{ width: 44, fontSize: 11, color: C.textDim }}>Match</span>
+                  {payEntries.map(p => <span key={p.hits} style={{ width: 28, textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.textMid, fontFamily: 'monospace' }}>{p.hits}</span>)}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <span style={{ width: 44, fontSize: 11, color: C.textDim }}>Pays</span>
+                  {payEntries.map(p => <span key={p.hits} style={{ width: 28, textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>x{p.mul}</span>)}
                 </div>
               </div>
             )}
             {/* Selected numbers tray */}
-            <div className="grid grid-cols-10 gap-1">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3 }}>
               {Array.from({ length: 10 }).map((_, idx) => {
                 const num = selectedNumbers[idx];
                 return (
-                  <motion.div
-                    key={idx}
-                    animate={num !== undefined ? { scale: [0.85, 1.08, 1] } : { scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    className={`h-9 rounded-lg flex items-center justify-center font-bold text-xs font-mono transition-colors ${num !== undefined ? 'bg-[#1a2b2f] text-slate-100 border border-[#2b444a]' : 'bg-[#091113] border border-[#132226] text-transparent'}`}
-                  >
-                    {num ?? ''}
-                  </motion.div>
+                  <div key={idx} style={{ height: 34, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, fontFamily: 'monospace', background: num !== undefined ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${num !== undefined ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}`, color: num !== undefined ? C.textWhite : 'transparent' }}>
+                    {num ?? '·'}
+                  </div>
                 );
               })}
             </div>
@@ -119,7 +134,7 @@ export function KenoBettingStage({
         )}
 
         {/* 80-number grid */}
-        <div className="grid grid-cols-10 gap-1 my-1">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2, margin: '2px 0' }}>
           {Array.from({ length: 80 }, (_, i) => i + 1).map(num => {
             const isSel = selectedNumbers.includes(num);
             const isHot = HOT_NUMBERS.includes(num);
@@ -127,51 +142,56 @@ export function KenoBettingStage({
             return (
               <motion.button
                 key={num}
-                whileTap={{ scale: 0.88 }}
-                animate={isSel ? { scale: [0.92, 1.06, 1] } : { scale: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                whileTap={{ scale: 0.85 }}
                 onClick={() => onToggleNumber(num)}
-                className={`relative aspect-square rounded-lg flex items-center justify-center font-bold text-xs select-none cursor-pointer ${
-                  isSel
-                    ? 'bg-[#1ea855] text-white font-extrabold shadow-md ring-1 ring-emerald-300/40'
-                    : 'bg-[#162225] hover:bg-[#1e2f33] text-slate-100 border border-[#1d2d31]'
-                }`}
+                style={{
+                  position: 'relative',
+                  aspectRatio: '1',
+                  height: 33,
+                  borderRadius: 4,
+                  border: `1px solid ${isSel ? C.cellPickedBorder : C.cellBorder}`,
+                  background: isSel ? C.cellPicked : C.cell,
+                  color: isSel ? '#fff' : '#8a9ab0',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: isSel ? '0 0 6px rgba(34,197,94,0.3)' : 'none',
+                  outline: 'none',
+                  padding: 0,
+                  WebkitTapHighlightColor: 'transparent',
+                  userSelect: 'none',
+                }}
               >
-                {!isSel && isHot && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[#ef4444]" />}
-                {!isSel && isCold && <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />}
-                <span>{num}</span>
+                {!isSel && isHot && <span style={{ position: 'absolute', top: 2, right: 2, width: 5, height: 5, borderRadius: '50%', background: C.red }} />}
+                {!isSel && isCold && <span style={{ position: 'absolute', top: 2, left: 2, width: 5, height: 5, borderRadius: '50%', background: C.blue }} />}
+                {num}
               </motion.button>
             );
           })}
         </div>
 
         {/* Bet controls */}
-        <div className="flex items-center gap-1.5">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={dec} className="w-10 h-10 rounded-lg bg-[#152326] hover:bg-[#1c3034] text-slate-200 flex items-center justify-center border border-[#1d2d31] cursor-pointer">
-            <Minus className="w-4 h-4" />
-          </motion.button>
-          <div className="flex-1 h-10 rounded-lg bg-[#0a1214] border border-[#162529] flex items-center justify-center font-mono font-bold text-lg text-slate-100">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={dec} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>-</button>
+          <div style={{ flex: 1, height: 42, background: 'rgba(0,0,0,0.4)', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: C.textWhite, fontFamily: 'monospace' }}>
             {betAmount % 1 === 0 ? betAmount : betAmount.toFixed(2)}
           </div>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={inc} className="w-10 h-10 rounded-lg bg-[#152326] hover:bg-[#1c3034] text-slate-200 flex items-center justify-center border border-[#1d2d31] cursor-pointer">
-            <Plus className="w-4 h-4" />
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={() => onChangeBet(betAmount * 2)} className="px-3 h-10 rounded-lg bg-[#152326] hover:bg-[#1c3034] text-[#2bd671] font-bold text-sm border border-[#1d2d31] cursor-pointer">X2</motion.button>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={() => onChangeBet(Math.min(Math.floor(userBalance), 500))} className="px-3 h-10 rounded-lg bg-[#152326] hover:bg-[#1c3034] text-[#2bd671] font-bold text-sm border border-[#1d2d31] cursor-pointer">MAX</motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} whileHover={{ rotate: 45 }} onClick={onOpenSettings} className="w-10 h-10 rounded-lg bg-[#152326] hover:bg-[#1c3034] text-[#2bd671] flex items-center justify-center border border-[#1d2d31] cursor-pointer">
-            <Settings className="w-4 h-4" />
-          </motion.button>
+          <button onClick={inc} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
+          <button onClick={() => onChangeBet(betAmount * 2)} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
+          <button onClick={() => onChangeBet(Math.min(Math.max(1, Math.floor(userBalance)), 500))} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
+          <button onClick={onOpenSettings} style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
         </div>
 
         {/* BET button */}
-        <motion.button
-          whileHover={{ scale: 1.015 }}
-          whileTap={{ scale: 0.97 }}
+        <button
           onClick={onPlaceBet}
-          className="w-full py-3.5 rounded-xl font-black text-lg tracking-wider uppercase bg-[#1ea855] hover:bg-[#169647] text-white cursor-pointer"
+          style={{ width: '100%', padding: '14px 0', borderRadius: 12, background: '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', marginTop: 2 }}
         >
           BET
-        </motion.button>
+        </button>
       </div>
     </div>
   );
