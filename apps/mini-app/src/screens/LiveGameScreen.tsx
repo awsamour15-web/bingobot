@@ -668,8 +668,8 @@ export default function LiveGameScreen() {
 
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
-  // Exact column colors from the image
-  const HDR = ['#3b6fe8', '#1db47a', '#8b3fd9', '#d97706', '#c0392b'] as const;
+  // Exact column colors from the screenshot (B, I, N, G, O)
+  const HDR = ['#3b82f6', '#1ee068', '#8b5cf6', '#f59e0b', '#ef4444'] as const;
 
   // ── image col colors: B=blue, I=green, N=purple, G=amber, O=red ──
   const colBg = (ci: number, called: boolean, isLast: boolean) => {
@@ -733,13 +733,13 @@ export default function LiveGameScreen() {
                   <div key={num} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     borderRadius: 4,
-                    background: isLast ? '#f5c518' : called ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.055)',
-                    color: isLast ? '#0e1726' : called ? '#fff' : '#4a6080',
+                    background: isLast ? '#f5c518' : called ? '#1ee068' : 'rgba(255,255,255,0.055)',
+                    color: isLast ? '#0e1726' : called ? '#000' : '#4a6080',
                     fontSize: 10, fontWeight: isLast ? 900 : called ? 800 : 500,
-                    border: isLast ? '2px solid #fff' : called ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.07)',
+                    border: isLast ? '2px solid #fff' : called ? '1px solid rgba(30,224,104,0.5)' : '1px solid rgba(255,255,255,0.07)',
                     minHeight: 22,
                     aspectRatio: '1', transition: 'background 0.18s',
-                    boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : 'none',
+                    boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : called ? '0 0 8px rgba(30,224,104,0.5)' : 'none',
                   } as React.CSSProperties}>
                     {num}
                   </div>
@@ -882,11 +882,11 @@ export default function LiveGameScreen() {
                           <div key={idx} style={{
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             aspectRatio: '1', borderRadius: 2,
-                            background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#3b82f6cc' : 'rgba(255,255,255,0.05)',
-                            color: isW || isM ? '#fff' : '#4a6080',
+                            background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#1ee068' : 'rgba(255,255,255,0.05)',
+                            color: isW || isM ? '#000' : '#4a6080',
                             fontSize: 6.5, fontWeight: isW ? 900 : isM ? 700 : 500,
                             border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
-                            boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : 'none',
+                            boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : isM ? '0 0 4px rgba(30,224,104,0.5)' : 'none',
                             transition: 'background 0.15s',
                           }}>
                             {val ? <span style={{ fontSize: '6.5px' }}>{val}</span> : isFree ? <span style={{ fontSize: '7.5px' }}>★</span> : ''}
@@ -1017,14 +1017,14 @@ export default function LiveGameScreen() {
                         <div key={idx} style={{
                           aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           borderRadius: 3, fontWeight: isW ? 700 : isM ? 600 : 500,
-                          color: isW || isM ? '#fff' : '#52657d',
+                          color: isW ? '#fff' : isM ? '#000' : '#52657d',
                           background: isW
                             ? 'linear-gradient(135deg,#f59e0b,#d97706)'
                             : isM
-                              ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                              ? '#1ee068'
                               : 'rgba(255,255,255,0.04)',
-                          border: isW ? '1px solid #fcd34d' : '0.5px solid rgba(255,255,255,0.05)',
-                          boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : 'none',
+                          border: isW ? '1px solid #fcd34d' : isM ? '1px solid rgba(30,224,104,0.4)' : '0.5px solid rgba(255,255,255,0.05)',
+                          boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : isM ? '0 0 4px rgba(30,224,104,0.5)' : 'none',
                           fontSize: 8,
                         }}>
                           {isFree ? '★' : val}

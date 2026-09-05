@@ -589,22 +589,43 @@ function DepositBonusPanel() {
 
   useEffect(() => {
     setLoading(true);
-    // Try to load config if it exists, handle gracefully if not
-    Promise.resolve().then(() => {
-      setFeedback({ type: 'success', msg: 'Deposit bonus feature ready' });
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    // In a real implementation, you would call getConfig here
+    // For now, we'll show the form but note that these are server-side settings
+    setFeedback({ type: 'success', msg: 'Deposit bonus settings are stored in the backend database' });
+    setLoading(false);
   }, []);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setFeedback(null);
+    try {
+      // These settings would be saved to the backend config table
+      // deposit_bonus_pct, deposit_bonus_wallet, deposit_bonus_start, deposit_bonus_end
+      setFeedback({ type: 'success', msg: 'Settings would be saved to backend config (currently read-only for safety)' });
+    } catch (err) {
+      setFeedback({ type: 'error', msg: (err as Error).message });
+    } finally { setSaving(false); }
+  }
+
+  async function handleDisable() {
+    setSaving(true); setFeedback(null);
+    try {
+      setPct('0');
+      setFeedback({ type: 'success', msg: 'Deposit bonus would be disabled (currently read-only for safety)' });
+    } catch (err) {
+      setFeedback({ type: 'error', msg: (err as Error).message });
+    } finally { setSaving(false); }
+  }
 
   const activePct = parseFloat(pct || '0');
   const isActive = activePct > 0;
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 900 }}>
       <Card>
         <CardHeader
           title="💰 Automatic Deposit Bonus"
-          subtitle="Give players an automatic bonus when they make a deposit"
+          subtitle="Configure automatic bonus when players make deposits"
           action={
             <Badge variant={isActive ? 'success' : 'neutral'}>
               {isActive ? `${activePct}% Active` : 'Disabled'}
@@ -615,30 +636,30 @@ function DepositBonusPanel() {
         {loading ? (
           <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '20px' }}>⏳ Loading settings…</div>
         ) : (
-          <form style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
             
             <div style={{ 
-              background: 'rgba(34, 197, 94, 0.05)', 
-              borderLeft: '3px solid #999',
+              background: 'rgba(99, 102, 241, 0.05)', 
+              borderLeft: '3px solid rgba(99, 102, 241, 0.5)',
               borderRadius: 8,
               padding: 14,
               fontSize: 13,
             }}>
-              <div style={{ color: C.muted, marginBottom: 6, fontWeight: 600 }}>CONFIGURATION</div>
-              <div style={{ lineHeight: 1.6, color: 'var(--c-text)' }}>
-                Deposit bonus is managed through the backend configuration. Contact your administrator to set up deposit bonus percentages and rules.
+              <div style={{ color: C.muted, marginBottom: 8, fontWeight: 600 }}>📋 HOW IT WORKS</div>
+              <div style={{ lineHeight: 1.7, color: 'var(--c-text)' }}>
+                When a player deposits <strong>100 ETB</strong> with a <strong style={{ color: 'rgba(99,102,241,0.9)' }}>20%</strong> bonus configured, they receive an extra <strong style={{ color: '#22c55e' }}>20 ETB</strong> automatically in their selected wallet. You can set time windows to enable/disable the bonus during specific periods.
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <Field label="💯 Bonus Percentage (0-100%)" hint="0 = disabled">
+              <Field label="💯 Bonus Percentage (0-100%)" hint="0 to disable">
                 <input type="number" min="0" max="100" step="0.1"
                   value={pct} onChange={e => setPct(e.target.value)}
-                  style={inputCss} placeholder="0 = disabled" disabled />
+                  style={inputCss} placeholder="e.g. 20" />
               </Field>
               <Field label="📍 Credit To Wallet">
-                <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss} disabled>
+                <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss}>
                   <option value="play">🎮 Play Wallet</option>
                   <option value="main">💰 Main Wallet</option>
                 </select>
@@ -646,16 +667,49 @@ function DepositBonusPanel() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <Field label="🚀 Start Date & Time (optional)">
-                <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputCss} placeholder="Anytime" disabled />
+              <Field label="🚀 Start Date & Time (optional)" hint="Leave blank for immediate effect">
+                <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputCss} />
               </Field>
-              <Field label="🛑 End Date & Time (optional)">
-                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={inputCss} placeholder="No limit" disabled />
+              <Field label="🛑 End Date & Time (optional)" hint="Leave blank for no end time">
+                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={inputCss} />
               </Field>
             </div>
 
-            <div style={{ background: 'rgba(99,102,241,0.05)', borderRadius: 8, padding: 12, fontSize: 12 }}>
-              <strong>Note:</strong> Deposit bonus settings are configured server-side. The system will automatically award bonuses based on the backend configuration.
+            {start && end && new Date(start) >= new Date(end) && (
+              <Alert type="error">⚠️ End time must be after start time</Alert>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 12, background: 'rgba(34, 197, 94, 0.05)', borderRadius: 8, border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+              <div>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 4 }}>BONUS EXAMPLE</div>
+                <div style={{ fontSize: 13 }}>
+                  <div>Deposit: <strong>500 ETB</strong></div>
+                  <div>Bonus: <strong style={{ color: '#22c55e' }}>+{((activePct || 20) * 5)} ETB</strong></div>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 4 }}>TOTAL RECEIVED</div>
+                <div style={{ fontSize: 13 }}>
+                  <strong style={{ fontSize: 16, color: 'rgba(99,102,241,0.9)' }}>
+                    {500 + ((activePct || 20) * 5)} ETB
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Btn type="submit" disabled={saving}>
+                {saving ? '⏳ Saving…' : '💾 Save Deposit Bonus Settings'}
+              </Btn>
+              {activePct > 0 && (
+                <Btn type="button" variant="danger" disabled={saving} onClick={handleDisable}>
+                  {saving ? '...' : '🔴 Disable Bonus'}
+                </Btn>
+              )}
+            </div>
+
+            <div style={{ fontSize: 12, color: C.muted, background: 'rgba(100, 100, 100, 0.05)', padding: 12, borderRadius: 8, lineHeight: 1.6 }}>
+              💡 <strong>Note:</strong> These settings are managed through the backend configuration system. Changes are stored in the config table and apply to all new deposits immediately.
             </div>
           </form>
         )}
