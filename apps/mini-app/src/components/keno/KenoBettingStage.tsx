@@ -62,11 +62,11 @@ export function KenoBettingStage({
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
       {/* Timer */}
-      <div style={{ margin: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{
-          fontFamily: 'monospace', fontSize: 30, fontWeight: 900, letterSpacing: '0.15em',
+          fontFamily: 'monospace', fontSize: 20, fontWeight: 900, letterSpacing: '0.1em',
           color: isUrgent ? '#ef4444' : '#22d3ee',
-          textShadow: isUrgent ? '0 0 16px rgba(239,68,68,0.8)' : '0 0 12px rgba(34,211,238,0.75)',
+          textShadow: isUrgent ? '0 0 10px rgba(239,68,68,0.6)' : '0 0 8px rgba(34,211,238,0.5)',
         }}>
           {timer}
         </span>
