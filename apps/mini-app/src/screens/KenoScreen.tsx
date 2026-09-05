@@ -235,20 +235,20 @@ export default function KenoScreen() {
       {/* ── Header (fixed height) ── */}
       <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
         {/* Top row: Logo, Balance/ID, Menu */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', gap: 10 }}>
           {/* Logo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1 }}>
-            <span style={{ fontSize: 16, fontWeight: 900, color: '#e0e0e0', letterSpacing: '0.05em' }}>FAST</span>
-            <span style={{ fontSize: 16, fontWeight: 900, color: '#22c55e', letterSpacing: '0.05em' }}>KENO</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 0.9 }}>
+            <span style={{ fontSize: 12, fontWeight: 900, color: '#e0e0e0', letterSpacing: '0.02em' }}>FAST</span>
+            <span style={{ fontSize: 12, fontWeight: 900, color: '#22c55e', letterSpacing: '0.02em' }}>KENO</span>
           </div>
           
           {/* Center: Balance, ID, Status */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '6px 12px' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '4px 10px' }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
             {roundId && (
               <>
-                <span style={{ color: C.textDim }}>ID: {roundId.slice(-5).toUpperCase()}</span>
-                <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 9, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: C.textDim, fontSize: 9 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
+                <span style={{ padding: '1px 6px', borderRadius: 5, fontSize: 8, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 3 }}>
                   <span>✓</span>
                   {phase.toUpperCase()}
                 </span>
@@ -257,24 +257,24 @@ export default function KenoScreen() {
           </div>
 
           {/* Right: Menu icons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 18, cursor: 'pointer', padding: '4px' }}>☰</button>
-            <button style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 18, cursor: 'pointer', padding: '4px' }}>💬</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 14, cursor: 'pointer', padding: '2px' }}>☰</button>
+            <button style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 14, cursor: 'pointer', padding: '2px' }}>💬</button>
           </div>
         </div>
 
         {/* Timer row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderTop: `1px solid ${C.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 12px', borderTop: `1px solid ${C.border}` }}>
           {phase === 'betting' ? (
             <span style={{
-              fontFamily: 'monospace', fontSize: 24, fontWeight: 900, letterSpacing: '0.15em',
+              fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.12em',
               color: countdown <= 10 ? '#ef4444' : '#22d3ee',
-              textShadow: countdown <= 10 ? '0 0 12px rgba(239,68,68,0.7)' : '0 0 10px rgba(34,211,238,0.6)',
+              textShadow: countdown <= 10 ? '0 0 10px rgba(239,68,68,0.6)' : '0 0 8px rgba(34,211,238,0.5)',
             }}>
               {String(Math.floor(countdown / 60)).padStart(2, '0')} : {String(countdown % 60).padStart(2, '0')}
             </span>
           ) : (
-            <span style={{ color: C.textDim, fontSize: 12 }}>Waiting for next round...</span>
+            <span style={{ color: C.textDim, fontSize: 10 }}>Waiting...</span>
           )}
         </div>
       </div>
