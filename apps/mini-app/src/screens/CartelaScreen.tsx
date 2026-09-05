@@ -506,12 +506,16 @@ export default function CartelaScreen() {
       } catch { /* ignore */ }
       recentlyReleasedRef.current.add(num);
       window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
-      if (roundId) leaveRound(roundId, num).catch(() => {
-        const restored = new Set(picksRef.current);
-        restored.add(num);
-        picksRef.current = restored;
-        setPicks(new Set(restored));
-      });
+      if (roundId) {
+        leaveRound(roundId, num)
+          .then(() => getRound(roundId).then(setRound).catch(() => {}))
+          .catch(() => {
+            const restored = new Set(picksRef.current);
+            restored.add(num);
+            picksRef.current = restored;
+            setPicks(new Set(restored));
+          });
+      }
       return;
     }
 
@@ -558,6 +562,7 @@ export default function CartelaScreen() {
           setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
           const existing: number[] = (() => { try { return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]'); } catch { return []; } })();
           sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([...new Set([...existing, num])]));
+          void getRound(roundId).then(setRound).catch(() => {});
         })
         .catch((err: unknown) => {
           const e = err as { code?: string; message?: string };
