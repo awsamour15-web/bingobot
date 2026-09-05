@@ -62,11 +62,11 @@ export function KenoBettingStage({
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
       {/* Card */}
-      <div style={{ width: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ width: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px 12px 15px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
         {/* Header */}
         {spots === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '11px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '11px', minHeight: 90 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
               {/* Ball cluster - repositioned */}
               <div style={{ position: 'relative', width: 108, height: 81, flexShrink: 0 }}>
@@ -120,36 +120,36 @@ export function KenoBettingStage({
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '11px', minHeight: 90 }}>
             {/* Possible win row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 13, color: C.textMid, fontWeight: 600 }}>Possible win</span>
-                <span style={{ fontSize: 20, fontWeight: 900, color: C.green }}>{possibleWin > 0 ? possibleWin.toLocaleString() : '0'}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 12, color: C.textMid, fontWeight: 600 }}>Possible win</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: C.green }}>{possibleWin > 0 ? possibleWin.toLocaleString() : '0'}</span>
               </div>
               {onOpenInfo && (
-                <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
+                <button onClick={onOpenInfo} style={{ width: 29, height: 29, borderRadius: 7, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
               )}
             </div>
             {/* Pay table row */}
             {payEntries.length > 0 && (
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '6px 10px', border: `1px solid rgba(255,255,255,0.06)` }}>
-                <div style={{ display: 'flex', gap: 4, marginBottom: 2 }}>
-                  <span style={{ width: 44, fontSize: 11, color: C.textDim }}>Match</span>
-                  {payEntries.map(p => <span key={p.hits} style={{ width: 28, textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.textMid, fontFamily: 'monospace' }}>{p.hits}</span>)}
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '5px 8px', border: `1px solid rgba(255,255,255,0.06)` }}>
+                <div style={{ display: 'flex', gap: 3, marginBottom: 2 }}>
+                  <span style={{ width: 40, fontSize: 9, color: C.textDim }}>Match</span>
+                  {payEntries.map(p => <span key={p.hits} style={{ width: 24, textAlign: 'center', fontSize: 9, fontWeight: 700, color: C.textMid, fontFamily: 'monospace' }}>{p.hits}</span>)}
                 </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <span style={{ width: 44, fontSize: 11, color: C.textDim }}>Pays</span>
-                  {payEntries.map(p => <span key={p.hits} style={{ width: 28, textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>x{p.mul}</span>)}
+                <div style={{ display: 'flex', gap: 3 }}>
+                  <span style={{ width: 40, fontSize: 9, color: C.textDim }}>Pays</span>
+                  {payEntries.map(p => <span key={p.hits} style={{ width: 24, textAlign: 'center', fontSize: 9, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>x{p.mul}</span>)}
                 </div>
               </div>
             )}
             {/* Selected numbers tray */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
               {Array.from({ length: 10 }).map((_, idx) => {
                 const num = selectedNumbers[idx];
                 return (
-                  <div key={idx} style={{ height: 34, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, fontFamily: 'monospace', background: num !== undefined ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${num !== undefined ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}`, color: num !== undefined ? C.textWhite : 'transparent' }}>
+                  <div key={idx} style={{ height: 28, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, fontFamily: 'monospace', background: num !== undefined ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.3)', border: `1px solid ${num !== undefined ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.05)'}`, color: num !== undefined ? C.textWhite : 'transparent' }}>
                     {num ?? '·'}
                   </div>
                 );
