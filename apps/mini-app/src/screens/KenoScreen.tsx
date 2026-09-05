@@ -223,7 +223,7 @@ export default function KenoScreen() {
   const showArena = showDrawArena || phase === 'drawing' || phase === 'finished';
 
   return (
-    // Full-screen fixed container with scroll
+    // Full-screen fixed container with scrollable content
     <div style={{
       position: 'fixed', inset: 0,
       background: C.bg, color: C.textWhite,
@@ -259,75 +259,78 @@ export default function KenoScreen() {
         </div>
       </div>
 
-      {/* ── Main content: Betting stage or Draw arena (NO scroll) ── */}
-      <div style={{ flexShrink: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column', maxHeight: '65vh' }}>
-        {showArena ? (
-          <KenoDrawArena
-            drawnNumbers={drawnNumbers}
-            initialDrawnNumbers={initialDrawnNumbers}
-            currentBall={currentBall}
-            userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
-            onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
-          />
-        ) : (
-          <KenoBettingStage
-            countdown={countdown}
-            selectedNumbers={selectedNumbers}
-            onToggleNumber={handleToggle}
-            betAmount={betAmount}
-            onChangeBet={setBetAmount}
-            onPlaceBet={handlePlaceBet}
-            onOpenSettings={() => setQuickPickOpen(true)}
-            onOpenInfo={() => setInfoOpen(true)}
-            userBalance={balance}
-          />
-        )}
-      </div>
-
-      {/* ── Scrollable bottom section: tabs + content ── */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', borderTop: `1px solid ${C.border}`, padding: '0 10px' }}>
-        {/* Tab bar */}
-        <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, display: 'flex' }}>
-          {tabs.map(tab => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  flex: 1, padding: '7px 2px', background: 'none', border: 'none',
-                  borderBottom: isActive ? `2px solid ${C.green}` : '2px solid transparent',
-                  color: isActive ? C.green : C.textDim,
-                  fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em',
-                  transition: 'color 0.12s',
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+      {/* ── Scrollable content area ── */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* ── Main content: Betting stage or Draw arena ── */}
+        <div style={{ flexShrink: 0, padding: '8px 10px' }}>
+          {showArena ? (
+            <KenoDrawArena
+              drawnNumbers={drawnNumbers}
+              initialDrawnNumbers={initialDrawnNumbers}
+              currentBall={currentBall}
+              userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
+              onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
+            />
+          ) : (
+            <KenoBettingStage
+              countdown={countdown}
+              selectedNumbers={selectedNumbers}
+              onToggleNumber={handleToggle}
+              betAmount={betAmount}
+              onChangeBet={setBetAmount}
+              onPlaceBet={handlePlaceBet}
+              onOpenSettings={() => setQuickPickOpen(true)}
+              onOpenInfo={() => setInfoOpen(true)}
+              userBalance={balance}
+            />
+          )}
         </div>
 
-        {/* Tab content - scrollable */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 0 env(safe-area-inset-bottom, 8px)' }}>
-          {activeTab === 'GAME' && <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />}
-          {activeTab === 'HISTORY' && (
-            <KenoHistoryTab
-              history={history}
-              onReplayBet={(nums, bet) => {
-                setSelectedNumbers(nums); setBetAmount(bet); setActiveTab('GAME');
-                showToast(`Loaded ${nums.length} numbers on board`);
-              }}
-            />
-          )}
-          {activeTab === 'RESULTS' && <KenoHistoryTab history={history} />}
-          {activeTab === 'STATISTICS' && (
-            <KenoStatsTab
-              history={history}
-              selectedNumbers={selectedNumbers}
-              onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
-            />
-          )}
+        {/* ── Bottom section: tabs + content ── */}
+        <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: '0 10px' }}>
+          {/* Tab bar */}
+          <div style={{ background: C.topbar, borderBottom: `1px solid ${C.border}`, display: 'flex' }}>
+            {tabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    flex: 1, padding: '7px 2px', background: 'none', border: 'none',
+                    borderBottom: isActive ? `2px solid ${C.green}` : '2px solid transparent',
+                    color: isActive ? C.green : C.textDim,
+                    fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em',
+                    transition: 'color 0.12s',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab content */}
+          <div style={{ padding: '8px 0 env(safe-area-inset-bottom, 12px)' }}>
+            {activeTab === 'GAME' && <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />}
+            {activeTab === 'HISTORY' && (
+              <KenoHistoryTab
+                history={history}
+                onReplayBet={(nums, bet) => {
+                  setSelectedNumbers(nums); setBetAmount(bet); setActiveTab('GAME');
+                  showToast(`Loaded ${nums.length} numbers on board`);
+                }}
+              />
+            )}
+            {activeTab === 'RESULTS' && <KenoHistoryTab history={history} />}
+            {activeTab === 'STATISTICS' && (
+              <KenoStatsTab
+                history={history}
+                selectedNumbers={selectedNumbers}
+                onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
+              />
+            )}
+          </div>
         </div>
       </div>
 
