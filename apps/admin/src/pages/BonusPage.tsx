@@ -15,7 +15,7 @@ import {
 } from '../components/ui';
 
 type WalletType = 'main' | 'play';
-type Tab = 'single' | 'bulk' | 'deposit' | 'active' | 'coupons';
+type Tab = 'single' | 'bulk' | 'active' | 'coupons';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Single-player bonus (unchanged feature, kept intact)
@@ -766,135 +766,6 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Deposit bonus config panel
-// ─────────────────────────────────────────────────────────────────────────────
-
-function DepositBonusPanel() {
-  const [pct, setPct] = useState('');
-  const [wallet, setWallet] = useState<'play' | 'main'>('play');
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    getConfig().then((entries) => {
-      const map = Object.fromEntries(entries.map((e) => [e.key, e.value]));
-      setPct(map['deposit_bonus_pct'] ?? '');
-      setWallet((map['deposit_bonus_wallet'] as 'play' | 'main') ?? 'play');
-      setStart(map['deposit_bonus_start'] ? map['deposit_bonus_start'].slice(0, 16) : '');
-      setEnd(map['deposit_bonus_end'] ? map['deposit_bonus_end'].slice(0, 16) : '');
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true); setFeedback(null);
-    try {
-      await updateConfig('deposit_bonus_pct', pct || '0');
-      await updateConfig('deposit_bonus_wallet', wallet);
-      await updateConfig('deposit_bonus_start', start ? new Date(start).toISOString() : '');
-      await updateConfig('deposit_bonus_end', end ? new Date(end).toISOString() : '');
-      setFeedback({ type: 'success', msg: 'Deposit bonus settings saved successfully.' });
-    } catch (err) {
-      setFeedback({ type: 'error', msg: (err as Error).message });
-    } finally { setSaving(false); }
-  }
-
-  async function handleDisable() {
-    setSaving(true); setFeedback(null);
-    try {
-      await updateConfig('deposit_bonus_pct', '0');
-      setPct('0');
-      setFeedback({ type: 'success', msg: 'Deposit bonus disabled.' });
-    } catch (err) {
-      setFeedback({ type: 'error', msg: (err as Error).message });
-    } finally { setSaving(false); }
-  }
-
-  const activePct = parseFloat(pct || '0');
-  const isActive = activePct > 0;
-
-  return (
-    <div style={{ maxWidth: 800 }}>
-      <Card>
-        <CardHeader
-          title="💰 Automatic Deposit Bonus"
-          subtitle="Give players an automatic bonus when they make a deposit"
-          action={
-            <Badge variant={isActive ? 'success' : 'neutral'}>
-              {isActive ? `${activePct}% Active` : 'Disabled'}
-            </Badge>
-          }
-        />
-        
-        {loading ? (
-          <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '20px' }}>⏳ Loading settings…</div>
-        ) : (
-          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
-            
-            <div style={{ 
-              background: isActive ? 'rgba(34, 197, 94, 0.05)' : 'rgba(100, 100, 100, 0.05)', 
-              borderLeft: `3px solid ${isActive ? '#22c55e' : '#999'}`,
-              borderRadius: 8,
-              padding: 14,
-              fontSize: 13,
-            }}>
-              <div style={{ color: C.muted, marginBottom: 6, fontWeight: 600 }}>HOW IT WORKS</div>
-              <div style={{ lineHeight: 1.6, color: 'var(--c-text)' }}>
-                When a player deposits <strong style={{ color: '#3b82f6' }}>100 ETB</strong> with a {activePct || 20}% bonus, they receive an extra <strong style={{ color: '#22c55e' }}>{((activePct || 20) * 100) / 100} ETB</strong> in their {wallet === 'play' ? 'play' : 'main'} wallet automatically.
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <Field label="💯 Bonus Percentage (0-100%)" hint="0 = disabled">
-                <input type="number" min="0" max="100" step="0.1"
-                  value={pct} onChange={e => setPct(e.target.value)}
-                  style={inputCss} placeholder="0 = disabled" />
-              </Field>
-              <Field label="📍 Credit To Wallet">
-                <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss}>
-                  <option value="play">🎮 Play Wallet</option>
-                  <option value="main">💰 Main Wallet</option>
-                </select>
-              </Field>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <Field label="🚀 Start Date & Time (optional)">
-                <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputCss} placeholder="Anytime" />
-              </Field>
-              <Field label="🛑 End Date & Time (optional)">
-                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={inputCss} placeholder="No limit" />
-              </Field>
-            </div>
-
-            {start && end && new Date(start) > new Date(end) && (
-              <Alert type="error">End time must be after start time.</Alert>
-            )}
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <Btn type="submit" disabled={saving}>
-                {saving ? '⏳ Saving…' : '💾 Save Settings'}
-              </Btn>
-              {isActive && (
-                <Btn type="button" variant="danger" disabled={saving} onClick={handleDisable}>
-                  {saving ? '...' : '🔴 Disable Bonus'}
-                </Btn>
-              )}
-            </div>
-          </form>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Coupon Panel
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1095,7 +966,6 @@ export function BonusPage() {
     { id: 'active' as const, label: 'Active Bonuses', icon: '⭐' },
     { id: 'single' as const, label: 'Single Player', icon: '👤' },
     { id: 'bulk' as const, label: 'Bulk Bonus', icon: '🎯' },
-    { id: 'deposit' as const, label: 'Deposit Bonus', icon: '💰' },
     { id: 'coupons' as const, label: 'Coupons', icon: '🎟️' },
   ];
 
@@ -1162,8 +1032,7 @@ export function BonusPage() {
         {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : 
          tab === 'single' ? <SingleBonusPanel /> : 
          tab === 'bulk' ? <BulkBonusPanel /> : 
-         tab === 'coupons' ? <CouponPanel /> : 
-         <DepositBonusPanel />}
+         <CouponPanel />}
       </div>
 
       <style>{`
