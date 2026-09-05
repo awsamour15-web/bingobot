@@ -19,7 +19,7 @@ import { KenoQuickPickModal } from '../components/keno/KenoQuickPickModal';
 import { KenoInfoModal } from '../components/keno/KenoInfoModal';
 import type { BetFeedItem, HistoryRecord } from '../components/keno/types';
 
-type NavTab = 'GAME' | 'HISTORY' | 'RESULTS' | 'RANK' | 'STATISTICS';
+type NavTab = 'GAME' | 'HISTORY' | 'RESULTS' | 'STATISTICS';
 
 function randomPick(count: number): number[] {
   const pool = Array.from({ length: 80 }, (_, i) => i + 1);
@@ -214,11 +214,10 @@ export default function KenoScreen() {
   }
 
   const tabs: { id: NavTab; label: string }[] = [
-    { id: 'GAME',       label: '▶ GAME'      },
-    { id: 'HISTORY',    label: '↺ HISTORY'  },
-    { id: 'RESULTS',    label: '✓ RESULT'   },
-    { id: 'STATISTICS', label: '▦ STATS'    },
-    { id: 'RANK',       label: '🏆 RANK'    },
+    { id: 'GAME', label: '▶ GAME' },
+    { id: 'HISTORY', label: '◌ HISTORY' },
+    { id: 'RESULTS', label: '✓ RESULTS' },
+    { id: 'STATISTICS', label: '▣ STATISTICS' },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -235,43 +234,48 @@ export default function KenoScreen() {
     }}>
 
       {/* ── Header (fixed height) ── */}
-      <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
-        {/* Top row: Logo, Balance/ID, Menu */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', gap: 10 }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 0.9 }}>
-            <span style={{ fontSize: 12, fontWeight: 900, color: '#e0e0e0', letterSpacing: '0.02em' }}>FAST</span>
-            <span style={{ fontSize: 12, fontWeight: 900, color: '#22c55e', letterSpacing: '0.02em' }}>KENO</span>
-          </div>
-          
-          {/* Center: Balance, ID, Status */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '4px 10px' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
-            {roundId && (
-              <span style={{ color: C.textDim, fontSize: 9 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
-            )}
+      <div style={{ flexShrink: 0, background: '#05070b', borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 12px 10px', gap: 12 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#f3f5f7', fontSize: 28, lineHeight: 1, cursor: 'pointer', padding: 0, transform: 'translateY(-1px)' }}>←</button>
+
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#a6b5c2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#111', fontSize: 18, marginRight: 4 }}>K</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '6px 10px', minWidth: 150, justifyContent: 'space-between' }}>
+              <span style={{ color: '#f2f7fb', fontSize: 12, fontWeight: 700 }}>Br</span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {[0,1,2,3].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? '#fff' : 'rgba(255,255,255,0.35)' }} />)}
+              </div>
+              <span style={{ color: '#f2f7fb', fontSize: 14 }}>⌄</span>
+            </div>
           </div>
 
-          {/* Right: Menu icons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 14, cursor: 'pointer', padding: '2px' }}>☰</button>
-            <button style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 14, cursor: 'pointer', padding: '2px' }}>💬</button>
+          <button style={{ background: '#f3c641', color: '#101419', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 18, fontWeight: 800, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
+        </div>
+      </div>
+
+      <div style={{ flexShrink: 0, background: 'linear-gradient(180deg, #0b121a 0%, #0b1519 100%)', borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 6px', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#9de6c0' }}>
+            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.06em', color: '#a2f4bf', textShadow: '0 0 10px rgba(38,232,131,0.25)' }}>FAST</span>
+            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.05em', color: '#68ec8d', textShadow: '0 0 12px rgba(72,236,138,0.3)' }}>KENO</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: '#d8f7e4', fontWeight: 800, fontSize: 18, fontFamily: 'monospace' }}>{balance.toFixed(2)} ETB</span>
+            {roundId && (
+              <span style={{ color: '#d8f7e4', fontWeight: 700, fontSize: 12, opacity: 0.8 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
+            )}
           </div>
         </div>
 
-        {/* Timer row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 12px', borderTop: `1px solid ${C.border}` }}>
-          {phase === 'betting' ? (
-            <span style={{
-              fontFamily: 'monospace', fontSize: 18, fontWeight: 900, letterSpacing: '0.12em',
-              color: countdown <= 10 ? '#ef4444' : '#22d3ee',
-              textShadow: countdown <= 10 ? '0 0 10px rgba(239,68,68,0.6)' : '0 0 8px rgba(34,211,238,0.5)',
-            }}>
-              {String(Math.floor(countdown / 60)).padStart(2, '0')} : {String(countdown % 60).padStart(2, '0')}
-            </span>
-          ) : (
-            <span style={{ color: C.textDim, fontSize: 10 }}>Waiting...</span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px 10px', gap: 12 }}>
+          <div style={{ flex: 1, height: 24, borderRadius: 999, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(74,255,182,0.35)', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(50,240,150,0.18), rgba(50,240,150,0.08))' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#d8f7e4', fontSize: 12 }}>☰</button>
+            <button style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#d8f7e4', fontSize: 12 }}>◌</button>
+          </div>
         </div>
       </div>
 
@@ -354,11 +358,6 @@ export default function KenoScreen() {
               {activeTab === 'RESULTS' && (
                 <motion.div key="results" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
                   <KenoHistoryTab history={history} />
-                </motion.div>
-              )}
-              {activeTab === 'RANK' && (
-                <motion.div key="rank" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
-                  <KenoRankTab />
                 </motion.div>
               )}
               {activeTab === 'STATISTICS' && (

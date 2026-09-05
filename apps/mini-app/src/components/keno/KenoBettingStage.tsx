@@ -66,57 +66,18 @@ export function KenoBettingStage({
 
         {/* Header */}
         {spots === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '11px', minHeight: 90 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
-              {/* Ball cluster - repositioned */}
-              <div style={{ position: 'relative', width: 108, height: 81, flexShrink: 0 }}>
-                {/* Ball 80 — top left */}
-                <div style={{
-                  position: 'absolute', top: 0, left: 0,
-                  width: 29, height: 29, borderRadius: '50%',
-                  background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.7), inset 2px 2px 4px rgba(120,160,200,0.25), inset -2px -2px 5px rgba(0,0,0,0.7)',
-                  border: '1px solid rgba(80,120,160,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 900, color: '#d0e4f0', fontFamily: 'monospace',
-                }}>
-                  <div style={{ position: 'absolute', top: 3, left: 6, width: 9, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
-                  80
-                </div>
-                {/* Ball 10 — top right */}
-                <div style={{
-                  position: 'absolute', top: 0, right: 0,
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
-                  boxShadow: '0 5px 12px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(120,160,200,0.3), inset -2px -2px 6px rgba(0,0,0,0.7)',
-                  border: '1px solid rgba(80,120,160,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 900, color: '#d0e4f0', fontStyle: 'italic', fontFamily: 'monospace',
-                }}>
-                  <div style={{ position: 'absolute', top: 4, left: 8, width: 13, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
-                  10
-                </div>
-                {/* Ball 1 — bottom left */}
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 9,
-                  width: 45, height: 45, borderRadius: '50%',
-                  background: 'radial-gradient(circle at 38% 30%, #2a6a50 0%, #0d3828 50%, #041c14 100%)',
-                  boxShadow: '0 0 18px rgba(30,224,104,0.5), 0 6px 16px rgba(0,0,0,0.8), inset 2px 2px 6px rgba(100,240,160,0.2), inset -3px -3px 8px rgba(0,0,0,0.8)',
-                  border: '2px solid rgba(30,224,104,0.6)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 20, fontWeight: 900, color: '#3dba6a', fontFamily: 'monospace',
-                }}>
-                  <div style={{ position: 'absolute', top: 5, left: 9, width: 16, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', transform: 'rotate(-25deg)' }} />
-                  1
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 7 }}>
-                <span style={{ fontSize: 18, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>From 1 to 80</span>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '10px 12px 12px', minHeight: 130 }}>
+            <div style={{ position: 'relative', width: 116, height: 90, flexShrink: 0 }}>
+              <div style={{ position: 'absolute', top: 12, left: 6, width: 42, height: 42, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #5c6f82 0%, #213548 40%, #0d1c2a 100%)', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 8px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfe6ff', fontSize: 18, fontWeight: 900 }}>80</div>
+              <div style={{ position: 'absolute', top: 0, right: 12, width: 48, height: 48, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #5c6f82 0%, #213548 40%, #0d1c2a 100%)', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 8px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfe6ff', fontSize: 20, fontWeight: 900 }}>10</div>
+              <div style={{ position: 'absolute', bottom: 2, left: 18, width: 54, height: 54, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #5af0a0 0%, #1d4a40 45%, #0c231c 100%)', border: '2px solid rgba(95,242,162,0.75)', boxShadow: '0 0 18px rgba(30,224,104,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#79f3ba', fontSize: 22, fontWeight: 900 }}>1</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#ecf3f7', letterSpacing: '-0.04em' }}>Choose 10 numbers</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#69e7a5' }}>From 1 to 80</div>
             </div>
             {onOpenInfo && (
-              <button onClick={onOpenInfo} style={{ width: 29, height: 29, borderRadius: 7, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 7 }}>?</button>
+              <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 7, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
             )}
           </div>
         ) : (
