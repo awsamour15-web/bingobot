@@ -114,12 +114,12 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
       width: '100%', height: '100%', background: 'rgba(6,14,18,0.98)',
       border: 'none', borderRadius: 0,
       position: 'relative', overflow: 'hidden',
-      display: 'flex', flexDirection: 'column', gap: 4,
-      padding: '6px 6px',
+      display: 'flex', flexDirection: 'column', gap: 5,
+      padding: '7px 7px',
     }}>
 
       {/* Radar rings — subtle */}
-      {[50, 85, 130, 180].map(r => (
+      {[58, 98, 150, 207].map(r => (
         <div key={r} style={{
           position: 'absolute', left: '50%', top: '50%',
           width: r, height: r, borderRadius: '50%',
@@ -134,7 +134,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
           animate={{ rotate: 360 }}
           transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
           style={{
-            width: 180, height: 180, marginLeft: -90, marginTop: -90,
+            width: 207, height: 207, marginLeft: -103.5, marginTop: -103.5,
             borderRadius: '50%',
             background: 'conic-gradient(from 0deg, rgba(30,224,104,0.07) 0deg, transparent 50deg, transparent 360deg)',
           }}
@@ -185,8 +185,8 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
               transition={{ duration: 0.7, ease: [0.0, 0.4, 0.6, 1.0] }}
               style={{
                 position: 'absolute',
-                width: 48, height: 48, borderRadius: '50%',
-                border: `1px solid ${isHitCentre ? 'rgba(34,197,94,0.55)' : 'rgba(50,160,240,0.45)'}`,
+                width: 55, height: 55, borderRadius: '50%',
+                border: `1.15px solid ${isHitCentre ? 'rgba(34,197,94,0.55)' : 'rgba(50,160,240,0.45)'}`,
                 pointerEvents: 'none',
               }}
             />
@@ -209,19 +209,19 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
                 : { duration: SHRINK_MS / 1000, ease: 'easeIn' }
               }
               style={{
-                width: 52, height: 52, borderRadius: '50%',
+                width: 60, height: 60, borderRadius: '50%',
                 background: bg(isHitCentre, true),
                 border: border(isHitCentre, true),
                 boxShadow: shadow(isHitCentre, true),
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 22, fontWeight: 900,
+                fontSize: 25, fontWeight: 900,
                 color: isHitCentre ? '#7affc0' : '#daeeff',
-                fontFamily: 'monospace', letterSpacing: '-0.3px',
+                fontFamily: 'monospace', letterSpacing: '-0.35px',
                 position: 'relative',
               }}
             >
               {/* glass gloss */}
-              <div style={{ position: 'absolute', top: 7, left: 10, width: 18, height: 9, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', transform: 'rotate(-22deg)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 8, left: 12, width: 20, height: 10, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', transform: 'rotate(-22deg)', pointerEvents: 'none' }} />
               {centreNum}
             </motion.div>
           )}
@@ -229,8 +229,8 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
         {/* Waiting hint */}
         {!showCentre && (
-          <div style={{ width: 52, height: 52, borderRadius: '50%', border: '1px dashed rgba(30,224,104,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
-            <span style={{ color: 'rgba(30,224,104,0.18)', fontSize: 18 }}>◎</span>
+          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '1px dashed rgba(30,224,104,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+            <span style={{ color: 'rgba(30,224,104,0.18)', fontSize: 20 }}>◎</span>
           </div>
         )}
       </div>
@@ -248,14 +248,14 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
 function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number> }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 2.3 }}>
       {Array.from({ length: 10 }).map((_, idx) => {
         const num = balls[idx];
 
         if (num === undefined) {
           return (
             <div key={`slot-${idx}`} style={{
-              height: 22, borderRadius: '50%',
+              height: 25, borderRadius: '50%',
               background: 'rgba(255,255,255,0.015)',
               border: '1px solid rgba(255,255,255,0.04)',
             }} />
@@ -271,12 +271,12 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 24, mass: 0.6 }}
             style={{
-              height: 22, borderRadius: '50%',
+              height: 25, borderRadius: '50%',
               background: bg(isHit),
               boxShadow: shadow(isHit),
               border: border(isHit),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 8, fontWeight: 800,
+              fontSize: 9, fontWeight: 800,
               color: isHit ? '#6effa8' : '#c8e4f8',
               fontFamily: 'monospace',
               position: 'relative',
@@ -286,13 +286,13 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
             {isHit && (
               <div style={{
                 position: 'absolute', top: -2, right: -2,
-                width: 5, height: 5, borderRadius: '50%',
+                width: 6, height: 6, borderRadius: '50%',
                 background: '#1ee068', border: '1px solid rgba(167,243,208,0.8)',
-                boxShadow: '0 0 4px rgba(30,224,104,0.9)',
+                boxShadow: '0 0 5px rgba(30,224,104,0.9)',
               }} />
             )}
             {/* gloss */}
-            <div style={{ position: 'absolute', top: 2, left: 4, width: 7, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', transform: 'rotate(-18deg)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 2.5, left: 4.5, width: 8, height: 3.5, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', transform: 'rotate(-18deg)', pointerEvents: 'none' }} />
             {num}
           </motion.div>
         );
