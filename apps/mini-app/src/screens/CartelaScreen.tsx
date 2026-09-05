@@ -30,7 +30,7 @@ const asSafeBalance = (wallet?: { balance?: number | string | null } | null) => 
 
 export const TOTAL_CARTELAS = 800;
 const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
-const COL_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171'];
+const COL_COLORS = ['#3b82f6', '#18b7b0', '#7654c7', '#dca72f', '#df6269'];
 
 interface CartelaCellProps {
   num: number;
@@ -94,7 +94,7 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
 
 const LOCAL_COUNTDOWN_SEC = 30; // must match LEAD_TIME_MS (30s) in round-scheduler.service.ts
 
-/** 40-second countdown that starts the moment the hook first mounts. */
+/** 30-second countdown that starts the moment the hook first mounts. */
 function useLocalCountdown() {
   const [msLeft, setMsLeft] = useState(LOCAL_COUNTDOWN_SEC * 1000);
 
@@ -659,7 +659,7 @@ export default function CartelaScreen() {
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(48px, 1fr))',
         gap: 12, padding: '24px 20px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
@@ -713,10 +713,10 @@ export default function CartelaScreen() {
                       <div key={idx} style={{
                         background: isFree ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(20,29,39,0.95) 100%)',
                         color: isFree ? '#ecfdf5' : '#cbd5e1',
-                        fontWeight: 600, fontSize: 7,
+                        fontWeight: 700, fontSize: 11,
                         textAlign: 'center', borderRadius: 3,
                         border: isFree ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(148,163,184,0.15)',
-                        minHeight: '18px',
+                        minHeight: '24px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: isFree ? '0 0 12px rgba(16,185,129,0.25)' : 'none'
                       }}>
