@@ -218,7 +218,7 @@ export default function KenoScreen() {
     { id: 'HISTORY',    label: '↺ HISTORY'  },
     { id: 'RESULTS',    label: '✓ RESULT'   },
     { id: 'RANK',       label: '🏆 RANK'    },
-    { id: 'STATISTICS', label: '▦ STATS'    },
+    { id: 'STATISTICS', label: '▦ STATISTICS'    },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -309,9 +309,9 @@ export default function KenoScreen() {
         </div>
 
         {/* ── Bottom section: tabs + content ── */}
-        <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: '0 10px' }}>
-          {/* Tab bar */}
-          <div style={{ background: C.topbar, borderBottom: `1px solid ${C.border}`, display: 'flex' }}>
+        <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: '0' }}>
+          {/* Tab bar - scrollable */}
+          <div style={{ background: C.topbar, borderBottom: `1px solid ${C.border}`, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollBehavior: 'smooth' }}>
             {tabs.map(tab => {
               const isActive = activeTab === tab.id;
               return (
@@ -319,11 +319,11 @@ export default function KenoScreen() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: 1, padding: '8px 4px', background: 'none', border: 'none',
+                    flex: '0 0 auto', padding: '8px 12px', background: 'none', border: 'none',
                     borderBottom: isActive ? `3px solid ${C.green}` : '3px solid transparent',
                     color: isActive ? C.green : C.textDim,
                     fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em',
-                    transition: 'color 0.12s',
+                    transition: 'color 0.12s', whiteSpace: 'nowrap',
                   }}
                 >
                   {tab.label}
@@ -333,7 +333,7 @@ export default function KenoScreen() {
           </div>
 
           {/* Tab content */}
-          <div style={{ padding: '8px 0 env(safe-area-inset-bottom, 12px)' }}>
+          <div style={{ padding: '8px 10px env(safe-area-inset-bottom, 12px)' }}>
             {activeTab === 'GAME' && <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />}
             {activeTab === 'HISTORY' && (
               <KenoHistoryTab

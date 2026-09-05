@@ -82,27 +82,41 @@ function SingleBonusPanel() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 18, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.7fr', gap: 20, alignItems: 'start' }}>
       <Card>
-        <CardHeader title="Players" subtitle="Select a player and assign a bonus" />
+        <CardHeader title="Select Player" subtitle="Find and select a player to award a bonus" />
         <div style={{ marginBottom: 16 }}>
-          <input type="search" name="player-search" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search username or Telegram ID" style={{ ...inputCss, paddingLeft: 12 }} />
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 16 }}>🔍</span>
+            <input type="search" name="player-search" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search by username or Telegram ID" style={{ ...inputCss, paddingLeft: 40, fontSize: 14 }} />
+          </div>
         </div>
         <Table>
-          <thead><tr><Th>Player</Th><Th>Main</Th><Th>Play</Th><Th>Status</Th></tr></thead>
+          <thead><tr><Th>Player</Th><Th>Balance</Th><Th>Status</Th></tr></thead>
           <tbody>
-            {loading ? <TrLoading cols={4} /> : !players.length ? <TrEmpty cols={4} message="No players found." /> :
+            {loading ? <TrLoading cols={3} /> : !players.length ? <TrEmpty cols={3} message="No players found." /> :
               players.map(player => (
                 <tr key={player.id} onClick={() => setSelectedId(player.id)}
-                  style={{ cursor: 'pointer', background: selectedId === player.id ? 'rgba(99,102,241,0.08)' : undefined }}>
+                  style={{ 
+                    cursor: 'pointer', 
+                    background: selectedId === player.id ? 'rgba(99,102,241,0.15)' : 'transparent',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => { if (selectedId !== player.id) (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)'; }}
+                  onMouseLeave={(e) => { if (selectedId !== player.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
                   <Td>
                     <div style={{ fontWeight: 700 }}>@{player.username}</div>
                     <div style={{ fontSize: 11, color: C.muted }}>{player.telegram_id}</div>
                   </Td>
-                  <Td>{Number(player.main_wallet_balance).toFixed(2)}</Td>
-                  <Td>{Number(player.play_wallet_balance).toFixed(2)}</Td>
-                  <Td><Badge variant={player.is_suspended ? 'danger' : 'success'}>{player.is_suspended ? 'Suspended' : 'Active'}</Badge></Td>
+                  <Td>
+                    <div style={{ fontSize: 13 }}>
+                      <span style={{ color: '#22c55e', fontWeight: 600 }}>${Number(player.main_wallet_balance).toFixed(2)}</span>
+                      <span style={{ color: C.muted }}> + </span>
+                      <span style={{ color: '#3b82f6', fontWeight: 600 }}>${Number(player.play_wallet_balance).toFixed(2)}</span>
+                    </div>
+                  </Td>
+                  <Td><Badge variant={player.is_suspended ? 'danger' : 'success'}>{player.is_suspended ? '🚫 Suspended' : '✅ Active'}</Badge></Td>
                 </tr>
               ))}
           </tbody>
@@ -110,51 +124,85 @@ function SingleBonusPanel() {
       </Card>
 
       <Card>
-        <CardHeader title="Assign Bonus" subtitle={selectedPlayer ? `@${selectedPlayer.username}` : 'Choose a player'} />
+        <CardHeader title="Award Bonus" subtitle={selectedPlayer ? `→ @${selectedPlayer.username}` : 'Select player first'} />
         {error && <Alert type="error">{error}</Alert>}
         {success && <Alert type="success">{success}</Alert>}
         {!selectedPlayer ? (
-          <div style={{ color: C.muted, fontSize: 13 }}>Select a player to continue.</div>
+          <div style={{ textAlign: 'center', padding: '28px 0', color: C.muted }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
+            <div>Select a player from the list to continue</div>
+          </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: 'rgba(99,102,241,0.05)', borderRadius: 12, padding: 12, borderLeft: '3px solid rgba(99,102,241,0.5)' }}>
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>Current Balances</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                <div><span style={{ color: C.muted }}>Main:</span> <span style={{ fontWeight: 600, color: '#22c55e' }}>${Number(selectedPlayer.main_wallet_balance).toFixed(2)}</span></div>
+                <div><span style={{ color: C.muted }}>Play:</span> <span style={{ fontWeight: 600, color: '#3b82f6' }}>${Number(selectedPlayer.play_wallet_balance).toFixed(2)}</span></div>
+              </div>
+            </div>
+            
             <div style={{ display: 'grid', gap: 8 }}>
               {BONUS_PRESETS.map(item => (
                 <button key={item.id} type="button" onClick={() => setPresetId(item.id)} style={{
-                  border: presetId === item.id ? '1px solid rgba(99,102,241,0.5)' : '1px solid var(--c-border)',
+                  border: presetId === item.id ? '2px solid rgba(99,102,241,0.6)' : '1px solid var(--c-border)',
                   background: presetId === item.id ? 'rgba(99,102,241,0.08)' : 'transparent',
-                  borderRadius: 10, padding: '10px 12px', textAlign: 'left',
+                  borderRadius: 10, padding: '12px 14px', textAlign: 'left',
                   color: 'var(--c-text)', cursor: 'pointer',
-                  display: 'flex', justifyContent: 'space-between', gap: 8,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                  transition: 'all 0.15s ease',
                 }}>
-                  <span>{item.label}</span>
-                  <strong>{item.id === 'custom' ? 'Custom' : `${item.amount} ETB`}</strong>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.label}</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{item.note}</div>
+                  </div>
+                  <strong style={{ fontSize: 16, color: item.id === 'custom' ? C.muted : 'rgba(99,102,241,0.8)' }}>
+                    {item.id === 'custom' ? '✎' : `${item.amount}Є`}
+                  </strong>
                 </button>
               ))}
             </div>
+            
             {presetId === 'custom' && (
               <Field label="Custom Amount (ETB)">
                 <input type="number" name="custom-amount" min="1" step="1" value={customAmount}
                   onChange={e => setCustomAmount(e.target.value)} style={inputCss} placeholder="e.g. 75" />
               </Field>
             )}
-            <Field label="Wallet">
+            
+            <Field label="Credit to Wallet">
               <select name="wallet-type" value={effectiveWallet} onChange={e => setWalletType(e.target.value as WalletType)}
                 style={selectCss} disabled={presetId !== 'custom'}>
-                <option value="play">Play Wallet</option>
-                <option value="main">Main Wallet</option>
+                <option value="play">🎮 Play Wallet</option>
+                <option value="main">💰 Main Wallet</option>
               </select>
             </Field>
-            <Field label="Reason">
+            
+            <Field label="Reason / Note">
               <input type="text" name="reason" value={reason} onChange={e => setReason(e.target.value)}
                 style={inputCss} placeholder={preset.note} />
             </Field>
-            <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, padding: '12px 14px', fontSize: 13 }}>
-              <div style={{ color: C.muted, marginBottom: 6 }}>Summary</div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{effectiveAmount} ETB</div>
-              <div style={{ color: C.muted }}>{effectiveWallet === 'main' ? 'Main Wallet' : 'Play Wallet'}</div>
+            
+            <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(99,102,241,0.04) 100%)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: '14px 16px', fontSize: 13 }}>
+              <div style={{ color: C.muted, marginBottom: 8, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Award Summary</div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: C.muted }}>Amount:</span>
+                  <span style={{ fontWeight: 700, fontSize: 18, color: 'rgba(99,102,241,0.9)' }}>{effectiveAmount} ETB</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                  <span style={{ color: C.muted }}>Wallet:</span>
+                  <span style={{ fontWeight: 600 }}>{effectiveWallet === 'main' ? '💰 Main' : '🎮 Play'}</span>
+                </div>
+              </div>
             </div>
-            <Btn type="button" onClick={handleApply} disabled={saving}>
-              {saving ? 'Applying…' : `Apply ${effectiveAmount} ETB Bonus`}
+            
+            <Btn type="button" onClick={handleApply} disabled={saving} style={{ 
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.9) 0%, rgba(99,102,241,0.7) 100%)',
+              fontWeight: 600,
+              padding: '12px 16px',
+            }}>
+              {saving ? '⏳ Processing…' : `✓ Award ${effectiveAmount} ETB Bonus`}
             </Btn>
           </div>
         )}
@@ -754,7 +802,7 @@ function DepositBonusPanel() {
       await updateConfig('deposit_bonus_wallet', wallet);
       await updateConfig('deposit_bonus_start', start ? new Date(start).toISOString() : '');
       await updateConfig('deposit_bonus_end', end ? new Date(end).toISOString() : '');
-      setFeedback({ type: 'success', msg: 'Deposit bonus settings saved.' });
+      setFeedback({ type: 'success', msg: 'Deposit bonus settings saved successfully.' });
     } catch (err) {
       setFeedback({ type: 'error', msg: (err as Error).message });
     } finally { setSaving(false); }
@@ -775,54 +823,78 @@ function DepositBonusPanel() {
   const isActive = activePct > 0;
 
   return (
-    <Card style={{ marginBottom: 20 }}>
-      <CardHeader
-        title="🎁 Deposit Bonus"
-        subtitle="Automatically credit a % bonus when a player deposits"
-        action={
-          <Badge variant={isActive ? 'success' : 'neutral'}>
-            {isActive ? `${activePct}% active` : 'disabled'}
-          </Badge>
-        }
-      />
-      {loading ? (
-        <div style={{ color: C.muted, fontSize: 13 }}>Loading…</div>
-      ) : (
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-            <Field label="Bonus %" hint="e.g. 20 means 20% of deposit amount">
-              <input type="number" min="0" max="100" step="0.01"
-                value={pct} onChange={e => setPct(e.target.value)}
-                style={inputCss} placeholder="0 = disabled" />
-            </Field>
-            <Field label="Credit To">
-              <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss}>
-                <option value="play">Play Wallet</option>
-                <option value="main">Main Wallet</option>
-              </select>
-            </Field>
-            <Field label="Start (optional)" hint="Leave blank = no start limit">
-              <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputCss} />
-            </Field>
-            <Field label="End (optional)" hint="Leave blank = no end limit">
-              <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={inputCss} />
-            </Field>
-          </div>
-          <div style={{ background: 'rgba(99,102,241,0.06)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.muted }}>
-            Example: if bonus is <strong style={{ color: 'var(--c-text)' }}>20%</strong> and player deposits{' '}
-            <strong style={{ color: 'var(--c-text)' }}>100 ETB</strong>, they get{' '}
-            <strong style={{ color: '#22c55e' }}>20 ETB</strong> extra in their {wallet} wallet automatically.
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Bonus Settings'}</Btn>
-            {isActive && (
-              <Btn type="button" variant="danger" disabled={saving} onClick={handleDisable}>Disable Bonus</Btn>
+    <div style={{ maxWidth: 800 }}>
+      <Card>
+        <CardHeader
+          title="💰 Automatic Deposit Bonus"
+          subtitle="Give players an automatic bonus when they make a deposit"
+          action={
+            <Badge variant={isActive ? 'success' : 'neutral'} style={{ fontSize: 12, fontWeight: 600 }}>
+              {isActive ? `${activePct}% Active` : 'Disabled'}
+            </Badge>
+          }
+        />
+        
+        {loading ? (
+          <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '20px' }}>⏳ Loading settings…</div>
+        ) : (
+          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
+            
+            <div style={{ 
+              background: isActive ? 'rgba(34, 197, 94, 0.05)' : 'rgba(100, 100, 100, 0.05)', 
+              borderLeft: `3px solid ${isActive ? '#22c55e' : '#999'}`,
+              borderRadius: 8,
+              padding: 14,
+              fontSize: 13,
+            }}>
+              <div style={{ color: C.muted, marginBottom: 6, fontWeight: 600 }}>HOW IT WORKS</div>
+              <div style={{ lineHeight: 1.6, color: 'var(--c-text)' }}>
+                When a player deposits <strong style={{ color: '#3b82f6' }}>100 ETB</strong> with a {activePct || 20}% bonus, they receive an extra <strong style={{ color: '#22c55e' }}>{((activePct || 20) * 100) / 100} ETB</strong> in their {wallet === 'play' ? 'play' : 'main'} wallet automatically.
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <Field label="💯 Bonus Percentage (0-100%)" hint="0 = disabled">
+                <input type="number" min="0" max="100" step="0.1"
+                  value={pct} onChange={e => setPct(e.target.value)}
+                  style={inputCss} placeholder="0 = disabled" />
+              </Field>
+              <Field label="📍 Credit To Wallet">
+                <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss}>
+                  <option value="play">🎮 Play Wallet</option>
+                  <option value="main">💰 Main Wallet</option>
+                </select>
+              </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <Field label="🚀 Start Date & Time (optional)">
+                <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputCss} placeholder="Anytime" />
+              </Field>
+              <Field label="🛑 End Date & Time (optional)">
+                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={inputCss} placeholder="No limit" />
+              </Field>
+            </div>
+
+            {start && end && new Date(start) > new Date(end) && (
+              <Alert type="error">End time must be after start time.</Alert>
             )}
-          </div>
-        </form>
-      )}
-    </Card>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Btn type="submit" disabled={saving} style={{ flex: 1 }}>
+                {saving ? '⏳ Saving…' : '💾 Save Settings'}
+              </Btn>
+              {isActive && (
+                <Btn type="button" variant="danger" disabled={saving} onClick={handleDisable}>
+                  {saving ? '...' : '🔴 Disable Bonus'}
+                </Btn>
+              )}
+            </div>
+          </form>
+        )}
+      </Card>
+    </div>
   );
 }
 
@@ -994,36 +1066,87 @@ export function BonusPage() {
 
   const active = players.filter(p => !p.is_suspended).length;
 
+  const tabItems = [
+    { id: 'active' as const, label: 'Active Bonuses', icon: '⭐' },
+    { id: 'single' as const, label: 'Single Player', icon: '👤' },
+    { id: 'bulk' as const, label: 'Bulk Bonus', icon: '🎯' },
+    { id: 'deposit' as const, label: 'Deposit Bonus', icon: '💰' },
+    { id: 'coupons' as const, label: 'Coupons', icon: '🎟️' },
+  ];
+
   return (
     <div className="fade-in">
-      <PageHeader title="Bonus Manager" />
+      <PageHeader title="🎁 Bonus Manager" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
-        <StatCard icon="🎁" label="Players"   value={loading ? '…' : players.length} color={C.primary} />
-        <StatCard icon="✅" label="Active"    value={loading ? '…' : active}          color={C.success} />
+      {/* KPI Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
+        <StatCard icon="👥" label="Total Players" value={loading ? '…' : players.length} color={C.primary} />
+        <StatCard icon="✅" label="Active Players" value={loading ? '…' : active} color={C.success} />
         <StatCard icon="🚫" label="Suspended" value={loading ? '…' : players.length - active} color={C.danger} />
       </div>
 
-      {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <Btn variant={tab === 'active' ? 'primary' : 'outline'} onClick={() => setTab('active')}>
-          ⭐ Active Bonuses
-        </Btn>
-        <Btn variant={tab === 'single' ? 'primary' : 'outline'} onClick={() => setTab('single')}>
-          👤 Single Player
-        </Btn>
-        <Btn variant={tab === 'bulk' ? 'primary' : 'outline'} onClick={() => setTab('bulk')}>
-          🎯 Bulk Bonus (Promotion)
-        </Btn>
-        <Btn variant={tab === 'deposit' ? 'primary' : 'outline'} onClick={() => setTab('deposit')}>
-          💰 Deposit Bonus
-        </Btn>
-        <Btn variant={tab === 'coupons' ? 'primary' : 'outline'} onClick={() => setTab('coupons')}>
-          🎟️ Coupons
-        </Btn>
+      {/* Modern Tab Navigation */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        marginBottom: 28,
+        borderBottom: '1px solid var(--c-border)',
+        paddingBottom: 16,
+        overflowX: 'auto',
+        scrollBehavior: 'smooth',
+      }}>
+        {tabItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setTab(item.id)}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px 8px 0 0',
+              border: 'none',
+              background: tab === item.id ? 'rgba(99,102,241,0.1)' : 'transparent',
+              color: tab === item.id ? 'rgba(99,102,241,1)' : 'var(--c-text)',
+              borderBottom: tab === item.id ? '2px solid rgba(99,102,241,1)' : '2px solid transparent',
+              cursor: 'pointer',
+              fontWeight: tab === item.id ? 600 : 500,
+              fontSize: 14,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onMouseEnter={(e) => {
+              if (tab !== item.id) {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.05)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (tab !== item.id) {
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+              }
+            }}
+          >
+            <span>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
       </div>
 
-      {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : tab === 'single' ? <SingleBonusPanel /> : tab === 'bulk' ? <BulkBonusPanel /> : tab === 'coupons' ? <CouponPanel /> : <DepositBonusPanel />}
+      {/* Tab Content */}
+      <div style={{ animation: 'fadeIn 0.3s ease' }}>
+        {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : 
+         tab === 'single' ? <SingleBonusPanel /> : 
+         tab === 'bulk' ? <BulkBonusPanel /> : 
+         tab === 'coupons' ? <CouponPanel /> : 
+         <DepositBonusPanel />}
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
