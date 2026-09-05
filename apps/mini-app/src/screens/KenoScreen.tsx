@@ -120,7 +120,7 @@ export default function KenoScreen() {
   // ── history ────────────────────────────────────────────────────────────────
   const loadHistory = useCallback(() => {
     getKenoHistory().then(h => {
-      setHistory(h.map(r => ({ id: r.id, drawnNumbers: r.drawnNumbers, finishedAt: (r as any).finishedAt ?? '', myBet: r.myBet ?? null })));
+      setHistory(h.map(r => ({ id: r.id, drawnNumbers: r.drawnNumbers, finishedAt: r.finishedAt ?? '', myBets: r.myBets ?? (r.myBet ? [r.myBet] : []), myBet: r.myBet ?? null })));
     }).catch(() => {});
   }, []);
 

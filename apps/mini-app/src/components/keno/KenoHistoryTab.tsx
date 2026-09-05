@@ -22,6 +22,13 @@ function formatTime(ts?: string | null) {
 
 function formatId(id: string) { return id.slice(-8).toUpperCase(); }
 
+function formatDate(ts?: string | null) {
+  if (!ts) return '';
+  try {
+    return new Date(ts).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
+  } catch { return ''; }
+}
+
 export function KenoHistoryTab({ history, onReplayBet }: Props) {
   if (!history.length) {
     return (
@@ -32,51 +39,46 @@ export function KenoHistoryTab({ history, onReplayBet }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 6px 6px' }}>
-        <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600 }}>Draw ID</span>
-        <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600 }}>Combination</span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 520, overflowY: 'auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxHeight: 620, overflowY: 'auto' }}>
         {history.map(record => {
-          const row1 = record.drawnNumbers.slice(0, 10);
-          const row2 = record.drawnNumbers.slice(10, 20);
-          const ps = new Set(record.myBet?.pickedNumbers ?? []);
-          const won = (record.myBet?.payout ?? 0) > 0;
+          const bets = record.myBets?.length ? record.myBets : record.myBet ? [record.myBet] : [];
+          const winning = bets.some(bet => (bet.payout ?? 0) > 0);
 
           return (
-            <div
-              key={record.id}
-              onClick={() => record.myBet && onReplayBet?.(record.myBet.pickedNumbers, record.myBet.betAmount)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 12, cursor: record.myBet ? 'pointer' : 'default', background: won ? 'rgba(10,36,34,0.9)' : C.card, border: `1px solid ${won ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.07)'}` }}
-            >
-              {/* Left: ID + time */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 96, flexShrink: 0 }}>
-                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#1ee068', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 6px rgba(30,224,104,0.4)' }}>
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#071316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <div key={record.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: C.greenLight }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(224,238,231,0.8)' }} />
+                <div style={{ minWidth: 170, textAlign: 'center', lineHeight: 1.15 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>Draw</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 14 }}>ID: {formatId(record.id)}</div>
+                  <div style={{ color: C.textWhite, fontSize: 12, marginTop: 3 }}>{formatDate(record.finishedAt)} {formatTime(record.finishedAt)}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: C.green, lineHeight: 1.2 }}>{formatId(record.id)}</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 10, color: C.textDim, lineHeight: 1.2 }}>{formatTime(record.finishedAt)}</span>
-                </div>
+                <div style={{ flex: 1, height: 1, background: 'rgba(224,238,231,0.8)' }} />
               </div>
 
-              {/* Right: number grid */}
-              <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '5px 4px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {[row1, row2].map((row, ri) => (
-                  <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 1, textAlign: 'center' }}>
-                    {row.map((num, idx) => (
-                      <span key={idx} style={{ fontSize: 10, fontWeight: 700, fontFamily: 'monospace', color: ps.has(num) ? C.greenLight : '#94a3b8' }}>{num}</span>
-                    ))}
+              {bets.map((bet, betIndex) => {
+                const picked = new Set(bet.pickedNumbers);
+                const drawn = new Set(record.drawnNumbers);
+                const won = (bet.payout ?? 0) > 0;
+                return (
+                  <div key={`${record.id}-${betIndex}`} onClick={() => onReplayBet?.(bet.pickedNumbers, bet.betAmount)} style={{ background: won ? 'rgba(12,63,42,0.88)' : C.card, border: `1px solid ${won ? 'rgba(34,197,94,0.35)' : C.border}`, borderRadius: 10, overflow: 'hidden', cursor: onReplayBet ? 'pointer' : 'default' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 3, padding: 6 }}>
+                      {Array.from({ length: 10 }).map((_, idx) => {
+                        const number = bet.pickedNumbers[idx];
+                        const matched = number !== undefined && picked.has(number) && drawn.has(number);
+                        return <div key={idx} style={{ height: 40, borderRadius: 4, background: number === undefined ? 'rgba(0,0,0,0.22)' : matched ? '#4fba7b' : '#34434b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: number === undefined ? 'transparent' : '#e5edf0', fontSize: 16, fontWeight: 800, fontFamily: 'monospace' }}>{number ?? '·'}</div>;
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderTop: `1px solid ${won ? 'rgba(34,197,94,0.25)' : C.border}`, color: C.textWhite, fontFamily: 'monospace', fontSize: 13, fontWeight: 700 }}>
+                      <span>Bet {bet.betAmount}</span>
+                      {won && <span style={{ color: C.greenLight }}>{bet.matched ?? 0}</span>}
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           );
         })}
-      </div>
     </div>
   );
 }

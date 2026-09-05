@@ -23,6 +23,12 @@ export interface HistoryRecord {
   id: string;
   drawnNumbers: number[];
   finishedAt: string;
+  myBets: {
+    pickedNumbers: number[];
+    betAmount: number;
+    matched: number | null;
+    payout: number | null;
+  }[];
   myBet: {
     pickedNumbers: number[];
     betAmount: number;
