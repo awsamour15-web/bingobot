@@ -682,16 +682,6 @@ export default function LiveGameScreen() {
   return (
     <div style={{ height: '100dvh', background: '#0e1726', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
-      <div style={{ height: 70, flexShrink: 0, background: 'linear-gradient(180deg, #0d1522 0%, #111c2c 100%)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '0 16px', boxShadow: '0 4px 14px rgba(0,0,0,0.22)' }}>
-        <button type="button" onClick={() => navigate('/', { replace: true })} aria-label="Close game" style={{ width: 40, height: 40, padding: 0, border: 0, background: 'transparent', color: '#f2f5fa', cursor: 'pointer', fontSize: 34, fontWeight: 300, lineHeight: 1 }}>×</button>
-        <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 0.2, color: '#f5f7fb' }}>Fidel Bingo</div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 18, color: '#f2f5fa' }}>
-          <span aria-hidden="true" style={{ fontSize: 31, lineHeight: 1, transform: 'translateY(-3px)' }}>⌄</span>
-          <button type="button" onClick={toggleSound} aria-label={soundOn ? 'Mute sound' : 'Enable sound'} style={{ width: 30, height: 40, padding: 0, border: 0, background: 'transparent', color: '#f2f5fa', cursor: 'pointer', fontSize: 23 }}>{soundOn ? '◉' : '◌'}</button>
-        </div>
-      </div>
-
-
       {/* ── STATS ROW ── */}
       <div style={{ background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }}>
         {[
