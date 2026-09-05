@@ -234,27 +234,44 @@ export default function KenoScreen() {
 
       {/* ── Header (fixed height) ── */}
       <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '4px 0' }}>
-            ← Back
-          </button>
-          <img src="/keno-logo.svg" alt="Fast Keno" style={{ height: 26, width: 'auto' }} />
-          <div style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${C.green}33`, borderRadius: 999, padding: '3px 10px' }}>
+        {/* Top row: Logo, Balance/ID, Menu */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', gap: 12 }}>
+          {/* Logo */}
+          <img src="/keno-logo.svg" alt="Fast Keno" style={{ height: 26, width: 'auto', minWidth: 100 }} />
+          
+          {/* Center: Balance, ID, Status */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '6px 12px' }}>
             <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
+            {roundId && (
+              <>
+                <span style={{ color: C.textDim }}>ID: {roundId.slice(-5).toUpperCase()}</span>
+                <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 9, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span>✓</span>
+                  {phase.toUpperCase()}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Right: Menu icons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 18, cursor: 'pointer', padding: '4px' }}>☰</button>
+            <button style={{ background: 'none', border: 'none', color: C.textWhite, fontSize: 18, cursor: 'pointer', padding: '4px' }}>💬</button>
           </div>
         </div>
-        {/* Round status strip */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 6px', fontSize: 10 }}>
-          {roundId ? (
-            <>
-              <span style={{ color: C.textDim }}>Round</span>
-              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em' }}>{roundId.slice(-8).toUpperCase()}</span>
-              <span style={{ padding: '1px 7px', borderRadius: 999, fontSize: 9, fontWeight: 800, color: phaseBadgeColor, border: `1px solid ${phaseBadgeColor}44`, background: `${phaseBadgeColor}18` }}>
-                {phase.toUpperCase()}
-              </span>
-            </>
+
+        {/* Timer row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderTop: `1px solid ${C.border}` }}>
+          {phase === 'betting' ? (
+            <span style={{
+              fontFamily: 'monospace', fontSize: 24, fontWeight: 900, letterSpacing: '0.15em',
+              color: countdown <= 10 ? '#ef4444' : '#22d3ee',
+              textShadow: countdown <= 10 ? '0 0 12px rgba(239,68,68,0.7)' : '0 0 10px rgba(34,211,238,0.6)',
+            }}>
+              {String(Math.floor(countdown / 60)).padStart(2, '0')} : {String(countdown % 60).padStart(2, '0')}
+            </span>
           ) : (
-            <span style={{ color: C.textDim }}>Connecting…</span>
+            <span style={{ color: C.textDim, fontSize: 12 }}>Waiting for next round...</span>
           )}
         </div>
       </div>
