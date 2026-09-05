@@ -66,26 +66,26 @@ export function KenoBettingStage({
 
         {/* Header */}
         {spots === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {/* Ball cluster — matches asset: dark navy balls 80 & 10, large teal glassy ball 1 */}
-              <div style={{ position: 'relative', width: 72, height: 62, flexShrink: 0 }}>
-                {/* Ball 80 — small dark navy */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              {/* Ball cluster - repositioned */}
+              <div style={{ position: 'relative', width: 120, height: 90, flexShrink: 0 }}>
+                {/* Ball 80 — top left */}
                 <div style={{
-                  position: 'absolute', top: 0, left: 10,
-                  width: 28, height: 28, borderRadius: '50%',
+                  position: 'absolute', top: 0, left: 0,
+                  width: 32, height: 32, borderRadius: '50%',
                   background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
                   boxShadow: '0 4px 10px rgba(0,0,0,0.7), inset 2px 2px 4px rgba(120,160,200,0.25), inset -2px -2px 5px rgba(0,0,0,0.7)',
                   border: '1px solid rgba(80,120,160,0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 900, color: '#d0e4f0', fontFamily: 'monospace',
+                  fontSize: 11, fontWeight: 900, color: '#d0e4f0', fontFamily: 'monospace',
                 }}>
                   <div style={{ position: 'absolute', top: 4, left: 7, width: 10, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
                   80
                 </div>
-                {/* Ball 10 — medium dark navy */}
+                {/* Ball 10 — top right */}
                 <div style={{
-                  position: 'absolute', top: 0, right: 2,
+                  position: 'absolute', top: 0, right: 0,
                   width: 36, height: 36, borderRadius: '50%',
                   background: 'radial-gradient(circle at 38% 28%, #3a5068 0%, #0d1e2e 55%, #060e18 100%)',
                   boxShadow: '0 5px 12px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(120,160,200,0.3), inset -2px -2px 6px rgba(0,0,0,0.7)',
@@ -96,27 +96,27 @@ export function KenoBettingStage({
                   <div style={{ position: 'absolute', top: 5, left: 9, width: 14, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', transform: 'rotate(-20deg)' }} />
                   10
                 </div>
-                {/* Ball 1 — large teal glassy */}
+                {/* Ball 1 — bottom left */}
                 <div style={{
-                  position: 'absolute', bottom: 0, left: 0,
-                  width: 46, height: 46, borderRadius: '50%',
+                  position: 'absolute', bottom: 0, left: 10,
+                  width: 50, height: 50, borderRadius: '50%',
                   background: 'radial-gradient(circle at 38% 30%, #2a6a50 0%, #0d3828 50%, #041c14 100%)',
                   boxShadow: '0 0 18px rgba(30,224,104,0.5), 0 6px 16px rgba(0,0,0,0.8), inset 2px 2px 6px rgba(100,240,160,0.2), inset -3px -3px 8px rgba(0,0,0,0.8)',
                   border: '2px solid rgba(30,224,104,0.6)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 20, fontWeight: 900, color: '#3dba6a', fontFamily: 'monospace',
+                  fontSize: 22, fontWeight: 900, color: '#3dba6a', fontFamily: 'monospace',
                 }}>
                   <div style={{ position: 'absolute', top: 6, left: 10, width: 18, height: 9, borderRadius: '50%', background: 'rgba(255,255,255,0.22)', transform: 'rotate(-25deg)' }} />
                   1
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 17, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>From 1 to 80</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8 }}>
+                <span style={{ fontSize: 20, fontWeight: 800, color: C.textWhite }}>Choose 10 numbers</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>From 1 to 80</span>
               </div>
             </div>
             {onOpenInfo && (
-              <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
+              <button onClick={onOpenInfo} style={{ width: 32, height: 32, borderRadius: 8, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 8 }}>?</button>
             )}
           </div>
         ) : (
