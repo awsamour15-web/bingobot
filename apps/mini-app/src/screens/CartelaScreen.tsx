@@ -630,11 +630,12 @@ export default function CartelaScreen() {
         </div>
 
         {/* Header Bottom - Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
           {[
             { label: '💰 Main', value: balances ? Math.floor(asSafeBalance(balances.mainWallet)) : 0, color: '#3b82f6' },
             { label: '🎮 Play', value: balances ? Math.floor(asSafeBalance(balances.playWallet)) : 0, color: '#10b981' },
             { label: '🎯 Stake', value: round ? Number(round.stake) : 0, color: '#f59e0b' },
+            { label: '🏆 Payout', value: round ? Math.round(Number(round.derash)) : 0, color: '#a78bfa' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`, border: `1px solid ${color}30`, borderRadius: 10, padding: '8px', textAlign: 'center', backdropFilter: 'blur(8px)' }}>
               <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, marginBottom: 2 }}>{label}</div>
@@ -659,7 +660,7 @@ export default function CartelaScreen() {
       {/* ── Number grid (scrollable) ── */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(48px, 1fr))',
+        display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
         gap: 12, padding: '24px 20px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
