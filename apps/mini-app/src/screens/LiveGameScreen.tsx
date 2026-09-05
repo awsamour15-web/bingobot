@@ -926,10 +926,6 @@ export default function LiveGameScreen() {
           ? winnerCartelaGrid
           : (allCartelas.find(c => c.cartelaNumber === winCartelaNum)?.cartelaGrid ?? []) as number[];
         const winCells = winCellsForGrid(winGrid);
-        const shown = wi.winners.slice(0, 2);
-        const extra = wi.winners.length - shown.length;
-        const primaryWinner = shown[0];
-
         return (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 100,
@@ -939,7 +935,7 @@ export default function LiveGameScreen() {
             color: '#f8fafc',
             padding: '10px',
           }}>
-            <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               }}>
@@ -954,8 +950,8 @@ export default function LiveGameScreen() {
                 </div>
               </div>
 
-              {primaryWinner && (
-                <div style={{
+              {wi.winners.map((winner) => (
+                <div key={winner.cartelaNumber} style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   gap: 6, padding: '5px 8px', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.2))',
                   border: '1px solid rgba(96,165,250,0.4)', borderRadius: 7,
@@ -965,15 +961,15 @@ export default function LiveGameScreen() {
                       width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 12,
                       color: '#fff',
-                    }}>{(primaryWinner.username ?? '?')[0]?.toUpperCase()}</div>
+                    }}>{(winner.username ?? '?')[0]?.toUpperCase()}</div>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}>{primaryWinner.username}</div>
-                      <div style={{ fontSize: 9, color: '#dbeafe' }}>Cartela #{primaryWinner.cartelaNumber}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}>{winner.username}</div>
+                      <div style={{ fontSize: 9, color: '#dbeafe' }}>Cartela #{winner.cartelaNumber}</div>
                     </div>
                   </div>
                   <div style={{ fontSize: 16 }}>🏆</div>
                 </div>
-              )}
+              ))}
 
               <div style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -993,7 +989,7 @@ export default function LiveGameScreen() {
 
               {winGrid.length > 0 && (
                 <div style={{
-                  width: '100%', maxWidth: 280, margin: '0 auto',
+                  width: '100%', maxWidth: 320, margin: '0 auto',
                   background: 'linear-gradient(180deg, rgba(17,25,44,0.9), rgba(12,20,34,0.9))',
                   border: '1.5px solid rgba(52,211,153,0.6)', borderRadius: 8, overflow: 'hidden',
                 }}>
@@ -1015,15 +1011,15 @@ export default function LiveGameScreen() {
                         <div key={idx} style={{
                           aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           borderRadius: 3, fontWeight: isW ? 700 : isM ? 600 : 500,
-                          color: isW ? '#fff' : isM ? '#000' : '#52657d',
+                          color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
                           background: isW
                             ? 'linear-gradient(135deg,#f59e0b,#d97706)'
                             : isM
-                              ? '#1ee068'
+                              ? '#234d87'
                               : 'rgba(255,255,255,0.04)',
-                          border: isW ? '1px solid #fcd34d' : isM ? '1px solid rgba(30,224,104,0.4)' : '0.5px solid rgba(255,255,255,0.05)',
-                          boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : isM ? '0 0 4px rgba(30,224,104,0.5)' : 'none',
-                          fontSize: 8,
+                          border: isW ? '1px solid #fcd34d' : isM ? '1px solid rgba(76,145,230,0.55)' : '0.5px solid rgba(255,255,255,0.05)',
+                          boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
+                          fontSize: 13,
                         }}>
                           {isFree ? '★' : val}
                         </div>
