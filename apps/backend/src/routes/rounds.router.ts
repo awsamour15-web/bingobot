@@ -94,6 +94,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     player_count: round._count.round_entries,
     max_players: round.max_players,
     derash: Number(round.derash),
+    commission_pct: Number(round.commission_pct),
     start_time: round.start_time.toISOString(),
     called_numbers_count: round._count.called_numbers,
     ended_at: round.ended_at?.toISOString(),

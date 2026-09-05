@@ -58,6 +58,7 @@ export interface RoundListItem {
 }
 
 export interface RoundDetail extends RoundListItem {
+  commission_pct: number;
   called_numbers_count: number;
   ended_at?: string | undefined;
   winner_player_id?: string | undefined;

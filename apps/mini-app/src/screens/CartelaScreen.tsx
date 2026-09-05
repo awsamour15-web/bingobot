@@ -499,6 +499,7 @@ export default function CartelaScreen() {
       next.delete(num);
       picksRef.current = next;
       setPicks(new Set(next));
+      setRound(current => current ? { ...current, derash: Math.max(0, current.derash - payoutPerCartela) } : current);
       setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
       try {
         const existing: number[] = JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
@@ -514,6 +515,7 @@ export default function CartelaScreen() {
             restored.add(num);
             picksRef.current = restored;
             setPicks(new Set(restored));
+            setRound(current => current ? { ...current, derash: current.derash + payoutPerCartela } : current);
           });
       }
       return;
@@ -543,6 +545,7 @@ export default function CartelaScreen() {
     next.add(num);
     picksRef.current = next;
     setPicks(new Set(next));
+    setRound(current => current ? { ...current, derash: current.derash + payoutPerCartela } : current);
 
     // Load grid for preview
     const localGrid = getLocalGrid(num);
@@ -570,6 +573,7 @@ export default function CartelaScreen() {
           rollback.delete(num);
           picksRef.current = rollback;
           setPicks(new Set(rollback));
+          setRound(current => current ? { ...current, derash: Math.max(0, current.derash - payoutPerCartela) } : current);
           setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
           if (e.code === 'CARTELA_TAKEN') {
             setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
@@ -602,6 +606,7 @@ export default function CartelaScreen() {
   const poolSize = Math.min(round.active_cartela_count ?? TOTAL_CARTELAS, TOTAL_CARTELAS);
   const allNumbers = Array.from({ length: poolSize }, (_, i) => i + 1);
   const picksArr = [...picks].sort((a, b) => a - b);
+  const payoutPerCartela = Number(round.stake) * (1 - round.commission_pct / 100);
   // How much vertical space the bingo preview needs
   const previewCount = picksArr.length;
 
