@@ -214,10 +214,10 @@ export default function KenoScreen() {
   }
 
   const tabs: { id: NavTab; label: string }[] = [
-    { id: 'GAME', label: '▶ GAME' },
-    { id: 'HISTORY', label: '◌ HISTORY' },
-    { id: 'RESULTS', label: '✓ RESULTS' },
-    { id: 'STATISTICS', label: '▣ STATISTICS' },
+    { id: 'GAME', label: 'GAME' },
+    { id: 'HISTORY', label: 'HISTORY' },
+    { id: 'RESULTS', label: 'RESULTS' },
+    { id: 'STATISTICS', label: 'STATISTICS' },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -235,46 +235,44 @@ export default function KenoScreen() {
 
       {/* ── Header (fixed height) ── */}
       <div style={{ flexShrink: 0, background: '#05070b', borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 12px 10px', gap: 12 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#f3f5f7', fontSize: 28, lineHeight: 1, cursor: 'pointer', padding: 0, transform: 'translateY(-1px)' }}>←</button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 8px', gap: 10 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 26, lineHeight: 1, cursor: 'pointer', padding: 0 }}>←</button>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#a6b5c2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#111', fontSize: 18, marginRight: 4 }}>K</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '6px 10px', minWidth: 150, justifyContent: 'space-between' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#dfe7ee', color: '#171b22', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>K</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 180, padding: '8px 12px', borderRadius: 8, background: '#0d1217', border: '1px solid rgba(255,255,255,0.1)' }}>
               <span style={{ color: '#f2f7fb', fontSize: 12, fontWeight: 700 }}>Br</span>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                 {[0,1,2,3].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? '#fff' : 'rgba(255,255,255,0.35)' }} />)}
               </div>
               <span style={{ color: '#f2f7fb', fontSize: 14 }}>⌄</span>
             </div>
           </div>
 
-          <button style={{ background: '#f3c641', color: '#101419', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 18, fontWeight: 800, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
+          <button style={{ background: '#f1c647', color: '#11151a', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, background: 'linear-gradient(180deg, #0b121a 0%, #0b1519 100%)', borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
+      <div style={{ flexShrink: 0, background: 'linear-gradient(180deg, #071013 0%, rgba(6, 18, 20, 0.96) 100%)', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 6px', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, color: '#9de6c0' }}>
-            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.06em', color: '#a2f4bf', textShadow: '0 0 10px rgba(38,232,131,0.25)' }}>FAST</span>
-            <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.05em', color: '#68ec8d', textShadow: '0 0 12px rgba(72,236,138,0.3)' }}>KENO</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 26, fontWeight: 900, color: '#8fe9aa', letterSpacing: '-0.08em' }}>FAST</span>
+            <span style={{ fontSize: 26, fontWeight: 900, color: '#56d989', letterSpacing: '-0.08em' }}>KENO</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: '#d8f7e4', fontWeight: 800, fontSize: 18, fontFamily: 'monospace' }}>{balance.toFixed(2)} ETB</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ color: '#d9f8e4', fontWeight: 800, fontSize: 18, fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{balance.toFixed(2)} ETB</span>
             {roundId && (
-              <span style={{ color: '#d8f7e4', fontWeight: 700, fontSize: 12, opacity: 0.8 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
+              <span style={{ color: '#d9f8e4', fontWeight: 700, fontSize: 12, opacity: 0.8 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
             )}
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px 10px', gap: 12 }}>
-          <div style={{ flex: 1, height: 24, borderRadius: 999, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(74,255,182,0.35)', overflow: 'hidden', position: 'relative' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(50,240,150,0.18), rgba(50,240,150,0.08))' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#d8f7e4', fontSize: 12 }}>☰</button>
-            <button style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#d8f7e4', fontSize: 12 }}>◌</button>
+          <div style={{ flex: 1, height: 26, borderRadius: 999, border: '1px solid rgba(94,240,170,0.45)', background: 'linear-gradient(90deg, rgba(63, 221, 140, 0.18), rgba(63, 221, 140, 0.04))', overflow: 'hidden' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#dfeef0', fontSize: 13 }}>☰</button>
+            <button style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#dfeef0', fontSize: 13 }}>◌</button>
           </div>
         </div>
       </div>

@@ -61,24 +61,26 @@ export function KenoBettingStage({
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
-      {/* Card */}
-      <div style={{ width: '100%', background: C.card, border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 16, padding: '12px 10px 12px 15px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ width: '100%', background: 'rgba(17,24,28,0.98)', border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 12, padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-        {/* Header */}
         {spots === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '10px 12px 12px', minHeight: 130 }}>
-            <div style={{ position: 'relative', width: 116, height: 90, flexShrink: 0 }}>
-              <div style={{ position: 'absolute', top: 12, left: 6, width: 42, height: 42, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #5c6f82 0%, #213548 40%, #0d1c2a 100%)', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 8px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfe6ff', fontSize: 18, fontWeight: 900 }}>80</div>
-              <div style={{ position: 'absolute', top: 0, right: 12, width: 48, height: 48, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #5c6f82 0%, #213548 40%, #0d1c2a 100%)', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 8px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cfe6ff', fontSize: 20, fontWeight: 900 }}>10</div>
-              <div style={{ position: 'absolute', bottom: 2, left: 18, width: 54, height: 54, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #5af0a0 0%, #1d4a40 45%, #0c231c 100%)', border: '2px solid rgba(95,242,162,0.75)', boxShadow: '0 0 18px rgba(30,224,104,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#79f3ba', fontSize: 22, fontWeight: 900 }}>1</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '8px 6px 4px', minHeight: 128 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ position: 'relative', width: 100, height: 72 }}>
+                  <div style={{ position: 'absolute', top: 8, left: 0, width: 34, height: 34, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #6984a5 0%, #233750 42%, #0d1d2b 100%)', border: '1px solid rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dfefff', fontWeight: 900, fontSize: 14 }}>80</div>
+                  <div style={{ position: 'absolute', top: 0, right: 4, width: 40, height: 40, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #6984a5 0%, #233750 42%, #0d1d2b 100%)', border: '1px solid rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dfefff', fontWeight: 900, fontSize: 18 }}>10</div>
+                  <div style={{ position: 'absolute', bottom: 0, left: 20, width: 48, height: 48, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #6de8a8 0%, #1d4c3f 45%, #091d1a 100%)', border: '2px solid rgba(92,244,168,0.7)', boxShadow: '0 0 16px rgba(92,244,168,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7ef0b6', fontWeight: 900, fontSize: 22 }}>1</div>
+                </div>
+              </div>
+              {onOpenInfo && (
+                <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 7, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#ecf3f7', letterSpacing: '-0.04em' }}>Choose 10 numbers</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#69e7a5' }}>From 1 to 80</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, textAlign: 'center' }}>
+              <div style={{ fontSize: 26, fontWeight: 900, color: '#edf5fb', letterSpacing: '-0.05em' }}>Choose 10 numbers</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#6ce7b0', letterSpacing: '-0.04em' }}>From 1 to 80</div>
             </div>
-            {onOpenInfo && (
-              <button onClick={onOpenInfo} style={{ width: 28, height: 28, borderRadius: 7, background: '#142327', border: '1px solid #1d353b', color: C.green, fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
-            )}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '11px', minHeight: 90 }}>
