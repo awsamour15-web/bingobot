@@ -1,5 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import GamesLobbyScreen from './screens/GamesLobbyScreen';
 
 // Lazy-load screens for faster initial load
 const GameScreen = lazy(() => import('./screens/GameScreen'));
@@ -15,7 +16,6 @@ const CrashScreen = lazy(() => import('./screens/CrashScreen'));
 const SlotsScreen = lazy(() => import('./screens/SlotsScreen'));
 const KenoScreen = lazy(() => import('./screens/KenoScreen'));
 const PlinkoScreen = lazy(() => import('./screens/PlinkoScreen'));
-const GamesLobbyScreen = lazy(() => import('./screens/GamesLobbyScreen'));
 
 import { socket } from './lib/socket';
 
