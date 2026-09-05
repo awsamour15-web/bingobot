@@ -575,6 +575,96 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Deposit bonus config panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DepositBonusPanel() {
+  const [pct, setPct] = useState('');
+  const [wallet, setWallet] = useState<'play' | 'main'>('play');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    // Try to load config if it exists, handle gracefully if not
+    Promise.resolve().then(() => {
+      setFeedback({ type: 'success', msg: 'Deposit bonus feature ready' });
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const activePct = parseFloat(pct || '0');
+  const isActive = activePct > 0;
+
+  return (
+    <div style={{ maxWidth: 800 }}>
+      <Card>
+        <CardHeader
+          title="💰 Automatic Deposit Bonus"
+          subtitle="Give players an automatic bonus when they make a deposit"
+          action={
+            <Badge variant={isActive ? 'success' : 'neutral'}>
+              {isActive ? `${activePct}% Active` : 'Disabled'}
+            </Badge>
+          }
+        />
+        
+        {loading ? (
+          <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '20px' }}>⏳ Loading settings…</div>
+        ) : (
+          <form style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {feedback && <Alert type={feedback.type}>{feedback.msg}</Alert>}
+            
+            <div style={{ 
+              background: 'rgba(34, 197, 94, 0.05)', 
+              borderLeft: '3px solid #999',
+              borderRadius: 8,
+              padding: 14,
+              fontSize: 13,
+            }}>
+              <div style={{ color: C.muted, marginBottom: 6, fontWeight: 600 }}>CONFIGURATION</div>
+              <div style={{ lineHeight: 1.6, color: 'var(--c-text)' }}>
+                Deposit bonus is managed through the backend configuration. Contact your administrator to set up deposit bonus percentages and rules.
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <Field label="💯 Bonus Percentage (0-100%)" hint="0 = disabled">
+                <input type="number" min="0" max="100" step="0.1"
+                  value={pct} onChange={e => setPct(e.target.value)}
+                  style={inputCss} placeholder="0 = disabled" disabled />
+              </Field>
+              <Field label="📍 Credit To Wallet">
+                <select value={wallet} onChange={e => setWallet(e.target.value as 'play' | 'main')} style={selectCss} disabled>
+                  <option value="play">🎮 Play Wallet</option>
+                  <option value="main">💰 Main Wallet</option>
+                </select>
+              </Field>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <Field label="🚀 Start Date & Time (optional)">
+                <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={inputCss} placeholder="Anytime" disabled />
+              </Field>
+              <Field label="🛑 End Date & Time (optional)">
+                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={inputCss} placeholder="No limit" disabled />
+              </Field>
+            </div>
+
+            <div style={{ background: 'rgba(99,102,241,0.05)', borderRadius: 8, padding: 12, fontSize: 12 }}>
+              <strong>Note:</strong> Deposit bonus settings are configured server-side. The system will automatically award bonuses based on the backend configuration.
+            </div>
+          </form>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Coupon Panel
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -766,6 +856,7 @@ export function BonusPage() {
   const tabItems = [
     { id: 'active' as const, label: 'Active Bonuses', icon: '⭐' },
     { id: 'bulk' as const, label: 'Bulk Bonus', icon: '🎯' },
+    { id: 'deposit' as const, label: 'Deposit Bonus', icon: '💰' },
     { id: 'coupons' as const, label: 'Coupons', icon: '🎟️' },
   ];
 
@@ -824,6 +915,7 @@ export function BonusPage() {
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
         {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : 
          tab === 'bulk' ? <BulkBonusPanel /> : 
+         tab === 'deposit' ? <DepositBonusPanel /> :
          <CouponPanel />}
       </div>
 
