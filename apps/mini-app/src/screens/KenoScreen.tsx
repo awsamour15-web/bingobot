@@ -279,27 +279,33 @@ export default function KenoScreen() {
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* ── Main content: Betting stage or Draw arena ── */}
         <div style={{ flexShrink: 0, padding: '8px 10px' }}>
-          {showArena ? (
-            <KenoDrawArena
-              drawnNumbers={drawnNumbers}
-              initialDrawnNumbers={initialDrawnNumbers}
-              currentBall={currentBall}
-              userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
-              onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
-            />
-          ) : (
-            <KenoBettingStage
-              countdown={countdown}
-              selectedNumbers={selectedNumbers}
-              onToggleNumber={handleToggle}
-              betAmount={betAmount}
-              onChangeBet={setBetAmount}
-              onPlaceBet={handlePlaceBet}
-              onOpenSettings={() => setQuickPickOpen(true)}
-              onOpenInfo={() => setInfoOpen(true)}
-              userBalance={balance}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            {showArena ? (
+              <motion.div key="arena" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <KenoDrawArena
+                  drawnNumbers={drawnNumbers}
+                  initialDrawnNumbers={initialDrawnNumbers}
+                  currentBall={currentBall}
+                  userPickedNumbers={myBet?.pickedNumbers ?? selectedNumbers}
+                  onGoToBetting={phase === 'betting' ? () => setShowDrawArena(false) : undefined}
+                />
+              </motion.div>
+            ) : (
+              <motion.div key="betting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <KenoBettingStage
+                  countdown={countdown}
+                  selectedNumbers={selectedNumbers}
+                  onToggleNumber={handleToggle}
+                  betAmount={betAmount}
+                  onChangeBet={setBetAmount}
+                  onPlaceBet={handlePlaceBet}
+                  onOpenSettings={() => setQuickPickOpen(true)}
+                  onOpenInfo={() => setInfoOpen(true)}
+                  userBalance={balance}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* ── Bottom section: tabs + content ── */}
@@ -328,25 +334,43 @@ export default function KenoScreen() {
 
           {/* Tab content */}
           <div style={{ padding: '8px 10px env(safe-area-inset-bottom, 12px)' }}>
-            {activeTab === 'GAME' && <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />}
-            {activeTab === 'HISTORY' && (
-              <KenoHistoryTab
-                history={history}
-                onReplayBet={(nums, bet) => {
-                  setSelectedNumbers(nums); setBetAmount(bet); setActiveTab('GAME');
-                  showToast(`Loaded ${nums.length} numbers on board`);
-                }}
-              />
-            )}
-            {activeTab === 'RESULTS' && <KenoHistoryTab history={history} />}
-            {activeTab === 'RANK' && <KenoRankTab />}
-            {activeTab === 'STATISTICS' && (
-              <KenoStatsTab
-                history={history}
-                selectedNumbers={selectedNumbers}
-                onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
-              />
-            )}
+            <AnimatePresence mode="wait">
+              {activeTab === 'GAME' && (
+                <motion.div key="game" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  <KenoBetFeed bets={bets} drawnNumbers={drawnNumbers} phase={phase} />
+                </motion.div>
+              )}
+              {activeTab === 'HISTORY' && (
+                <motion.div key="history" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  <KenoHistoryTab
+                    history={history}
+                    onReplayBet={(nums, bet) => {
+                      setSelectedNumbers(nums); setBetAmount(bet); setActiveTab('GAME');
+                      showToast(`Loaded ${nums.length} numbers on board`);
+                    }}
+                  />
+                </motion.div>
+              )}
+              {activeTab === 'RESULTS' && (
+                <motion.div key="results" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  <KenoHistoryTab history={history} />
+                </motion.div>
+              )}
+              {activeTab === 'RANK' && (
+                <motion.div key="rank" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  <KenoRankTab />
+                </motion.div>
+              )}
+              {activeTab === 'STATISTICS' && (
+                <motion.div key="stats" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  <KenoStatsTab
+                    history={history}
+                    selectedNumbers={selectedNumbers}
+                    onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ import {
 } from '../components/ui';
 
 type WalletType = 'main' | 'play';
-type Tab = 'bulk' | 'active' | 'coupons';
+type Tab = 'single' | 'bulk' | 'deposit' | 'active' | 'coupons';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bulk bonus panel — create or pick a promotion, preview eligible, apply
