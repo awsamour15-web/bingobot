@@ -234,53 +234,36 @@ export default function KenoScreen() {
     }}>
 
       {/* ── Header (fixed height) ── */}
-      <div style={{ flexShrink: 0, background: '#05070b', borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 8px', gap: 10 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
-            <span style={{ fontSize: 28, lineHeight: 1 }}>←</span>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>Back</span>
-          </button>
-
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minWidth: 0 }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#dfe7ee', color: '#171b22', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>K</div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 180, padding: '8px 10px', borderRadius: 8, background: '#0d1217', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ color: '#f2f7fb', fontSize: 12, fontWeight: 700 }}>Br</span>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                {[0,1,2,3].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? '#fff' : 'rgba(255,255,255,0.35)' }} />)}
-              </div>
-              <span style={{ color: '#f2f7fb', fontSize: 14 }}>⌄</span>
-            </div>
+      <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 8px 5px', gap: 8 }}>
+          <div style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.35)', color: '#dce5eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>K</div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 116, height: 25, padding: '0 6px', borderRadius: 5, background: '#070b0e', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#168fbd', color: '#f5d749', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>Br</span>
+            <span style={{ color: '#e6edf2', fontSize: 9, letterSpacing: '0.18em', whiteSpace: 'nowrap' }}>••••••</span>
+            <span style={{ color: '#73818a', fontSize: 11 }}>◉</span>
+            <span style={{ color: '#9ba9b2', fontSize: 11 }}>⌄</span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 20, cursor: 'pointer', padding: 0 }}>⌄</button>
-            <button style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 20, cursor: 'pointer', padding: 0 }}>⋮</button>
-          </div>
-
-          <button style={{ background: '#f0c84b', color: '#11151a', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
-        </div>
-      </div>
-
-      <div style={{ flexShrink: 0, background: 'linear-gradient(180deg, #071013 0%, rgba(6, 18, 20, 0.96) 100%)', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 6px', gap: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 0.7, marginTop: 2, transform: 'scaleY(0.96)' }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: '#dcf7e8', letterSpacing: '-0.09em', textTransform: 'uppercase' }}>FAST</span>
-            <span style={{ fontSize: 28, fontWeight: 900, color: '#67e9a6', letterSpacing: '-0.09em', textTransform: 'uppercase', textShadow: '0 2px 0 rgba(0,0,0,0.28)' }}>KENO</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span style={{ color: '#d9f8e4', fontWeight: 800, fontSize: 16, fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{balance.toFixed(2)} ETB</span>
-            {roundId && (
-              <span style={{ color: '#d9f8e4', fontWeight: 700, fontSize: 11, opacity: 0.8 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
-            )}
-          </div>
+          <button style={{ height: 28, padding: '0 12px', background: '#f0c84b', color: '#11151a', border: 'none', borderRadius: 2, fontSize: 12, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.18)' }}>Deposit</button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px 10px', gap: 12 }}>
-          <div style={{ flex: 1, height: 24, borderRadius: 999, border: '1px solid rgba(94,240,170,0.45)', background: 'linear-gradient(90deg, rgba(63, 221, 140, 0.18), rgba(63, 221, 140, 0.04))', overflow: 'hidden' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#dfeef0', fontSize: 13 }}>☰</button>
-            <button style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#dfeef0', fontSize: 13 }}>◌</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 6px' }}>
+          <div style={{ width: 44, display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 0.82, flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: '#e0e0e0', letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>FAST</span>
+            <span style={{ fontSize: 13, fontWeight: 900, color: C.green, letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>KENO</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0, height: 21, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 7px', borderRadius: 999, background: 'rgba(15,30,27,0.92)', border: '1px solid rgba(30,224,104,0.18)' }}>
+            <span style={{ color: '#b9c7c0', fontFamily: 'monospace', fontSize: 9 }}>{balance.toFixed(2)} ETB</span>
+            <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 9 }}>ID: {roundId ? roundId.slice(-5).toUpperCase() : '-----'}</span>
+            <span style={{ width: 13, height: 13, borderRadius: '50%', background: '#2f9d72', color: '#07130f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>⌄</span>
+          </div>
+          {phase === 'betting' && (
+            <span style={{ color: countdown <= 10 ? '#ff6464' : '#55d9ff', fontFamily: 'monospace', fontSize: 10, fontWeight: 900, whiteSpace: 'nowrap' }}>
+              {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
+            </span>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+            <button onClick={() => navigate('/')} aria-label="Open menu" style={{ background: 'none', border: 'none', color: '#4ed18a', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 0 }}>☰</button>
+            <button aria-label="Messages" style={{ background: 'none', border: 'none', color: '#4ed18a', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 0 }}>◯</button>
           </div>
         </div>
       </div>
