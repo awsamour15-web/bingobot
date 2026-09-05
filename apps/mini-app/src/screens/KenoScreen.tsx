@@ -14,11 +14,12 @@ import { KenoDrawArena } from '../components/keno/KenoDrawArena';
 import { KenoBetFeed } from '../components/keno/KenoBetFeed';
 import { KenoHistoryTab } from '../components/keno/KenoHistoryTab';
 import { KenoStatsTab } from '../components/keno/KenoStatsTab';
+import { KenoRankTab } from '../components/keno/KenoRankTab';
 import { KenoQuickPickModal } from '../components/keno/KenoQuickPickModal';
 import { KenoInfoModal } from '../components/keno/KenoInfoModal';
 import type { BetFeedItem, HistoryRecord } from '../components/keno/types';
 
-type NavTab = 'GAME' | 'HISTORY' | 'RESULTS' | 'STATISTICS';
+type NavTab = 'GAME' | 'HISTORY' | 'RESULTS' | 'RANK' | 'STATISTICS';
 
 function randomPick(count: number): number[] {
   const pool = Array.from({ length: 80 }, (_, i) => i + 1);
@@ -213,10 +214,11 @@ export default function KenoScreen() {
   }
 
   const tabs: { id: NavTab; label: string }[] = [
-    { id: 'GAME',       label: '▶ GAME'   },
-    { id: 'HISTORY',    label: '↺ HIST'   },
-    { id: 'RESULTS',    label: '✓ RES'    },
-    { id: 'STATISTICS', label: '▦ STATS'  },
+    { id: 'GAME',       label: '▶ GAME'      },
+    { id: 'HISTORY',    label: '↺ HISTORY'  },
+    { id: 'RESULTS',    label: '✓ RESULT'   },
+    { id: 'RANK',       label: '🏆 RANK'    },
+    { id: 'STATISTICS', label: '▦ STATS'    },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -317,10 +319,10 @@ export default function KenoScreen() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: 1, padding: '6px 2px', background: 'none', border: 'none',
-                    borderBottom: isActive ? `2px solid ${C.green}` : '2px solid transparent',
+                    flex: 1, padding: '8px 4px', background: 'none', border: 'none',
+                    borderBottom: isActive ? `3px solid ${C.green}` : '3px solid transparent',
                     color: isActive ? C.green : C.textDim,
-                    fontSize: 9, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.03em',
+                    fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em',
                     transition: 'color 0.12s',
                   }}
                 >
@@ -343,6 +345,7 @@ export default function KenoScreen() {
               />
             )}
             {activeTab === 'RESULTS' && <KenoHistoryTab history={history} />}
+            {activeTab === 'RANK' && <KenoRankTab />}
             {activeTab === 'STATISTICS' && (
               <KenoStatsTab
                 history={history}
