@@ -237,7 +237,10 @@ export default function KenoScreen() {
         {/* Top row: Logo, Balance/ID, Menu */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', gap: 12 }}>
           {/* Logo */}
-          <img src="/keno-logo.svg" alt="Fast Keno" style={{ height: 26, width: 'auto', minWidth: 100 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1 }}>
+            <span style={{ fontSize: 16, fontWeight: 900, color: '#e0e0e0', letterSpacing: '0.05em' }}>FAST</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: '#22c55e', letterSpacing: '0.05em' }}>KENO</span>
+          </div>
           
           {/* Center: Balance, ID, Status */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '6px 12px' }}>
