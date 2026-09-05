@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
 import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon } from '../lib/api';
 import {
-  getPlayers, creditPlayer, listPromotions,
+  listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
-  createPromotion, getConfig, updateConfig,
+  createPromotion,
   updatePromotion, setPromotionStatus, deletePromotion,
   listCoupons, createCoupon, deleteCoupon,
 } from '../lib/api';
@@ -15,197 +14,7 @@ import {
 } from '../components/ui';
 
 type WalletType = 'main' | 'play';
-type Tab = 'single' | 'bulk' | 'active' | 'coupons';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Single-player bonus (unchanged feature, kept intact)
-// ─────────────────────────────────────────────────────────────────────────────
-
-type BonusPreset = { id: string; label: string; amount: number; wallet: WalletType; note: string };
-
-const BONUS_PRESETS: BonusPreset[] = [
-  { id: 'welcome',  label: 'Welcome Bonus',  amount: 10,  wallet: 'play', note: 'Welcome bonus for new player registration' },
-  { id: 'deposit',  label: 'Deposit Boost',  amount: 50,  wallet: 'play', note: 'Deposit bonus awarded by admin' },
-  { id: 'referral', label: 'Referral Bonus', amount: 30,  wallet: 'main', note: 'Referral commission payout' },
-  { id: 'vip',      label: 'VIP Reward',     amount: 100, wallet: 'main', note: 'VIP loyalty reward' },
-  { id: 'custom',   label: 'Custom Bonus',   amount: 0,   wallet: 'play', note: 'Custom bonus' },
-];
-const DEFAULT_PRESET = BONUS_PRESETS[0]!;
-
-function SingleBonusPanel() {
-  const [players, setPlayers]     = useState<AdminPlayer[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState('');
-  const [selectedId, setSelectedId] = useState('');
-  const [walletType, setWalletType] = useState<WalletType>('play');
-  const [presetId, setPresetId]   = useState(DEFAULT_PRESET.id);
-  const [customAmount, setCustomAmount] = useState('20');
-  const [reason, setReason]       = useState('');
-  const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [success, setSuccess]     = useState<string | null>(null);
-
-  const fetchPlayers = useCallback((query: string) => {
-    setLoading(true); setError(null);
-    getPlayers(1, query || undefined)
-      .then(res => {
-        const items = res.items ?? [];
-        setPlayers(items);
-        if (!selectedId && items[0]) setSelectedId(items[0].id);
-        if (selectedId && !items.some(p => p.id === selectedId)) setSelectedId(items[0]?.id ?? '');
-        setLoading(false);
-      })
-      .catch((e: Error) => { setError(e.message ?? 'Failed to load players'); setLoading(false); });
-  }, [selectedId]);
-
-  useEffect(() => { fetchPlayers(search); }, [fetchPlayers, search]);
-
-  const selectedPlayer = players.find(p => p.id === selectedId) ?? null;
-  const preset = useMemo(() => BONUS_PRESETS.find(i => i.id === presetId) ?? DEFAULT_PRESET, [presetId]);
-  const effectiveWallet = presetId === 'custom' ? walletType : preset.wallet;
-  const effectiveAmount = presetId === 'custom' ? Number(customAmount || 0) : preset.amount;
-  const effectiveReason = reason.trim() || preset.note;
-
-  async function handleApply() {
-    if (!selectedPlayer) { setError('Select a player first.'); return; }
-    if (!Number.isFinite(effectiveAmount) || effectiveAmount <= 0) { setError('Amount must be > 0.'); return; }
-    if (!effectiveReason) { setError('Enter a reason.'); return; }
-    setSaving(true); setError(null); setSuccess(null);
-    try {
-      await creditPlayer(selectedPlayer.id, { walletType: effectiveWallet, amount: effectiveAmount, note: effectiveReason } as AdminCreditRequest);
-      setSuccess(`${selectedPlayer.username} received ${effectiveAmount} ETB to ${effectiveWallet} wallet.`);
-      setReason(''); setCustomAmount('20');
-      const refreshed = await getPlayers(1, search || undefined);
-      setPlayers(refreshed.items ?? []);
-    } catch (e: unknown) { setError((e as Error).message ?? 'Failed'); }
-    finally { setSaving(false); }
-  }
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.7fr', gap: 20, alignItems: 'start' }}>
-      <Card>
-        <CardHeader title="Select Player" subtitle="Find and select a player to award a bonus" />
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 16 }}>🔍</span>
-            <input type="search" name="player-search" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by username or Telegram ID" style={{ ...inputCss, paddingLeft: 40, fontSize: 14 }} />
-          </div>
-        </div>
-        <Table>
-          <thead><tr><Th>Player</Th><Th>Balance</Th><Th>Status</Th></tr></thead>
-          <tbody>
-            {loading ? <TrLoading cols={3} /> : !players.length ? <TrEmpty cols={3} message="No players found." /> :
-              players.map(player => (
-                <tr key={player.id} onClick={() => setSelectedId(player.id)}
-                  style={{ 
-                    cursor: 'pointer', 
-                    background: selectedId === player.id ? 'rgba(99,102,241,0.15)' : 'transparent',
-                    transition: 'background 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => { if (selectedId !== player.id) (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)'; }}
-                  onMouseLeave={(e) => { if (selectedId !== player.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                  <Td>
-                    <div style={{ fontWeight: 700 }}>@{player.username}</div>
-                    <div style={{ fontSize: 11, color: C.muted }}>{player.telegram_id}</div>
-                  </Td>
-                  <Td>
-                    <div style={{ fontSize: 13 }}>
-                      <span style={{ color: '#22c55e', fontWeight: 600 }}>${Number(player.main_wallet_balance).toFixed(2)}</span>
-                      <span style={{ color: C.muted }}> + </span>
-                      <span style={{ color: '#3b82f6', fontWeight: 600 }}>${Number(player.play_wallet_balance).toFixed(2)}</span>
-                    </div>
-                  </Td>
-                  <Td><Badge variant={player.is_suspended ? 'danger' : 'success'}>{player.is_suspended ? '🚫 Suspended' : '✅ Active'}</Badge></Td>
-                </tr>
-              ))}
-          </tbody>
-        </Table>
-      </Card>
-
-      <Card>
-        <CardHeader title="Award Bonus" subtitle={selectedPlayer ? `→ @${selectedPlayer.username}` : 'Select player first'} />
-        {error && <Alert type="error">{error}</Alert>}
-        {success && <Alert type="success">{success}</Alert>}
-        {!selectedPlayer ? (
-          <div style={{ textAlign: 'center', padding: '28px 0', color: C.muted }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
-            <div>Select a player from the list to continue</div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ background: 'rgba(99,102,241,0.05)', borderRadius: 12, padding: 12, borderLeft: '3px solid rgba(99,102,241,0.5)' }}>
-              <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>Current Balances</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-                <div><span style={{ color: C.muted }}>Main:</span> <span style={{ fontWeight: 600, color: '#22c55e' }}>${Number(selectedPlayer.main_wallet_balance).toFixed(2)}</span></div>
-                <div><span style={{ color: C.muted }}>Play:</span> <span style={{ fontWeight: 600, color: '#3b82f6' }}>${Number(selectedPlayer.play_wallet_balance).toFixed(2)}</span></div>
-              </div>
-            </div>
-            
-            <div style={{ display: 'grid', gap: 8 }}>
-              {BONUS_PRESETS.map(item => (
-                <button key={item.id} type="button" onClick={() => setPresetId(item.id)} style={{
-                  border: presetId === item.id ? '2px solid rgba(99,102,241,0.6)' : '1px solid var(--c-border)',
-                  background: presetId === item.id ? 'rgba(99,102,241,0.08)' : 'transparent',
-                  borderRadius: 10, padding: '12px 14px', textAlign: 'left',
-                  color: 'var(--c-text)', cursor: 'pointer',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-                  transition: 'all 0.15s ease',
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.label}</div>
-                    <div style={{ fontSize: 11, color: C.muted }}>{item.note}</div>
-                  </div>
-                  <strong style={{ fontSize: 16, color: item.id === 'custom' ? C.muted : 'rgba(99,102,241,0.8)' }}>
-                    {item.id === 'custom' ? '✎' : `${item.amount}Є`}
-                  </strong>
-                </button>
-              ))}
-            </div>
-            
-            {presetId === 'custom' && (
-              <Field label="Custom Amount (ETB)">
-                <input type="number" name="custom-amount" min="1" step="1" value={customAmount}
-                  onChange={e => setCustomAmount(e.target.value)} style={inputCss} placeholder="e.g. 75" />
-              </Field>
-            )}
-            
-            <Field label="Credit to Wallet">
-              <select name="wallet-type" value={effectiveWallet} onChange={e => setWalletType(e.target.value as WalletType)}
-                style={selectCss} disabled={presetId !== 'custom'}>
-                <option value="play">🎮 Play Wallet</option>
-                <option value="main">💰 Main Wallet</option>
-              </select>
-            </Field>
-            
-            <Field label="Reason / Note">
-              <input type="text" name="reason" value={reason} onChange={e => setReason(e.target.value)}
-                style={inputCss} placeholder={preset.note} />
-            </Field>
-            
-            <div style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(99,102,241,0.04) 100%)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: '14px 16px', fontSize: 13 }}>
-              <div style={{ color: C.muted, marginBottom: 8, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Award Summary</div>
-              <div style={{ display: 'grid', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: C.muted }}>Amount:</span>
-                  <span style={{ fontWeight: 700, fontSize: 18, color: 'rgba(99,102,241,0.9)' }}>{effectiveAmount} ETB</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                  <span style={{ color: C.muted }}>Wallet:</span>
-                  <span style={{ fontWeight: 600 }}>{effectiveWallet === 'main' ? '💰 Main' : '🎮 Play'}</span>
-                </div>
-              </div>
-            </div>
-            
-            <Btn type="button" onClick={handleApply} disabled={saving}>
-              {saving ? '⏳ Processing…' : `✓ Award ${effectiveAmount} ETB Bonus`}
-            </Btn>
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
+type Tab = 'bulk' | 'active' | 'coupons';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bulk bonus panel — create or pick a promotion, preview eligible, apply
@@ -953,18 +762,9 @@ function CouponPanel() {
 
 export function BonusPage() {
   const [tab, setTab] = useState<Tab>('active');
-  const [players, setPlayers] = useState<AdminPlayer[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getPlayers(1).then(r => { setPlayers(r.items ?? []); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
-
-  const active = players.filter(p => !p.is_suspended).length;
 
   const tabItems = [
     { id: 'active' as const, label: 'Active Bonuses', icon: '⭐' },
-    { id: 'single' as const, label: 'Single Player', icon: '👤' },
     { id: 'bulk' as const, label: 'Bulk Bonus', icon: '🎯' },
     { id: 'coupons' as const, label: 'Coupons', icon: '🎟️' },
   ];
@@ -972,13 +772,6 @@ export function BonusPage() {
   return (
     <div className="fade-in">
       <PageHeader title="🎁 Bonus Manager" />
-
-      {/* KPI Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
-        <StatCard icon="👥" label="Total Players" value={loading ? '…' : players.length} color={C.primary} />
-        <StatCard icon="✅" label="Active Players" value={loading ? '…' : active} color={C.success} />
-        <StatCard icon="🚫" label="Suspended" value={loading ? '…' : players.length - active} color={C.danger} />
-      </div>
 
       {/* Modern Tab Navigation */}
       <div style={{
@@ -1030,7 +823,6 @@ export function BonusPage() {
       {/* Tab Content */}
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
         {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : 
-         tab === 'single' ? <SingleBonusPanel /> : 
          tab === 'bulk' ? <BulkBonusPanel /> : 
          <CouponPanel />}
       </div>

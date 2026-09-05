@@ -248,13 +248,7 @@ export default function KenoScreen() {
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '4px 10px' }}>
             <span style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: C.green }}>{balance.toFixed(2)} ETB</span>
             {roundId && (
-              <>
-                <span style={{ color: C.textDim, fontSize: 9 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
-                <span style={{ padding: '1px 6px', borderRadius: 5, fontSize: 8, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <span>✓</span>
-                  {phase.toUpperCase()}
-                </span>
-              </>
+              <span style={{ color: C.textDim, fontSize: 9 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
             )}
           </div>
 
