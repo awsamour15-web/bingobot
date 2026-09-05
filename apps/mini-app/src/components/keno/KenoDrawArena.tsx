@@ -229,7 +229,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
         {/* Waiting hint */}
         {!showCentre && (
-          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '1px dashed rgba(30,224,104,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+          <div style={{ display: 'none' }}>
             <span style={{ color: 'rgba(30,224,104,0.18)', fontSize: 20 }}>◎</span>
           </div>
         )}
