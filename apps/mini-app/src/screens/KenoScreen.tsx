@@ -214,10 +214,10 @@ export default function KenoScreen() {
   }
 
   const tabs: { id: NavTab; label: string }[] = [
-    { id: 'GAME', label: '▶ GAME' },
-    { id: 'HISTORY', label: '◌ HISTORY' },
-    { id: 'RESULTS', label: '✓ RESULTS' },
-    { id: 'STATISTICS', label: '▣ STATISTICS' },
+    { id: 'GAME', label: 'GAME' },
+    { id: 'HISTORY', label: 'HISTORY' },
+    { id: 'RESULTS', label: 'RESULTS' },
+    { id: 'STATISTICS', label: 'STATISTICS' },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -235,12 +235,15 @@ export default function KenoScreen() {
 
       {/* ── Header (fixed height) ── */}
       <div style={{ flexShrink: 0, background: '#05070b', borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 8px', gap: 10 }}>
-          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 26, lineHeight: 1, cursor: 'pointer', padding: 0 }}>←</button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 8px', gap: 10 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+            <span style={{ fontSize: 28, lineHeight: 1 }}>←</span>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>Back</span>
+          </button>
 
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minWidth: 0 }}>
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#dfe7ee', color: '#171b22', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>K</div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 190, padding: '8px 12px', borderRadius: 8, background: '#0d1217', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 180, padding: '8px 10px', borderRadius: 8, background: '#0d1217', border: '1px solid rgba(255,255,255,0.1)' }}>
               <span style={{ color: '#f2f7fb', fontSize: 12, fontWeight: 700 }}>Br</span>
               <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                 {[0,1,2,3].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? '#fff' : 'rgba(255,255,255,0.35)' }} />)}
@@ -249,27 +252,32 @@ export default function KenoScreen() {
             </div>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 20, cursor: 'pointer', padding: 0 }}>⌄</button>
+            <button style={{ background: 'none', border: 'none', color: '#f6f7fa', fontSize: 20, cursor: 'pointer', padding: 0 }}>⋮</button>
+          </div>
+
           <button style={{ background: '#f0c84b', color: '#11151a', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
         </div>
       </div>
 
       <div style={{ flexShrink: 0, background: 'linear-gradient(180deg, #071013 0%, rgba(6, 18, 20, 0.96) 100%)', borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 6px', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 26, fontWeight: 900, color: '#8fe9aa', letterSpacing: '-0.08em' }}>FAST</span>
-            <span style={{ fontSize: 26, fontWeight: 900, color: '#56d989', letterSpacing: '-0.08em' }}>KENO</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 0.7, marginTop: 2, transform: 'scaleY(0.96)' }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: '#dcf7e8', letterSpacing: '-0.09em', textTransform: 'uppercase' }}>FAST</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: '#67e9a6', letterSpacing: '-0.09em', textTransform: 'uppercase', textShadow: '0 2px 0 rgba(0,0,0,0.28)' }}>KENO</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span style={{ color: '#d9f8e4', fontWeight: 800, fontSize: 18, fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{balance.toFixed(2)} ETB</span>
+            <span style={{ color: '#d9f8e4', fontWeight: 800, fontSize: 16, fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{balance.toFixed(2)} ETB</span>
             {roundId && (
-              <span style={{ color: '#d9f8e4', fontWeight: 700, fontSize: 12, opacity: 0.8 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
+              <span style={{ color: '#d9f8e4', fontWeight: 700, fontSize: 11, opacity: 0.8 }}>ID: {roundId.slice(-5).toUpperCase()}</span>
             )}
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px 10px', gap: 12 }}>
-          <div style={{ flex: 1, height: 26, borderRadius: 999, border: '1px solid rgba(94,240,170,0.45)', background: 'linear-gradient(90deg, rgba(63, 221, 140, 0.18), rgba(63, 221, 140, 0.04))', overflow: 'hidden' }} />
+          <div style={{ flex: 1, height: 24, borderRadius: 999, border: '1px solid rgba(94,240,170,0.45)', background: 'linear-gradient(90deg, rgba(63, 221, 140, 0.18), rgba(63, 221, 140, 0.04))', overflow: 'hidden' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#dfeef0', fontSize: 13 }}>☰</button>
             <button style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#dfeef0', fontSize: 13 }}>◌</button>
@@ -321,10 +329,10 @@ export default function KenoScreen() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: '0 0 auto', padding: '12px 14px 10px', background: 'none', border: 'none',
+                    flex: '0 0 auto', padding: '10px 12px 8px', background: 'none', border: 'none',
                     borderBottom: isActive ? `3px solid ${C.green}` : '3px solid transparent',
-                    color: isActive ? '#81f5b0' : '#7db4a6',
-                    fontSize: 18, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.04em',
+                    color: isActive ? '#8bf6b5' : '#7daea1',
+                    fontSize: 17, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.05em',
                     transition: 'color 0.12s', whiteSpace: 'nowrap',
                   }}
                 >
