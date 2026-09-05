@@ -2,21 +2,21 @@ import { motion } from 'motion/react';
 import { PAYOUT_TABLE, HOT_NUMBERS, COLD_NUMBERS, bestMultiplier } from './types';
 
 const C = {
-  bg: '#0d1117',
-  card: '#131920',
-  cell: '#161d28',
-  cellBorder: 'rgba(255,255,255,0.08)',
-  cellPicked: '#1a4a2a',
-  cellPickedBorder: '#22c55e',
-  green: '#22c55e',
-  greenLight: '#4ade80',
-  textWhite: '#e2e8f0',
-  textMid: '#8ab89a',
-  textDim: '#4a6a58',
-  border: 'rgba(255,255,255,0.07)',
-  yellow: '#f5a623',
-  red: '#ef4444',
-  blue: 'rgba(100,180,255,0.8)',
+  bg: '#0a0f14',
+  card: '#141a22',
+  cell: '#1a2230',
+  cellBorder: 'rgba(255,255,255,0.1)',
+  cellPicked: '#1e5a3a',
+  cellPickedBorder: '#1ee068',
+  green: '#1ee068',
+  greenLight: '#5af0a0',
+  textWhite: '#f0f4f8',
+  textMid: '#90c0a8',
+  textDim: '#5a7a68',
+  border: 'rgba(255,255,255,0.08)',
+  yellow: '#ffa500',
+  red: '#ff4444',
+  blue: 'rgba(100,180,255,0.9)',
 };
 
 interface Props {

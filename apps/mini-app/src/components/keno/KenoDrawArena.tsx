@@ -26,25 +26,25 @@ const SHRINK_MS = 300;
 // ── Ball visual helpers ────────────────────────────────────────────────────────
 function bg(hit: boolean, big = false) {
   if (hit) return big
-    ? 'radial-gradient(circle at 36% 28%, #3dba70 0%, #0d4828 45%, #031a10 100%)'
-    : 'radial-gradient(circle at 36% 28%, #2a7a58 0%, #0d3828 50%, #041c14 100%)';
+    ? 'radial-gradient(circle at 36% 28%, #4ae080 0%, #0e5a30 45%, #051820 100%)'
+    : 'radial-gradient(circle at 36% 28%, #3a8a68 0%, #0e4830 50%, #051c14 100%)';
   return big
-    ? 'radial-gradient(circle at 36% 28%, #4a6888 0%, #112238 48%, #060e1a 100%)'
-    : 'radial-gradient(circle at 36% 28%, #344e68 0%, #0d1e30 52%, #060e18 100%)';
+    ? 'radial-gradient(circle at 36% 28%, #5a7898 0%, #142248 48%, #0a121a 100%)'
+    : 'radial-gradient(circle at 36% 28%, #3a5a78 0%, #0f1f38 52%, #0a121a 100%)';
 }
 function border(hit: boolean, big = false) {
   return hit
-    ? `${big ? 2 : 1.5}px solid rgba(30,224,104,${big ? 0.8 : 0.65})`
-    : `${big ? 2 : 1}px solid rgba(80,130,180,${big ? 0.45 : 0.22})`;
+    ? `${big ? 2 : 1.5}px solid rgba(30,240,104,${big ? 0.9 : 0.75})`
+    : `${big ? 2 : 1}px solid rgba(100,150,200,${big ? 0.5 : 0.3})`;
 }
 function shadow(hit: boolean, big = false) {
-  const base = 'inset 2px 2px 5px rgba(160,210,255,0.15), inset -2px -2px 6px rgba(0,0,0,0.7)';
+  const base = 'inset 2px 2px 5px rgba(160,210,255,0.2), inset -2px -2px 6px rgba(0,0,0,0.8)';
   if (big) return hit
-    ? `0 0 36px rgba(34,197,94,0.8), 0 8px 22px rgba(0,0,0,0.9), ${base}`
-    : `0 0 26px rgba(60,120,220,0.45), 0 8px 22px rgba(0,0,0,0.9), ${base}`;
+    ? `0 0 40px rgba(30,240,104,0.9), 0 8px 24px rgba(0,0,0,0.95), ${base}`
+    : `0 0 30px rgba(80,150,240,0.55), 0 8px 24px rgba(0,0,0,0.95), ${base}`;
   return hit
-    ? `0 0 10px rgba(34,197,94,0.65), ${base}`
-    : `0 2px 7px rgba(0,0,0,0.65), ${base}`;
+    ? `0 0 12px rgba(30,240,104,0.75), ${base}`
+    : `0 2px 8px rgba(0,0,0,0.75), ${base}`;
 }
 
 export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, userPickedNumbers, onGoToBetting }: Props) {
@@ -123,7 +123,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
         <div key={r} style={{
           position: 'absolute', left: '50%', top: '50%',
           width: r, height: r, borderRadius: '50%',
-          border: '1px solid rgba(30,224,104,0.06)',
+          border: '1px solid rgba(30,240,104,0.08)',
           transform: 'translate(-50%,-50%)', pointerEvents: 'none',
         }} />
       ))}
@@ -136,7 +136,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
           style={{
             width: 207, height: 207, marginLeft: -103.5, marginTop: -103.5,
             borderRadius: '50%',
-            background: 'conic-gradient(from 0deg, rgba(30,224,104,0.07) 0deg, transparent 50deg, transparent 360deg)',
+            background: 'conic-gradient(from 0deg, rgba(30,240,104,0.08) 0deg, transparent 50deg, transparent 360deg)',
           }}
         />
       </div>
@@ -146,7 +146,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
         {onGoToBetting ? (
           <button onClick={onGoToBetting} style={{
             padding: '3px 8px', borderRadius: 6,
-            background: 'rgba(14,26,30,0.95)', border: '1px solid rgba(30,224,104,0.25)',
+            background: 'rgba(14,26,30,0.95)', border: '1px solid rgba(30,240,104,0.3)',
             color: '#1ee068', fontSize: 9, fontWeight: 600, cursor: 'pointer',
           }}>
             ← Bet
@@ -166,7 +166,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
               {count}
             </motion.span>
           </AnimatePresence>
-          <span style={{ color: 'rgba(30,224,104,0.6)', margin: '0 2px', fontWeight: 400 }}>/</span>
+          <span style={{ color: 'rgba(30,240,104,0.7)', margin: '0 2px', fontWeight: 400 }}>/</span>
           <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 400 }}>20</span>
         </div>
       </div>
@@ -229,8 +229,8 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
         {/* Waiting hint */}
         {!showCentre && (
-          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '1px dashed rgba(30,224,104,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
-            <span style={{ color: 'rgba(30,224,104,0.18)', fontSize: 20 }}>◎</span>
+          <div style={{ width: 60, height: 60, borderRadius: '50%', border: '1px dashed rgba(30,240,104,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+            <span style={{ color: 'rgba(30,240,104,0.22)', fontSize: 20 }}>◎</span>
           </div>
         )}
       </div>
@@ -287,8 +287,8 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
               <div style={{
                 position: 'absolute', top: -2, right: -2,
                 width: 6, height: 6, borderRadius: '50%',
-                background: '#1ee068', border: '1px solid rgba(167,243,208,0.8)',
-                boxShadow: '0 0 5px rgba(30,224,104,0.9)',
+                background: '#1ee068', border: '1px solid rgba(167,243,208,0.9)',
+                boxShadow: '0 0 6px rgba(30,240,104,1)',
               }} />
             )}
             {/* gloss */}

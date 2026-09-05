@@ -3,12 +3,12 @@ import { getKenoLeaderboard } from '../../lib/api';
 import type { LeaderboardEntry } from '../../lib/api';
 
 const C = {
-  textWhite: '#e2e8f0',
-  textMid: '#8ab89a',
-  textDim: '#4a6a58',
-  green: '#22c55e',
-  border: 'rgba(255,255,255,0.07)',
-  cell: '#161d28',
+  textWhite: '#f0f4f8',
+  textMid: '#90c0a8',
+  textDim: '#5a7a68',
+  green: '#1ee068',
+  border: 'rgba(255,255,255,0.08)',
+  cell: '#1a2230',
 };
 
 interface Props {}

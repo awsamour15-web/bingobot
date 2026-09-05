@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react';
 import type { HistoryRecord } from './types';
 
 const C = {
-  card: '#182326',
-  border: 'rgba(255,255,255,0.07)',
-  green: '#22c55e',
-  textWhite: '#e2e8f0',
-  textDim: '#4a6a58',
+  card: '#1a2230',
+  border: 'rgba(255,255,255,0.08)',
+  green: '#1ee068',
+  textWhite: '#f0f4f8',
+  textDim: '#5a7a68',
 };
 
 interface Props {

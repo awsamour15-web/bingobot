@@ -32,13 +32,13 @@ function randomPick(count: number): number[] {
 }
 
 const C = {
-  bg: '#080d10',
-  topbar: 'rgba(6,10,14,0.98)',
-  border: 'rgba(255,255,255,0.07)',
-  green: '#22c55e',
-  textWhite: '#e2e8f0',
-  textDim: '#4a6a58',
-  yellow: '#f5a623',
+  bg: '#0a0f14',
+  topbar: 'rgba(8,12,18,0.98)',
+  border: 'rgba(255,255,255,0.08)',
+  green: '#1ee068',
+  textWhite: '#f0f4f8',
+  textDim: '#5a7a68',
+  yellow: '#ffa500',
 };
 
 export default function KenoScreen() {
