@@ -105,7 +105,7 @@ export default function KenoScreen() {
         setInitialDrawnNumbers(nums);
         if (nums.length > 0) setShowDrawArena(true);
       }
-      setBets(s.bets.map(b => ({ username: b.username, pickedCount: b.pickedCount, betAmount: b.betAmount, matched: b.matched, payout: b.payout })));
+      setBets(s.bets.map(b => ({ username: b.username, pickedNumbers: b.pickedNumbers, pickedCount: b.pickedCount, betAmount: b.betAmount, matched: b.matched, payout: b.payout })));
       setMyBet(s.myBet);
     } catch { /* ignore */ }
   }, []);

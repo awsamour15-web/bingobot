@@ -38,17 +38,22 @@ export function KenoBetFeed({ bets, drawnNumbers, phase }: Props) {
             <span style={{ fontSize: 12, fontWeight: 700, color: C.greenLight, fontFamily: 'monospace' }}>{bet.username}</span>
             {/* number slots */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 3 }}>
-              {Array.from({ length: 10 }).map((_, idx) => (
-                <div key={idx} style={{
-                  height: 30, borderRadius: 5,
-                  background: idx < bet.pickedCount ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.3)',
-                  border: `1px solid ${idx < bet.pickedCount ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#94a3b8',
-                }}>
-                  {idx < bet.pickedCount ? '·' : ''}
-                </div>
-              ))}
+              {Array.from({ length: 10 }).map((_, idx) => {
+                const number = bet.pickedNumbers[idx];
+                const isPicked = number !== undefined && idx < bet.pickedCount;
+                const isMatched = isPicked && drawnSet.has(number);
+                return (
+                  <div key={idx} style={{
+                    height: 30, borderRadius: 5,
+                    background: isMatched ? 'rgba(30,224,104,0.22)' : isPicked ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.3)',
+                    border: `1px solid ${isMatched ? 'rgba(30,224,104,0.7)' : isPicked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, color: isMatched ? C.greenLight : '#94a3b8',
+                  }}>
+                    {isPicked ? number : ''}
+                  </div>
+                );
+              })}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13, fontWeight: 700 }}>
               <span style={{ color: C.textWhite, fontFamily: 'monospace' }}>Bet {bet.betAmount}</span>

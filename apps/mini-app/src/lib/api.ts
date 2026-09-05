@@ -665,6 +665,7 @@ export interface KenoState {
   }[];
   bets: {
     username: string;
+    pickedNumbers: number[];
     pickedCount: number;
     betAmount: number;
     matched: number | null;

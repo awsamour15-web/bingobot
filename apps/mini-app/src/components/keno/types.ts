@@ -12,6 +12,7 @@ export interface KenoUIState {
 
 export interface BetFeedItem {
   username: string;
+  pickedNumbers: number[];
   pickedCount: number;
   betAmount: number;
   matched: number | null;
