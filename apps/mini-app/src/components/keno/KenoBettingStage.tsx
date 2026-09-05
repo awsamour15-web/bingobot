@@ -64,7 +64,7 @@ export function KenoBettingStage({
       <div style={{ width: '100%', background: 'rgba(17,24,28,0.98)', border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 14, padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
 
         {spots === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '8px 8px 6px', minHeight: 110 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '8px 8px 6px', height: 136, boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
               <div style={{ position: 'relative', width: 110, height: 70 }}>
                 <div style={{ position: 'absolute', top: 10, left: 0, width: 34, height: 34, borderRadius: '50%', background: 'radial-gradient(circle at 35% 25%, #718ba7 0%, #213953 42%, #101d2b 100%)', border: '1px solid rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dfefff', fontWeight: 900, fontSize: 14 }}>80</div>
@@ -81,7 +81,7 @@ export function KenoBettingStage({
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '8px 8px 7px', minHeight: 90 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, background: 'rgba(0,0,0,0.2)', borderRadius: 11, padding: '8px 8px 7px', height: 136, boxSizing: 'border-box' }}>
             {/* Possible win row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
