@@ -214,10 +214,10 @@ export default function KenoScreen() {
   }
 
   const tabs: { id: NavTab; label: string }[] = [
-    { id: 'GAME', label: 'GAME' },
-    { id: 'HISTORY', label: 'HISTORY' },
-    { id: 'RESULTS', label: 'RESULTS' },
-    { id: 'STATISTICS', label: 'STATISTICS' },
+    { id: 'GAME', label: '▶ GAME' },
+    { id: 'HISTORY', label: '◌ HISTORY' },
+    { id: 'RESULTS', label: '✓ RESULTS' },
+    { id: 'STATISTICS', label: '▣ STATISTICS' },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -240,7 +240,7 @@ export default function KenoScreen() {
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#dfe7ee', color: '#171b22', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>K</div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 180, padding: '8px 12px', borderRadius: 8, background: '#0d1217', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: 190, padding: '8px 12px', borderRadius: 8, background: '#0d1217', border: '1px solid rgba(255,255,255,0.1)' }}>
               <span style={{ color: '#f2f7fb', fontSize: 12, fontWeight: 700 }}>Br</span>
               <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                 {[0,1,2,3].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: i === 0 ? '#fff' : 'rgba(255,255,255,0.35)' }} />)}
@@ -249,7 +249,7 @@ export default function KenoScreen() {
             </div>
           </div>
 
-          <button style={{ background: '#f1c647', color: '#11151a', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
+          <button style={{ background: '#f0c84b', color: '#11151a', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.12)' }}>Deposit</button>
         </div>
       </div>
 
@@ -313,7 +313,7 @@ export default function KenoScreen() {
         {/* ── Bottom section: tabs + content ── */}
         <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: '0' }}>
           {/* Tab bar - scrollable */}
-          <div style={{ background: C.topbar, borderBottom: `1px solid ${C.border}`, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollBehavior: 'smooth' }}>
+          <div style={{ background: 'rgba(12,16,20,0.96)', borderBottom: `1px solid ${C.border}`, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollBehavior: 'smooth', paddingLeft: 12 }}>
             {tabs.map(tab => {
               const isActive = activeTab === tab.id;
               return (
@@ -321,10 +321,10 @@ export default function KenoScreen() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: '0 0 auto', padding: '8px 12px', background: 'none', border: 'none',
+                    flex: '0 0 auto', padding: '12px 14px 10px', background: 'none', border: 'none',
                     borderBottom: isActive ? `3px solid ${C.green}` : '3px solid transparent',
-                    color: isActive ? C.green : C.textDim,
-                    fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em',
+                    color: isActive ? '#81f5b0' : '#7db4a6',
+                    fontSize: 18, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.04em',
                     transition: 'color 0.12s', whiteSpace: 'nowrap',
                   }}
                 >
