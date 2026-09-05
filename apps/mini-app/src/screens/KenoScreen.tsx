@@ -260,7 +260,7 @@ export default function KenoScreen() {
       </div>
 
       {/* ── Main content: Betting stage or Draw arena (NO scroll) ── */}
-      <div style={{ flexShrink: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flexShrink: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column', maxHeight: '65vh' }}>
         {showArena ? (
           <KenoDrawArena
             drawnNumbers={drawnNumbers}
