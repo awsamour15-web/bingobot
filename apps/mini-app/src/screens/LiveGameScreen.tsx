@@ -669,7 +669,7 @@ export default function LiveGameScreen() {
   const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
 
   // Exact column colors from the screenshot (B, I, N, G, O)
-  const HDR = ['#3b82f6', '#1ee068', '#8b5cf6', '#f59e0b', '#ef4444'] as const;
+  const HDR = ['#3b82f6', '#18b7b0', '#7654c7', '#dca72f', '#df6269'] as const;
 
   // ── image col colors: B=blue, I=green, N=purple, G=amber, O=red ──
   const colBg = (ci: number, called: boolean, isLast: boolean) => {
@@ -682,6 +682,14 @@ export default function LiveGameScreen() {
   return (
     <div style={{ height: '100dvh', background: '#0e1726', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
+      <div style={{ height: 70, flexShrink: 0, background: 'linear-gradient(180deg, #0d1522 0%, #111c2c 100%)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '0 16px', boxShadow: '0 4px 14px rgba(0,0,0,0.22)' }}>
+        <button type="button" onClick={() => navigate('/', { replace: true })} aria-label="Close game" style={{ width: 40, height: 40, padding: 0, border: 0, background: 'transparent', color: '#f2f5fa', cursor: 'pointer', fontSize: 34, fontWeight: 300, lineHeight: 1 }}>×</button>
+        <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 0.2, color: '#f5f7fb' }}>Fidel Bingo</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 18, color: '#f2f5fa' }}>
+          <span aria-hidden="true" style={{ fontSize: 31, lineHeight: 1, transform: 'translateY(-3px)' }}>⌄</span>
+          <button type="button" onClick={toggleSound} aria-label={soundOn ? 'Mute sound' : 'Enable sound'} style={{ width: 30, height: 40, padding: 0, border: 0, background: 'transparent', color: '#f2f5fa', cursor: 'pointer', fontSize: 23 }}>{soundOn ? '◉' : '◌'}</button>
+        </div>
+      </div>
 
 
       {/* ── STATS ROW ── */}
@@ -694,8 +702,8 @@ export default function LiveGameScreen() {
           { label: 'CALLED',   value: game.calledNumbers.size },
         ].map(({ label, value }, i) => (
           <div key={label} style={{ textAlign: 'center', padding: '7px 3px', borderRight: i < 4 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-            <div style={{ fontSize: 8, color: '#7a95b8', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: '#f0f4ff' }}>{value}</div>
+            <div style={{ fontSize: 10, color: '#aab5c7', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: '#f0f4ff' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -733,13 +741,13 @@ export default function LiveGameScreen() {
                   <div key={num} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     borderRadius: 4,
-                    background: isLast ? '#f5c518' : called ? '#1ee068' : 'rgba(255,255,255,0.055)',
-                    color: isLast ? '#0e1726' : called ? '#000' : '#4a6080',
-                    fontSize: 10, fontWeight: isLast ? 900 : called ? 800 : 500,
-                    border: isLast ? '2px solid #fff' : called ? '1px solid rgba(30,224,104,0.5)' : '1px solid rgba(255,255,255,0.07)',
+                    background: isLast ? '#f5c518' : called ? '#234d87' : 'rgba(255,255,255,0.055)',
+                    color: isLast ? '#0e1726' : called ? '#f4f7ff' : '#9eabc0',
+                    fontSize: 14, fontWeight: isLast ? 900 : called ? 800 : 500,
+                    border: isLast ? '2px solid #fff' : called ? '1px solid rgba(76,145,230,0.55)' : '1px solid rgba(255,255,255,0.07)',
                     minHeight: 22,
                     aspectRatio: '1', transition: 'background 0.18s',
-                    boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : called ? '0 0 8px rgba(30,224,104,0.5)' : 'none',
+                    boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : called ? '0 0 8px rgba(59,130,246,0.35)' : 'none',
                   } as React.CSSProperties}>
                     {num}
                   </div>
@@ -784,7 +792,7 @@ export default function LiveGameScreen() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0e1726' }}>
 
           {/* LAST CALLED */}
-          <div style={{ padding: '10px 12px 8px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ padding: '14px 12px 12px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Last Called</span>
               <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#7a95b8', fontSize: 14, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
@@ -800,7 +808,7 @@ export default function LiveGameScreen() {
                 }}>
                   {getColLabel(game.lastCalled)}
                 </div>
-                <div style={{ fontSize: 48, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: 'lastCalledPulse 0.6s ease-in-out infinite' }}>
+                <div style={{ fontSize: 56, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: 'lastCalledPulse 0.6s ease-in-out infinite' }}>
                   {game.lastCalled}
                 </div>
               </div>
@@ -852,7 +860,7 @@ export default function LiveGameScreen() {
                   <div key={cartela.cartelaNumber} style={{
                     flexShrink: 0,
                     width: '100%',
-                    maxWidth: 220,
+                    maxWidth: 232,
                     background: '#132033',
                     borderRadius: 6,
                     overflow: 'hidden',
@@ -882,15 +890,15 @@ export default function LiveGameScreen() {
                           <div key={idx} style={{
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             aspectRatio: '1', borderRadius: 2,
-                            background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#1ee068' : 'rgba(255,255,255,0.05)',
-                            color: isW || isM ? '#000' : '#4a6080',
-                            fontSize: 6.5, fontWeight: isW ? 900 : isM ? 700 : 500,
+                            background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#234d87' : 'rgba(255,255,255,0.05)',
+                            color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
+                            fontSize: 13, fontWeight: isW ? 900 : isM ? 700 : 500,
                             border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
-                            boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : isM ? '0 0 4px rgba(30,224,104,0.5)' : 'none',
+                            boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
                             transition: 'background 0.15s',
                           }}>
-                            {val ? <span style={{ fontSize: '6.5px' }}>{val}</span> : isFree ? <span style={{ fontSize: '7.5px' }}>★</span> : ''}
-                            {isFree && val ? <span style={{ fontSize: '5px', opacity: 0.7 }}>●</span> : ''}
+                            {val ? <span style={{ fontSize: '13px' }}>{val}</span> : isFree ? <span style={{ fontSize: '16px' }}>★</span> : ''}
+                            {isFree && val ? <span style={{ fontSize: '7px', opacity: 0.7 }}>●</span> : ''}
                           </div>
                         );
                       })}
