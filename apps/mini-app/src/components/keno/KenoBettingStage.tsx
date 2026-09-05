@@ -198,21 +198,21 @@ export function KenoBettingStage({
         </div>
 
         {/* Bet controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={dec} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>-</button>
-          <div style={{ flex: 1, height: 42, background: 'rgba(0,0,0,0.4)', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, color: C.textWhite, fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <button onClick={dec} style={{ width: 38, height: 40, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 20, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
+          <div style={{ flex: 1, height: 40, background: 'rgba(0,0,0,0.4)', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: C.textWhite, fontFamily: 'monospace' }}>
             {betAmount % 1 === 0 ? betAmount : betAmount.toFixed(2)}
           </div>
-          <button onClick={inc} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 22, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
-          <button onClick={() => onChangeBet(betAmount * 2)} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
-          <button onClick={() => onChangeBet(Math.min(Math.max(1, Math.floor(userBalance)), 500))} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 13, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
-          <button onClick={onOpenSettings} style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
+          <button onClick={inc} style={{ width: 38, height: 40, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 20, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
+          <button onClick={() => onChangeBet(betAmount * 2)} style={{ padding: '0 12px', height: 40, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
+          <button onClick={() => onChangeBet(Math.min(Math.max(1, Math.floor(userBalance)), 500))} style={{ padding: '0 12px', height: 40, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
+          <button onClick={onOpenSettings} style={{ width: 40, height: 40, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textMid, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
         </div>
 
         {/* BET button */}
         <button
           onClick={onPlaceBet}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 12, background: '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', marginTop: 2 }}
+          style={{ width: '100%', padding: '16px 0', borderRadius: 16, background: '#1ea855', border: 'none', color: '#fff', fontSize: 18, fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer' }}
         >
           BET
         </button>

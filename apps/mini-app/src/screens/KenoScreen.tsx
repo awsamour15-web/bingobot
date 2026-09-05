@@ -317,10 +317,10 @@ export default function KenoScreen() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: 1, padding: '7px 2px', background: 'none', border: 'none',
+                    flex: 1, padding: '6px 2px', background: 'none', border: 'none',
                     borderBottom: isActive ? `2px solid ${C.green}` : '2px solid transparent',
                     color: isActive ? C.green : C.textDim,
-                    fontSize: 10, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em',
+                    fontSize: 9, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.03em',
                     transition: 'color 0.12s',
                   }}
                 >
