@@ -217,8 +217,8 @@ export default function KenoScreen() {
     { id: 'GAME',       label: '▶ GAME'      },
     { id: 'HISTORY',    label: '↺ HISTORY'  },
     { id: 'RESULTS',    label: '✓ RESULT'   },
+    { id: 'STATISTICS', label: '▦ STATS'    },
     { id: 'RANK',       label: '🏆 RANK'    },
-    { id: 'STATISTICS', label: '▦ STATISTICS'    },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;

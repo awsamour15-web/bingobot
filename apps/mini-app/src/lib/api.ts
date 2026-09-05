@@ -693,6 +693,10 @@ export function checkKenoAccess(): Promise<{ allowed: boolean }> {
   return apiRequest<{ allowed: boolean }>('GET', '/api/keno/access');
 }
 
+export function getKenoLeaderboard(): Promise<LeaderboardResponse> {
+  return apiRequest<LeaderboardResponse>('GET', '/api/keno/leaderboard');
+}
+
 // ─── Plinko ──────────────────────────────────────────────────────────────────
 
 export function checkPlinkoAccess(): Promise<{ allowed: boolean }> {

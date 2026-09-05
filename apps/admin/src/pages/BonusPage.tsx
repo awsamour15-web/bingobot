@@ -197,11 +197,7 @@ function SingleBonusPanel() {
               </div>
             </div>
             
-            <Btn type="button" onClick={handleApply} disabled={saving} style={{ 
-              background: 'linear-gradient(135deg, rgba(99,102,241,0.9) 0%, rgba(99,102,241,0.7) 100%)',
-              fontWeight: 600,
-              padding: '12px 16px',
-            }}>
+            <Btn type="button" onClick={handleApply} disabled={saving}>
               {saving ? '⏳ Processing…' : `✓ Award ${effectiveAmount} ETB Bonus`}
             </Btn>
           </div>
@@ -829,7 +825,7 @@ function DepositBonusPanel() {
           title="💰 Automatic Deposit Bonus"
           subtitle="Give players an automatic bonus when they make a deposit"
           action={
-            <Badge variant={isActive ? 'success' : 'neutral'} style={{ fontSize: 12, fontWeight: 600 }}>
+            <Badge variant={isActive ? 'success' : 'neutral'}>
               {isActive ? `${activePct}% Active` : 'Disabled'}
             </Badge>
           }
@@ -882,7 +878,7 @@ function DepositBonusPanel() {
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <Btn type="submit" disabled={saving} style={{ flex: 1 }}>
+              <Btn type="submit" disabled={saving}>
                 {saving ? '⏳ Saving…' : '💾 Save Settings'}
               </Btn>
               {isActive && (
@@ -942,9 +938,8 @@ function CouponPanel() {
         maxUses: maxUses ? Number(maxUses) : null,
         description: description.trim(),
       });
-      setSuccess('Coupon created');
+      setSuccess('✓ Coupon created successfully');
       setCode(''); setAmount(''); setMaxUses(''); setDescription('');
-      // Optimistically add and then refresh for accurate usage counts
       setCoupons(prev => [...prev, { ...created, usedCount: 0 }]);
       load();
     } catch (e: any) { setError(e.message ?? 'Failed'); }
@@ -952,101 +947,131 @@ function CouponPanel() {
   }
 
   async function handleDelete(c: string) {
-    if (!confirm(`Delete coupon "${c}"?`)) return;
+    if (!confirm(`Delete coupon "${c}"? This cannot be undone.`)) return;
     setDeleting(c); setError(null); setSuccess(null);
     try {
       await deleteCoupon(c);
-      setSuccess(`Coupon "${c}" deleted`);
+      setSuccess(`✓ Coupon "${c}" deleted`);
       load();
     } catch (e: any) { setError(e.message ?? 'Failed'); }
     finally { setDeleting(null); }
   }
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 18, alignItems: 'start' }}>
-      {/* Create form */}
-      <Card>
-        <CardHeader title="Create Coupon" subtitle="Players can redeem these in the mini-app" />
-        {error && <Alert type="error">{error}</Alert>}
-        {success && <Alert type="success">{success}</Alert>}
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Field label="Code (e.g. FIDEL50)">
-            <input
-              value={code}
-              onChange={e => setCode(e.target.value.toUpperCase())}
-              placeholder="FIDEL50"
-              maxLength={24}
-              style={inputCss}
-              required
-            />
-          </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="Amount (ETB)">
-              <input type="number" min={1} value={amount} onChange={e => setAmount(e.target.value)} style={inputCss} required />
-            </Field>
-            <Field label="Wallet">
-              <select value={wallet} onChange={e => setWallet(e.target.value as 'main' | 'play')} style={selectCss}>
-                <option value="play">Play Wallet</option>
-                <option value="main">Main Wallet</option>
-              </select>
-            </Field>
-          </div>
-          <Field label="Max Uses (blank = unlimited)">
-            <input type="number" min={1} value={maxUses} onChange={e => setMaxUses(e.target.value)} placeholder="Unlimited" style={inputCss} />
-          </Field>
-          <Field label="Description (optional)">
-            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Weekend promo" style={inputCss} />
-          </Field>
-          <Btn type="submit" variant="primary" disabled={saving}>
-            {saving ? 'Creating…' : '+ Create Coupon'}
-          </Btn>
-        </form>
-      </Card>
+  const activeCoupons = coupons.filter(c => !c.maxUses || c.usedCount < c.maxUses).length;
+  const exhaustedCoupons = coupons.filter(c => c.maxUses && c.usedCount >= c.maxUses).length;
 
-      {/* Coupon list */}
-      <Card>
-        <CardHeader title="Active Coupons" subtitle={`${coupons.length} coupon${coupons.length !== 1 ? 's' : ''}`} />
-        <Table>
-          <thead>
-            <tr>
-              <Th>Code</Th>
-              <Th>Amount</Th>
-              <Th>Wallet</Th>
-              <Th>Uses</Th>
-              <Th>Description</Th>
-              <Th><span /></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <TrLoading cols={6} /> : !coupons.length ? <TrEmpty cols={6} message="No coupons yet." /> :
-              coupons.map(c => (
-                <tr key={c.code}>
-                  <Td><span style={{ fontFamily: 'monospace', fontWeight: 800, color: C.primary }}>{c.code}</span></Td>
-                  <Td>{c.amount} ETB</Td>
-                  <Td><Badge variant={c.wallet === 'play' ? 'info' : 'success'}>{c.wallet}</Badge></Td>
-                  <Td>
-                    {c.usedCount}{c.maxUses !== null ? `/${c.maxUses}` : ''}
-                    {c.maxUses !== null && c.usedCount >= c.maxUses && (
-                      <> <Badge variant="danger">Exhausted</Badge></>
-                    )}
-                  </Td>
-                  <Td style={{ color: C.muted, fontSize: 12 }}>{c.description || '—'}</Td>
-                  <Td>
-                    <Btn
-                      variant="danger"
-                      size="sm"
-                      disabled={deleting === c.code}
-                      onClick={() => handleDelete(c.code)}
-                    >
-                      {deleting === c.code ? '…' : 'Delete'}
-                    </Btn>
-                  </Td>
-                </tr>
-              ))
+  return (
+    <div style={{ display: 'grid', gap: 20 }}>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+        <StatCard icon="🎟️" label="Total Coupons" value={coupons.length} color={C.primary} />
+        <StatCard icon="✅" label="Active" value={activeCoupons} color={C.success} />
+        <StatCard icon="⚠️" label="Exhausted" value={exhaustedCoupons} color={C.danger} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20, alignItems: 'start' }}>
+        {/* Create form */}
+        <Card>
+          <CardHeader title="+ New Coupon" subtitle="Create a coupon code for players" />
+          {error && <Alert type="error">{error}</Alert>}
+          {success && <Alert type="success">{success}</Alert>}
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Field label="🔐 Code (e.g. SUMMER50)">
+              <input
+                value={code}
+                onChange={e => setCode(e.target.value.toUpperCase())}
+                placeholder="SUMMER50"
+                maxLength={24}
+                style={inputCss}
+                required
+              />
+            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="💵 Amount (ETB)">
+                <input type="number" min={1} value={amount} onChange={e => setAmount(e.target.value)} style={inputCss} required />
+              </Field>
+              <Field label="📍 Wallet">
+                <select value={wallet} onChange={e => setWallet(e.target.value as 'main' | 'play')} style={selectCss}>
+                  <option value="play">🎮 Play</option>
+                  <option value="main">💰 Main</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="📊 Max Uses (blank = unlimited)">
+              <input type="number" min={1} value={maxUses} onChange={e => setMaxUses(e.target.value)} placeholder="Unlimited" style={inputCss} />
+            </Field>
+            <Field label="📝 Description (optional)">
+              <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Black Friday special" style={inputCss} />
+            </Field>
+            <Btn type="submit" disabled={saving}>
+              {saving ? '⏳ Creating…' : '✨ Create Coupon'}
+            </Btn>
+          </form>
+        </Card>
+
+        {/* Coupon list */}
+        <Card>
+          <CardHeader 
+            title="🎟️ Active Coupons" 
+            subtitle={`${coupons.length} coupon${coupons.length !== 1 ? 's' : ''}`}
+            action={
+              <Btn size="sm" variant="outline" onClick={() => void load()}>
+                ↻ Refresh
+              </Btn>
             }
-          </tbody>
-        </Table>
-      </Card>
+          />
+          <Table>
+            <thead>
+              <tr>
+                <Th>Code</Th>
+                <Th>Amount</Th>
+                <Th>Wallet</Th>
+                <Th>Uses</Th>
+                <Th>Action</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? <TrLoading cols={5} /> : !coupons.length ? (
+                <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: C.muted }}>
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>🎟️</div>
+                  <div>No coupons yet. Create one to get started.</div>
+                </td></tr>
+              ) : (
+                coupons.map(c => {
+                  const isExhausted = c.maxUses !== null && c.usedCount >= c.maxUses;
+                  return (
+                    <tr key={c.code} style={{ opacity: isExhausted ? 0.6 : 1 }}>
+                      <Td><span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 13, color: C.primary, letterSpacing: '0.05em' }}>{c.code}</span></Td>
+                      <Td><strong style={{ fontSize: 14 }}>{c.amount} ETB</strong></Td>
+                      <Td>
+                        <Badge variant={c.wallet === 'play' ? 'info' : 'success'}>
+                          {c.wallet === 'play' ? '🎮 Play' : '💰 Main'}
+                        </Badge>
+                      </Td>
+                      <Td>
+                        <div style={{ fontSize: 12 }}>
+                          {c.usedCount}{c.maxUses !== null ? ` / ${c.maxUses}` : ''} 
+                          {isExhausted && <> <Badge variant="danger">Exhausted</Badge></>}
+                        </div>
+                      </Td>
+                      <Td>
+                        <Btn
+                          variant="danger"
+                          size="sm"
+                          disabled={deleting === c.code}
+                          onClick={() => handleDelete(c.code)}
+                        >
+                          {deleting === c.code ? '...' : '🗑️'}
+                        </Btn>
+                      </Td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </Table>
+        </Card>
+      </div>
     </div>
   );
 }

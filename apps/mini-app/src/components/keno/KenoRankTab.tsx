@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getLeaderboard } from '../../lib/api';
+import { getKenoLeaderboard } from '../../lib/api';
 import type { LeaderboardEntry } from '../../lib/api';
 
 const C = {
@@ -19,13 +19,13 @@ export function KenoRankTab({}: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getLeaderboard()
+    getKenoLeaderboard()
       .then(data => {
         setLeaderboard(data.leaderboard);
         setCurrentPlayerRank(data.currentPlayerRank);
       })
       .catch(err => {
-        console.error('Failed to load leaderboard:', err);
+        console.error('Failed to load Keno leaderboard:', err);
       })
       .finally(() => setLoading(false));
   }, []);
