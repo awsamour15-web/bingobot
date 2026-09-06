@@ -167,12 +167,12 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
   const selected = Math.max(1, Math.min(5, value));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: 78, gap: 10, marginRight: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", width: 94, gap: 10, marginRight: 8 }}>
       {preset.map((n) => {
         const active = n === 5 || (selected === 5 && n === 5) || (selected !== 5 && n === selected);
         return (
           <div key={n} style={{
-            height: 86,
+            height: 104,
             borderRadius: 12,
             background: active
               ? "linear-gradient(180deg, rgba(48,162,95,0.95), rgba(18,92,52,0.92))"
@@ -184,7 +184,7 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
             display: "flex", alignItems: "center", justifyContent: "center",
             color: active ? "#ff7cc6" : "#f4d89a",
             fontFamily: "Arial Black, Impact, sans-serif",
-            fontSize: active ? 38 : 30,
+            fontSize: active ? 42 : 34,
             fontWeight: 900,
             letterSpacing: "-0.06em",
             transform: active ? "scale(1.02)" : "scale(1)",
@@ -210,7 +210,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
         const isWin = !spinning && winSet.has(key);
         return (
           <div key={row} style={{
-            height: 72,
+            height: 104,
             display: "flex", alignItems: "center", justifyContent: "center",
             borderRadius: 8,
             background: isWin
@@ -232,7 +232,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
               }}/>
             )}
             <div style={{ position: "relative", filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none" }}>
-              <SymbolSvg sym={sym} size={54} />
+              <SymbolSvg sym={sym} size={78} />
             </div>
           </div>
         );
@@ -728,10 +728,10 @@ export default function SlotsScreen() {
     <div style={{
       minHeight: "100dvh",
       background:
-        "radial-gradient(circle at 50% 0%, rgba(27,100,72,0.60) 0%, rgba(6,31,26,0.95) 18%, rgba(2,7,8,1) 52%, rgba(0,0,0,1) 100%)",
+        "radial-gradient(ellipse at 50% 12%, rgba(23,108,73,0.72) 0%, rgba(4,46,30,0.88) 28%, rgba(2,24,18,0.98) 56%, #03100c 100%)",
       color: "#f8fafc",
       display: "flex", flexDirection: "column",
-      maxWidth: 480, margin: "0 auto",
+      maxWidth: 576, margin: "0 auto",
       fontFamily: "system-ui, -apple-system, sans-serif",
       overflow: "hidden",
       position: "relative",
@@ -739,7 +739,10 @@ export default function SlotsScreen() {
       <div style={{
         position: "absolute",
         inset: 0,
-        backgroundImage: "radial-gradient(circle at 50% 12%, rgba(77,108,97,0.28) 0%, rgba(77,108,97,0.00) 38%), radial-gradient(circle at 10% 20%, rgba(32,128,92,0.22) 0%, rgba(32,128,92,0.00) 22%), radial-gradient(circle at 80% 18%, rgba(32,128,92,0.20) 0%, rgba(32,128,92,0.00) 18%)",
+        backgroundImage: "radial-gradient(ellipse at 18% 12%, rgba(54,151,101,0.22) 0 7%, transparent 8%), radial-gradient(ellipse at 30% 18%, rgba(22,105,71,0.3) 0 8%, transparent 9%), radial-gradient(ellipse at 70% 10%, rgba(26,126,81,0.24) 0 7%, transparent 8%), radial-gradient(ellipse at 82% 24%, rgba(45,143,91,0.2) 0 8%, transparent 9%), radial-gradient(ellipse at 15% 70%, rgba(25,121,78,0.26) 0 9%, transparent 10%), radial-gradient(ellipse at 72% 78%, rgba(30,131,84,0.24) 0 8%, transparent 9%), radial-gradient(circle at 50% 12%, rgba(77,108,97,0.18) 0%, rgba(77,108,97,0.00) 38%)",
+        backgroundSize: "150px 110px, 190px 140px, 170px 120px, 210px 160px, 180px 150px, 230px 170px, auto",
+        backgroundPosition: "0 0, 40px 30px, 90px 10px, 15px 80px, 70px 120px, 0 40px, 0 0",
+        opacity: 0.9,
         pointerEvents: "none",
       }} />
 
@@ -795,7 +798,7 @@ export default function SlotsScreen() {
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <div style={{ width: 12, height: 12, borderRadius: 3, background: "#ff5f7a", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)" }} />
+            <div style={{ width: 18, height: 18, borderRadius: 5, background: "#d51645", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ff9ab1", fontSize: 12, fontWeight: 900 }}>S</div>
             <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5", whiteSpace: "nowrap" }}>SMARTSOFT</div>
             <div style={{ fontSize: 10, color: "#8ea7a2", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>GAMING</div>
           </div>
