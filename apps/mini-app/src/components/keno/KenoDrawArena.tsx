@@ -59,12 +59,19 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
   const pendingRef   = useRef<number[]>([]);
   const animatingRef = useRef(false);
   const runNextRef   = useRef<() => void>(() => {});
+  const hydratedLengthRef = useRef(initialDrawnNumbers?.length ?? 0);
 
   // Hydrate tray silently when initial snapshot arrives
   useEffect(() => {
-    if (!initialDrawnNumbers?.length) return;
+    if (initialDrawnNumbers === undefined) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingRef.current = [];
+    animatingRef.current = false;
+    setCentreNum(null);
+    setCentrePhase('none');
     setTrayBalls(initialDrawnNumbers);
-    processedRef.current = Math.max(processedRef.current, initialDrawnNumbers.length);
+    hydratedLengthRef.current = initialDrawnNumbers.length;
+    processedRef.current = initialDrawnNumbers.length;
   }, [initialDrawnNumbers]);
 
   // Animate every new ball in order, including numbers received during a reconnect.
@@ -90,6 +97,11 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
   };
 
   useEffect(() => {
+    if (initialDrawnNumbers !== undefined && processedRef.current < hydratedLengthRef.current) {
+      setTrayBalls(initialDrawnNumbers);
+      processedRef.current = initialDrawnNumbers.length;
+      return;
+    }
     if (drawnNumbers.length <= processedRef.current) return;
     pendingRef.current.push(...drawnNumbers.slice(processedRef.current));
     processedRef.current = drawnNumbers.length;
