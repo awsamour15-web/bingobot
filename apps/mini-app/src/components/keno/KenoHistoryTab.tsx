@@ -46,23 +46,33 @@ export function KenoHistoryTab({ history, onReplayBet, mode = 'history' }: Props
           const winning = bets.some(bet => (bet.payout ?? 0) > 0);
 
           if (mode === 'results') {
+            const row1 = record.drawnNumbers.slice(0, 10);
+            const row2 = record.drawnNumbers.slice(10, 20);
             return (
-              <div key={record.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: C.greenLight }}>
-                  <div style={{ flex: 1, height: 1, background: 'rgba(224,238,231,0.8)' }} />
-                  <div style={{ minWidth: 170, textAlign: 'center', lineHeight: 1.15 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>Draw</div>
-                    <div style={{ fontFamily: 'monospace', fontSize: 14 }}>ID: {formatId(record.id)}</div>
-                    <div style={{ color: C.textWhite, fontSize: 12, marginTop: 3 }}>{formatDate(record.finishedAt)} {formatTime(record.finishedAt)}</div>
-                  </div>
-                  <div style={{ flex: 1, height: 1, background: 'rgba(224,238,231,0.8)' }} />
+              <div key={record.id} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 6px 2px', color: C.textDim, fontSize: 10 }}>
+                  <span>Draw ID</span>
+                  <span>Combination</span>
                 </div>
-                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 6 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 3 }}>
-                    {Array.from({ length: 20 }).map((_, idx) => {
-                      const number = record.drawnNumbers[idx];
-                      return <div key={idx} style={{ height: 36, borderRadius: 4, background: number === undefined ? 'rgba(0,0,0,0.22)' : '#34434b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e5edf0', fontSize: 14, fontWeight: 800, fontFamily: 'monospace' }}>{number ?? '·'}</div>;
-                    })}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 6, borderRadius: 8, background: C.card, border: `1px solid ${C.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: 76, flexShrink: 0 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#1ee068', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 6px rgba(30,224,104,0.4)' }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#071316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: C.green, lineHeight: 1.2 }}>{formatId(record.id)}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 8, color: C.textDim, lineHeight: 1.2 }}>{formatTime(record.finishedAt)}</span>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 2px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {[row1, row2].map((row, ri) => (
+                      <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 1, textAlign: 'center' }}>
+                        {Array.from({ length: 10 }).map((_, idx) => {
+                          const number = row[idx];
+                          return <span key={idx} style={{ height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, fontFamily: 'monospace', color: number === undefined ? 'transparent' : '#94a3b8' }}>{number ?? '·'}</span>;
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
