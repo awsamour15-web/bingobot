@@ -287,7 +287,7 @@ export default function KenoScreen() {
       {/* ── Scrollable content area ── */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* ── Main content: Betting stage or Draw arena ── */}
-        <div style={{ flexShrink: 0, padding: '8px 10px' }}>
+        <div style={{ flexShrink: 0, padding: 0 }}>
           <AnimatePresence mode="wait">
             {showArena ? (
               <motion.div key="arena" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -343,7 +343,7 @@ export default function KenoScreen() {
           </div>
 
           {/* Tab content */}
-          <div style={{ padding: '8px 10px env(safe-area-inset-bottom, 12px)' }}>
+          <div style={{ padding: '8px 0 env(safe-area-inset-bottom, 12px)' }}>
             <AnimatePresence mode="wait">
               {activeTab === 'GAME' && (
                 <motion.div key="game" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
