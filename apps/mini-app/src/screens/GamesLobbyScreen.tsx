@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowDownToLine, ArrowLeft, ChevronDown, Eye, Gift, History, MessageCircle, MoreVertical, Trophy, WalletCards } from 'lucide-react';
 import { initAuth, getAgentJwt } from '../lib/auth';
 import { getProfile, checkKenoAccess, checkPlinkoAccess, redeemCoupon } from '../lib/api';
 
@@ -280,17 +281,17 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        minHeight: game.category === 'coming' ? 124 : 184,
-        background: game.gradient,
-        border: `1px solid ${isAvailable ? game.glowColor.replace(/[\d.]+\)$/, '0.55)') : 'rgba(255,255,255,0.04)'}`,
-        borderRadius: 16,
-        padding: '18px 16px 16px',
+        minHeight: game.category === 'coming' ? 128 : 218,
+        background: '#09201b',
+        border: `1px solid ${isAvailable ? 'rgba(183,138,31,0.5)' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 17,
+        padding: 0,
         cursor: isAvailable ? 'pointer' : 'default',
         textAlign: 'left',
         overflow: 'hidden',
         opacity: isAvailable ? 1 : 0.6,
         boxShadow: isAvailable
-          ? `0 16px 34px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)`
+          ? '0 10px 24px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)'
           : '0 6px 16px rgba(0,0,0,0.25)',
         transition: 'transform 0.16s ease, box-shadow 0.16s ease',
       }}
@@ -308,92 +309,16 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
           : '0 6px 16px rgba(0,0,0,0.25)';
       }}
     >
-      {/* accent rail */}
-      <div style={{
-        position: 'absolute', top: 0, left: 16, right: 16, height: 3,
-        borderRadius: '0 0 8px 8px', background: game.tagColor,
-        boxShadow: `0 0 18px ${game.glowColor}`, pointerEvents: 'none',
-      }} />
-
-      {/* top: emoji/logo + tags */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-        {game.logoSrc ? (
-          <img
-            src={game.logoSrc}
-            alt={game.title}
-            style={{ height: 46, width: 'auto', maxWidth: 140, objectFit: 'contain', flexShrink: 0 }}
-          />
-        ) : (
-          <div style={{
-            width: 52, height: 52, borderRadius: 15,
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, flexShrink: 0,
-            boxShadow: '0 6px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}>{game.emoji}</div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          {game.badge && (
-            <div style={{
-              fontSize: 8, fontWeight: 900, letterSpacing: '0.12em', color: '#fff',
-              background: 'rgba(239,68,68,0.85)', border: '1px solid rgba(239,68,68,0.5)',
-              borderRadius: 7, padding: '2px 6px',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', display: 'inline-block', animation: 'lobbyPulse 1.2s ease-in-out infinite' }} />
-              {game.badge}
-            </div>
-          )}
-          <div style={{
-            fontSize: 8, fontWeight: 900, letterSpacing: '0.1em',
-            color: game.tagColor, background: game.tagColor + '22',
-            border: `1px solid ${game.tagColor}44`, borderRadius: 7, padding: '2px 6px',
-          }}>{game.tag}</div>
+      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 94 : 181, background: game.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 20%, rgba(255,210,70,0.24), transparent 42%), linear-gradient(145deg, transparent 35%, rgba(0,0,0,0.45))' }} />
+        <div style={{ position: 'absolute', top: 8, left: 9, color: '#f8d15c', fontSize: 8, fontWeight: 900, letterSpacing: '0.08em' }}>FIDEL</div>
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 8 }}>
+          <div style={{ fontSize: game.category === 'coming' ? 34 : 58, filter: 'drop-shadow(0 8px 7px rgba(0,0,0,0.5))' }}>{game.emoji}</div>
+          <div style={{ marginTop: 5, color: '#fff3bd', fontSize: game.title.length > 11 ? 17 : 22, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '2px 3px 0 rgba(90,30,0,0.7)' }}>{game.title}</div>
         </div>
+        <div style={{ position: 'absolute', top: 9, right: 8, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? '#64748b' : '#ef5350', borderRadius: 8, padding: '4px 6px', letterSpacing: '0.06em' }}>{game.category === 'coming' ? 'SOON' : 'HOT'}</div>
       </div>
-
-      {/* title + subtitle */}
-      <div style={{ flex: 1 }}>
-        {!game.logoSrc && (
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.3px', marginBottom: 5 }}>
-            {game.title}
-          </div>
-        )}
-        {game.category !== 'coming' && (
-          <div style={{ fontSize: 10, color: 'rgba(203,213,225,0.65)', fontWeight: 500, lineHeight: 1.4 }}>
-            {game.subtitle}
-          </div>
-        )}
-        {game.bonusNote && game.category !== 'coming' && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center',
-            marginTop: 8, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em',
-            color: game.bonusNoteColor,
-            background: game.bonusNoteColor + '18',
-            border: `1px solid ${game.bonusNoteColor}40`,
-            borderRadius: 6, padding: '3px 7px',
-          }}>{game.bonusNote}</div>
-        )}
-      </div>
-
-      {/* bottom */}
-      {game.category !== 'coming' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-          {game.rtp && (
-            <div style={{ fontSize: 9, color: 'rgba(148,163,184,0.8)', fontWeight: 700 }}>{game.rtp}</div>
-          )}
-          <div style={{
-            marginLeft: 'auto',
-            fontSize: 11, fontWeight: 900, color: '#0a0e1a',
-            background: '#f7c948',
-            border: '1px solid rgba(255,255,255,0.25)',
-            borderRadius: 8, padding: '7px 11px',
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}>PLAY <span style={{ fontSize: 13 }}>↗</span></div>
-        </div>
-      )}
+      <div style={{ minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', background: '#092a20', color: game.category === 'coming' ? '#8aa49b' : '#f2c43d', fontSize: 10, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{game.title}</div>
     </button>
   );
 }
@@ -515,8 +440,6 @@ export default function GamesLobbyScreen() {
   const [isSuspended, setIsSuspended] = useState(false);
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
-  const [annIdx, setAnnIdx] = useState(0);
-  const annScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -540,18 +463,6 @@ export default function GamesLobbyScreen() {
     }
     load();
     return () => { cancelled = true; };
-  }, []);
-
-  // Auto-scroll announcements
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setAnnIdx(i => {
-        const next = (i + 1) % ANNOUNCEMENTS.length;
-        annScrollRef.current?.scrollTo({ left: next * 296, behavior: 'smooth' });
-        return next;
-      });
-    }, 4000);
-    return () => clearInterval(timer);
   }, []);
 
   if (isSuspended) {
@@ -578,15 +489,11 @@ export default function GamesLobbyScreen() {
     return true;
   });
 
-  const liveGames   = availableGames.filter(g => g.category === 'live' || g.category === 'crash');
-  const otherGames  = availableGames.filter(g => g.category !== 'live' && g.category !== 'crash' && g.category !== 'coming');
-  const comingGames = availableGames.filter(g => g.category === 'coming');
-
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse at 70% 0%,rgba(38,197,155,0.12) 0%,transparent 38%), radial-gradient(ellipse at 10% 18%,rgba(245,158,11,0.1) 0%,transparent 32%), linear-gradient(180deg,#08131d 0%,#050a12 52%,#020509 100%)',
-      color: '#f8fafc', maxWidth: 480, margin: '0 auto', paddingBottom: 100,
+      background: 'linear-gradient(180deg,#061c17 0%,#020b09 30%,#010605 100%)',
+      color: '#f8fafc', maxWidth: 480, margin: '0 auto', paddingBottom: 100, overflow: 'hidden',
     }}>
       <style>{`
         @keyframes lobbyPulse {
@@ -601,159 +508,33 @@ export default function GamesLobbyScreen() {
           from { opacity:0; }
           to   { opacity:1; }
         }
-        .ann-scroll::-webkit-scrollbar { display:none; }
-        .lobby-grid { background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px); background-size: 28px 28px; }
         .lobby-action:active { transform: scale(0.98); }
         .lobby-card:focus-within { outline: 2px solid #f7c948; outline-offset: 3px; }
       `}</style>
 
-      {/* ── Sticky header ─────────────────────────────────────────── */}
       <div style={{
-        padding: '16px 18px 14px',
-        background: 'rgba(3,8,14,0.82)',
-        backdropFilter: 'blur(18px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-        position: 'sticky', top: 0, zIndex: 20,
+        height: 58, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: '#1c2835', color: '#f7f7f4',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 14,
-              background: 'linear-gradient(135deg,#f7c948,#ee8f2d)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 900, fontSize: 16, color: '#0a0e1a',
-              boxShadow: '0 5px 18px rgba(247,201,72,0.3), inset 0 1px 0 rgba(255,255,255,0.35)',
-            }}>FB</div>
-            <div>
-              <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.4px', color: '#f1f5f9' }}>
-                {username ? `Hey, ${username}` : 'Fidel Games'}
-              </div>
-              <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: '0.1em', marginTop: 1 }}>
-                CHOOSE YOUR GAME
-              </div>
-            </div>
-          </div>
-
-          {/* balance */}
-          <button
-            onClick={() => navigate('/wallet')}
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 13, padding: '7px 13px',
-              cursor: 'pointer', textAlign: 'right',
-            }}
-          >
-            <div style={{ fontSize: 8, color: '#475569', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>Balance</div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: '#fff7e6', letterSpacing: '-0.4px' }}>
-              {balance !== null ? balance.toFixed(2) : '—'}
-              <span style={{ fontSize: 8, color: '#d89b2b', fontWeight: 800, marginLeft: 3 }}>ETB</span>
-            </div>
-          </button>
-        </div>
+        <button onClick={() => navigate(-1)} aria-label="Go back" style={{ background: 'none', border: 0, color: '#fff', padding: 4, cursor: 'pointer' }}><ArrowLeft size={30} strokeWidth={2.5} /></button>
+        <div style={{ fontSize: 31, fontWeight: 900, letterSpacing: '-1.2px' }}>Kana Games</div>
+        <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}><ChevronDown size={28} /><MoreVertical size={28} /></div>
       </div>
 
-      {/* ── Hero play panel ───────────────────────────────────────── */}
-      <div className="lobby-grid" style={{
-        margin: '16px 16px 0', padding: '22px 20px 20px', borderRadius: 20,
-        backgroundColor: 'rgba(11,29,35,0.92)', border: '1px solid rgba(75,223,171,0.24)',
-        boxShadow: '0 18px 38px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
-        position: 'relative', overflow: 'hidden', animation: 'lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1)',
-      }}>
-        <div style={{ position: 'absolute', top: 0, right: 0, width: 120, height: 3, background: '#f7c948', boxShadow: '0 0 24px rgba(247,201,72,0.8)' }} />
-        <div style={{ color: '#5de0b0', fontSize: 10, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase' }}>THE PLAYGROUND IS OPEN</div>
-        <div style={{ fontSize: 29, fontWeight: 900, lineHeight: 1.02, letterSpacing: '-1px', marginTop: 8, maxWidth: 270 }}>Pick a game.<br /><span style={{ color: '#f7c948' }}>Make your move.</span></div>
-        <div style={{ color: 'rgba(226,241,239,0.68)', fontSize: 12, lineHeight: 1.45, marginTop: 10, maxWidth: 260 }}>Live bingo, instant games, and quick wins in one place.</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
-          <button className="lobby-action" onClick={() => navigate('/bingo')} style={{ border: 'none', borderRadius: 9, padding: '11px 15px', background: '#f7c948', color: '#111820', fontSize: 11, fontWeight: 900, letterSpacing: '0.06em', cursor: 'pointer', transition: 'transform 0.15s' }}>PLAY LIVE BINGO <span style={{ fontSize: 14 }}>↗</span></button>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#9ec6ba', fontSize: 10, fontWeight: 800 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#5de0b0', boxShadow: '0 0 10px #5de0b0' }} /> LIVE NOW</div>
-        </div>
+      <div style={{ height: 122, padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(217,166,44,0.22)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(145deg,#ffd52e,#eda900)', color: '#102018', display: 'grid', placeItems: 'center', fontSize: 35, fontWeight: 900, boxShadow: '0 0 24px rgba(246,190,28,0.2)' }}>ფ</div><div><div style={{ fontSize: 23, fontWeight: 900 }}>ፊደል</div><div style={{ fontSize: 13, color: '#eec13d', letterSpacing: '0.3em', fontWeight: 900 }}>GAMES</div></div></div>
+        <button onClick={() => navigate('/wallet')} style={{ width: 178, height: 67, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 13px', background: '#03130f', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 25, color: '#fff', cursor: 'pointer' }}><div style={{ textAlign: 'left', lineHeight: 1.8, fontSize: 11, fontWeight: 900, color: '#99a5a4' }}><div>WALLET <span style={{ color: '#e8af27', letterSpacing: 4 }}>••••</span></div><div>BONUS <span style={{ color: '#20d67a', letterSpacing: 4 }}>••••</span></div></div><Eye size={23} color="#65706e" /></button>
       </div>
 
-      {/* ── Announcements carousel ────────────────────────────────── */}
-      <div style={{ padding: '18px 0 0', animation: 'lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
-        <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 10, color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-            📢 Announcements
-          </div>
-          {/* dot indicators */}
-          <div style={{ display: 'flex', gap: 4 }}>
-            {ANNOUNCEMENTS.map((a, i) => (
-              <div key={a.id} style={{
-                width: i === annIdx ? 16 : 5, height: 5, borderRadius: 4,
-                background: i === annIdx ? '#f59e0b' : 'rgba(255,255,255,0.15)',
-                transition: 'width 0.3s ease, background 0.3s ease',
-              }} />
-            ))}
-          </div>
-        </div>
-
-        <div
-          ref={annScrollRef}
-          className="ann-scroll"
-          style={{
-            display: 'flex', gap: 10, overflowX: 'auto', scrollSnapType: 'x mandatory',
-            paddingLeft: 16, paddingRight: 16, scrollbarWidth: 'none',
-          }}
-          onScroll={e => {
-            const el = e.currentTarget;
-            const idx = Math.round(el.scrollLeft / 296);
-            setAnnIdx(idx);
-          }}
-        >
-          {ANNOUNCEMENTS.map(ann => (
-            <div key={ann.id} style={{ scrollSnapAlign: 'start', flexShrink: 0, width: 280 }}>
-              <AnnouncementBanner ann={ann} onClick={() => ann.ctaRoute && navigate(ann.ctaRoute)} />
-            </div>
-          ))}
-        </div>
+      <div style={{ margin: '14px 20px 0', height: 180, borderRadius: 40, border: '1px solid rgba(222,171,48,0.3)', background: 'radial-gradient(circle at 86% 54%, rgba(207,142,28,0.34), transparent 29%), linear-gradient(125deg,#09231c,#061712)', position: 'relative', overflow: 'hidden', padding: '28px 32px', boxSizing: 'border-box' }}>
+        <div style={{ color: '#bfcac2', fontSize: 12, fontWeight: 900, letterSpacing: '0.12em' }}><Gift size={17} fill="#f6c529" color="#f6c529" style={{ verticalAlign: 'middle', marginRight: 7 }} /> DAILY GIFT</div><div style={{ marginTop: 12, fontSize: 29, fontWeight: 1000, fontStyle: 'italic' }}>GET <span style={{ color: '#f1bf24' }}>BONUS</span></div><button onClick={() => navigate('/bingo')} style={{ marginTop: 16, border: 0, borderRadius: 30, padding: '12px 24px', background: '#eea900', color: '#101710', fontWeight: 900, cursor: 'pointer' }}>CLAIM NOW 🎁</button><div style={{ position: 'absolute', right: 35, top: 37, fontSize: 62, filter: 'drop-shadow(0 12px 10px rgba(0,0,0,0.45))' }}>🎁</div>
       </div>
 
-      {/* ── Coupon box ────────────────────────────────────────────── */}
-      <div style={{ marginTop: 16, animation: 'lobbySlideUp 0.4s cubic-bezier(0.22,1,0.36,1) 0.05s both' }}>
-        <CouponBox />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, padding: '38px 20px 0' }}>
+        {[['/wallet', <WalletCards size={31} />, 'DEPOSIT'], ['/wallet', <ArrowDownToLine size={31} />, 'WITHDRAW'], ['/history', <History size={31} />, 'HISTORY'], ['/wallet', <MessageCircle size={31} />, 'SUPPORT']].map(([route, icon, label]) => <button key={String(label)} onClick={() => navigate(String(route))} style={{ minWidth: 0, height: 105, borderRadius: 25, border: '1px solid rgba(58,119,96,0.25)', background: '#061a14', color: '#aab5b3', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer' }}><span style={{ color: '#dfa91e' }}>{icon}</span><span style={{ fontSize: 11, fontWeight: 900 }}>{label}</span></button>)}
       </div>
 
-      {/* ── Live & Featured games ─────────────────────────────────── */}
-      <div style={{ padding: '22px 16px 0', animation: 'lobbySlideUp 0.4s cubic-bezier(0.22,1,0.36,1) 0.1s both' }}>
-        <SectionLabel title="🔴 Live Games" count={liveGames.length} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-          {liveGames.map((game, i) => (
-              <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.06 + 0.15}s both` }}>
-              <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Other available games ──────────────────────────────────── */}
-      {otherGames.length > 0 && (
-        <div style={{ padding: '22px 16px 0' }}>
-          <SectionLabel title="🎮 More Games" count={otherGames.length} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-            {otherGames.map((game, i) => (
-              <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.06 + 0.2}s both` }}>
-                <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Coming soon row ───────────────────────────────────────── */}
-      {comingGames.length > 0 && (
-        <div style={{ padding: '22px 16px 0' }}>
-          <SectionLabel title="⏳ Coming Soon" count={comingGames.length} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 10 }}>
-            {comingGames.map((game, i) => (
-              <div key={game.id} style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05 + 0.25}s both` }}>
-                <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <div style={{ padding: '54px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 23, fontWeight: 1000, fontStyle: 'italic' }}><Trophy size={25} color="#f0bc26" /> TOP SELECTION</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 22 }}>{availableGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
 
       {/* ── Agent button ──────────────────────────────────────────── */}
       {isAgent && (
