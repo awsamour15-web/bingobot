@@ -270,16 +270,18 @@ export default function KenoScreen() {
             <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 9 }}>ID: {formatRoundId(roundId)}</span>
             <span style={{ width: 13, height: 13, borderRadius: '50%', background: '#2f9d72', color: '#07130f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>⌄</span>
           </div>
-          {phase === 'betting' && (
-            <span style={{ color: countdown <= 10 ? '#ff6464' : '#55d9ff', fontFamily: 'monospace', fontSize: 10, fontWeight: 900, whiteSpace: 'nowrap' }}>
-              {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
-            </span>
-          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
             <button onClick={() => navigate('/')} aria-label="Open menu" style={{ background: 'none', border: 'none', color: '#4ed18a', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 0 }}>☰</button>
             <button aria-label="Messages" style={{ background: 'none', border: 'none', color: '#4ed18a', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 0 }}>◯</button>
           </div>
         </div>
+        {phase === 'betting' && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 24, borderTop: `1px solid ${C.border}` }}>
+            <span style={{ color: countdown <= 10 ? '#ff6464' : '#55d9ff', fontFamily: 'monospace', fontSize: 14, fontWeight: 900, letterSpacing: '0.08em', lineHeight: 1 }}>
+              {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Scrollable content area ── */}
