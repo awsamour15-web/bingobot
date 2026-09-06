@@ -231,7 +231,14 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
                 animation: "pulse 1s ease-in-out infinite",
               }}/>
             )}
-            <div style={{ position: "relative", filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none" }}>
+            <div
+              className={`slots-reel-symbol${spinning ? " is-spinning" : ""}`}
+              style={{
+                position: "relative",
+                filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none",
+                animationDelay: spinning ? `-${(colIdx * 3 + row) * 70}ms` : undefined,
+              }}
+            >
               <SymbolSvg sym={sym} size="clamp(58px, 16vw, 104px)" />
             </div>
           </div>
@@ -938,7 +945,7 @@ export default function SlotsScreen() {
               <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>-</div>
             </button>
 
-            <div style={{
+            <div className={`slots-spin-panel${spinning ? " is-spinning" : ""}`} style={{
               width: "clamp(150px, 46vw, 330px)", height: 78,
               background: "linear-gradient(180deg, #ff5d82, #d62c68)",
               border: "3px solid #f9d77b",
