@@ -584,6 +584,7 @@ function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function SlotsScreen() {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [reels, setReels] = useState<SlotSymbol[][]>(INIT_SAFE);
   const [mul, setMul] = useState(1);
   const [spinning, setSpinning] = useState(false);
@@ -617,6 +618,11 @@ export default function SlotsScreen() {
       setMainBalance(p.mainWallet.balance);
       setPlayBalance(p.playWallet.balance);
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => window.clearInterval(clock);
   }, []);
   
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
@@ -800,12 +806,11 @@ export default function SlotsScreen() {
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <div style={{ width: 18, height: 18, borderRadius: 5, background: "#d51645", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ff9ab1", fontSize: 12, fontWeight: 900 }}>S</div>
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5", whiteSpace: "nowrap" }}>SMARTSOFT</div>
-            <div style={{ fontSize: 10, color: "#8ea7a2", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>GAMING</div>
+            <div style={{ width: 18, height: 18, borderRadius: 5, background: "#f5c518", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#07150f", fontSize: 12, fontWeight: 900 }}>F</div>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5", whiteSpace: "nowrap" }}>FIDEL BINGO</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#edf2f5", fontFamily: "monospace", fontSize: 13, fontWeight: 700 }}>
-            <span>23 : 52 : 20</span>
+            <span>{currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(/:/g, " : ")}</span>
           </div>
           <button onClick={() => setShowRules(true)} aria-label="Open game rules" style={{
             position: "absolute", top: 10, right: 10, zIndex: 5,
