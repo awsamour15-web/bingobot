@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Trophy } from 'lucide-react';
+import { Eye, TicketPercent, Trophy } from 'lucide-react';
 import { initAuth, getAgentJwt } from '../lib/auth';
-import { getProfile, checkKenoAccess, checkPlinkoAccess } from '../lib/api';
+import { getProfile, checkKenoAccess, checkPlinkoAccess, redeemCoupon } from '../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -202,9 +202,15 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
       <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 47 : 91, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 20%, rgba(255,210,70,0.24), transparent 42%), linear-gradient(145deg, transparent 35%, rgba(0,0,0,0.45))' }} />
         <div style={{ position: 'absolute', left: '50%', top: '13%', width: 92, height: 92, transform: 'translateX(-50%)', borderRadius: '50%', border: '2px solid rgba(255,232,133,0.5)', boxShadow: '0 0 28px rgba(255,214,70,0.35)', opacity: 0.75 }} />
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 8 }}>
-          <div style={{ fontSize: game.category === 'coming' ? 17 : 29, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>{poster.emoji}</div>
-          <div style={{ marginTop: 3, color: '#fff3bd', fontSize: poster.title.length > 11 ? 9 : 11, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '1px 2px 0 rgba(90,30,0,0.7)' }}>{poster.title}</div>
+        <div style={{ position: 'relative', zIndex: 1, width: '100%', textAlign: 'center', padding: 5 }}>
+          {game.logoSrc ? (
+            <img src={game.logoSrc} alt={`${game.title} logo`} style={{ display: 'block', width: '92%', height: 62, margin: '0 auto', objectFit: 'contain', filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }} />
+          ) : (
+            <>
+              <div style={{ fontSize: game.category === 'coming' ? 17 : 29, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>{poster.emoji}</div>
+              <div style={{ marginTop: 3, color: '#fff3bd', fontSize: poster.title.length > 11 ? 9 : 11, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '1px 2px 0 rgba(90,30,0,0.7)' }}>{poster.title}</div>
+            </>
+          )}
         </div>
         <div style={{ position: 'absolute', top: 9, right: 8, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? '#64748b' : isRestricted ? '#7c5a24' : '#ef5350', borderRadius: 8, padding: '4px 6px', letterSpacing: '0.06em' }}>{game.category === 'coming' ? 'SOON' : isRestricted ? 'LOCKED' : 'HOT'}</div>
       </div>
@@ -221,6 +227,9 @@ export default function GamesLobbyScreen() {
   const [isSuspended, setIsSuspended] = useState(false);
   const [mainBalance, setMainBalance] = useState<number | null>(null);
   const [playBalance, setPlayBalance] = useState<number | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [couponMessage, setCouponMessage] = useState('');
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
 
@@ -273,6 +282,23 @@ export default function GamesLobbyScreen() {
     return true;
   });
 
+  async function handleCouponRedeem() {
+    const code = couponCode.trim();
+    if (!code || couponStatus === 'loading') return;
+    setCouponStatus('loading');
+    setCouponMessage('');
+    try {
+      const response = await redeemCoupon(code);
+      setCouponStatus('success');
+      setCouponMessage(response.message);
+      setCouponCode('');
+    } catch (error) {
+      const responseError = error as { responseData?: { message?: string } };
+      setCouponStatus('error');
+      setCouponMessage(responseError.responseData?.message ?? 'Invalid or expired coupon');
+    }
+  }
+
   return (
     <div style={{
       minHeight: '100dvh',
@@ -301,7 +327,16 @@ export default function GamesLobbyScreen() {
         <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 9px', background: '#03130f', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 16, color: '#fff', cursor: 'pointer' }}><div style={{ textAlign: 'left', lineHeight: 1.25, fontSize: 8, fontWeight: 900, color: '#99a5a4' }}><div>MAIN <span style={{ color: '#e8af27', marginLeft: 4 }}>{mainBalance === null ? '—' : `${mainBalance.toFixed(2)} ETB`}</span></div><div>PLAY <span style={{ color: '#20d67a', marginLeft: 5 }}>{playBalance === null ? '—' : `${playBalance.toFixed(2)} ETB`}</span></div></div><Eye size={16} color="#65706e" /></button>
       </div>
 
-      <div style={{ padding: '28px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 23, fontWeight: 1000, fontStyle: 'italic' }}><Trophy size={25} color="#f0bc26" /> TOP SELECTION</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 22 }}>{availableGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
+      <div style={{ margin: '24px 20px 0', padding: '10px', borderRadius: 14, background: '#061a14', border: '1px solid rgba(217,166,44,0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8, color: '#eec13d', fontSize: 11, fontWeight: 900, letterSpacing: '0.08em' }}><TicketPercent size={15} /> ACCEPT COUPON</div>
+        <div style={{ display: 'flex', gap: 7 }}>
+          <input value={couponCode} onChange={event => { setCouponCode(event.target.value.toUpperCase()); setCouponStatus('idle'); setCouponMessage(''); }} onKeyDown={event => { if (event.key === 'Enter') void handleCouponRedeem(); }} placeholder="ENTER CODE" maxLength={24} aria-label="Coupon code" style={{ minWidth: 0, flex: 1, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, background: '#03130f', color: '#fff', padding: '8px 10px', fontSize: 11, fontWeight: 800, outline: 'none' }} />
+          <button onClick={() => void handleCouponRedeem()} disabled={!couponCode.trim() || couponStatus === 'loading'} style={{ border: 0, borderRadius: 9, padding: '0 12px', background: couponCode.trim() ? '#eeb52c' : '#26352e', color: couponCode.trim() ? '#102018' : '#7d8983', fontSize: 10, fontWeight: 900, cursor: couponCode.trim() ? 'pointer' : 'default' }}>{couponStatus === 'loading' ? '...' : 'ACCEPT'}</button>
+        </div>
+        {couponMessage && <div role="status" style={{ marginTop: 7, color: couponStatus === 'success' ? '#55d993' : '#ff8c82', fontSize: 10, fontWeight: 700 }}>{couponMessage}</div>}
+      </div>
+
+      <div style={{ padding: '24px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 23, fontWeight: 1000, fontStyle: 'italic' }}><Trophy size={25} color="#f0bc26" /> TOP SELECTION</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 22 }}>{availableGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
 
       {/* ── Agent button ──────────────────────────────────────────── */}
       {isAgent && (
