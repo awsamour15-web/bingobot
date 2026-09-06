@@ -32,11 +32,13 @@ interface Props {
   onOpenSettings: () => void;
   onOpenInfo?: () => void;
   userBalance: number;
+  isPlacingBet: boolean;
 }
 
 export function KenoBettingStage({
   countdown, selectedNumbers, onToggleNumber,
   betAmount, onChangeBet, onPlaceBet, onOpenSettings, onOpenInfo, userBalance,
+  isPlacingBet,
 }: Props) {
   const mins = Math.floor(countdown / 60);
   const secs = countdown % 60;
@@ -131,7 +133,7 @@ export function KenoBettingStage({
             return (
               <motion.button
                 key={num}
-                whileTap={{ scale: 0.85 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => onToggleNumber(num)}
                 style={{
                   position: 'relative',
@@ -151,6 +153,8 @@ export function KenoBettingStage({
                   padding: 0,
                   WebkitTapHighlightColor: 'transparent',
                   userSelect: 'none',
+                  touchAction: 'manipulation',
+                  transition: 'background 80ms ease, border-color 80ms ease, box-shadow 80ms ease',
                 }}
               >
                 {!isSel && isHot && <span style={{ position: 'absolute', top: 2, right: 2, width: 5, height: 5, borderRadius: '50%', background: C.red }} />}
@@ -176,9 +180,10 @@ export function KenoBettingStage({
         {/* BET button */}
         <button
           onClick={onPlaceBet}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 13, background: '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.18)' }}
+          disabled={isPlacingBet}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 13, background: isPlacingBet ? '#176d3d' : '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.08em', cursor: isPlacingBet ? 'wait' : 'pointer', opacity: isPlacingBet ? 0.8 : 1, transition: 'background 100ms ease, opacity 100ms ease', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.18)' }}
         >
-          BET
+          {isPlacingBet ? 'PLACING...' : 'BET'}
         </button>
       </div>
     </div>

@@ -57,6 +57,7 @@ export default function KenoScreen() {
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
+  const [isPlacingBet, setIsPlacingBet] = useState<boolean>(false);
   const [showDrawArena, setShowDrawArena] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<NavTab>('GAME');
@@ -178,9 +179,11 @@ export default function KenoScreen() {
 
   // ── place bet ──────────────────────────────────────────────────────────────
   const handlePlaceBet = async () => {
+    if (isPlacingBet) return;
     if (selectedNumbers.length === 0) { showToast('Choose at least 1 number'); return; }
     const nums = selectedNumbers;
     if (balance < betAmount) { showToast('Insufficient balance'); return; }
+    setIsPlacingBet(true);
     try {
       await placeKenoBet(betAmount, nums);
       setSelectedNumbers([]);
@@ -188,6 +191,7 @@ export default function KenoScreen() {
       getProfile().then(p => setBalance((p.playWallet?.balance ?? p.mainWallet?.balance) ?? 0)).catch(() => {});
       void syncState();
     } catch (err: any) { showToast(err?.message ?? 'Failed to place bet'); }
+    finally { setIsPlacingBet(false); }
   };
 
   const handleToggle = (n: number) => {
@@ -301,6 +305,7 @@ export default function KenoScreen() {
                   onOpenSettings={() => setQuickPickOpen(true)}
                   onOpenInfo={() => setInfoOpen(true)}
                   userBalance={balance}
+                  isPlacingBet={isPlacingBet}
                 />
               </motion.div>
             )}
