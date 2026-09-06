@@ -27,4 +27,16 @@ export declare const AdminRole: {
     admin: AdminRole;
     super_admin: AdminRole;
 };
+export type WinPattern = 'any_line' | 'row' | 'column' | 'diagonal_tl_br' | 'diagonal_tr_bl' | 'corners' | 'full_house';
+export declare const WinPattern: {
+    any_line: WinPattern;
+    row: WinPattern;
+    column: WinPattern;
+    diagonal_tl_br: WinPattern;
+    diagonal_tr_bl: WinPattern;
+    corners: WinPattern;
+    full_house: WinPattern;
+};
+/** Human-readable label for display */
+export declare const WIN_PATTERN_LABELS: Record<WinPattern, string>;
 //# sourceMappingURL=enums.d.ts.map

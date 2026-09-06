@@ -280,17 +280,17 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        minHeight: game.category === 'coming' ? 110 : 152,
+        minHeight: game.category === 'coming' ? 124 : 184,
         background: game.gradient,
-        border: `1px solid ${isAvailable ? game.glowColor.replace(/[\d.]+\)$/, '0.4)') : 'rgba(255,255,255,0.04)'}`,
-        borderRadius: 20,
-        padding: '16px 14px 14px',
+        border: `1px solid ${isAvailable ? game.glowColor.replace(/[\d.]+\)$/, '0.55)') : 'rgba(255,255,255,0.04)'}`,
+        borderRadius: 16,
+        padding: '18px 16px 16px',
         cursor: isAvailable ? 'pointer' : 'default',
         textAlign: 'left',
         overflow: 'hidden',
         opacity: isAvailable ? 1 : 0.6,
         boxShadow: isAvailable
-          ? `0 14px 36px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07)`
+          ? `0 16px 34px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1)`
           : '0 6px 16px rgba(0,0,0,0.25)',
         transition: 'transform 0.16s ease, box-shadow 0.16s ease',
       }}
@@ -308,10 +308,11 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
           : '0 6px 16px rgba(0,0,0,0.25)';
       }}
     >
-      {/* glow orb */}
+      {/* accent rail */}
       <div style={{
-        position: 'absolute', top: -20, right: -20, width: 100, height: 100,
-        borderRadius: '50%', background: game.glowColor, filter: 'blur(32px)', pointerEvents: 'none',
+        position: 'absolute', top: 0, left: 16, right: 16, height: 3,
+        borderRadius: '0 0 8px 8px', background: game.tagColor,
+        boxShadow: `0 0 18px ${game.glowColor}`, pointerEvents: 'none',
       }} />
 
       {/* top: emoji/logo + tags */}
@@ -324,11 +325,11 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
           />
         ) : (
           <div style={{
-            width: 46, height: 46, borderRadius: 14,
+            width: 52, height: 52, borderRadius: 15,
             background: 'rgba(255,255,255,0.08)',
             border: '1px solid rgba(255,255,255,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, flexShrink: 0,
+            fontSize: 24, flexShrink: 0,
             boxShadow: '0 6px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
           }}>{game.emoji}</div>
         )}
@@ -356,7 +357,7 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
       {/* title + subtitle */}
       <div style={{ flex: 1 }}>
         {!game.logoSrc && (
-          <div style={{ fontSize: 15, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.3px', marginBottom: 3 }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.3px', marginBottom: 5 }}>
             {game.title}
           </div>
         )}
@@ -368,11 +369,11 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
         {game.bonusNote && game.category !== 'coming' && (
           <div style={{
             display: 'inline-flex', alignItems: 'center',
-            marginTop: 6, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em',
+            marginTop: 8, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em',
             color: game.bonusNoteColor,
             background: game.bonusNoteColor + '18',
             border: `1px solid ${game.bonusNoteColor}40`,
-            borderRadius: 6, padding: '2px 6px',
+            borderRadius: 6, padding: '3px 7px',
           }}>{game.bonusNote}</div>
         )}
       </div>
@@ -385,12 +386,12 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
           )}
           <div style={{
             marginLeft: 'auto',
-            fontSize: 10, fontWeight: 800, color: '#f8fafc',
-            background: 'rgba(255,255,255,0.1)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 9, padding: '4px 10px',
+            fontSize: 11, fontWeight: 900, color: '#0a0e1a',
+            background: '#f7c948',
+            border: '1px solid rgba(255,255,255,0.25)',
+            borderRadius: 8, padding: '7px 11px',
             display: 'flex', alignItems: 'center', gap: 4,
-          }}>Play <span style={{ fontSize: 12 }}>→</span></div>
+          }}>PLAY <span style={{ fontSize: 13 }}>↗</span></div>
         </div>
       )}
     </button>
@@ -584,7 +585,7 @@ export default function GamesLobbyScreen() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(ellipse at 50% -20%,rgba(245,158,11,0.06) 0%,transparent 55%), linear-gradient(180deg,#07111e 0%,#050b18 50%,#030710 100%)',
+      background: 'radial-gradient(ellipse at 70% 0%,rgba(38,197,155,0.12) 0%,transparent 38%), radial-gradient(ellipse at 10% 18%,rgba(245,158,11,0.1) 0%,transparent 32%), linear-gradient(180deg,#08131d 0%,#050a12 52%,#020509 100%)',
       color: '#f8fafc', maxWidth: 480, margin: '0 auto', paddingBottom: 100,
     }}>
       <style>{`
@@ -601,12 +602,15 @@ export default function GamesLobbyScreen() {
           to   { opacity:1; }
         }
         .ann-scroll::-webkit-scrollbar { display:none; }
+        .lobby-grid { background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px); background-size: 28px 28px; }
+        .lobby-action:active { transform: scale(0.98); }
+        .lobby-card:focus-within { outline: 2px solid #f7c948; outline-offset: 3px; }
       `}</style>
 
       {/* ── Sticky header ─────────────────────────────────────────── */}
       <div style={{
-        padding: '18px 18px 14px',
-        background: 'rgba(3,7,14,0.75)',
+        padding: '16px 18px 14px',
+        background: 'rgba(3,8,14,0.82)',
         backdropFilter: 'blur(18px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
@@ -615,15 +619,15 @@ export default function GamesLobbyScreen() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
-              width: 42, height: 42, borderRadius: 13,
-              background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+              width: 44, height: 44, borderRadius: 14,
+              background: 'linear-gradient(135deg,#f7c948,#ee8f2d)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 900, fontSize: 16, color: '#0a0e1a',
-              boxShadow: '0 4px 16px rgba(245,158,11,0.4), inset 0 1px 0 rgba(255,255,255,0.3)',
+              boxShadow: '0 5px 18px rgba(247,201,72,0.3), inset 0 1px 0 rgba(255,255,255,0.35)',
             }}>FB</div>
             <div>
               <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.4px', color: '#f1f5f9' }}>
-                {username ? `Hey, ${username} 👋` : 'Fidel Games'}
+                {username ? `Hey, ${username}` : 'Fidel Games'}
               </div>
               <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: '0.1em', marginTop: 1 }}>
                 CHOOSE YOUR GAME
@@ -647,6 +651,23 @@ export default function GamesLobbyScreen() {
               <span style={{ fontSize: 8, color: '#d89b2b', fontWeight: 800, marginLeft: 3 }}>ETB</span>
             </div>
           </button>
+        </div>
+      </div>
+
+      {/* ── Hero play panel ───────────────────────────────────────── */}
+      <div className="lobby-grid" style={{
+        margin: '16px 16px 0', padding: '22px 20px 20px', borderRadius: 20,
+        backgroundColor: 'rgba(11,29,35,0.92)', border: '1px solid rgba(75,223,171,0.24)',
+        boxShadow: '0 18px 38px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
+        position: 'relative', overflow: 'hidden', animation: 'lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1)',
+      }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, width: 120, height: 3, background: '#f7c948', boxShadow: '0 0 24px rgba(247,201,72,0.8)' }} />
+        <div style={{ color: '#5de0b0', fontSize: 10, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase' }}>THE PLAYGROUND IS OPEN</div>
+        <div style={{ fontSize: 29, fontWeight: 900, lineHeight: 1.02, letterSpacing: '-1px', marginTop: 8, maxWidth: 270 }}>Pick a game.<br /><span style={{ color: '#f7c948' }}>Make your move.</span></div>
+        <div style={{ color: 'rgba(226,241,239,0.68)', fontSize: 12, lineHeight: 1.45, marginTop: 10, maxWidth: 260 }}>Live bingo, instant games, and quick wins in one place.</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
+          <button className="lobby-action" onClick={() => navigate('/bingo')} style={{ border: 'none', borderRadius: 9, padding: '11px 15px', background: '#f7c948', color: '#111820', fontSize: 11, fontWeight: 900, letterSpacing: '0.06em', cursor: 'pointer', transition: 'transform 0.15s' }}>PLAY LIVE BINGO <span style={{ fontSize: 14 }}>↗</span></button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: '#9ec6ba', fontSize: 10, fontWeight: 800 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#5de0b0', boxShadow: '0 0 10px #5de0b0' }} /> LIVE NOW</div>
         </div>
       </div>
 
@@ -699,7 +720,7 @@ export default function GamesLobbyScreen() {
         <SectionLabel title="🔴 Live Games" count={liveGames.length} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
           {liveGames.map((game, i) => (
-            <div key={game.id} style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.06 + 0.15}s both` }}>
+              <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.06 + 0.15}s both` }}>
               <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} />
             </div>
           ))}
@@ -712,7 +733,7 @@ export default function GamesLobbyScreen() {
           <SectionLabel title="🎮 More Games" count={otherGames.length} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
             {otherGames.map((game, i) => (
-              <div key={game.id} style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.06 + 0.2}s both` }}>
+              <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.06 + 0.2}s both` }}>
                 <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} />
               </div>
             ))}

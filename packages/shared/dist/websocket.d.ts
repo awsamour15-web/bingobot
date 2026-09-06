@@ -1,3 +1,4 @@
+import type { WinPattern } from './enums.js';
 export interface NumberCalledPayload {
     number: number;
     sequenceIndex: number;
@@ -7,6 +8,7 @@ export interface RoundStartedPayload {
     roundId: string;
     playerCount: number;
     derash: number;
+    winningPattern: WinPattern;
 }
 export interface RoundWonPayload {
     winners: Array<{
