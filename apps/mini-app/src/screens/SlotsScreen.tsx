@@ -163,49 +163,35 @@ function winCells(wins: PaylineWin[]): Set<string> {
 
 // ─── Multiplier reel (left column) ───────────────────────────────────────────
 function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
-  const offsets = [-1, 0, 1];
+  const preset = [3, 5, 1];
+  const selected = Math.max(1, Math.min(5, value));
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, width: 58 }}>
-      {offsets.map((off) => {
-        const v = value + off;
-        const isMid = off === 0;
-        const cfg = MUL_COLORS[Math.min(5, Math.max(1, v))] ?? MUL_COLORS[1]!;
-        const valid = v >= 1 && v <= 5;
+    <div style={{ display: "flex", flexDirection: "column", width: 78, gap: 10, marginRight: 8 }}>
+      {preset.map((n) => {
+        const active = n === 5 || (selected === 5 && n === 5) || (selected !== 5 && n === selected);
         return (
-          <div key={off} style={{
-            height: 72,
-            borderRadius: 10,
-            border: isMid ? `2px solid ${cfg.border}` : "1.5px solid rgba(255,255,255,0.05)",
-            background: isMid
-              ? `linear-gradient(145deg, ${cfg.bg}, rgba(0,0,0,0.45))`
-              : "rgba(0,0,0,0.22)",
+          <div key={n} style={{
+            height: 86,
+            borderRadius: 12,
+            background: active
+              ? "linear-gradient(180deg, rgba(48,162,95,0.95), rgba(18,92,52,0.92))"
+              : "linear-gradient(180deg, rgba(0,0,0,0.12), rgba(6,26,18,0.36))",
+            border: active ? "3px solid #ff5da8" : "2px solid rgba(255,255,255,0.12)",
+            boxShadow: active
+              ? "0 0 0 2px rgba(255,93,168,0.45), inset 0 0 24px rgba(255,255,255,0.08)"
+              : "inset 0 1px 0 rgba(255,255,255,0.08)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: isMid
-              ? `0 0 18px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.3)`
-              : "none",
-            transition: spinning ? "none" : "all 0.35s cubic-bezier(0.22,1,0.36,1)",
-            position: "relative",
-            overflow: "hidden",
-          }}>
-            {/* inner radial highlight */}
-            {isMid && (
-              <div style={{
-                position: "absolute", inset: 0,
-                background: `radial-gradient(ellipse at 40% 30%, rgba(255,255,255,0.12), transparent 65%)`,
-                pointerEvents: "none",
-              }}/>
-            )}
-            {valid && (
-              <span style={{
-                fontFamily: "Arial Black, Impact, sans-serif",
-                fontSize: isMid ? 23 : 14,
-                fontWeight: 900,
-                color: isMid ? cfg.text : "rgba(255,255,255,0.12)",
-                letterSpacing: "-0.5px",
-                textShadow: isMid ? `0 0 14px ${cfg.glow}, 0 1px 2px rgba(0,0,0,0.6)` : "none",
-                position: "relative",
-              }}>{v}x</span>
-            )}
+            color: active ? "#ff7cc6" : "#f4d89a",
+            fontFamily: "Arial Black, Impact, sans-serif",
+            fontSize: active ? 38 : 30,
+            fontWeight: 900,
+            letterSpacing: "-0.06em",
+            transform: active ? "scale(1.02)" : "scale(1)",
+            transition: spinning ? "none" : "all 0.25s ease",
+            textShadow: active ? "0 0 18px rgba(255, 130, 196, 0.7)" : "0 0 12px rgba(255,210,102,0.3)",
+          }}> 
+            {n}x
           </div>
         );
       })}
@@ -741,16 +727,24 @@ export default function SlotsScreen() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "radial-gradient(ellipse at 50% 0%, #0d2e1a 0%, #061008 50%, #020804 100%)",
+      background:
+        "radial-gradient(circle at 50% 0%, rgba(27,100,72,0.60) 0%, rgba(6,31,26,0.95) 18%, rgba(2,7,8,1) 52%, rgba(0,0,0,1) 100%)",
       color: "#f8fafc",
       display: "flex", flexDirection: "column",
       maxWidth: 480, margin: "0 auto",
       fontFamily: "system-ui, -apple-system, sans-serif",
+      overflow: "hidden",
+      position: "relative",
     }}>
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        backgroundImage: "radial-gradient(circle at 50% 12%, rgba(77,108,97,0.28) 0%, rgba(77,108,97,0.00) 38%), radial-gradient(circle at 10% 20%, rgba(32,128,92,0.22) 0%, rgba(32,128,92,0.00) 22%), radial-gradient(circle at 80% 18%, rgba(32,128,92,0.20) 0%, rgba(32,128,92,0.00) 18%)",
+        pointerEvents: "none",
+      }} />
 
       {showRules && <RulesScreen bet={bet} onClose={() => setShowRules(false)} />}
 
-      {/* ── Deposit required modal ── */}
       {depositModal && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 500,
@@ -794,284 +788,195 @@ export default function SlotsScreen() {
         </div>
       )}
 
-      {/* ── Top area: home icon + menu ── */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "14px 16px 8px",
-      }}>
-        <div
-          onClick={() => navigate('/')}
-          style={{
-          width: 42, height: 42, borderRadius: 12,
-          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 18, cursor: "pointer",
-        }}>🏠</div>
-        <div style={{ textAlign: "center" }}>
-          {/* win banner */}
-          {totalWin !== null && totalWin > 0 && !spinning && (
-            <div style={{ animation: "winPop 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
-              <div style={{ fontSize: 11, color: "#c9a84c", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em" }}>WIN</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "#ffd166", letterSpacing: "-1px", filter: "drop-shadow(0 0 12px rgba(245,158,11,0.7))" }}>
-                +{totalWin.toFixed(2)} <span style={{ fontSize: 14, color: "#c9a84c" }}>ETB</span>
-              </div>
-            </div>
-          )}
-          {(!totalWin || totalWin === 0) && !spinning && spinCount > 0 && (
-            <div style={{ fontSize: 12, color: "#334155", fontWeight: 600 }}>No win this round</div>
-          )}
-        </div>
-        <div
-          onClick={() => setShowRules(true)}
-          style={{
-          width: 42, height: 42, borderRadius: 12,
-          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", flexDirection: "column", gap: 4,
-        }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{ width: 18, height: 2, background: "#fff", borderRadius: 1 }}/>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Labels row ── */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "4px 16px 8px",
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: "#c9a84c", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          MULTIPLIER
-        </div>
-        <div style={{ fontSize: 11, fontWeight: 900, color: "#c9a84c", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          5 LINES FIXED
-        </div>
-      </div>
-
-      {/* ── Slot machine ── */}
-      <div style={{ padding: "0 12px" }}>
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100dvh" }}>
         <div style={{
-          background: "linear-gradient(160deg, #0e2e18 0%, #071810 40%, #030e08 100%)",
-          border: "2px solid #1a4d28",
-          borderRadius: 16,
-          padding: "10px 10px 8px",
-          boxShadow: "0 0 0 1px rgba(201,168,76,0.15), 0 20px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)",
-          position: "relative",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "14px 16px 8px",
+          borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
-          {/* Gold top bar */}
-          <div style={{
-            position: "absolute", top: 0, left: "15%", right: "15%", height: 2,
-            background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.8), transparent)",
-            borderRadius: 2,
-          }}/>
-
-          <div style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-            <MulReel value={mul} spinning={spinning} />
-            {/* vertical divider */}
-            <div style={{ width: 1, background: "rgba(201,168,76,0.15)", margin: "4px 0" }}/>
-            {reels.map((col, ci) => (
-              <ReelCol key={ci} symbols={col} spinning={spinning} winSet={ws} colIdx={ci} />
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 3, background: "#ff5f7a", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)" }} />
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5" }}>SMARTSOFT</div>
+            <div style={{ fontSize: 10, color: "#8ea7a2", letterSpacing: "0.06em", textTransform: "uppercase" }}>GAMING</div>
           </div>
-
-          {/* Stats bar */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-around",
-            marginTop: 8, padding: "6px 0",
-            borderTop: "1px solid rgba(201,168,76,0.15)",
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#edf2f5", fontFamily: "monospace", fontSize: 13, fontWeight: 700 }}>
+            <span>23 : 52 : 20</span>
+          </div>
+          <button onClick={() => setShowRules(true)} style={{
+            width: 34, height: 34, borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
           }}>
-            {[
-              { icon: "💰", label: `M: ${mainBalance !== null ? mainBalance.toFixed(2) : "—"}`, color: "#4ade80" },
-              { icon: "🎮", label: `P: ${playBalance !== null ? playBalance.toFixed(2) : "—"}`, color: "#818cf8" },
-              { icon: "🏆", label: totalWin !== null && totalWin > 0 ? totalWin.toFixed(2) : "0.00", color: "#e2e8f0" },
-            ].map(({ icon, label, color }, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ fontSize: 14 }}>{icon}</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color }}>{label}</div>
-                  <div style={{ fontSize: 9, color: "#475569", fontWeight: 700 }}>ETB</div>
-                </div>
-              </div>
-            ))}
+            <div style={{ width: 18, height: 14, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              {[0,1,2].map(i => <div key={i} style={{ height: 2, borderRadius: 999, background: "#f6f9f8" }} />)}
+            </div>
+          </button>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 8 }}>
+          <div style={{
+            fontSize: 56, fontWeight: 900, letterSpacing: "-0.08em",
+            lineHeight: 0.9,
+            color: "#f7c747",
+            textTransform: "uppercase",
+            background: "linear-gradient(180deg, #f9e18d 0%, #e4b234 25%, #f8d367 50%, #b46600 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            filter: "drop-shadow(0 3px 0 rgba(90,63,8,0.75)) drop-shadow(0 12px 18px rgba(255,199,70,0.28))",
+          }}>
+            MULTI HOT 5
           </div>
         </div>
-      </div>
 
-      {/* error */}
-      {error && (
-        <div style={{ margin: "8px 12px 0", padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, fontSize: 12, color: "#f87171", fontWeight: 600 }}>
-          ⚠️ {error}
-        </div>
-      )}
+        <div style={{ padding: "0 14px", marginTop: 8 }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", color: "#ffc857",
+            padding: "0 8px 6px",
+          }}>
+            <span style={{ color: "#f5d48a", textTransform: "uppercase" }}>Multiplier</span>
+            <span style={{ color: "#ff6ab4", textTransform: "uppercase" }}>5 Lines fixed</span>
+          </div>
 
-      {/* ── Controls area ── */}
-      <div style={{
-        flex: 1, display: "flex", flexDirection: "column",
-        justifyContent: "flex-end", padding: "16px 12px 0",
-        gap: 14,
-      }}>
-        {/* Action buttons row: auto / 2x gamble / collect */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
-          <HexBtn
-            onClick={() => setAuto(a => !a)}
-            disabled={spinning}
-            color={auto ? "linear-gradient(145deg,#065f25,#043d18)" : "linear-gradient(145deg,#1e3a2a,#0f2018)"}
-            border={auto ? "#22c55e" : "#2d6a42"}
-            size={68}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, lineHeight: 1, color: auto ? "#4ade80" : "#6ee7a0" }}>↺</div>
-              <div style={{ fontSize: 9, fontWeight: 800, color: auto ? "#4ade80" : "#4d9965", marginTop: 2, letterSpacing: "0.05em" }}>
-                {auto ? "ON" : "AUTO"}
-              </div>
+          <div style={{
+            background: "linear-gradient(180deg, rgba(8,35,20,0.88), rgba(3,16,10,0.86))",
+            border: "2px solid rgba(182,142,62,0.42)",
+            borderRadius: 16,
+            padding: "8px 8px 12px",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 28px rgba(0,0,0,0.28)",
+          }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <MulReel value={mul} spinning={spinning} />
+              {reels.map((col, ci) => (
+                <ReelCol key={ci} symbols={col} spinning={spinning} winSet={ws} colIdx={ci} />
+              ))}
             </div>
-          </HexBtn>
 
-          <HexBtn
-            onClick={() => {
-              if (canGamble) setShowGamble(true);
-            }}
-            disabled={!canGamble}
-            color={canGamble ? "linear-gradient(145deg,#7c3a00,#4a2000)" : "linear-gradient(145deg,#1e2a1e,#0f180f)"}
-            border={canGamble ? "#f59e0b" : "#2d4a2d"}
-            size={68}
-          >
-            <span style={{ fontSize: 15, fontWeight: 900, color: canGamble ? "#fbbf24" : "#2d4a2d" }}>2x</span>
-          </HexBtn>
-
-          <HexBtn
-            onClick={() => {
-              if (totalWin && totalWin > 0) {
-                setTotalWin(null); setWins([]); setGambleId(null);
-              }
-            }}
-            disabled={!totalWin || totalWin === 0}
-            color={totalWin && totalWin > 0 ? "linear-gradient(145deg,#1a4a6e,#0d2a45)" : "linear-gradient(145deg,#1e2a1e,#0f180f)"}
-            border={totalWin && totalWin > 0 ? "#38bdf8" : "#2d4a2d"}
-            size={68}
-          >
-            <div style={{ fontSize: 17, lineHeight: 1, color: totalWin && totalWin > 0 ? "#7dd3fc" : "#2d4a2d" }}>⬇</div>
-          </HexBtn>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-around",
+              marginTop: 10,
+              borderTop: "1px solid rgba(255,255,255,0.10)",
+              paddingTop: 8,
+            }}>
+              {[
+                { icon: "👜", label: "0.00", color: "#f7f1d8" },
+                { icon: "🏆", label: "0.00", color: "#f7f1d8" },
+                { icon: "◉", label: "0.00", color: "#f7f1d8" },
+              ].map(({ icon, label, color }, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 86, justifyContent: "center" }}>
+                  <span style={{ fontSize: 18 }}>{icon}</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: 12, color, fontWeight: 900 }}>{label}</div>
+                    <div style={{ fontSize: 9, color: "#d0d5d9", letterSpacing: "0.08em", textTransform: "uppercase" }}>ETB</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Bet selector + big spin button */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 0,
-          position: "relative",
-        }}>
-          {/* Prev bet */}
-          <button
-            onClick={() => setBetIdx(i => Math.max(0, i - 1))}
-            disabled={spinning || betIdx === 0}
-            style={{
-              background: "linear-gradient(145deg, #0e4422, #072510)",
-              border: "2px solid #1a6632",
-              borderRadius: "14px 0 0 14px",
-              color: spinning || betIdx === 0 ? "#1a3d20" : "#4ade80",
-              padding: "14px 18px",
-              fontSize: 13, fontWeight: 800,
-              cursor: spinning || betIdx === 0 ? "default" : "pointer",
-              minWidth: 64,
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 11, color: "inherit", marginBottom: 2 }}>{BETS[betIdx - 1] ?? "—"}</div>
-            <div style={{ fontSize: 10, color: spinning || betIdx === 0 ? "#1a3d20" : "#1e6e33", fontWeight: 600 }}>ETB</div>
-          </button>
+        {error && (
+          <div style={{ margin: "8px 12px 0", padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, fontSize: 12, color: "#f87171", fontWeight: 600 }}>
+            ⚠️ {error}
+          </div>
+        )}
 
-          {/* Center spin pentagon */}
-          <div style={{ position: "relative", zIndex: 2 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "18px 14px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, marginBottom: 14 }}>
+            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={72}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, lineHeight: 1, color: "#f0d57d" }}>↺</div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: "#f4d781", marginTop: 2, letterSpacing: "0.05em" }}>{auto ? "ON" : "AUTO"}</div>
+              </div>
+            </HexBtn>
+
+            <HexBtn
+              onClick={() => { if (canGamble) setShowGamble(true); }}
+              disabled={!canGamble}
+              color={canGamble ? "linear-gradient(145deg,#0f683d,#0b4329)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
+              border={canGamble ? "#f0d57d" : "#2b3a2d"}
+              size={72}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#f0d57d" }}>2x</span>
+            </HexBtn>
+
+            <HexBtn
+              onClick={() => { if (totalWin && totalWin > 0) { setTotalWin(null); setWins([]); setGambleId(null); } }}
+              disabled={!totalWin || totalWin === 0}
+              color={totalWin && totalWin > 0 ? "linear-gradient(145deg,#0d2e47,#0b1f2f)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
+              border={totalWin && totalWin > 0 ? "#f0d57d" : "#2b3a2d"}
+              size={72}
+            >
+              <div style={{ fontSize: 18, lineHeight: 1, color: "#f0d57d" }}>↓</div>
+            </HexBtn>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0 }}>
+            <button
+              onClick={() => setBetIdx(i => Math.max(0, i - 1))}
+              disabled={spinning || betIdx === 0}
+              style={{
+                background: "linear-gradient(145deg, rgba(9,75,52,0.9), rgba(7,31,20,0.9))",
+                border: "2px solid #2b8a5d",
+                borderRadius: "18px 0 0 18px",
+                color: spinning || betIdx === 0 ? "#1c5036" : "#7ef2b0",
+                padding: "12px 18px",
+                fontSize: 14, fontWeight: 800,
+                cursor: spinning || betIdx === 0 ? "default" : "pointer",
+                minWidth: 62,
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>{BETS[betIdx - 1] ?? "—"}</div>
+              <div style={{ fontSize: 9, color: spinning || betIdx === 0 ? "#1c5036" : "#75cfa0", fontWeight: 700 }}>ETB</div>
+            </button>
+
             <button
               onClick={() => { if (!lock.current && !auto) void doSpin(false); }}
               disabled={spinning || auto}
               style={{
-                width: 110, height: 110,
+                width: 130, height: 110,
                 clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
-                background: spinning || auto
-                  ? "linear-gradient(145deg, #1a2a1a, #0f1a0f)"
-                  : "linear-gradient(145deg, #c9507a, #8b1a3a)",
-                border: "none",
+                background: spinning || auto ? "linear-gradient(145deg, #223822, #0d1f15)" : "linear-gradient(145deg, #ff5e7f, #d52f69)",
+                border: "3px solid #f6d77c",
                 cursor: spinning || auto ? "default" : "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                flexDirection: "column",
                 outline: "none", padding: 0,
-                transition: "all 0.2s",
-                boxShadow: spinning || auto ? "none" : "0 0 24px rgba(201,80,122,0.5)",
+                position: "relative",
+                zIndex: 1,
+                boxShadow: spinning || auto ? "none" : "0 0 30px rgba(255,94,127,0.35)",
               }}
             >
-              {/* outer gold ring */}
-              <div style={{
-                position: "absolute", inset: -3,
-                clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
-                background: "linear-gradient(145deg, #c9a84c, #7a6010)",
-                zIndex: -1,
-              }}/>
               <div style={{ textAlign: "center", position: "relative" }}>
-                <div style={{ fontSize: 15, fontWeight: 900, color: spinning || auto ? "#334155" : "#ffd166", letterSpacing: "0.02em" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: spinning || auto ? "#d5cfb5" : "#ffd770", letterSpacing: "0.02em" }}>
                   {spinning ? "..." : auto ? "AUTO" : bet.toString()}
                 </div>
-                <div style={{ fontSize: 11, color: spinning || auto ? "#2d3d2d" : "#e8c45a", fontWeight: 700 }}>
+                <div style={{ fontSize: 11, color: spinning || auto ? "#d5cfb5" : "#f4cf6c", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                   {spinning ? "" : "ETB"}
                 </div>
-                {!spinning && !auto && (
-                  <div style={{ fontSize: 9, color: "#e8c45a80", marginTop: 2 }}>▼</div>
-                )}
+                {!spinning && !auto && <div style={{ fontSize: 10, color: "#fee097", marginTop: 2 }}>▼</div>}
               </div>
             </button>
+
+            <button
+              onClick={() => setBetIdx(i => Math.min(BETS.length - 1, i + 1))}
+              disabled={spinning || betIdx === BETS.length - 1}
+              style={{
+                background: "linear-gradient(145deg, rgba(9,75,52,0.9), rgba(7,31,20,0.9))",
+                border: "2px solid #2b8a5d",
+                borderRadius: "0 18px 18px 0",
+                color: spinning || betIdx === BETS.length - 1 ? "#1c5036" : "#7ef2b0",
+                padding: "12px 18px",
+                fontSize: 14, fontWeight: 800,
+                cursor: spinning || betIdx === BETS.length - 1 ? "default" : "pointer",
+                minWidth: 62,
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>{BETS[betIdx + 1] ?? "—"}</div>
+              <div style={{ fontSize: 9, color: spinning || betIdx === BETS.length - 1 ? "#1c5036" : "#75cfa0", fontWeight: 700 }}>ETB</div>
+            </button>
           </div>
-
-          {/* Next bet */}
-          <button
-            onClick={() => setBetIdx(i => Math.min(BETS.length - 1, i + 1))}
-            disabled={spinning || betIdx === BETS.length - 1}
-            style={{
-              background: "linear-gradient(145deg, #0e4422, #072510)",
-              border: "2px solid #1a6632",
-              borderRadius: "0 14px 14px 0",
-              color: spinning || betIdx === BETS.length - 1 ? "#1a3d20" : "#4ade80",
-              padding: "14px 18px",
-              fontSize: 13, fontWeight: 800,
-              cursor: spinning || betIdx === BETS.length - 1 ? "default" : "pointer",
-              minWidth: 64,
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 11, color: "inherit", marginBottom: 2 }}>{BETS[betIdx + 1] ?? "—"}</div>
-            <div style={{ fontSize: 10, color: spinning || betIdx === BETS.length - 1 ? "#1a3d20" : "#1e6e33", fontWeight: 600 }}>ETB</div>
-          </button>
         </div>
-      </div>
-
-      {/* ── Bottom nav ── */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-around",
-        padding: "14px 24px 20px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        marginTop: 14,
-      }}>
-        <button onClick={() => setShowRules(true)} style={{
-          background: "none", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 7,
-          color: "#64748b", fontSize: 13, fontWeight: 700,
-        }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: "50%",
-            border: "2px solid #475569",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, color: "#475569", fontWeight: 900,
-          }}>?</div>
-          Rules
-        </button>
-        <button style={{
-          background: "none", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#475569",
-        }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="3" stroke="#475569" strokeWidth="2"/>
-            <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="#475569" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
       </div>
 
       {showGamble && (
