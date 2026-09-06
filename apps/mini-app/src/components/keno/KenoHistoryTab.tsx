@@ -12,6 +12,7 @@ const C = {
 interface Props {
   history: HistoryRecord[];
   onReplayBet?: (numbers: number[], bet: number) => void;
+  mode?: 'history' | 'results';
 }
 
 function formatTime(ts?: string | null) {
@@ -29,7 +30,7 @@ function formatDate(ts?: string | null) {
   } catch { return ''; }
 }
 
-export function KenoHistoryTab({ history, onReplayBet }: Props) {
+export function KenoHistoryTab({ history, onReplayBet, mode = 'history' }: Props) {
   if (!history.length) {
     return (
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 32, textAlign: 'center', color: C.textDim, fontSize: 13 }}>
@@ -43,6 +44,30 @@ export function KenoHistoryTab({ history, onReplayBet }: Props) {
         {history.map(record => {
           const bets = record.myBets?.length ? record.myBets : record.myBet ? [record.myBet] : [];
           const winning = bets.some(bet => (bet.payout ?? 0) > 0);
+
+          if (mode === 'results') {
+            return (
+              <div key={record.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: C.greenLight }}>
+                  <div style={{ flex: 1, height: 1, background: 'rgba(224,238,231,0.8)' }} />
+                  <div style={{ minWidth: 170, textAlign: 'center', lineHeight: 1.15 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>Draw</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 14 }}>ID: {formatId(record.id)}</div>
+                    <div style={{ color: C.textWhite, fontSize: 12, marginTop: 3 }}>{formatDate(record.finishedAt)} {formatTime(record.finishedAt)}</div>
+                  </div>
+                  <div style={{ flex: 1, height: 1, background: 'rgba(224,238,231,0.8)' }} />
+                </div>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 6 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 3 }}>
+                    {Array.from({ length: 20 }).map((_, idx) => {
+                      const number = record.drawnNumbers[idx];
+                      return <div key={idx} style={{ height: 36, borderRadius: 4, background: number === undefined ? 'rgba(0,0,0,0.22)' : '#34434b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e5edf0', fontSize: 14, fontWeight: 800, fontFamily: 'monospace' }}>{number ?? '·'}</div>;
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div key={record.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -350,7 +350,7 @@ export default function KenoScreen() {
               )}
               {activeTab === 'RESULTS' && (
                 <motion.div key="results" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
-                  <KenoHistoryTab history={history} />
+                  <KenoHistoryTab history={history} mode="results" />
                 </motion.div>
               )}
               {activeTab === 'STATISTICS' && (
