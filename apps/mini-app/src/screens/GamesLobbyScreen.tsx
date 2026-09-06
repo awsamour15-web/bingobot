@@ -152,6 +152,84 @@ const GAMES: Game[] = [
     available: false,
     category: 'coming',
   },
+  {
+    id: 'roulette',
+    title: 'Royal Roulette',
+    subtitle: 'Classic roulette • Big table energy',
+    emoji: '🎰',
+    gradient: 'linear-gradient(145deg,#174d45 0%,#102c2b 52%,#100f1c 100%)',
+    glowColor: 'rgba(243,207,100,0.24)',
+    route: '/roulette',
+    tag: 'SOON',
+    tagColor: '#64748b',
+    available: false,
+    category: 'coming',
+  },
+  {
+    id: 'blackjack',
+    title: 'Blackjack 21',
+    subtitle: 'Beat the dealer • Classic table game',
+    emoji: '🂡',
+    gradient: 'linear-gradient(145deg,#244d3d 0%,#122d28 52%,#0b111d 100%)',
+    glowColor: 'rgba(99,212,186,0.22)',
+    route: '/blackjack',
+    tag: 'SOON',
+    tagColor: '#64748b',
+    available: false,
+    category: 'coming',
+  },
+  {
+    id: 'baccarat',
+    title: 'Baccarat',
+    subtitle: 'Player or banker • Table classic',
+    emoji: '🃏',
+    gradient: 'linear-gradient(145deg,#51332d 0%,#2d1b27 52%,#100f1c 100%)',
+    glowColor: 'rgba(243,207,100,0.22)',
+    route: '/baccarat',
+    tag: 'SOON',
+    tagColor: '#64748b',
+    available: false,
+    category: 'coming',
+  },
+  {
+    id: 'sicbo',
+    title: 'Sic Bo',
+    subtitle: 'Three dice • Fast table action',
+    emoji: '🎲',
+    gradient: 'linear-gradient(145deg,#4a345f 0%,#252143 52%,#0c101d 100%)',
+    glowColor: 'rgba(168,139,250,0.22)',
+    route: '/sicbo',
+    tag: 'SOON',
+    tagColor: '#64748b',
+    available: false,
+    category: 'coming',
+  },
+  {
+    id: 'casino-war',
+    title: 'Casino War',
+    subtitle: 'Cards down • Instant showdown',
+    emoji: '⚔️',
+    gradient: 'linear-gradient(145deg,#57352e 0%,#322027 52%,#100d18 100%)',
+    glowColor: 'rgba(248,113,113,0.22)',
+    route: '/casino-war',
+    tag: 'SOON',
+    tagColor: '#64748b',
+    available: false,
+    category: 'coming',
+  },
+  {
+    id: 'hi-lo',
+    title: 'Hi-Lo',
+    subtitle: 'Predict the next card • Quick wins',
+    emoji: '⬆️',
+    gradient: 'linear-gradient(145deg,#244569 0%,#182c4a 52%,#0b101d 100%)',
+    glowColor: 'rgba(125,211,252,0.22)',
+    route: '/hi-lo',
+    tag: 'SOON',
+    tagColor: '#64748b',
+    available: false,
+    category: 'coming',
+  },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -176,7 +254,7 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        minHeight: game.category === 'coming' ? 136 : 204,
+        minHeight: game.category === 'coming' ? 72 : 112,
         background: 'linear-gradient(180deg,rgba(22,29,43,0.98),rgba(11,15,25,0.98))',
         border: `1px solid ${isAvailable ? 'rgba(98,211,186,0.34)' : 'rgba(170,187,178,0.12)'}`,
         borderRadius: 18,
@@ -204,23 +282,23 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
           : '0 6px 16px rgba(0,0,0,0.25)';
       }}
     >
-      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 102 : 166, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 52 : 88, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {game.posterSrc && <img src={game.posterSrc} alt={`${game.title} poster`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg,rgba(255,255,255,0.1),transparent 34%), linear-gradient(145deg,transparent 35%,rgba(0,0,0,0.58))' }} />
-        <div style={{ position: 'absolute', left: '50%', top: '13%', width: 132, height: 132, transform: 'translateX(-50%)', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.22)', boxShadow: '0 0 36px rgba(75,221,187,0.2)', opacity: 0.75 }} />
+        <div style={{ position: 'absolute', left: '50%', top: '13%', width: 100, height: 100, transform: 'translateX(-50%)', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.22)', boxShadow: '0 0 28px rgba(75,221,187,0.2)', opacity: 0.75 }} />
         <div style={{ position: 'relative', zIndex: 1, width: '100%', textAlign: 'center', padding: 5 }}>
           {game.posterSrc ? null : game.logoSrc ? (
-            <img src={game.logoSrc} alt={`${game.title} logo`} style={{ display: 'block', width: '92%', height: 94, margin: '0 auto', objectFit: 'contain', filter: 'drop-shadow(0 6px 6px rgba(0,0,0,0.5))' }} />
+            <img src={game.logoSrc} alt={`${game.title} logo`} style={{ display: 'block', width: '92%', height: 46, margin: '0 auto', objectFit: 'contain', filter: 'drop-shadow(0 3px 3px rgba(0,0,0,0.5))' }} />
           ) : (
             <>
-              <div style={{ fontSize: game.category === 'coming' ? 32 : 54, filter: 'drop-shadow(0 7px 7px rgba(0,0,0,0.5))' }}>{poster.emoji}</div>
-              <div style={{ marginTop: 6, color: '#f7fbff', fontSize: poster.title.length > 11 ? 15 : 19, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '1px 2px 0 rgba(0,0,0,0.65)' }}>{poster.title}</div>
+              <div style={{ fontSize: game.category === 'coming' ? 17 : 26, filter: 'drop-shadow(0 3px 3px rgba(0,0,0,0.5))' }}>{poster.emoji}</div>
+              <div style={{ marginTop: 2, color: '#f7fbff', fontSize: poster.title.length > 11 ? 8 : 11, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '1px 1px 0 rgba(0,0,0,0.65)' }}>{poster.title}</div>
             </>
           )}
         </div>
         <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? 'rgba(94,108,103,0.9)' : isRestricted ? 'rgba(124,90,36,0.95)' : 'rgba(213,65,63,0.95)', borderRadius: 6, padding: '4px 6px', letterSpacing: '0.08em', boxShadow: '0 3px 8px rgba(0,0,0,0.25)' }}>{game.category === 'coming' ? 'SOON' : isRestricted ? 'LOCKED' : 'HOT'}</div>
       </div>
-      <div style={{ minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', background: 'rgba(8,13,23,0.98)', color: game.category === 'coming' ? '#8aa49b' : '#eef4f1', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}><span>{poster.title}</span><span style={{ color: isAvailable ? '#63d4ba' : '#728079', fontSize: 9 }}>{isAvailable ? 'PLAY' : 'SOON'}</span></div>
+      <div style={{ minHeight: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px', background: 'rgba(8,13,23,0.98)', color: game.category === 'coming' ? '#8aa49b' : '#eef4f1', fontSize: 7, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.02em' }}><span>{poster.title}</span><span style={{ color: isAvailable ? '#63d4ba' : '#728079', fontSize: 6 }}>{isAvailable ? 'PLAY' : 'SOON'}</span></div>
     </button>
   );
 }
@@ -362,7 +440,7 @@ export default function GamesLobbyScreen() {
         {couponMessage && <div role="status" style={{ marginTop: 7, color: couponStatus === 'success' ? '#55d993' : '#ff8c82', fontSize: 10, fontWeight: 700 }}>{couponMessage}</div>}
       </div>
 
-      <div style={{ padding: '30px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 21, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}><Trophy size={22} color="#f3cf64" /> PLAY NOW</div><span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>{availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS</span></div><div style={{ marginTop: 4, color: '#78869c', fontSize: 11, fontWeight: 600 }}>Pick a game and make your move</div><div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>{([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>)}</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 14 }}>{filteredGames.map((game, i) => <div key={game.id} className={`lobby-card ${i === 0 ? 'lobby-featured' : ''}`} style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
+      <div style={{ padding: '30px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 21, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}><Trophy size={22} color="#f3cf64" /> PLAY NOW</div><span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>{availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS</span></div><div style={{ marginTop: 4, color: '#78869c', fontSize: 11, fontWeight: 600 }}>Pick a game and make your move</div><div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>{([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>)}</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>{filteredGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
 
       {/* ── Agent button ──────────────────────────────────────────── */}
       {isAgent && (
