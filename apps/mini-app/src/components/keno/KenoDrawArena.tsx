@@ -206,10 +206,11 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
           {showCentre && (
             <motion.div
               key={`ball-centre-${centreNum}`}
+              layoutId={`keno-ball-${centreNum}`}
               initial={{ scale: 0.05, opacity: 0 }}
               animate={centrePhase === 'pop'
                 ? { scale: 1, opacity: 1 }
-                : { scale: 0.2, opacity: 0 }
+                : { scale: 0.35, opacity: 0.15, y: 52 }
               }
               exit={{ scale: 0, opacity: 0 }}
               transition={centrePhase === 'pop'
@@ -275,9 +276,10 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
         return (
           <motion.div
             key={`tray-${num}`}
-            initial={{ scale: 0, opacity: 0 }}
+            layoutId={`keno-ball-${num}`}
+            initial={{ scale: 0.35, opacity: 0.15 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 24, mass: 0.6 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 25, mass: 0.65 }}
             style={{
               height: 25, borderRadius: '50%',
               background: bg(isHit),
