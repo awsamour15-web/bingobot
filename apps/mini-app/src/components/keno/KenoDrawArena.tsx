@@ -245,7 +245,7 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
         if (num === undefined) {
           return (
             <div key={`slot-${idx}`} style={{
-              height: 25, borderRadius: '50%',
+              height: 28, borderRadius: '50%',
               background: 'rgba(255,255,255,0.015)',
               border: '1px solid rgba(255,255,255,0.04)',
             }} />
@@ -262,12 +262,12 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             style={{
-              height: 25, borderRadius: '50%',
+              height: 28, borderRadius: '50%',
               background: bg(isHit),
               boxShadow: shadow(isHit),
               border: border(isHit),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: 800,
+              fontSize: 10, fontWeight: 800,
               color: isHit ? '#6effa8' : '#c8e4f8',
               fontFamily: 'monospace',
               position: 'relative',
