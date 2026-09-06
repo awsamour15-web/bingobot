@@ -19,7 +19,7 @@ import { KenoQuickPickModal } from '../components/keno/KenoQuickPickModal';
 import { KenoInfoModal } from '../components/keno/KenoInfoModal';
 import type { BetFeedItem, HistoryRecord } from '../components/keno/types';
 
-type NavTab = 'GAME' | 'HISTORY' | 'RESULTS' | 'STATISTICS';
+type NavTab = 'GAME' | 'HISTORY' | 'RESULTS' | 'STATISTICS' | 'RANK';
 
 function randomPick(count: number): number[] {
   const pool = Array.from({ length: 80 }, (_, i) => i + 1);
@@ -223,6 +223,7 @@ export default function KenoScreen() {
     { id: 'HISTORY', label: 'HISTORY' },
     { id: 'RESULTS', label: 'RESULTS' },
     { id: 'STATISTICS', label: 'STATISTICS' },
+    { id: 'RANK', label: 'RANK' },
   ];
 
   const phaseBadgeColor = phase === 'betting' ? C.yellow : phase === 'drawing' ? C.green : C.textDim;
@@ -361,6 +362,11 @@ export default function KenoScreen() {
                     selectedNumbers={selectedNumbers}
                     onToggleNumber={n => { handleToggle(n); setActiveTab('GAME'); }}
                   />
+                </motion.div>
+              )}
+              {activeTab === 'RANK' && (
+                <motion.div key="rank" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  <KenoRankTab />
                 </motion.div>
               )}
             </AnimatePresence>
