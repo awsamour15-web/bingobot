@@ -26,17 +26,6 @@ interface Game {
   category: 'live' | 'slots' | 'crash' | 'numbers' | 'coming';
 }
 
-const POSTER_COPY: Record<string, { title: string; emoji: string; gradient: string }> = {
-  bingo: { title: 'Royal Drop', emoji: '👑', gradient: 'linear-gradient(145deg,#39a8d8 0%,#17618e 45%,#10253e 100%)' },
-  crash: { title: 'Keno', emoji: '🎱', gradient: 'linear-gradient(145deg,#1a9b91 0%,#07584f 45%,#061d1c 100%)' },
-  slots: { title: 'Dragon Pots', emoji: '🐉', gradient: 'linear-gradient(145deg,#f5cf64 0%,#ca741c 42%,#6b1b12 100%)' },
-  dice: { title: 'AviaFly', emoji: '✈️', gradient: 'linear-gradient(145deg,#4eb9df 0%,#2679ae 46%,#112e55 100%)' },
-  spin: { title: 'Joker Pyre', emoji: '🃏', gradient: 'linear-gradient(145deg,#ee7460 0%,#782d48 48%,#211332 100%)' },
-  poker: { title: 'Hot Keno', emoji: '8', gradient: 'linear-gradient(145deg,#e9432d 0%,#8e151c 47%,#3e0c18 100%)' },
-  keno: { title: 'Keno', emoji: '🎱', gradient: 'linear-gradient(145deg,#1a9b91 0%,#07584f 45%,#061d1c 100%)' },
-  plinko: { title: 'Joker Pyre', emoji: '🃏', gradient: 'linear-gradient(145deg,#ee7460 0%,#782d48 48%,#211332 100%)' },
-};
-
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const GAMES: Game[] = [
@@ -164,7 +153,7 @@ const GAMES: Game[] = [
 
 function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean }) {
   const navigate = useNavigate();
-  const poster = POSTER_COPY[game.id] ?? { title: game.title, emoji: game.emoji, gradient: game.gradient };
+  const poster = { title: game.title, emoji: game.emoji, gradient: game.gradient };
   const isRestricted = (game.id === 'keno' && !kenoAllowed) || (game.id === 'plinko' && !plinkoAllowed);
   const isAvailable = game.available && !isRestricted;
 
