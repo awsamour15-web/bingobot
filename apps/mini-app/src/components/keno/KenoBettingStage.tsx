@@ -50,6 +50,7 @@ export function KenoBettingStage({
     .map(([hit, mul]) => ({ hits: Number(hit), mul }))
     .filter(e => e.mul > 0);
   const possibleWin = spots > 0 ? betAmount * bestMultiplier(spots) : 0;
+  const hasInsufficientBalance = userBalance < betAmount;
 
   const dec = () => {
     if (betAmount <= MIN_BET) onChangeBet(MIN_BET);
@@ -177,11 +178,17 @@ export function KenoBettingStage({
           <button onClick={onOpenSettings} style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: '#73f3b5', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
         </div>
 
+        {hasInsufficientBalance && (
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.35)', color: '#ff8a8a', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>
+            Insufficient balance. You need {(betAmount - userBalance).toFixed(2)} ETB more.
+          </div>
+        )}
+
         {/* BET button */}
         <button
           onClick={onPlaceBet}
-          disabled={isPlacingBet}
-          style={{ width: '100%', padding: '14px 0', borderRadius: 13, background: isPlacingBet ? '#176d3d' : '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.08em', cursor: isPlacingBet ? 'wait' : 'pointer', opacity: isPlacingBet ? 0.8 : 1, transition: 'background 100ms ease, opacity 100ms ease', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.18)' }}
+          disabled={isPlacingBet || hasInsufficientBalance}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 13, background: isPlacingBet ? '#176d3d' : hasInsufficientBalance ? '#4b2525' : '#1ea855', border: 'none', color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.08em', cursor: isPlacingBet ? 'wait' : hasInsufficientBalance ? 'not-allowed' : 'pointer', opacity: isPlacingBet || hasInsufficientBalance ? 0.8 : 1, transition: 'background 100ms ease, opacity 100ms ease', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.18)' }}
         >
           {isPlacingBet ? 'PLACING...' : 'BET'}
         </button>
