@@ -152,6 +152,10 @@ const MUL_COLORS: Record<number, { text: string; border: string; bg: string; glo
 function rnd() { return SYMS[Math.floor(Math.random() * SYMS.length)]!; }
 function rndCol(): SlotSymbol[] { return [rnd(), rnd(), rnd()]; }
 
+function formatWallet(value: number | null): string {
+  return value === null ? "--" : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function winCells(wins: PaylineWin[]): Set<string> {
   const s = new Set<string>();
   for (const w of wins) {
@@ -235,7 +239,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
               className={`slots-reel-symbol${spinning ? " is-spinning" : ""}`}
               style={{
                 position: "relative",
-                filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none",
+                filter: isWin ? "drop-shadow(0 0 8px rgba(2, 2, 2, 0.8))" : "none",
                 animationDelay: spinning ? `-${(colIdx * 3 + row) * 70}ms` : undefined,
               }}
             >
@@ -633,7 +637,7 @@ export default function SlotsScreen() {
     timer.current = setInterval(() => {
       setReels([rndCol(), rndCol(), rndCol()]);
       setMul(Math.ceil(Math.random() * 5));
-    }, 90);
+    }, 70);
   }
 
   function stopScramble(r: SlotSymbol[][], m: number) {
@@ -668,7 +672,7 @@ export default function SlotsScreen() {
       return false;
     }
 
-    await new Promise(r => setTimeout(r, 650));
+    await new Promise(r => setTimeout(r, 900));
     stopScramble(res.reels, res.multiplierReel);
     lock.current = false; setSpinning(false);
     setSpinCount(c => c + 1);
@@ -866,12 +870,16 @@ export default function SlotsScreen() {
               paddingLeft: 6,
               paddingRight: 6,
             }}>
-              {["👜", "🏆", "◉"].map((icon, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 86, justifyContent: "center" }}>
+              {[
+                { icon: "👜", label: "Main wallet", value: mainBalance },
+                { icon: "🏆", label: "Play wallet", value: playBalance },
+                { icon: "◉", label: "Last win", value: totalWin },
+              ].map(({ icon, label, value }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 86, justifyContent: "center" }}>
                   <span style={{ fontSize: 18 }}>{icon}</span>
                   <div style={{ textAlign: "left" }}>
-                    <div style={{ fontSize: 12, color: "#f7f1d8", fontWeight: 900 }}>0.00</div>
-                    <div style={{ fontSize: 9, color: "#d0d5d9", letterSpacing: "0.08em", textTransform: "uppercase" }}>ETB</div>
+                    <div style={{ fontSize: 12, color: "#f7f1d8", fontWeight: 900 }}>{formatWallet(value)}</div>
+                    <div style={{ fontSize: 9, color: "#d0d5d9", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</div>
                   </div>
                 </div>
               ))}
