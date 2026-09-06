@@ -131,7 +131,7 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
   return (
     <div style={{
-      width: '100%', height: '100%', minHeight: 242, background: 'rgba(6,14,18,0.98)',
+      width: '100%', height: '100%', minHeight: 242, boxSizing: 'border-box', background: 'rgba(6,14,18,0.98)',
       border: 'none', borderRadius: 0,
       position: 'relative', overflow: 'hidden',
       display: 'flex', flexDirection: 'column', gap: 5,

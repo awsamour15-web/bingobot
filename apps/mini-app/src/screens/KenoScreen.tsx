@@ -285,7 +285,7 @@ export default function KenoScreen() {
       </div>
 
       {/* ── Scrollable content area ── */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* ── Main content: Betting stage or Draw arena ── */}
         <div style={{ flexShrink: 0, padding: 0 }}>
           <AnimatePresence mode="wait">

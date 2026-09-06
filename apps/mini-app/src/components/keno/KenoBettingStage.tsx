@@ -66,7 +66,7 @@ export function KenoBettingStage({
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', userSelect: 'none' }}>
-      <div style={{ width: '100%', background: 'rgba(17,24,28,0.98)', border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 14, padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(17,24,28,0.98)', border: `1px solid rgba(255,255,255,0.07)`, borderRadius: 14, padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
 
         {spots === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(0,0,0,0.18)', borderRadius: 12, padding: '8px 8px 6px 15px', height: 129, boxSizing: 'border-box' }}>
