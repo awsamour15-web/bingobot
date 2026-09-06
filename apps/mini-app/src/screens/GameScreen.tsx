@@ -132,18 +132,18 @@ export default function GameScreen() {
   }, [updateCount]);
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
+    <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 75% 0%, rgba(247,201,72,0.12), transparent 30%), linear-gradient(180deg, #08161a 0%, #071014 52%, #04090c 100%)', color: '#f7f8f5' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(10,14,22,0.96) 0%, rgba(15,23,42,0.92) 100%)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(148,163,184,0.08)', padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.18)' }}>
+      <div style={{ background: 'rgba(5,15,18,0.88)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(85,224,176,0.14)', padding: '12px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 14,
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              background: 'linear-gradient(135deg, #f7c948, #ee8f2d)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 900, fontSize: 17, color: '#0a0e1a',
-              boxShadow: '0 4px 16px rgba(245,158,11,0.5)',
+              boxShadow: '0 5px 18px rgba(247,201,72,0.3)',
             }}>FB</div>
             <div>
               <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: 0.3, color: '#f1f5f9' }}>Fidel Bingo</div>
@@ -154,17 +154,17 @@ export default function GameScreen() {
             <button
               onClick={() => navigate('/')}
               style={{
-                background: 'rgba(148,163,184,0.08)', border: '1px solid rgba(148,163,184,0.15)',
+                background: 'rgba(85,224,176,0.08)', border: '1px solid rgba(85,224,176,0.18)',
                 borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#94a3b8', fontSize: 18,
+                cursor: 'pointer', color: '#9deed1', fontSize: 18,
               }}
               aria-label="Home"
             >
               🏠
             </button>
             <div style={{
-              background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
-              borderRadius: 20, padding: '6px 10px', fontSize: 10, color: '#fca5a5', fontWeight: 800, letterSpacing: 0.8,
+              background: 'rgba(255,119,150,0.12)', border: '1px solid rgba(255,119,150,0.3)',
+              borderRadius: 9, padding: '6px 10px', fontSize: 10, color: '#ff9db7', fontWeight: 800, letterSpacing: 0.8,
             }}>
               LIVE
             </div>
@@ -173,14 +173,14 @@ export default function GameScreen() {
       </div>
 
       {/* ── Hero ── */}
-      <div style={{ padding: '22px 16px 18px', background: 'linear-gradient(180deg, rgba(17,34,64,0.8) 0%, rgba(10,14,26,0.9) 100%)', borderBottom: '1px solid rgba(148,163,184,0.06)' }}>
-        <div style={{ fontSize: 12, color: '#9fb0c9', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8, fontWeight: 700 }}>
+      <div style={{ padding: '24px 16px 20px', background: 'linear-gradient(135deg, rgba(12,46,47,0.86), rgba(7,16,20,0.94))', borderBottom: '1px solid rgba(85,224,176,0.12)' }}>
+        <div style={{ fontSize: 11, color: '#55e0b0', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 9, fontWeight: 800 }}>
           Choose your stake
         </div>
         <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2, color: '#f8fafc' }}>
-          Win Up To <span style={{ color: '#f59e0b' }}>40,000 Birr</span>
+          Win Up To <span style={{ color: '#f7c948' }}>40,000 Birr</span>
         </div>
-        <div style={{ fontSize: 14, color: '#cbd5e1', marginTop: 6 }}>Pick a live round and jump in instantly.</div>
+        <div style={{ fontSize: 14, color: '#b8d2ca', marginTop: 7 }}>Pick a live round and jump in instantly.</div>
       </div>
 
       {/* ── Games list ── */}

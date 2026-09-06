@@ -36,13 +36,13 @@ function formatRoundId(id: string | null): string {
 }
 
 const C = {
-  bg: '#0a0f14',
-  topbar: 'rgba(8,12,18,0.98)',
-  border: 'rgba(255,255,255,0.08)',
-  green: '#1ee068',
-  textWhite: '#f0f4f8',
-  textDim: '#5a7a68',
-  yellow: '#ffa500',
+  bg: '#071014',
+  topbar: 'rgba(6,16,20,0.94)',
+  border: 'rgba(154,236,211,0.14)',
+  green: '#55e0b0',
+  textWhite: '#f7f8f5',
+  textDim: '#7c9b92',
+  yellow: '#f7c948',
 };
 
 export default function KenoScreen() {
@@ -241,28 +241,28 @@ export default function KenoScreen() {
     // Full-screen fixed container with scrollable content
     <div style={{
       position: 'fixed', inset: 0,
-      background: C.bg, color: C.textWhite,
+      background: 'radial-gradient(circle at 78% 0%, rgba(47,202,158,0.12), transparent 30%), linear-gradient(180deg, #08161a 0%, #071014 48%, #04090c 100%)', color: C.textWhite,
       display: 'flex', flexDirection: 'column',
-      fontFamily: "'Inter', -apple-system, sans-serif",
+      fontFamily: "'DM Sans', sans-serif",
       overflow: 'hidden',
     }}>
 
       {/* ── Header (fixed height) ── */}
-      <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
+      <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40, backdropFilter: 'blur(16px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 8px 5px', gap: 8 }}>
-          <button onClick={() => navigate('/')} aria-label="Back to games" title="Back to games" style={{ width: 32, height: 30, borderRadius: 999, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: C.textWhite, fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
+          <button onClick={() => navigate('/')} aria-label="Back to games" title="Back to games" style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(85,224,176,0.08)', border: `1px solid ${C.border}`, color: C.green, fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 116, height: 25, padding: '0 6px', borderRadius: 5, background: '#070b0e', border: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#168fbd', color: '#f5d749', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>Br</span>
             <span style={{ color: '#e6edf2', fontSize: 9, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
             <button onClick={() => setShowBalance(value => !value)} aria-label={showBalance ? 'Hide balance' : 'Show balance'} title={showBalance ? 'Hide balance' : 'Show balance'} style={{ background: 'none', border: 'none', color: '#73818a', fontSize: 11, cursor: 'pointer', padding: 0 }}>◉</button>
             <span style={{ color: '#9ba9b2', fontSize: 11 }}>⌄</span>
           </div>
-          <button onClick={() => navigate('/wallet')} style={{ height: 28, padding: '0 12px', background: '#f0c84b', color: '#11151a', border: 'none', borderRadius: 2, fontSize: 12, fontWeight: 900, cursor: 'pointer', boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.18)' }}>Deposit</button>
+          <button onClick={() => navigate('/wallet')} style={{ height: 32, padding: '0 13px', background: C.yellow, color: '#111820', border: 'none', borderRadius: 9, fontSize: 11, fontWeight: 900, cursor: 'pointer', boxShadow: '0 5px 16px rgba(247,201,72,0.18)' }}>Deposit</button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 6px' }}>
-          <div style={{ width: 44, display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 0.82, flexShrink: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 900, color: '#e0e0e0', letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>FAST</span>
+          <div style={{ width: 54, display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 0.82, flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: '#e8f4ef', letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>FAST</span>
             <span style={{ fontSize: 13, fontWeight: 900, color: C.green, letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>KENO</span>
           </div>
           <div style={{ flex: 1, minWidth: 0, height: 21, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 7px', borderRadius: 999, background: 'rgba(15,30,27,0.92)', border: '1px solid rgba(30,224,104,0.18)' }}>
@@ -321,7 +321,7 @@ export default function KenoScreen() {
         {/* ── Bottom section: tabs + content ── */}
         <div style={{ flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: '0' }}>
           {/* Tab bar - scrollable */}
-          <div style={{ background: 'rgba(12,16,20,0.96)', borderBottom: `1px solid ${C.border}`, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollBehavior: 'smooth', paddingLeft: 12 }}>
+          <div style={{ background: 'rgba(6,14,18,0.94)', borderBottom: `1px solid ${C.border}`, display: 'flex', overflowX: 'auto', overflowY: 'hidden', scrollBehavior: 'smooth', paddingLeft: 10 }}>
             {tabs.map(tab => {
               const isActive = activeTab === tab.id;
               return (
@@ -329,10 +329,10 @@ export default function KenoScreen() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: '0 0 auto', padding: '10px 12px 8px', background: 'none', border: 'none',
+                    flex: '0 0 auto', padding: '11px 12px 9px', background: 'none', border: 'none',
                     borderBottom: isActive ? `3px solid ${C.green}` : '3px solid transparent',
-                    color: isActive ? '#8bf6b5' : '#7daea1',
-                    fontSize: 17, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.05em',
+                    color: isActive ? '#b9f6df' : '#7c9b92',
+                    fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em',
                     transition: 'color 0.12s', whiteSpace: 'nowrap',
                   }}
                 >

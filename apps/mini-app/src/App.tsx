@@ -113,8 +113,8 @@ function BottomNav() {
           right: 0;
           bottom: 0;
           z-index: 100;
-          background: rgba(10, 14, 26, 0.96);
-          border-top: 1px solid rgba(148, 163, 184, 0.1);
+          background: rgba(5, 15, 18, 0.94);
+          border-top: 1px solid rgba(85, 224, 176, 0.14);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
           padding-bottom: env(safe-area-inset-bottom);
@@ -134,7 +134,7 @@ function BottomNav() {
           justify-content: center;
           gap: 3px;
           text-decoration: none;
-          color: #64748b;
+          color: #6e8c84;
           font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.02em;
@@ -143,7 +143,7 @@ function BottomNav() {
         }
 
         .mini-app-bottom-tab.active {
-          color: #f59e0b;
+          color: #55e0b0;
         }
 
         .mini-app-bottom-icon {
@@ -199,7 +199,7 @@ function AppInner() {
   }, []);
 
   return (
-    <div style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', minHeight: '100dvh', background: '#0a0e1a', color: '#fff' }}>
+    <div className="app-surface" style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', minHeight: '100dvh' }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<GamesLobbyScreen />} />

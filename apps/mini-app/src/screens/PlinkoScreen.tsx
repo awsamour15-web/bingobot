@@ -582,7 +582,7 @@ export default function PlinkoScreen() {
 
   if (accessAllowed === false) {
     return (
-      <div style={{minHeight:'100dvh',background:'#111114',color:'#f8fafc',fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,maxWidth:480,margin:'0 auto',textAlign:'center'}}>
+      <div style={{minHeight:'100dvh',background:'linear-gradient(180deg,#08161a,#071014)',color:'#f8fafc',fontFamily:"'DM Sans',sans-serif",display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,maxWidth:480,margin:'0 auto',textAlign:'center'}}>
         <div style={{fontSize:48}}>🚫</div>
         <div style={{fontSize:20,fontWeight:900,color:'#facc15'}}>Plinko Not Available</div>
         <div style={{fontSize:13,color:'#71717a',maxWidth:280}}>Plinko is not available for your account yet. Contact support for access.</div>
@@ -592,23 +592,23 @@ export default function PlinkoScreen() {
   }
 
   return (
-    <div style={{minHeight:'100dvh',background:'#111114',color:'#f8fafc',fontFamily:"'Inter',sans-serif",display:'flex',flexDirection:'column',maxWidth:480,margin:'0 auto'}}>
+    <div style={{minHeight:'100dvh',background:'radial-gradient(circle at 50% 0%,rgba(37,190,163,0.12),transparent 34%),linear-gradient(180deg,#08161a 0%,#071014 52%,#04090c 100%)',color:'#f8fafc',fontFamily:"'DM Sans',sans-serif",display:'flex',flexDirection:'column',maxWidth:480,margin:'0 auto'}}>
 
       {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#18181b',borderBottom:'1px solid #27272a',flexShrink:0}}>
-        <button onClick={()=>navigate('/')} style={{background:'#27272a',border:'1px solid #3f3f46',color:'#71717a',borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:700,cursor:'pointer'}}>← Back</button>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 14px',background:'rgba(6,17,20,0.9)',borderBottom:'1px solid rgba(85,224,176,0.15)',flexShrink:0,backdropFilter:'blur(14px)'}}>
+        <button onClick={()=>navigate('/')} style={{background:'rgba(85,224,176,0.08)',border:'1px solid rgba(85,224,176,0.2)',color:'#9deed1',borderRadius:10,padding:'7px 12px',fontSize:11,fontWeight:800,cursor:'pointer'}}>← Back</button>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:16,fontWeight:900,color:'#facc15',letterSpacing:'-0.5px',textTransform:'uppercase'}}>Plinko</span>
+          <span style={{fontSize:16,fontWeight:900,color:'#55e0b0',letterSpacing:'-0.5px',textTransform:'uppercase'}}>Plinko</span>
           <span style={{fontSize:9,background:'#1c1917',color:'#a8a29e',border:'1px solid #44403c',borderRadius:4,padding:'2px 6px',fontWeight:800}}>PRO</span>
         </div>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:8,color:'#52525b',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.1em'}}>Balance</div>
-          <div style={{fontSize:14,fontWeight:900,color:'#facc15'}}>{totalBalance > 0 ? totalBalance.toFixed(0) : (balance !== null ? balance.toFixed(0) : '—')} <span style={{fontSize:9,color:'#78716c'}}>ETB</span></div>
+          <div style={{fontSize:14,fontWeight:900,color:'#f7c948'}}>{totalBalance > 0 ? totalBalance.toFixed(0) : (balance !== null ? balance.toFixed(0) : '—')} <span style={{fontSize:9,color:'#7c9b92'}}>ETB</span></div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{display:'flex',background:'#18181b',borderBottom:'1px solid #27272a',flexShrink:0}}>
+      <div style={{display:'flex',background:'rgba(6,14,18,0.86)',borderBottom:'1px solid rgba(85,224,176,0.12)',flexShrink:0}}>
         {(['game','history'] as const).map(t=>(
           <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'9px 0',background:'none',border:'none',borderBottom:tab===t?'2px solid #facc15':'2px solid transparent',color:tab===t?'#facc15':'#52525b',fontSize:11,fontWeight:800,cursor:'pointer',textTransform:'uppercase',letterSpacing:'0.08em'}}>
             {t==='game'?'🎱 Play':'📋 History'}

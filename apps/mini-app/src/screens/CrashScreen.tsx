@@ -800,7 +800,7 @@ export default function CrashScreen() {
   const usernameInitial = (myUsername || 'P').charAt(0).toUpperCase();
 
   return (
-    <div style={{ height: '100dvh', background: '#0d0e14', color: '#f8fafc', display: 'flex', flexDirection: 'column', width: '100%', fontFamily: "'Inter', sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ height: '100dvh', background: 'radial-gradient(circle at 50% 12%, rgba(224,72,108,0.16), transparent 34%), linear-gradient(180deg, #170c14 0%, #0d0e14 52%, #08090d 100%)', color: '#f8fafc', display: 'flex', flexDirection: 'column', width: '100%', fontFamily: "'DM Sans', sans-serif", overflow: 'hidden', boxSizing: 'border-box' }}>
       {showRules && <AviatorRulesModal onClose={() => setShowRules(false)} />}
 
       {/* Deposit modal */}
@@ -817,11 +817,11 @@ export default function CrashScreen() {
       )}
 
       {/* ── Header ── */}
-      <header style={{ flexShrink: 0, background: 'rgba(18,20,28,0.95)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '8px 14px', position: 'sticky', top: 0, zIndex: 30, backdropFilter: 'blur(8px)' }}>
+      <header style={{ flexShrink: 0, background: 'rgba(20,12,20,0.88)', borderBottom: '1px solid rgba(255,119,150,0.16)', padding: '10px 14px', position: 'sticky', top: 0, zIndex: 30, backdropFilter: 'blur(16px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Left: back + logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: 18 }}>‹</button>
+            <button onClick={() => navigate('/')} style={{ background: 'rgba(255,119,150,0.1)', border: '1px solid rgba(255,119,150,0.22)', borderRadius: 10, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ff9db7', fontSize: 18 }}>‹</button>
             <img src={aviatorLogo} alt="Aviator" style={{ height: 22, filter: 'drop-shadow(0 0 15px rgba(229,5,58,0.5))' }} />
           </div>
 
