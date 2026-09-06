@@ -167,12 +167,12 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
   const selected = Math.max(1, Math.min(5, value));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: 94, gap: 10, marginRight: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", width: 102, gap: 10, marginRight: 8 }}>
       {preset.map((n) => {
         const active = n === 5 || (selected === 5 && n === 5) || (selected !== 5 && n === selected);
         return (
           <div key={n} style={{
-            height: 104,
+            height: 172,
             borderRadius: 12,
             background: active
               ? "linear-gradient(180deg, rgba(48,162,95,0.95), rgba(18,92,52,0.92))"
@@ -184,7 +184,7 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
             display: "flex", alignItems: "center", justifyContent: "center",
             color: active ? "#ff7cc6" : "#f4d89a",
             fontFamily: "Arial Black, Impact, sans-serif",
-            fontSize: active ? 42 : 34,
+            fontSize: active ? 48 : 38,
             fontWeight: 900,
             letterSpacing: "-0.06em",
             transform: active ? "scale(1.02)" : "scale(1)",
@@ -210,7 +210,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
         const isWin = !spinning && winSet.has(key);
         return (
           <div key={row} style={{
-            height: 104,
+            height: 172,
             display: "flex", alignItems: "center", justifyContent: "center",
             borderRadius: 8,
             background: isWin
@@ -232,7 +232,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
               }}/>
             )}
             <div style={{ position: "relative", filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none" }}>
-              <SymbolSvg sym={sym} size={78} />
+              <SymbolSvg sym={sym} size={104} />
             </div>
           </div>
         );
@@ -731,7 +731,7 @@ export default function SlotsScreen() {
         "radial-gradient(ellipse at 50% 12%, rgba(23,108,73,0.72) 0%, rgba(4,46,30,0.88) 28%, rgba(2,24,18,0.98) 56%, #03100c 100%)",
       color: "#f8fafc",
       display: "flex", flexDirection: "column",
-      maxWidth: 576, margin: "0 auto",
+      maxWidth: 631, margin: "0 auto",
       fontFamily: "system-ui, -apple-system, sans-serif",
       overflow: "hidden",
       position: "relative",
@@ -793,9 +793,20 @@ export default function SlotsScreen() {
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100dvh" }}>
         <div style={{
+          height: 90, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 28px 0 32px", boxSizing: "border-box", background: "#202b39", color: "#f4f6f8",
+        }}>
+          <button onClick={() => navigate("/")} aria-label="Close game" style={{ background: "none", border: "none", color: "#f4f6f8", fontSize: 42, fontWeight: 300, lineHeight: 1, padding: 0, cursor: "pointer" }}>×</button>
+          <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>Fidel bingo</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+            <span style={{ width: 23, height: 23, borderRight: "4px solid #f4f6f8", borderBottom: "4px solid #f4f6f8", transform: "rotate(45deg) translateY(-5px)" }} />
+            <span style={{ fontSize: 38, lineHeight: 0.7, letterSpacing: "0.08em" }}>⋮</span>
+          </div>
+        </div>
+        <div style={{
           position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
-          height: 78, boxSizing: "border-box", padding: "0 16px 15px",
-          background: "#030504",
+          height: 90, boxSizing: "border-box", padding: "0 24px 25px",
+          background: "rgba(2,24,18,0.12)",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -807,19 +818,19 @@ export default function SlotsScreen() {
             <span>23 : 52 : 20</span>
           </div>
           <button onClick={() => setShowRules(true)} style={{
-            position: "absolute", top: 84, right: 8, zIndex: 5,
-            width: 68, height: 68, borderRadius: 999, background: "rgba(9,20,19,0.9)", border: "1px solid rgba(255,255,255,0.18)",
+            position: "absolute", top: 20, right: 16, zIndex: 5,
+            width: 58, height: 58, borderRadius: 999, background: "rgba(9,20,19,0.72)", border: "1px solid rgba(255,255,255,0.18)",
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
           }}>
-            <div style={{ width: 34, height: 25, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ width: 30, height: 22, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               {[0,1,2].map(i => <div key={i} style={{ height: 2, borderRadius: 999, background: "#f6f9f8" }} />)}
             </div>
           </button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 98 }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 22 }}>
           <div style={{
-            fontSize: 58, fontWeight: 900, letterSpacing: "-0.09em",
+            fontSize: 64, fontWeight: 900, letterSpacing: "-0.09em",
             lineHeight: 0.86,
             color: "#f7c747",
             textTransform: "uppercase",
@@ -884,8 +895,8 @@ export default function SlotsScreen() {
         )}
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "18px 16px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, marginBottom: 14 }}>
-            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={70}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, marginBottom: 22 }}>
+            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={110}>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 20, lineHeight: 1, color: "#f0d57d" }}>↺</div>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#f4d781", marginTop: 2, letterSpacing: "0.05em" }}>{auto ? "ON" : "AUTO"}</div>
@@ -897,7 +908,7 @@ export default function SlotsScreen() {
               disabled={!canGamble}
               color={canGamble ? "linear-gradient(145deg,#0f683d,#0b4329)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
               border={canGamble ? "#f0d57d" : "#2b3a2d"}
-              size={70}
+              size={110}
             >
               <span style={{ fontSize: 18, fontWeight: 900, color: "#f0d57d" }}>2x</span>
             </HexBtn>
@@ -907,7 +918,7 @@ export default function SlotsScreen() {
               disabled={!totalWin || totalWin === 0}
               color={totalWin && totalWin > 0 ? "linear-gradient(145deg,#0d2e47,#0b1f2f)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
               border={totalWin && totalWin > 0 ? "#f0d57d" : "#2b3a2d"}
-              size={70}
+              size={110}
             >
               <div style={{ fontSize: 18, lineHeight: 1, color: "#f0d57d" }}>↓</div>
             </HexBtn>
@@ -922,7 +933,7 @@ export default function SlotsScreen() {
                 border: "2px solid #2b8a5d",
                 borderRadius: "18px 0 0 18px",
                 color: spinning || betIdx === 0 ? "#1c5036" : "#7ef2b0",
-                padding: "12px 18px",
+                height: 78, padding: "12px 18px",
                 fontSize: 14, fontWeight: 800,
                 cursor: spinning || betIdx === 0 ? "default" : "pointer",
                 minWidth: 52,
@@ -933,7 +944,7 @@ export default function SlotsScreen() {
             </button>
 
             <div style={{
-              width: 198,
+              width: 330, height: 78,
               background: "linear-gradient(180deg, #ff5d82, #d62c68)",
               border: "3px solid #f9d77b",
               clipPath: "polygon(50% 0%, 100% 32%, 82% 100%, 18% 100%, 0% 32%)",
@@ -954,7 +965,7 @@ export default function SlotsScreen() {
                 border: "2px solid #2b8a5d",
                 borderRadius: "0 18px 18px 0",
                 color: spinning || betIdx === BETS.length - 1 ? "#1c5036" : "#7ef2b0",
-                padding: "12px 18px",
+                height: 78, padding: "12px 18px",
                 fontSize: 14, fontWeight: 800,
                 cursor: spinning || betIdx === BETS.length - 1 ? "default" : "pointer",
                 minWidth: 52,
