@@ -56,6 +56,9 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
 
   const processedRef = useRef(initialDrawnNumbers?.length ?? 0);
   const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef   = useRef<number[]>([]);
+  const animatingRef = useRef(false);
+  const runNextRef   = useRef<() => void>(() => {});
 
   // Hydrate tray silently when initial snapshot arrives
   useEffect(() => {
@@ -64,30 +67,33 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
     processedRef.current = Math.max(processedRef.current, initialDrawnNumbers.length);
   }, [initialDrawnNumbers]);
 
-  // Animate new balls
-  useEffect(() => {
-    if (drawnNumbers.length <= processedRef.current) return;
-    const ball = drawnNumbers[drawnNumbers.length - 1];
+  // Animate every new ball in order, including numbers received during a reconnect.
+  runNextRef.current = () => {
+    if (animatingRef.current || pendingRef.current.length === 0) return;
+    const ball = pendingRef.current.shift();
     if (ball === undefined) return;
-    processedRef.current = drawnNumbers.length;
+    animatingRef.current = true;
 
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    // 1. Pop
     setCentreNum(ball);
     setCentrePhase('pop');
 
-    // 2. Shrink
     timerRef.current = setTimeout(() => {
       setCentrePhase('shrink');
-
-      // 3. Settle into tray
       timerRef.current = setTimeout(() => {
         setCentrePhase('none');
         setCentreNum(null);
         setTrayBalls(prev => prev.includes(ball) ? prev : [...prev, ball]);
+        animatingRef.current = false;
+        runNextRef.current();
       }, SHRINK_MS);
     }, POP_MS);
+  };
+
+  useEffect(() => {
+    if (drawnNumbers.length <= processedRef.current) return;
+    pendingRef.current.push(...drawnNumbers.slice(processedRef.current));
+    processedRef.current = drawnNumbers.length;
+    runNextRef.current();
   }, [drawnNumbers]);
 
   // Round reset
@@ -98,6 +104,8 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
       setCentreNum(null);
       setCentrePhase('none');
       processedRef.current = 0;
+      pendingRef.current = [];
+      animatingRef.current = false;
     }
   }, [drawnNumbers.length]);
 

@@ -142,19 +142,22 @@ export default function KenoScreen() {
     if (access !== 'allowed') return;
 
     const onBettingOpen = ({ roundId: rid, endsAt }: KenoBettingOpenPayload) => {
-      setPhase('betting'); setRoundId(rid); setBettingEndsAt(Date.now() + 59000);
+      setPhase('betting'); setRoundId(rid); setBettingEndsAt(endsAt);
       setDrawnNumbers([]); setCurrentBall(null); setMyBet(null); setBets([]);
+      setSelectedNumbers([]);
       setInitialDrawnNumbers([]);
       initializedRef.current = false;
       setShowDrawArena(false);
     };
-    const onNumberDrawn = ({ drawnSoFar, number }: KenoNumberDrawnPayload) => {
+    const onNumberDrawn = ({ roundId: rid, drawnSoFar, number }: KenoNumberDrawnPayload) => {
+      if (roundId && rid !== roundId) return;
       setPhase('drawing'); setShowDrawArena(true);
       setDrawnNumbers(drawnSoFar); setCurrentBall(number);
     };
-    const onRoundFinished = ({ drawnNumbers: nums }: KenoRoundFinishedPayload) => {
+    const onRoundFinished = ({ roundId: rid, drawnNumbers: nums }: KenoRoundFinishedPayload) => {
+      if (roundId && rid !== roundId) return;
       setPhase('finished'); setDrawnNumbers(nums); setCurrentBall(null);
-      void syncState(); loadHistory();
+      setShowDrawArena(true); loadHistory();
       if (myBetRef.current) {
         getKenoState().then(s => {
           if ((s.myBet?.payout ?? 0) > 0) showToast(`🎉 You won ${s.myBet!.payout} ETB!`);
@@ -174,7 +177,8 @@ export default function KenoScreen() {
 
   // ── place bet ──────────────────────────────────────────────────────────────
   const handlePlaceBet = async () => {
-    const nums = selectedNumbers.length > 0 ? selectedNumbers : randomPick(5);
+    if (selectedNumbers.length === 0) { showToast('Choose at least 1 number'); return; }
+    const nums = selectedNumbers;
     if (balance < betAmount) { showToast('Insufficient balance'); return; }
     try {
       await placeKenoBet(betAmount, nums);

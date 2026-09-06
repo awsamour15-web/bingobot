@@ -19,6 +19,9 @@ const C = {
   blue: 'rgba(100,180,255,0.9)',
 };
 
+const MIN_BET = 5;
+const MAX_BET = 5000;
+
 interface Props {
   countdown: number;
   selectedNumbers: number[];
@@ -47,14 +50,14 @@ export function KenoBettingStage({
   const possibleWin = spots > 0 ? betAmount * bestMultiplier(spots) : 0;
 
   const dec = () => {
-    if (betAmount <= 5) onChangeBet(Math.max(1, betAmount - 1));
-    else if (betAmount <= 20) onChangeBet(betAmount - 2);
-    else onChangeBet(Math.max(1, betAmount - 10));
+    if (betAmount <= MIN_BET) onChangeBet(MIN_BET);
+    else if (betAmount <= 20) onChangeBet(Math.max(MIN_BET, betAmount - 2));
+    else onChangeBet(Math.max(MIN_BET, betAmount - 10));
   };
   const inc = () => {
-    if (betAmount < 5) onChangeBet(betAmount + 1);
-    else if (betAmount < 20) onChangeBet(betAmount + 2);
-    else onChangeBet(betAmount + 10);
+    if (betAmount < MIN_BET) onChangeBet(MIN_BET);
+    else if (betAmount < 20) onChangeBet(Math.min(MAX_BET, betAmount + 2));
+    else onChangeBet(Math.min(MAX_BET, betAmount + 10));
   };
 
   const isUrgent = countdown <= 10;
@@ -165,8 +168,8 @@ export function KenoBettingStage({
             {betAmount % 1 === 0 ? betAmount : betAmount.toFixed(2)}
           </div>
           <button onClick={inc} style={{ width: 40, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.textWhite, fontSize: 26, fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
-          <button onClick={() => onChangeBet(betAmount * 2)} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: '#73f3b5', fontSize: 16, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
-          <button onClick={() => onChangeBet(Math.min(Math.max(1, Math.floor(userBalance)), 500))} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: '#73f3b5', fontSize: 16, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
+          <button onClick={() => onChangeBet(Math.min(MAX_BET, Math.max(MIN_BET, betAmount * 2)))} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: '#73f3b5', fontSize: 16, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>X2</button>
+          <button onClick={() => onChangeBet(Math.min(MAX_BET, Math.max(MIN_BET, Math.floor(userBalance))))} style={{ padding: '0 12px', height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: '#73f3b5', fontSize: 16, fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>MAX</button>
           <button onClick={onOpenSettings} style={{ width: 42, height: 42, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: '#73f3b5', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚙</button>
         </div>
 
