@@ -266,8 +266,8 @@ export default function KenoScreen() {
             <span style={{ fontSize: 13, fontWeight: 900, color: C.green, letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>KENO</span>
           </div>
           <div style={{ flex: 1, minWidth: 0, height: 21, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 7px', borderRadius: 999, background: 'rgba(15,30,27,0.92)', border: '1px solid rgba(30,224,104,0.18)' }}>
-            <span style={{ color: '#b9c7c0', fontFamily: 'monospace', fontSize: 9 }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
-            <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 9 }}>ID: {formatRoundId(roundId)}</span>
+            <span style={{ color: '#b9c7c0', fontFamily: 'monospace', fontSize: 8.4 }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
+            <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 8.4 }}>ID: {formatRoundId(roundId)}</span>
             <span style={{ width: 13, height: 13, borderRadius: '50%', background: '#2f9d72', color: '#07130f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>⌄</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
