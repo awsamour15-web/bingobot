@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownToLine, Eye, History, MessageCircle, Trophy, WalletCards } from 'lucide-react';
+import { Eye, Trophy } from 'lucide-react';
 import { initAuth, getAgentJwt } from '../lib/auth';
 import { getProfile, checkKenoAccess, checkPlinkoAccess } from '../lib/api';
 
@@ -171,7 +171,7 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        minHeight: game.category === 'coming' ? 128 : 218,
+        minHeight: game.category === 'coming' ? 64 : 109,
         background: '#09201b',
         border: `1px solid ${isAvailable ? 'rgba(183,138,31,0.5)' : 'rgba(255,255,255,0.08)'}`,
         borderRadius: 17,
@@ -199,16 +199,16 @@ function GameCard({ game, kenoAllowed, plinkoAllowed }: { game: Game; kenoAllowe
           : '0 6px 16px rgba(0,0,0,0.25)';
       }}
     >
-      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 94 : 181, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 47 : 91, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 20%, rgba(255,210,70,0.24), transparent 42%), linear-gradient(145deg, transparent 35%, rgba(0,0,0,0.45))' }} />
         <div style={{ position: 'absolute', left: '50%', top: '13%', width: 92, height: 92, transform: 'translateX(-50%)', borderRadius: '50%', border: '2px solid rgba(255,232,133,0.5)', boxShadow: '0 0 28px rgba(255,214,70,0.35)', opacity: 0.75 }} />
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: 8 }}>
-          <div style={{ fontSize: game.category === 'coming' ? 34 : 58, filter: 'drop-shadow(0 8px 7px rgba(0,0,0,0.5))' }}>{poster.emoji}</div>
-          <div style={{ marginTop: 5, color: '#fff3bd', fontSize: poster.title.length > 11 ? 17 : 22, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '2px 3px 0 rgba(90,30,0,0.7)' }}>{poster.title}</div>
+          <div style={{ fontSize: game.category === 'coming' ? 17 : 29, filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>{poster.emoji}</div>
+          <div style={{ marginTop: 3, color: '#fff3bd', fontSize: poster.title.length > 11 ? 9 : 11, fontWeight: 1000, fontStyle: 'italic', lineHeight: 0.95, textTransform: 'uppercase', textShadow: '1px 2px 0 rgba(90,30,0,0.7)' }}>{poster.title}</div>
         </div>
         <div style={{ position: 'absolute', top: 9, right: 8, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? '#64748b' : isRestricted ? '#7c5a24' : '#ef5350', borderRadius: 8, padding: '4px 6px', letterSpacing: '0.06em' }}>{game.category === 'coming' ? 'SOON' : isRestricted ? 'LOCKED' : 'HOT'}</div>
       </div>
-      <div style={{ minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', background: '#092a20', color: game.category === 'coming' ? '#8aa49b' : '#f2c43d', fontSize: 10, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{poster.title}</div>
+      <div style={{ minHeight: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', background: '#092a20', color: game.category === 'coming' ? '#8aa49b' : '#f2c43d', fontSize: 7, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{poster.title}</div>
     </button>
   );
 }
@@ -301,11 +301,7 @@ export default function GamesLobbyScreen() {
         <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 9px', background: '#03130f', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 16, color: '#fff', cursor: 'pointer' }}><div style={{ textAlign: 'left', lineHeight: 1.25, fontSize: 8, fontWeight: 900, color: '#99a5a4' }}><div>MAIN <span style={{ color: '#e8af27', marginLeft: 4 }}>{mainBalance === null ? '—' : `${mainBalance.toFixed(2)} ETB`}</span></div><div>PLAY <span style={{ color: '#20d67a', marginLeft: 5 }}>{playBalance === null ? '—' : `${playBalance.toFixed(2)} ETB`}</span></div></div><Eye size={16} color="#65706e" /></button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, padding: '38px 20px 0' }}>
-        {[['/wallet', <WalletCards size={31} />, 'DEPOSIT'], ['/wallet', <ArrowDownToLine size={31} />, 'WITHDRAW'], ['/history', <History size={31} />, 'HISTORY'], ['/wallet', <MessageCircle size={31} />, 'SUPPORT']].map(([route, icon, label]) => <button key={String(label)} onClick={() => navigate(String(route))} style={{ minWidth: 0, height: 105, borderRadius: 25, border: '1px solid rgba(58,119,96,0.25)', background: '#061a14', color: '#aab5b3', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer' }}><span style={{ color: '#dfa91e' }}>{icon}</span><span style={{ fontSize: 11, fontWeight: 900 }}>{label}</span></button>)}
-      </div>
-
-      <div style={{ padding: '54px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 23, fontWeight: 1000, fontStyle: 'italic' }}><Trophy size={25} color="#f0bc26" /> TOP SELECTION</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 22 }}>{availableGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
+      <div style={{ padding: '28px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 23, fontWeight: 1000, fontStyle: 'italic' }}><Trophy size={25} color="#f0bc26" /> TOP SELECTION</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 22 }}>{availableGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} /></div>)}</div></div>
 
       {/* ── Agent button ──────────────────────────────────────────── */}
       {isAgent && (
