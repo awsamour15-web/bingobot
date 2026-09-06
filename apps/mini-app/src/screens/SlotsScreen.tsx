@@ -591,7 +591,6 @@ function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function SlotsScreen() {
-  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [reels, setReels] = useState<SlotSymbol[][]>(INIT_SAFE);
   const [mul, setMul] = useState(1);
   const [spinning, setSpinning] = useState(false);
@@ -627,11 +626,6 @@ export default function SlotsScreen() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const clock = window.setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => window.clearInterval(clock);
-  }, []);
-  
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
 
   function startScramble() {
@@ -816,17 +810,12 @@ export default function SlotsScreen() {
             <div style={{ width: 18, height: 18, borderRadius: 5, background: "#f5c518", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#07150f", fontSize: 12, fontWeight: 900 }}>F</div>
             <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5", whiteSpace: "nowrap" }}>FIDEL BINGO</div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#edf2f5", fontFamily: "monospace", fontSize: 13, fontWeight: 700 }}>
-            <span>{currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(/:/g, " : ")}</span>
-          </div>
-          <button onClick={() => setShowRules(true)} aria-label="Open game rules" style={{
+          <button onClick={() => navigate('/')} aria-label="Go home" style={{
             position: "absolute", top: 10, right: 10, zIndex: 5,
             width: 54, height: 54, borderRadius: 999, background: "rgba(9,20,19,0.72)", border: "1px solid rgba(255,255,255,0.18)",
-            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#f6f9f8", fontSize: 28,
           }}>
-            <div style={{ width: 30, height: 22, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              {[0,1,2].map(i => <div key={i} style={{ height: 2, borderRadius: 999, background: "#f6f9f8" }} />)}
-            </div>
+            <span aria-hidden="true">⌂</span>
           </button>
         </div>
 
