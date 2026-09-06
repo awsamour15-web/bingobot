@@ -691,7 +691,7 @@ export default function SlotsScreen() {
 
     if (res.canGamble && !fromAuto) {
       setGambleId(res.spinId); setGambleWin(res.totalWin);
-      setGambleResult(null); setShowGamble(true);
+      setGambleResult(null);
       return false;
     }
     return true;
