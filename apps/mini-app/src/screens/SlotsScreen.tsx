@@ -791,13 +791,13 @@ export default function SlotsScreen() {
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100dvh" }}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "14px 16px 8px",
+          padding: "12px 16px 8px",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: "#ff5f7a", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)" }} />
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5" }}>SMARTSOFT</div>
-            <div style={{ fontSize: 10, color: "#8ea7a2", letterSpacing: "0.06em", textTransform: "uppercase" }}>GAMING</div>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5", whiteSpace: "nowrap" }}>SMARTSOFT</div>
+            <div style={{ fontSize: 10, color: "#8ea7a2", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>GAMING</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#edf2f5", fontFamily: "monospace", fontSize: 13, fontWeight: 700 }}>
             <span>23 : 52 : 20</span>
@@ -812,22 +812,22 @@ export default function SlotsScreen() {
           </button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 10 }}>
           <div style={{
-            fontSize: 56, fontWeight: 900, letterSpacing: "-0.08em",
-            lineHeight: 0.9,
+            fontSize: 58, fontWeight: 900, letterSpacing: "-0.09em",
+            lineHeight: 0.86,
             color: "#f7c747",
             textTransform: "uppercase",
-            background: "linear-gradient(180deg, #f9e18d 0%, #e4b234 25%, #f8d367 50%, #b46600 100%)",
+            background: "linear-gradient(180deg, #f9f0bb 0%, #efc252 18%, #f5d663 42%, #ba7f1f 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            filter: "drop-shadow(0 3px 0 rgba(90,63,8,0.75)) drop-shadow(0 12px 18px rgba(255,199,70,0.28))",
+            filter: "drop-shadow(0 3px 0 rgba(90,63,8,0.75)) drop-shadow(0 12px 18px rgba(255,199,70,0.22))",
           }}>
             MULTI HOT 5
           </div>
         </div>
 
-        <div style={{ padding: "0 14px", marginTop: 8 }}>
+        <div style={{ padding: "0 14px", marginTop: 10 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", color: "#ffc857",
@@ -840,8 +840,8 @@ export default function SlotsScreen() {
           <div style={{
             background: "linear-gradient(180deg, rgba(8,35,20,0.88), rgba(3,16,10,0.86))",
             border: "2px solid rgba(182,142,62,0.42)",
-            borderRadius: 16,
-            padding: "8px 8px 12px",
+            borderRadius: 18,
+            padding: "10px 10px 8px",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 28px rgba(0,0,0,0.28)",
           }}>
             <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
@@ -852,20 +852,18 @@ export default function SlotsScreen() {
             </div>
 
             <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-around",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
               marginTop: 10,
               borderTop: "1px solid rgba(255,255,255,0.10)",
               paddingTop: 8,
+              paddingLeft: 6,
+              paddingRight: 6,
             }}>
-              {[
-                { icon: "👜", label: "0.00", color: "#f7f1d8" },
-                { icon: "🏆", label: "0.00", color: "#f7f1d8" },
-                { icon: "◉", label: "0.00", color: "#f7f1d8" },
-              ].map(({ icon, label, color }, i) => (
+              {["👜", "🏆", "◉"].map((icon, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 86, justifyContent: "center" }}>
                   <span style={{ fontSize: 18 }}>{icon}</span>
                   <div style={{ textAlign: "left" }}>
-                    <div style={{ fontSize: 12, color, fontWeight: 900 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "#f7f1d8", fontWeight: 900 }}>0.00</div>
                     <div style={{ fontSize: 9, color: "#d0d5d9", letterSpacing: "0.08em", textTransform: "uppercase" }}>ETB</div>
                   </div>
                 </div>
@@ -880,9 +878,9 @@ export default function SlotsScreen() {
           </div>
         )}
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "18px 14px 18px" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "18px 16px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, marginBottom: 14 }}>
-            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={72}>
+            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={70}>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 20, lineHeight: 1, color: "#f0d57d" }}>↺</div>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#f4d781", marginTop: 2, letterSpacing: "0.05em" }}>{auto ? "ON" : "AUTO"}</div>
@@ -894,7 +892,7 @@ export default function SlotsScreen() {
               disabled={!canGamble}
               color={canGamble ? "linear-gradient(145deg,#0f683d,#0b4329)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
               border={canGamble ? "#f0d57d" : "#2b3a2d"}
-              size={72}
+              size={70}
             >
               <span style={{ fontSize: 18, fontWeight: 900, color: "#f0d57d" }}>2x</span>
             </HexBtn>
@@ -904,13 +902,13 @@ export default function SlotsScreen() {
               disabled={!totalWin || totalWin === 0}
               color={totalWin && totalWin > 0 ? "linear-gradient(145deg,#0d2e47,#0b1f2f)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
               border={totalWin && totalWin > 0 ? "#f0d57d" : "#2b3a2d"}
-              size={72}
+              size={70}
             >
               <div style={{ fontSize: 18, lineHeight: 1, color: "#f0d57d" }}>↓</div>
             </HexBtn>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0 }}>
+          <div style={{ display: "flex", alignItems: "stretch", justifyContent: "center", gap: 0 }}>
             <button
               onClick={() => setBetIdx(i => Math.max(0, i - 1))}
               disabled={spinning || betIdx === 0}
@@ -922,40 +920,26 @@ export default function SlotsScreen() {
                 padding: "12px 18px",
                 fontSize: 14, fontWeight: 800,
                 cursor: spinning || betIdx === 0 ? "default" : "pointer",
-                minWidth: 62,
+                minWidth: 52,
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>{BETS[betIdx - 1] ?? "—"}</div>
-              <div style={{ fontSize: 9, color: spinning || betIdx === 0 ? "#1c5036" : "#75cfa0", fontWeight: 700 }}>ETB</div>
+              <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>-</div>
             </button>
 
-            <button
-              onClick={() => { if (!lock.current && !auto) void doSpin(false); }}
-              disabled={spinning || auto}
-              style={{
-                width: 130, height: 110,
-                clipPath: "polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)",
-                background: spinning || auto ? "linear-gradient(145deg, #223822, #0d1f15)" : "linear-gradient(145deg, #ff5e7f, #d52f69)",
-                border: "3px solid #f6d77c",
-                cursor: spinning || auto ? "default" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                outline: "none", padding: 0,
-                position: "relative",
-                zIndex: 1,
-                boxShadow: spinning || auto ? "none" : "0 0 30px rgba(255,94,127,0.35)",
-              }}
-            >
-              <div style={{ textAlign: "center", position: "relative" }}>
-                <div style={{ fontSize: 18, fontWeight: 900, color: spinning || auto ? "#d5cfb5" : "#ffd770", letterSpacing: "0.02em" }}>
-                  {spinning ? "..." : auto ? "AUTO" : bet.toString()}
-                </div>
-                <div style={{ fontSize: 11, color: spinning || auto ? "#d5cfb5" : "#f4cf6c", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                  {spinning ? "" : "ETB"}
-                </div>
-                {!spinning && !auto && <div style={{ fontSize: 10, color: "#fee097", marginTop: 2 }}>▼</div>}
+            <div style={{
+              width: 198,
+              background: "linear-gradient(180deg, #ff5d82, #d62c68)",
+              border: "3px solid #f9d77b",
+              clipPath: "polygon(50% 0%, 100% 32%, 82% 100%, 18% 100%, 0% 32%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 24px rgba(255,99,143,0.32)",
+            }}>
+              <div style={{ textAlign: "center", color: "#fff9d6" }}>
+                <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em" }}>{bet.toFixed(2)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>ETB</div>
               </div>
-            </button>
+            </div>
 
             <button
               onClick={() => setBetIdx(i => Math.min(BETS.length - 1, i + 1))}
@@ -968,12 +952,11 @@ export default function SlotsScreen() {
                 padding: "12px 18px",
                 fontSize: 14, fontWeight: 800,
                 cursor: spinning || betIdx === BETS.length - 1 ? "default" : "pointer",
-                minWidth: 62,
+                minWidth: 52,
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>{BETS[betIdx + 1] ?? "—"}</div>
-              <div style={{ fontSize: 9, color: spinning || betIdx === BETS.length - 1 ? "#1c5036" : "#75cfa0", fontWeight: 700 }}>ETB</div>
+              <div style={{ fontSize: 12, color: "inherit", marginBottom: 2 }}>+</div>
             </button>
           </div>
         </div>
