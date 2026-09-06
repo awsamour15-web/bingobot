@@ -230,6 +230,8 @@ export default function GamesLobbyScreen() {
   const navigate = useNavigate();
   const [isAgent, setIsAgent] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
+  const [mainBalance, setMainBalance] = useState<number | null>(null);
+  const [playBalance, setPlayBalance] = useState<number | null>(null);
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
 
@@ -246,6 +248,8 @@ export default function GamesLobbyScreen() {
         if (!cancelled) {
           setIsAgent(!!getAgentJwt());
           setIsSuspended(profile.is_suspended);
+          setMainBalance(profile.mainWallet.balance);
+          setPlayBalance(profile.playWallet.balance);
           setKenoAllowed(kenoAccess.allowed);
           setPlinkoAllowed(plinkoAccess.allowed);
         }
@@ -303,9 +307,9 @@ export default function GamesLobbyScreen() {
         .lobby-card:focus-within { outline: 2px solid #f7c948; outline-offset: 3px; }
       `}</style>
 
-      <div style={{ height: 122, padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(217,166,44,0.22)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(145deg,#ffd52e,#eda900)', color: '#102018', display: 'grid', placeItems: 'center', fontSize: 35, fontWeight: 900, boxShadow: '0 0 24px rgba(246,190,28,0.2)' }}>ფ</div><div><div style={{ fontSize: 23, fontWeight: 900 }}>ፊደል</div><div style={{ fontSize: 13, color: '#eec13d', letterSpacing: '0.3em', fontWeight: 900 }}>GAMES</div></div></div>
-        <button onClick={() => navigate('/wallet')} style={{ width: 178, height: 67, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 13px', background: '#03130f', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 25, color: '#fff', cursor: 'pointer' }}><div style={{ textAlign: 'left', lineHeight: 1.8, fontSize: 11, fontWeight: 900, color: '#99a5a4' }}><div>WALLET <span style={{ color: '#e8af27', letterSpacing: 4 }}>••••</span></div><div>BONUS <span style={{ color: '#20d67a', letterSpacing: 4 }}>••••</span></div></div><Eye size={23} color="#65706e" /></button>
+      <div style={{ height: 61, padding: '10px 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(217,166,44,0.22)', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(145deg,#ffd52e,#eda900)', color: '#102018', display: 'grid', placeItems: 'center', fontSize: 18, fontWeight: 900, boxShadow: '0 0 14px rgba(246,190,28,0.2)' }}>ფ</div><div><div style={{ fontSize: 13, fontWeight: 900, lineHeight: 1 }}>ፊደል</div><div style={{ fontSize: 8, color: '#eec13d', letterSpacing: '0.25em', fontWeight: 900, marginTop: 2 }}>GAMES</div></div></div>
+        <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 9px', background: '#03130f', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 16, color: '#fff', cursor: 'pointer' }}><div style={{ textAlign: 'left', lineHeight: 1.25, fontSize: 8, fontWeight: 900, color: '#99a5a4' }}><div>MAIN <span style={{ color: '#e8af27', marginLeft: 4 }}>{mainBalance === null ? '—' : `${mainBalance.toFixed(2)} ETB`}</span></div><div>PLAY <span style={{ color: '#20d67a', marginLeft: 5 }}>{playBalance === null ? '—' : `${playBalance.toFixed(2)} ETB`}</span></div></div><Eye size={16} color="#65706e" /></button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, padding: '38px 20px 0' }}>
