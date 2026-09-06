@@ -135,12 +135,12 @@ export function KenoBettingStage({
                 onClick={() => onToggleNumber(num)}
                 style={{
                   position: 'relative',
-                  height: 34,
+                  height: 32,
                   borderRadius: 6,
                   border: `1px solid ${isSel ? C.cellPickedBorder : C.cellBorder}`,
                   background: isSel ? C.cellPicked : C.cell,
                   color: isSel ? '#fff' : '#8a9ab0',
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
