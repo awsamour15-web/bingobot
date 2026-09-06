@@ -182,40 +182,21 @@ export function KenoDrawArena({ drawnNumbers, initialDrawnNumbers, currentBall, 
       {/* Centre stage */}
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 0 }}>
 
-        {/* Ripple — only during pop */}
-        <AnimatePresence>
-          {centrePhase === 'pop' && centreNum !== null && (
-            <motion.div
-              key={`ripple-${centreNum}`}
-              initial={{ scale: 0.4, opacity: 0.6 }}
-              animate={{ scale: 3.0, opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.7, ease: [0.0, 0.4, 0.6, 1.0] }}
-              style={{
-                position: 'absolute',
-                width: 55, height: 55, borderRadius: '50%',
-                border: `1.15px solid ${isHitCentre ? 'rgba(34,197,94,0.55)' : 'rgba(50,160,240,0.45)'}`,
-                pointerEvents: 'none',
-              }}
-            />
-          )}
-        </AnimatePresence>
-
         {/* Centre ball */}
         <AnimatePresence>
           {showCentre && (
             <motion.div
               key={`ball-centre-${centreNum}`}
               layoutId={`keno-ball-${centreNum}`}
-              initial={{ scale: 0.05, opacity: 0 }}
+              initial={{ scale: 0.8, opacity: 0 }}
               animate={centrePhase === 'pop'
                 ? { scale: 1, opacity: 1 }
-                : { scale: 0.35, opacity: 0.15, y: 52 }
+                : { scale: 0.75, opacity: 0, y: 52 }
               }
               exit={{ scale: 0, opacity: 0 }}
               transition={centrePhase === 'pop'
-                ? { type: 'spring', stiffness: 320, damping: 18, mass: 0.8 }
-                : { duration: SHRINK_MS / 1000, ease: 'easeIn' }
+                ? { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+                : { duration: SHRINK_MS / 1000, ease: [0.4, 0, 0.2, 1] }
               }
               style={{
                 width: 60, height: 60, borderRadius: '50%',
@@ -277,9 +258,9 @@ function TrayRow({ balls, pickedSet }: { balls: number[]; pickedSet: Set<number>
           <motion.div
             key={`tray-${num}`}
             layoutId={`keno-ball-${num}`}
-            initial={{ scale: 0.35, opacity: 0.15 }}
+            initial={{ scale: 0.75, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 25, mass: 0.65 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             style={{
               height: 25, borderRadius: '50%',
               background: bg(isHit),
