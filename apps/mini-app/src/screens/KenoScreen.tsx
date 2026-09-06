@@ -242,7 +242,6 @@ export default function KenoScreen() {
       <div style={{ flexShrink: 0, background: C.topbar, borderBottom: `1px solid ${C.border}`, zIndex: 40 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 8px 5px', gap: 8 }}>
           <button onClick={() => navigate('/')} aria-label="Back to games" title="Back to games" style={{ width: 32, height: 30, borderRadius: 999, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: C.textWhite, fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
-          <div style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.35)', color: '#dce5eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>K</div>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 116, height: 25, padding: '0 6px', borderRadius: 5, background: '#070b0e', border: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#168fbd', color: '#f5d749', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>Br</span>
             <span style={{ color: '#e6edf2', fontSize: 9, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
