@@ -132,10 +132,10 @@ export default function GameScreen() {
   }, [updateCount]);
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 90% 0%, rgba(72,111,190,0.18), transparent 28%), radial-gradient(circle at -10% 36%, rgba(44,188,157,0.12), transparent 30%), linear-gradient(180deg, #0a111d 0%, #060b13 54%, #03060b 100%)', color: '#f7f8f5' }}>
+    <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 100% 0%, rgba(209,151,48,0.2), transparent 28%), radial-gradient(circle at 0% 28%, rgba(18,117,83,0.18), transparent 32%), linear-gradient(180deg, #10140f 0%, #080d0a 54%, #040706 100%)', color: '#f7f8f5' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: 'rgba(8,14,25,0.88)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(134,165,226,0.16)', padding: '12px 18px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)' }}>
+      <div style={{ background: 'rgba(14,20,14,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(239,195,81,0.18)', padding: '12px 18px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
@@ -147,24 +147,24 @@ export default function GameScreen() {
             }}>FB</div>
             <div>
               <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 0.2, color: '#f1f5f9' }}>Fidel Bingo</div>
-              <div style={{ fontSize: 10, color: '#6ed4bd', marginTop: 2, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 800 }}>Live rooms</div>
+              <div style={{ fontSize: 10, color: '#d9b950', marginTop: 2, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 800 }}>Bingo night</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={() => navigate('/')}
               style={{
-                background: 'rgba(99,212,186,0.08)', border: '1px solid rgba(99,212,186,0.2)',
+                background: 'rgba(239,195,81,0.08)', border: '1px solid rgba(239,195,81,0.2)',
                 borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#9deed1', fontSize: 18,
+                cursor: 'pointer', color: '#f3d36c', fontSize: 18,
               }}
               aria-label="Home"
             >
               🏠
             </button>
             <div style={{
-              background: 'rgba(99,212,186,0.1)', border: '1px solid rgba(99,212,186,0.25)',
-              borderRadius: 9, padding: '6px 10px', fontSize: 10, color: '#8ae5d0', fontWeight: 800, letterSpacing: 0.8,
+              background: 'rgba(239,195,81,0.1)', border: '1px solid rgba(239,195,81,0.25)',
+              borderRadius: 9, padding: '6px 10px', fontSize: 10, color: '#f3d36c', fontWeight: 800, letterSpacing: 0.8,
             }}>
               LIVE
             </div>
@@ -173,16 +173,16 @@ export default function GameScreen() {
       </div>
 
       {/* ── Hero ── */}
-      <div style={{ position: 'relative', overflow: 'hidden', padding: '28px 18px 26px', background: 'linear-gradient(135deg, rgba(18,51,47,0.86), rgba(11,25,43,0.94))', borderBottom: '1px solid rgba(99,212,186,0.16)' }}>
-        <div style={{ position: 'absolute', right: 22, top: 18, width: 94, height: 94, borderRadius: '50%', border: '1px solid rgba(243,207,100,0.32)', boxShadow: '0 0 32px rgba(99,212,186,0.14)' }} />
-        <div style={{ position: 'relative', zIndex: 1, fontSize: 11, color: '#72dfc4', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 9, fontWeight: 800 }}>
+      <div style={{ position: 'relative', overflow: 'hidden', padding: '26px 18px 24px', background: 'linear-gradient(135deg, rgba(23,57,41,0.9), rgba(31,30,15,0.94))', borderBottom: '1px solid rgba(239,195,81,0.16)' }}>
+        <div style={{ position: 'absolute', right: 20, top: 18, width: 92, height: 92, borderRadius: '50%', border: '1px solid rgba(239,195,81,0.32)', boxShadow: '0 0 32px rgba(239,195,81,0.14)' }} />
+        <div style={{ position: 'relative', zIndex: 1, fontSize: 11, color: '#71d4a8', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 9, fontWeight: 800 }}>
           Live bingo rooms
         </div>
         <div style={{ position: 'relative', zIndex: 1, fontSize: 30, fontWeight: 900, lineHeight: 1.12, color: '#f8fafc' }}>
-          Choose your <span style={{ color: '#f3cf64' }}>stake</span>
+          Choose your <span style={{ color: '#f3cf64' }}>room</span>
         </div>
-        <div style={{ position: 'relative', zIndex: 1, fontSize: 13, color: '#b5cfc9', marginTop: 9 }}>Pick a room, claim your cartela, and play live.</div>
-        <div style={{ position: 'relative', zIndex: 1, display: 'inline-flex', marginTop: 16, padding: '6px 9px', borderRadius: 8, background: 'rgba(243,207,100,0.12)', border: '1px solid rgba(243,207,100,0.2)', color: '#f3cf64', fontSize: 10, fontWeight: 900, letterSpacing: 0.7 }}>JACKPOTS UP TO 40,000 BIRR</div>
+        <div style={{ position: 'relative', zIndex: 1, fontSize: 13, color: '#c7d4c9', marginTop: 9 }}>Pick your entry and join the next draw.</div>
+        <div style={{ position: 'relative', zIndex: 1, display: 'inline-flex', marginTop: 16, padding: '6px 9px', borderRadius: 8, background: 'rgba(239,195,81,0.12)', border: '1px solid rgba(239,195,81,0.2)', color: '#f3cf64', fontSize: 10, fontWeight: 900, letterSpacing: 0.7 }}>JACKPOTS UP TO 40,000 BIRR</div>
       </div>
 
       {/* ── Games list ── */}
