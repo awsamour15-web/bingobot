@@ -793,8 +793,9 @@ export default function SlotsScreen() {
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100dvh" }}>
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 16px 8px",
+          position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+          height: 78, boxSizing: "border-box", padding: "0 16px 15px",
+          background: "#030504",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -806,16 +807,17 @@ export default function SlotsScreen() {
             <span>23 : 52 : 20</span>
           </div>
           <button onClick={() => setShowRules(true)} style={{
-            width: 34, height: 34, borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)",
+            position: "absolute", top: 84, right: 8, zIndex: 5,
+            width: 68, height: 68, borderRadius: 999, background: "rgba(9,20,19,0.9)", border: "1px solid rgba(255,255,255,0.18)",
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
           }}>
-            <div style={{ width: 18, height: 14, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ width: 34, height: 25, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               {[0,1,2].map(i => <div key={i} style={{ height: 2, borderRadius: 999, background: "#f6f9f8" }} />)}
             </div>
           </button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 98 }}>
           <div style={{
             fontSize: 58, fontWeight: 900, letterSpacing: "-0.09em",
             lineHeight: 0.86,
