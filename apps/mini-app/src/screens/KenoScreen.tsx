@@ -31,6 +31,10 @@ function randomPick(count: number): number[] {
   return result.sort((a, b) => a - b);
 }
 
+function formatRoundId(id: string | null): string {
+  return id ? id.slice(-8).toUpperCase() : '--------';
+}
+
 const C = {
   bg: '#0a0f14',
   topbar: 'rgba(8,12,18,0.98)',
@@ -263,7 +267,7 @@ export default function KenoScreen() {
           </div>
           <div style={{ flex: 1, minWidth: 0, height: 21, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 7px', borderRadius: 999, background: 'rgba(15,30,27,0.92)', border: '1px solid rgba(30,224,104,0.18)' }}>
             <span style={{ color: '#b9c7c0', fontFamily: 'monospace', fontSize: 9 }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
-            <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 9 }}>ID: {roundId ? roundId.slice(-5).toUpperCase() : '-----'}</span>
+            <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 9 }}>ID: {formatRoundId(roundId)}</span>
             <span style={{ width: 13, height: 13, borderRadius: '50%', background: '#2f9d72', color: '#07130f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>⌄</span>
           </div>
           {phase === 'betting' && (
