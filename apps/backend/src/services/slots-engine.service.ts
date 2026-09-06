@@ -1,6 +1,17 @@
 // Slots Engine — Multi Hot 5 style
 // 3×3 grid, 5 fixed paylines, multiplier reel, X2 gamble feature
-// House edge controlled via houseEdgePct parameter (default 15%)
+// House edge controlled via houseEdgePct parameter (default 35%)
+//
+// GAME RULES:
+// - Players bet on a spin of 3 reels (3 rows each)
+// - Multiplier reel generates 1x–5x value
+// - 5 fixed paylines determine if symbols match for a win
+// - Symbol payouts: 77=8×, $=5×, Bell=3×, Fruit=1-2×
+// - Win = Bet × Symbol Multiplier × Multiplier Reel (applied per payline)
+// - Multiple paylines can win on a single spin (totals combined)
+// - House edge suppresses wins probabilistically to maintain RTP
+// - Maximum single spin win capped at 20× bet
+// - Gamble feature available post-win: guess RED/BLACK to double or lose
 
 import crypto from 'node:crypto';
 
@@ -11,6 +22,7 @@ export const SYMBOLS = ['cherry', 'watermelon', 'orange', 'lemon', 'bell', 'doub
 export type Symbol = typeof SYMBOLS[number];
 
 // Payout multipliers per symbol (3-of-a-kind on a payline, before reel multiplier)
+// These are applied as: bet × symbol_multiplier × multiplier_reel_value
 // Reduced to keep RTP reasonable even when wins land
 export const PAYOUTS: Record<Symbol, number> = {
   seven:         8,
@@ -56,6 +68,14 @@ const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 
 // ─── Paylines ─────────────────────────────────────────────────────────────────
 // 5 fixed paylines. Each payline is [col0_row, col1_row, col2_row]
 // Grid: col[0..2], row[0..2] (top=0, mid=1, bot=2)
+// 
+// RULE: A payline wins when ALL THREE symbols on that payline are identical.
+// Multiple paylines can win on one spin, and all winning paylines are paid out.
+// The multiplier reel value (1x–5x) applies to EACH payline individually.
+//
+// Example: If middle line (1,1,1) wins with Sevens and top line (0,0,0)
+// wins with Watermelons, both payouts are calculated independently,
+// each multiplied by the multiplier reel, then totaled.
 export const PAYLINES: [number, number, number][] = [
   [1, 1, 1], // line 1 — middle row
   [0, 0, 0], // line 2 — top row

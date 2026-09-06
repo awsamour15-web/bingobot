@@ -19,7 +19,7 @@ const C = {
   blue: 'rgba(100,180,255,0.9)',
 };
 
-const MIN_BET = 5;
+const MIN_BET = 4;
 const MAX_BET = 5000;
 
 interface Props {

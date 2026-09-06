@@ -57,7 +57,7 @@ export default function KenoScreen() {
   const [bets, setBets] = useState<BetFeedItem[]>([]);
   const [myBet, setMyBet] = useState<KenoState['myBet']>(null);
   const [balance, setBalance] = useState<number>(0);
-  const [showBalance, setShowBalance] = useState<boolean>(false);
+  const [showBalance, setShowBalance] = useState<boolean>(true);
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState<number>(10);
