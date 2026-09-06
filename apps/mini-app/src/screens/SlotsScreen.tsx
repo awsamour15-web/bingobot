@@ -6,7 +6,7 @@ import type { SlotSymbol, PaylineWin, SpinResponse } from "../lib/api";
 
 
 // SVG symbols rendered inline
-function SymbolSvg({ sym, size = 56 }: { sym: SlotSymbol; size?: number }) {
+function SymbolSvg({ sym, size = 56 }: { sym: SlotSymbol; size?: number | string }) {
   const s = size;
   if (sym === "seven") return (
     <svg width={s} height={s} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
@@ -167,13 +167,13 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
   const selected = Math.max(1, Math.min(5, value));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: 102, gap: 10, marginRight: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", width: "18%", minWidth: 72, gap: 4, marginRight: 4 }}>
       {preset.map((n) => {
         const active = n === 5 || (selected === 5 && n === 5) || (selected !== 5 && n === selected);
         return (
           <div key={n} style={{
-            height: 172,
-            borderRadius: 12,
+            height: "clamp(88px, 18vw, 126px)",
+            borderRadius: 7,
             background: active
               ? "linear-gradient(180deg, rgba(48,162,95,0.95), rgba(18,92,52,0.92))"
               : "linear-gradient(180deg, rgba(0,0,0,0.12), rgba(6,26,18,0.36))",
@@ -184,7 +184,7 @@ function MulReel({ value, spinning }: { value: number; spinning: boolean }) {
             display: "flex", alignItems: "center", justifyContent: "center",
             color: active ? "#ff7cc6" : "#f4d89a",
             fontFamily: "Arial Black, Impact, sans-serif",
-            fontSize: active ? 48 : 38,
+            fontSize: active ? "clamp(30px, 7vw, 46px)" : "clamp(25px, 6vw, 36px)",
             fontWeight: 900,
             letterSpacing: "-0.06em",
             transform: active ? "scale(1.02)" : "scale(1)",
@@ -210,7 +210,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
         const isWin = !spinning && winSet.has(key);
         return (
           <div key={row} style={{
-            height: 172,
+            height: "clamp(88px, 18vw, 126px)",
             display: "flex", alignItems: "center", justifyContent: "center",
             borderRadius: 8,
             background: isWin
@@ -232,7 +232,7 @@ function ReelCol({ symbols, spinning, winSet, colIdx }: {
               }}/>
             )}
             <div style={{ position: "relative", filter: isWin ? "drop-shadow(0 0 8px rgba(255,220,50,0.8))" : "none" }}>
-              <SymbolSvg sym={sym} size={104} />
+              <SymbolSvg sym={sym} size="clamp(58px, 16vw, 104px)" />
             </div>
           </div>
         );
@@ -733,7 +733,8 @@ export default function SlotsScreen() {
       display: "flex", flexDirection: "column",
       maxWidth: 631, margin: "0 auto",
       fontFamily: "system-ui, -apple-system, sans-serif",
-      overflow: "hidden",
+      overflowX: "hidden",
+      overflowY: "auto",
       position: "relative",
     }}>
       <div style={{
@@ -791,22 +792,11 @@ export default function SlotsScreen() {
         </div>
       )}
 
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100dvh" }}>
-        <div style={{
-          height: 90, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 28px 0 32px", boxSizing: "border-box", background: "#202b39", color: "#f4f6f8",
-        }}>
-          <button onClick={() => navigate("/")} aria-label="Close game" style={{ background: "none", border: "none", color: "#f4f6f8", fontSize: 42, fontWeight: 300, lineHeight: 1, padding: 0, cursor: "pointer" }}>×</button>
-          <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>Fidel bingo</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
-            <span style={{ width: 23, height: 23, borderRight: "4px solid #f4f6f8", borderBottom: "4px solid #f4f6f8", transform: "rotate(45deg) translateY(-5px)" }} />
-            <span style={{ fontSize: 38, lineHeight: 0.7, letterSpacing: "0.08em" }}>⋮</span>
-          </div>
-        </div>
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <div style={{
           position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
-          height: 90, boxSizing: "border-box", padding: "0 24px 25px",
-          background: "rgba(2,24,18,0.12)",
+          height: 78, boxSizing: "border-box", padding: "0 16px 18px",
+          background: "rgba(0,0,0,0.72)",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -817,9 +807,9 @@ export default function SlotsScreen() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#edf2f5", fontFamily: "monospace", fontSize: 13, fontWeight: 700 }}>
             <span>23 : 52 : 20</span>
           </div>
-          <button onClick={() => setShowRules(true)} style={{
-            position: "absolute", top: 20, right: 16, zIndex: 5,
-            width: 58, height: 58, borderRadius: 999, background: "rgba(9,20,19,0.72)", border: "1px solid rgba(255,255,255,0.18)",
+          <button onClick={() => setShowRules(true)} aria-label="Open game rules" style={{
+            position: "absolute", top: 10, right: 10, zIndex: 5,
+            width: 54, height: 54, borderRadius: 999, background: "rgba(9,20,19,0.72)", border: "1px solid rgba(255,255,255,0.18)",
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
           }}>
             <div style={{ width: 30, height: 22, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
@@ -828,9 +818,9 @@ export default function SlotsScreen() {
           </button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", paddingTop: 22 }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "20px 10px 0" }}>
           <div style={{
-            fontSize: 64, fontWeight: 900, letterSpacing: "-0.09em",
+            fontSize: "clamp(38px, 10vw, 64px)", fontWeight: 900, letterSpacing: "-0.09em",
             lineHeight: 0.86,
             color: "#f7c747",
             textTransform: "uppercase",
@@ -843,7 +833,7 @@ export default function SlotsScreen() {
           </div>
         </div>
 
-        <div style={{ padding: "0 14px", marginTop: 10 }}>
+        <div style={{ padding: "0 6px", marginTop: 8 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", color: "#ffc857",
@@ -857,7 +847,7 @@ export default function SlotsScreen() {
             background: "linear-gradient(180deg, rgba(8,35,20,0.88), rgba(3,16,10,0.86))",
             border: "2px solid rgba(182,142,62,0.42)",
             borderRadius: 18,
-            padding: "10px 10px 8px",
+            padding: "6px 5px 6px",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 28px rgba(0,0,0,0.28)",
           }}>
             <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
@@ -895,8 +885,8 @@ export default function SlotsScreen() {
         )}
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "18px 16px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28, marginBottom: 22 }}>
-            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={110}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "clamp(8px, 5vw, 28px)", marginBottom: 18 }}>
+            <HexBtn onClick={() => setAuto(a => !a)} disabled={spinning} color={auto ? "linear-gradient(145deg,#0c4d2b,#0d2017)" : "linear-gradient(145deg,#1f1f1f,#0e0e0e)"} border={auto ? "#f0d57d" : "#d7b45c"} size={92}>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 20, lineHeight: 1, color: "#f0d57d" }}>↺</div>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#f4d781", marginTop: 2, letterSpacing: "0.05em" }}>{auto ? "ON" : "AUTO"}</div>
@@ -908,7 +898,7 @@ export default function SlotsScreen() {
               disabled={!canGamble}
               color={canGamble ? "linear-gradient(145deg,#0f683d,#0b4329)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
               border={canGamble ? "#f0d57d" : "#2b3a2d"}
-              size={110}
+              size={92}
             >
               <span style={{ fontSize: 18, fontWeight: 900, color: "#f0d57d" }}>2x</span>
             </HexBtn>
@@ -918,7 +908,7 @@ export default function SlotsScreen() {
               disabled={!totalWin || totalWin === 0}
               color={totalWin && totalWin > 0 ? "linear-gradient(145deg,#0d2e47,#0b1f2f)" : "linear-gradient(145deg,#1b2a1d,#0d180f)"}
               border={totalWin && totalWin > 0 ? "#f0d57d" : "#2b3a2d"}
-              size={110}
+              size={92}
             >
               <div style={{ fontSize: 18, lineHeight: 1, color: "#f0d57d" }}>↓</div>
             </HexBtn>
@@ -944,17 +934,28 @@ export default function SlotsScreen() {
             </button>
 
             <div style={{
-              width: 330, height: 78,
+              width: "clamp(150px, 46vw, 330px)", height: 78,
               background: "linear-gradient(180deg, #ff5d82, #d62c68)",
               border: "3px solid #f9d77b",
               clipPath: "polygon(50% 0%, 100% 32%, 82% 100%, 18% 100%, 0% 32%)",
               display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: "0 0 24px rgba(255,99,143,0.32)",
+              cursor: spinning ? "default" : "pointer",
+              userSelect: "none",
             }}>
-              <div style={{ textAlign: "center", color: "#fff9d6" }}>
+              <button
+                onClick={() => void doSpin()}
+                disabled={spinning}
+                aria-label="Spin"
+                style={{
+                  width: "100%", height: "100%", border: 0, background: "transparent",
+                  color: "#fff9d6", cursor: spinning ? "default" : "pointer", padding: 0,
+                }}
+              >
                 <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.04em" }}>{bet.toFixed(2)}</div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>ETB</div>
-              </div>
+                <div style={{ fontSize: 22, lineHeight: 0.7, marginTop: 6, color: "#ffcc2f" }}>⌄</div>
+              </button>
             </div>
 
             <button
