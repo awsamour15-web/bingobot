@@ -371,8 +371,9 @@ function BulkBonusPanel() {
 // Active Bonuses panel — view and manage all active bonuses with CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
+function ActiveBonusesPanel({ onCreateNew, onNavigateToDeposit }: { onCreateNew: () => void; onNavigateToDeposit: () => void }) {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [depositBonus, setDepositBonus] = useState<{ pct: number; wallet: string; start?: string; end?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -385,8 +386,20 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
   async function loadBonuses() {
     setLoading(true); setError(null);
     try {
-      const all = await listPromotions();
+      const [all, configs] = await Promise.all([listPromotions(), getConfig()]);
       setPromotions(all.filter(p => p.bonus_amount && Number(p.bonus_amount) > 0));
+      const cfgMap = Object.fromEntries(configs.map(c => [c.key, c.value]));
+      const pct = parseFloat(cfgMap['deposit_bonus_pct'] ?? '0');
+      if (pct > 0) {
+        setDepositBonus({
+          pct,
+          wallet: cfgMap['deposit_bonus_wallet'] ?? 'play',
+          ...(cfgMap['deposit_bonus_start'] && { start: cfgMap['deposit_bonus_start'] }),
+          ...(cfgMap['deposit_bonus_end'] && { end: cfgMap['deposit_bonus_end'] }),
+        });
+      } else {
+        setDepositBonus(null);
+      }
     } catch (err) { setError((err as Error).message); }
     finally { setLoading(false); }
   }
@@ -436,7 +449,8 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
     finally { setDeleting(null); }
   }
 
-  const activeCount = promotions.filter(p => p.status === 'active').length;
+  const activeCount = promotions.filter(p => p.status === 'active').length + (depositBonus ? 1 : 0);
+  const totalCount = promotions.length + (depositBonus ? 1 : 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -446,7 +460,7 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
       <Card>
         <CardHeader
           title="Bonus Promotions"
-          subtitle={`${activeCount} active · ${promotions.length - activeCount} inactive`}
+          subtitle={`${activeCount} active · ${totalCount - activeCount} inactive`}
           action={
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn size="sm" variant="outline" onClick={() => void loadBonuses()}>↻ Refresh</Btn>
@@ -460,7 +474,7 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
             <thead><tr><Th>Title</Th><Th>Amount</Th><Th>Wallet</Th><Th>Status</Th><Th>Actions</Th></tr></thead>
             <tbody><TrLoading cols={5} /></tbody>
           </Table>
-        ) : promotions.length === 0 ? (
+        ) : promotions.length === 0 && !depositBonus ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '28px 0' }}>
             <div style={{ fontSize: 36 }}>🎁</div>
             <div style={{ color: C.muted, fontSize: 14 }}>No bonus promotions yet.</div>
@@ -566,6 +580,26 @@ function ActiveBonusesPanel({ onCreateNew }: { onCreateNew: () => void }) {
                   </tr>
                 );
               })}
+              {depositBonus && (
+                <tr>
+                  <Td>
+                    <div style={{ fontWeight: 600 }}>💰 Deposit Bonus</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>
+                      Auto-applied on deposit
+                      {depositBonus.start && ` · from ${new Date(depositBonus.start).toLocaleDateString()}`}
+                      {depositBonus.end && ` · until ${new Date(depositBonus.end).toLocaleDateString()}`}
+                    </div>
+                  </Td>
+                  <Td><strong>{depositBonus.pct}%</strong></Td>
+                  <Td><Badge variant="neutral">{depositBonus.wallet}</Badge></Td>
+                  <Td><Badge variant="success">active</Badge></Td>
+                  <Td>
+                    <Btn size="sm" variant="outline" onClick={onNavigateToDeposit}>
+                      Configure
+                    </Btn>
+                  </Td>
+                </tr>
+              )}
             </tbody>
           </Table>
         )}
@@ -983,7 +1017,7 @@ export function BonusPage() {
 
       {/* Tab Content */}
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
-        {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} /> : 
+        {tab === 'active' ? <ActiveBonusesPanel onCreateNew={() => setTab('bulk')} onNavigateToDeposit={() => setTab('deposit')} /> : 
          tab === 'bulk' ? <BulkBonusPanel /> : 
          tab === 'deposit' ? <DepositBonusPanel /> :
          <CouponPanel />}
