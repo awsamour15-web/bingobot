@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { spinRoyalDrop, getRoyalDropHistory, getProfile } from '../lib/api';
+import { spinRoyalDrop, getRoyalDropHistory, getProfile, checkRoyalDropAccess } from '../lib/api';
 import type {
   RoyalDropSpinResponse, SpinOutcome, CrateCell, ReelSymbol,
   RoyalDropHistoryEntry, ChestResult,
@@ -276,6 +276,15 @@ export default function RoyalDropScreen() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  // ── access ─────────────────────────────────────────────────────────────────
+  const [access, setAccess] = useState<'loading' | 'allowed' | 'denied'>('loading');
+
+  useEffect(() => {
+    checkRoyalDropAccess()
+      .then(r => setAccess(r.allowed ? 'allowed' : 'denied'))
+      .catch(() => setAccess('denied'));
+  }, []);
+
   // Result state
   const [result, setResult] = useState<RoyalDropSpinResponse | null>(null);
   const [activeSpin, setActiveSpin] = useState<SpinOutcome | null>(null);
@@ -291,10 +300,11 @@ export default function RoyalDropScreen() {
 
   // ── balance ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (access !== 'allowed') return;
     getProfile()
       .then(p => setBalance((p.playWallet?.balance ?? 0) + (p.mainWallet?.balance ?? 0)))
       .catch(() => {});
-  }, []);
+  }, [access]);
 
   // ── history on tab switch ──────────────────────────────────────────────────
   useEffect(() => {
@@ -399,6 +409,32 @@ export default function RoyalDropScreen() {
   }, [betAmount, phase, animateSpin, showToast]);
 
   const canSpin = phase === 'idle' || phase === 'result';
+
+  // ── Access guard ───────────────────────────────────────────────────────────
+  if (access === 'loading') {
+    return <div style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#1a2a4a 0%,#07101c 100%)' }} />;
+  }
+  if (access === 'denied') {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        background: 'linear-gradient(180deg,#1a2a4a 0%,#07101c 100%)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '0 24px', textAlign: 'center', gap: 16, color: '#f8fafc',
+      }}>
+        <div style={{ fontSize: 56 }}>🔒</div>
+        <div style={{ fontSize: 20, fontWeight: 900, color: '#f5c518' }}>Not Available Yet</div>
+        <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, maxWidth: 300 }}>
+          Royal Drop isn't available for your account yet. Check back soon.
+        </div>
+        <button onClick={() => navigate(-1)} style={{
+          marginTop: 8, padding: '12px 28px', borderRadius: 12, border: 'none',
+          background: 'rgba(255,255,255,0.08)', color: '#94a3b8',
+          fontSize: 14, fontWeight: 700, cursor: 'pointer',
+        }}>← Go Back</button>
+      </div>
+    );
+  }
 
   // ── Build display grid (initial state if no spin yet) ─────────────────────
   const currentGrid = displayGrid ?? buildEmptyGrid();
@@ -544,7 +580,7 @@ export default function RoyalDropScreen() {
                     <ChestBlock
                       key={col}
                       opened={!!opened}
-                      multiplier={opened?.multiplier}
+                      multiplier={opened?.multiplier ?? undefined}
                     />
                   );
                 })}
