@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import royalDropBg from '../assets/royal-drop-bg.png';
+import royalDropLogo from '../assets/logo.364655f8.png';
 import { spinRoyalDrop, getRoyalDropHistory, getProfile, checkRoyalDropAccess } from '../lib/api';
 import type {
   RoyalDropSpinResponse, SpinOutcome, CrateCell, ReelSymbol,
@@ -495,27 +496,24 @@ export default function RoyalDropScreen() {
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        minHeight: 60, boxSizing: 'border-box', padding: '0 16px', zIndex: 10, position: 'relative',
-        background: 'linear-gradient(180deg, rgba(3,40,25,0.95) 0%, rgba(2,20,15,0.95) 100%)', 
-        backdropFilter: 'blur(10px)',
-        borderBottom: '2px solid rgba(245,197,24,0.3)',
+        minHeight: 54, boxSizing: 'border-box', padding: '0 16px', zIndex: 10, position: 'relative',
+        background: '#0a0e1a', color: '#f8fafc',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 120 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg, #f5c518, #d4a017)', color: '#07150f', fontSize: 24, fontWeight: 900, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>♙</div>
-          <span style={{ fontSize: 18, fontWeight: 900, fontStyle: 'italic', color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 18, fontWeight: 900 }}>♙</div>
+          <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
         </div>
 
         <button onClick={() => navigate('/')} aria-label="Go home" style={{
-          minHeight: 36, padding: '0 24px', borderRadius: 20,
-          border: '1px solid rgba(245,197,24,0.3)', background: 'rgba(255,255,255,0.08)',
-          color: '#f5c518', fontSize: 14, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
-          transition: 'all 0.2s ease',
+          minHeight: 32, padding: '0 16px', borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)',
+          color: '#e2e8f0', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer',
         }}>⌂&nbsp; HOME</button>
 
         {/* Royal Drop logo style */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.85, transform: 'rotate(-4deg)' }}>
-          <span style={{ fontSize: 17, fontWeight: 900, color: '#fff0a6', letterSpacing: '-0.08em', textShadow: '0 2px 0 #8b5a1e, 0 0 10px rgba(251,191,36,0.45)' }}>ROYAL</span>
-          <span style={{ fontSize: 16, fontWeight: 900, color: '#fbbf24', letterSpacing: '-0.06em', textShadow: '0 2px 0 #8b5a1e, 0 0 10px rgba(251,191,36,0.45)' }}>DROP</span>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 120 }}>
+          <img src={royalDropLogo} alt="Royal Drop" style={{ height: 44, objectFit: 'contain' }} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 120, justifyContent: 'flex-end' }}>
