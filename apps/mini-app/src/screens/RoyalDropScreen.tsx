@@ -462,6 +462,16 @@ export default function RoyalDropScreen() {
       position: 'relative', overflow: 'hidden',
     }}>
       <style>{`
+        .rd-game-content { min-height: 0; }
+        .rd-cabinet-grid { height: clamp(190px, 31dvh, 360px); flex: 0 1 auto !important; }
+        .rd-controls { flex-shrink: 0; }
+        @media (max-width: 480px) {
+          .rd-cabinet-reel { width: 80% !important; margin-top: 6px !important; }
+          .rd-cabinet-grid { width: 80% !important; height: clamp(170px, 29dvh, 270px) !important; }
+          .rd-controls { padding-left: 8px !important; padding-right: 8px !important; }
+          .rd-bet-chip { padding-left: 6px !important; padding-right: 6px !important; }
+          .rd-action-row { gap: 6px !important; }
+        }
         @keyframes rdPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
         @keyframes rdSlideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
         @keyframes rdGlow { 0%,100%{box-shadow:0 0 8px rgba(251,191,36,0.4)} 50%{box-shadow:0 0 22px rgba(251,191,36,0.9)} }
@@ -524,10 +534,10 @@ export default function RoyalDropScreen() {
           <HistoryTab history={history} />
         </div>
       ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+        <div className="rd-game-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
-          <div style={{
+          <div className="rd-cabinet-reel" style={{
             width: '80%', maxWidth: 520, alignSelf: 'center', margin: '8px auto 0',
             background: 'rgba(235,220,180,0.92)',
             border: '2px solid rgba(200,170,100,0.8)',
@@ -574,7 +584,7 @@ export default function RoyalDropScreen() {
 
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
           <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{
+            <div className="rd-cabinet-grid" style={{
               width: '80%', maxWidth: 520, height: '50%', minHeight: 0, aspectRatio: 'auto',
               background: 'linear-gradient(180deg,rgba(29,46,72,0.72),rgba(9,18,31,0.72))',
               border: '2px solid rgba(217,179,102,0.45)',
@@ -651,7 +661,7 @@ export default function RoyalDropScreen() {
           )}
 
           {/* ── Bottom controls bar ──────────────────────────────────────────── */}
-          <div style={{
+          <div className="rd-controls" style={{
             background: 'rgba(10,18,35,0.97)',
             borderTop: '1px solid rgba(255,255,255,0.08)',
             padding: '5px 10px 6px',
@@ -666,7 +676,7 @@ export default function RoyalDropScreen() {
             {/* Bet chips row */}
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}>
               {BET_OPTIONS.map((b, i) => (
-                <button key={b} onClick={() => setBetIdx(i)} disabled={phase === 'spinning'} style={{
+                <button className="rd-bet-chip" key={b} onClick={() => setBetIdx(i)} disabled={phase === 'spinning'} style={{
                   flexShrink: 0, padding: '4px 8px', borderRadius: 6,
                   border: `1px solid ${betIdx === i ? 'rgba(245,197,24,0.7)' : 'rgba(255,255,255,0.1)'}`,
                   background: betIdx === i ? 'rgba(245,197,24,0.18)' : 'rgba(255,255,255,0.05)',
@@ -677,7 +687,7 @@ export default function RoyalDropScreen() {
             </div>
 
             {/* Action row: BET | SPIN | BALANCE */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="rd-action-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* Left: BET */}
               <div style={{
                 flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 10,
