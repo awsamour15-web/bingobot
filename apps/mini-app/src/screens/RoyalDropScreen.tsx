@@ -580,7 +580,7 @@ export default function RoyalDropScreen() {
                     <ChestBlock
                       key={col}
                       opened={!!opened}
-                      multiplier={opened?.multiplier ?? undefined}
+                      {...(opened?.multiplier !== undefined && { multiplier: opened.multiplier })}
                     />
                   );
                 })}
