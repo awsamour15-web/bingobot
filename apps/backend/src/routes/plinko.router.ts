@@ -54,19 +54,19 @@ type RiskLevel = 'low' | 'medium' | 'high';
 
 const MULTIPLIERS: Record<number, Record<RiskLevel, number[]>> = {
   8: {
-    low:    [3.0, 1.5, 1.0, 0.8, 0.5, 0.8, 1.0, 1.5, 3.0],
-    medium: [5.0, 2.0, 1.0, 0.6, 0.3, 0.6, 1.0, 2.0, 5.0],
-    high:   [10,  3.0, 1.2, 0.4, 0.2, 0.4, 1.2, 3.0, 10],
+    low:    [5.0, 2.0, 1.2, 0.8, 0.5, 0.8, 1.2, 2.0, 5.0],
+    medium: [10,  3.0, 1.2, 0.6, 0.3, 0.6, 1.2, 3.0, 10],
+    high:   [20,  5.0, 1.5, 0.4, 0.2, 0.4, 1.5, 5.0, 20],
   },
   12: {
-    low:    [4.0, 2.0, 1.2, 1.0, 0.8, 0.5, 0.3, 0.5, 0.8, 1.0, 1.2, 2.0, 4.0],
-    medium: [8.0, 4.0, 2.0, 1.5, 0.8, 0.4, 0.2, 0.4, 0.8, 1.5, 2.0, 4.0, 8.0],
-    high:   [25,  10,  4.0, 2.0, 0.8, 0.3, 0.2, 0.3, 0.8, 2.0, 4.0, 10,  25],
+    low:    [8.0, 3.0, 1.5, 1.0, 0.8, 0.5, 0.3, 0.5, 0.8, 1.0, 1.5, 3.0, 8.0],
+    medium: [15,  6.0, 2.5, 1.5, 0.8, 0.4, 0.2, 0.4, 0.8, 1.5, 2.5, 6.0, 15],
+    high:   [30,  12,  5.0, 2.0, 0.8, 0.3, 0.2, 0.3, 0.8, 2.0, 5.0, 12,  30],
   },
   16: {
-    low:    [5.0, 3.0, 1.5, 1.2, 1.0, 0.8, 0.5, 0.3, 0.3, 0.5, 0.8, 1.0, 1.2, 1.5, 3.0, 5.0],
-    medium: [12,  6.0, 3.0, 2.0, 1.5, 1.0, 0.8, 0.4, 0.4, 0.8, 1.0, 1.5, 2.0, 3.0, 6.0, 12],
-    high:   [50,  20,  10,  5.0, 3.0, 2.0, 0.5, 0.3, 0.3, 0.5, 2.0, 3.0, 5.0, 10,  20,  50],
+    low:    [10,  4.0, 2.0, 1.5, 1.0, 0.8, 0.5, 0.3, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 4.0, 10],
+    medium: [20,  8.0, 4.0, 2.0, 1.5, 1.0, 0.8, 0.4, 0.4, 0.8, 1.0, 1.5, 2.0, 4.0, 8.0, 20],
+    high:   [40,  15,  8.0, 4.0, 2.0, 1.0, 0.5, 0.3, 0.3, 0.5, 1.0, 2.0, 4.0, 8.0, 15,  40],
   },
 };
 
@@ -197,9 +197,9 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const multiplier = multiplierTable[slot]!;
   const payout = parseFloat((betAmount * multiplier).toFixed(2));
 
-  // Credit winnings (if any)
+  // Credit winnings (if any) — back to the same wallet used to bet
   if (payout > 0) {
-    await WalletService.credit(playerId, WalletType.main, payout, TxType.game_win, undefined, `Plinko win x${multiplier}`);
+    await WalletService.credit(playerId, walletToUse, payout, TxType.game_win, undefined, `Plinko win x${multiplier}`);
   }
 
   // Persist
@@ -227,6 +227,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
 
   res.json({
+    id: bet.id,
     path,
     slot,
     multiplier,

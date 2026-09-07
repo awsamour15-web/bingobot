@@ -83,19 +83,19 @@ const MAX_BET = 10_000;
 
 const MULTIPLIERS: Record<Rows, Record<Risk, number[]>> = {
   8: {
-    low:    [3.0, 1.5, 1.0, 0.8, 0.5, 0.8, 1.0, 1.5, 3.0],
-    medium: [5.0, 2.0, 1.0, 0.6, 0.3, 0.6, 1.0, 2.0, 5.0],
-    high:   [10,  3.0, 1.2, 0.4, 0.2, 0.4, 1.2, 3.0, 10],
+    low:    [5.0, 2.0, 1.2, 0.8, 0.5, 0.8, 1.2, 2.0, 5.0],
+    medium: [10,  3.0, 1.2, 0.6, 0.3, 0.6, 1.2, 3.0, 10],
+    high:   [20,  5.0, 1.5, 0.4, 0.2, 0.4, 1.5, 5.0, 20],
   },
   12: {
-    low:    [4.0, 2.0, 1.2, 1.0, 0.8, 0.5, 0.3, 0.5, 0.8, 1.0, 1.2, 2.0, 4.0],
-    medium: [8.0, 4.0, 2.0, 1.5, 0.8, 0.4, 0.2, 0.4, 0.8, 1.5, 2.0, 4.0, 8.0],
-    high:   [25,  10,  4.0, 2.0, 0.8, 0.3, 0.2, 0.3, 0.8, 2.0, 4.0, 10,  25],
+    low:    [8.0, 3.0, 1.5, 1.0, 0.8, 0.5, 0.3, 0.5, 0.8, 1.0, 1.5, 3.0, 8.0],
+    medium: [15,  6.0, 2.5, 1.5, 0.8, 0.4, 0.2, 0.4, 0.8, 1.5, 2.5, 6.0, 15],
+    high:   [30,  12,  5.0, 2.0, 0.8, 0.3, 0.2, 0.3, 0.8, 2.0, 5.0, 12,  30],
   },
   16: {
-    low:    [5.0, 3.0, 1.5, 1.2, 1.0, 0.8, 0.5, 0.3, 0.3, 0.5, 0.8, 1.0, 1.2, 1.5, 3.0, 5.0],
-    medium: [12,  6.0, 3.0, 2.0, 1.5, 1.0, 0.8, 0.4, 0.4, 0.8, 1.0, 1.5, 2.0, 3.0, 6.0, 12],
-    high:   [50,  20,  10,  5.0, 3.0, 2.0, 0.5, 0.3, 0.3, 0.5, 2.0, 3.0, 5.0, 10,  20,  50],
+    low:    [10,  4.0, 2.0, 1.5, 1.0, 0.8, 0.5, 0.3, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 4.0, 10],
+    medium: [20,  8.0, 4.0, 2.0, 1.5, 1.0, 0.8, 0.4, 0.4, 0.8, 1.0, 1.5, 2.0, 4.0, 8.0, 20],
+    high:   [40,  15,  8.0, 4.0, 2.0, 1.0, 0.5, 0.3, 0.3, 0.5, 1.0, 2.0, 4.0, 8.0, 15,  40],
   },
 };
 
@@ -350,15 +350,20 @@ export default function PlinkoScreen() {
               const ov = minD-dist; ball.x += nx*ov; ball.y += ny*ov;
               const van = ball.vx*nx+ball.vy*ny;
               if (van < 0) {
-                // Path-guided steering: if we have a server path, steer based on it
-                let jitter = (Math.random()-0.5)*0.12;
-                if (ball.serverPath && peg.row !== undefined && peg.row !== ball.lastPegRow) {
+                // Strong path-guided steering: use serverPath to deterministically
+                // steer the ball row-by-row toward the correct destination slot.
+                // Each row the ball hits a peg, apply a strong lateral impulse
+                // matching the server-decided direction (0=left, 1=right).
+                let jitter = (Math.random()-0.5)*0.18;
+                if (ball.serverPath && peg.row !== undefined) {
                   const dir = ball.serverPath[peg.row]; // 0=left, 1=right
                   if (dir !== undefined) {
-                    // Bias jitter toward path direction: positive = right, negative = left
-                    jitter = dir === 1 ? 0.25 + Math.random()*0.1 : -0.25 - Math.random()*0.1;
+                    // Strong deterministic push: overrides random drift completely
+                    // magnitude 0.55 ensures ball reliably exits left or right of each peg
+                    const strength = 0.55 + Math.random()*0.08;
+                    jitter = dir === 1 ? strength : -strength;
+                    ball.lastPegRow = peg.row;
                   }
-                  ball.lastPegRow = peg.row;
                 }
                 const tx = -ny, ty = nx;
                 const imp = -(1+restitution)*van;
@@ -537,13 +542,13 @@ export default function PlinkoScreen() {
           : { color:'#10b981', glowColor:'rgba(16,185,129,0.8)' };
         const w = dims.w;
 
-        // Spawn at pyramid apex (center top) — path steering guides it to correct slot
-        const spawnX = w / 2 + (Math.random()-0.5)*8;
+        // Spawn at aim position — path steering from server guides ball to correct slot
+        const spawnX = (aimNormRef.current * 0.8 + 0.1) * w;
 
         ballsRef.current.push({
           id: result.id ?? `${Date.now()}-${i}`,
           x: spawnX, y: 28,
-          vx: (Math.random()-0.5)*8,
+          vx: (Math.random()-0.5)*4,
           vy: Math.random()*15+35,
           radius: 6.5, ...ballColors, betAmount: bet, risk, rows,
           trail: [], status: 'falling',
