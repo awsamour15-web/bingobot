@@ -722,3 +722,72 @@ export function getPlinkoHistory(): Promise<{
 export function redeemCoupon(code: string): Promise<{ success: boolean; amount: number; message: string }> {
   return apiRequest('POST', '/api/wallet/redeem-coupon', { code });
 }
+
+// ─── Royal Drop Game ──────────────────────────────────────────────────────────
+
+export type RocketColor = 'blue' | 'green' | 'purple' | 'red';
+export type CrateType = 'wooden' | 'sturdy' | 'reinforced' | 'metal' | 'stone' | 'royal';
+
+export interface ReelSymbol {
+  type: 'rocket' | 'bonus' | 'bomb';
+  color?: RocketColor;
+  damage: number;
+}
+
+export interface CrateCell {
+  type: CrateType;
+  hp: number;
+  maxHp: number;
+  reward: number;
+}
+
+export interface ChestResult {
+  column: number;
+  multiplier: number;
+}
+
+export interface SpinOutcome {
+  reels: ReelSymbol[][];
+  initialGrid: CrateCell[][];
+  finalGrid: CrateCell[][];
+  destroyedCrates: { col: number; row: number; reward: number }[];
+  openedChests: ChestResult[];
+  chestMultiplier: number;
+  crateRewards: number;
+  totalWin: number;
+  bonusTriggered: boolean;
+  scatterCount: number;
+  freeSpin: number;
+}
+
+export interface RoyalDropSpinResponse {
+  id: string;
+  betAmount: number;
+  baseSpins: SpinOutcome[];
+  bonusSpins: SpinOutcome[];
+  totalWin: number;
+  multiplier: number;
+  balance: number;
+}
+
+export interface RoyalDropHistoryEntry {
+  id: string;
+  betAmount: number;
+  payout: number | null;
+  multiplier: number;
+  bonusTriggered: boolean;
+  status: string;
+  createdAt: string;
+}
+
+export function checkRoyalDropAccess(): Promise<{ allowed: boolean }> {
+  return apiRequest<{ allowed: boolean }>('GET', '/api/royal-drop/access');
+}
+
+export function spinRoyalDrop(betAmount: number, walletType?: 'main' | 'play'): Promise<RoyalDropSpinResponse> {
+  return apiRequest<RoyalDropSpinResponse>('POST', '/api/royal-drop/spin', { betAmount, walletType });
+}
+
+export function getRoyalDropHistory(): Promise<RoyalDropHistoryEntry[]> {
+  return apiRequest<RoyalDropHistoryEntry[]>('GET', '/api/royal-drop/history');
+}

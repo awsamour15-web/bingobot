@@ -38,6 +38,7 @@ import crashRouter from './routes/crash.router.js';
 import slotsRouter from './routes/slots.router.js';
 import kenoRouter from './routes/keno.router.js';
 import plinkoRouter from './routes/plinko.router.js';
+import royalDropRouter from './routes/royal-drop.router.js';
 import helmet from 'helmet';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
@@ -126,6 +127,7 @@ app.use('/api/crash', crashRouter);
 app.use('/api/slots', slotsRouter);
 app.use('/api/keno', kenoRouter);
 app.use('/api/plinko', plinkoRouter);
+app.use('/api/royal-drop', royalDropRouter);
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use('/api/admin/auth', adminAuthRouter);

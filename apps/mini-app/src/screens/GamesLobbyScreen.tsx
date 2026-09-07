@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Gift, TicketPercent, Trophy } from 'lucide-react';
 import { initAuth, getAgentJwt } from '../lib/auth';
-import { getProfile, checkKenoAccess, checkPlinkoAccess, redeemCoupon } from '../lib/api';
+import { getProfile, checkKenoAccess, checkPlinkoAccess, checkRoyalDropAccess, redeemCoupon } from '../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,6 +112,21 @@ const GAMES: Game[] = [
     bonusNote: '💳 Deposit required',
     bonusNoteColor: '#f59e0b',
     category: 'numbers',
+  },
+  {
+    id: 'royal-drop',
+    title: 'Royal Drop',
+    subtitle: 'Rockets destroy crates • Open chests to win',
+    emoji: '👑',
+    gradient: 'linear-gradient(135deg,#2a1a00 0%,#1a0e00 55%,#0d0800 100%)',
+    glowColor: 'rgba(245,197,24,0.35)',
+    route: '/royal-drop',
+    tag: 'NEW',
+    tagColor: '#f5c518',
+    available: true,
+    bonusNote: '💳 Deposit required',
+    bonusNoteColor: '#f59e0b',
+    category: 'slots',
   },
   {
     id: 'dice',
@@ -317,16 +332,18 @@ export default function GamesLobbyScreen() {
   const [couponMessage, setCouponMessage] = useState('');
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
+  const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         await initAuth();
-        const [profile, kenoAccess, plinkoAccess] = await Promise.all([
+        const [profile, kenoAccess, plinkoAccess, royalDropAccess] = await Promise.all([
           getProfile(),
           checkKenoAccess().catch(() => ({ allowed: false })),
           checkPlinkoAccess().catch(() => ({ allowed: false })),
+          checkRoyalDropAccess().catch(() => ({ allowed: false })),
         ]);
         if (!cancelled) {
           setIsAgent(!!getAgentJwt());
@@ -335,6 +352,7 @@ export default function GamesLobbyScreen() {
           setPlayBalance(profile.playWallet.balance);
           setKenoAllowed(kenoAccess.allowed);
           setPlinkoAllowed(plinkoAccess.allowed);
+          setRoyalDropAllowed(royalDropAccess.allowed);
         }
       } catch { /* ignore */ }
     }

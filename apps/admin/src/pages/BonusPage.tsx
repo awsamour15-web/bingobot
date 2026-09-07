@@ -6,6 +6,7 @@ import {
   createPromotion,
   updatePromotion, setPromotionStatus, deletePromotion,
   listCoupons, createCoupon, deleteCoupon,
+  getConfig, updateConfig,
 } from '../lib/api';
 import {
   C, Btn, Card, CardHeader, Field, PageHeader, StatCard,
@@ -589,19 +590,33 @@ function DepositBonusPanel() {
 
   useEffect(() => {
     setLoading(true);
-    // In a real implementation, you would call getConfig here
-    // For now, we'll show the form but note that these are server-side settings
-    setFeedback({ type: 'success', msg: 'Deposit bonus settings are stored in the backend database' });
-    setLoading(false);
+    getConfig()
+      .then(configs => {
+        const cfgMap = Object.fromEntries(configs.map(c => [c.key, c.value]));
+        setPct(cfgMap['deposit_bonus_pct'] ?? '0');
+        setWallet((cfgMap['deposit_bonus_wallet'] === 'main' ? 'main' : 'play') as 'main' | 'play');
+        // Convert ISO date strings to datetime-local format (strip seconds/ms)
+        const toLocalInput = (iso?: string) => iso ? iso.slice(0, 16) : '';
+        setStart(toLocalInput(cfgMap['deposit_bonus_start']));
+        setEnd(toLocalInput(cfgMap['deposit_bonus_end']));
+      })
+      .catch(() => setFeedback({ type: 'error', msg: 'Failed to load deposit bonus settings' }))
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (start && end && new Date(start) >= new Date(end)) {
+      setFeedback({ type: 'error', msg: 'End time must be after start time' });
+      return;
+    }
     setSaving(true); setFeedback(null);
     try {
-      // These settings would be saved to the backend config table
-      // deposit_bonus_pct, deposit_bonus_wallet, deposit_bonus_start, deposit_bonus_end
-      setFeedback({ type: 'success', msg: 'Settings would be saved to backend config (currently read-only for safety)' });
+      await updateConfig('deposit_bonus_pct', pct || '0');
+      await updateConfig('deposit_bonus_wallet', wallet);
+      await updateConfig('deposit_bonus_start', start ? new Date(start).toISOString() : '');
+      await updateConfig('deposit_bonus_end', end ? new Date(end).toISOString() : '');
+      setFeedback({ type: 'success', msg: 'Deposit bonus settings saved successfully' });
     } catch (err) {
       setFeedback({ type: 'error', msg: (err as Error).message });
     } finally { setSaving(false); }
@@ -610,8 +625,9 @@ function DepositBonusPanel() {
   async function handleDisable() {
     setSaving(true); setFeedback(null);
     try {
+      await updateConfig('deposit_bonus_pct', '0');
       setPct('0');
-      setFeedback({ type: 'success', msg: 'Deposit bonus would be disabled (currently read-only for safety)' });
+      setFeedback({ type: 'success', msg: 'Deposit bonus disabled' });
     } catch (err) {
       setFeedback({ type: 'error', msg: (err as Error).message });
     } finally { setSaving(false); }

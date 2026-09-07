@@ -56,7 +56,8 @@ export default function KenoScreen() {
   const [currentBall, setCurrentBall] = useState<number | null>(null);
   const [bets, setBets] = useState<BetFeedItem[]>([]);
   const [myBet, setMyBet] = useState<KenoState['myBet']>(null);
-  const [balance, setBalance] = useState<number>(0);
+  const [mainBalance, setMainBalance] = useState<number>(0);
+  const [playBalance, setPlayBalance] = useState<number>(0);
   const [showBalance, setShowBalance] = useState<boolean>(true);
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
@@ -94,7 +95,10 @@ export default function KenoScreen() {
   // ── balance ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (access !== 'allowed') return;
-    getProfile().then(p => setBalance((p.playWallet?.balance ?? p.mainWallet?.balance) ?? 0)).catch(() => {});
+    getProfile().then(p => {
+      setMainBalance(p.mainWallet?.balance ?? 0);
+      setPlayBalance(p.playWallet?.balance ?? 0);
+    }).catch(() => {});
   }, [access]);
 
   // ── sync state ─────────────────────────────────────────────────────────────
@@ -186,13 +190,17 @@ export default function KenoScreen() {
     if (isPlacingBet) return;
     if (selectedNumbers.length === 0) { showToast('Choose at least 1 number'); return; }
     const nums = selectedNumbers;
-    if (balance < betAmount) { showToast('Insufficient balance'); return; }
+    const totalBalance = playBalance + mainBalance;
+    if (totalBalance < betAmount) { showToast('Insufficient balance'); return; }
     setIsPlacingBet(true);
     try {
       await placeKenoBet(betAmount, nums);
       setSelectedNumbers([]);
       showToast(`✅ Bet placed: ${nums.length} spots · ${betAmount} ETB`);
-      getProfile().then(p => setBalance((p.playWallet?.balance ?? p.mainWallet?.balance) ?? 0)).catch(() => {});
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet?.balance ?? 0);
+        setPlayBalance(p.playWallet?.balance ?? 0);
+      }).catch(() => {});
       void syncState();
     } catch (err: any) { showToast(err?.message ?? 'Failed to place bet'); }
     finally { setIsPlacingBet(false); }
@@ -253,7 +261,7 @@ export default function KenoScreen() {
           <button onClick={() => navigate('/')} aria-label="Back to games" title="Back to games" style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(85,224,176,0.08)', border: `1px solid ${C.border}`, color: C.green, fontSize: 22, lineHeight: 1, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 116, height: 25, padding: '0 6px', borderRadius: 5, background: '#070b0e', border: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#168fbd', color: '#f5d749', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>Br</span>
-            <span style={{ color: '#e6edf2', fontSize: 9, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
+            <span style={{ color: '#e6edf2', fontSize: 9, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>{showBalance ? `${(mainBalance + playBalance).toFixed(2)} ETB` : '••••••'}</span>
             <button onClick={() => setShowBalance(value => !value)} aria-label={showBalance ? 'Hide balance' : 'Show balance'} title={showBalance ? 'Hide balance' : 'Show balance'} style={{ background: 'none', border: 'none', color: '#73818a', fontSize: 11, cursor: 'pointer', padding: 0 }}>◉</button>
             <span style={{ color: '#9ba9b2', fontSize: 11 }}>⌄</span>
           </div>
@@ -266,7 +274,7 @@ export default function KenoScreen() {
             <span style={{ fontSize: 13, fontWeight: 900, color: C.green, letterSpacing: '-0.08em', transform: 'skewX(-10deg)' }}>KENO</span>
           </div>
           <div style={{ flex: 1, minWidth: 0, height: 21, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 7px', borderRadius: 999, background: 'rgba(15,30,27,0.92)', border: '1px solid rgba(30,224,104,0.18)' }}>
-            <span style={{ color: '#b9c7c0', fontFamily: 'monospace', fontSize: 8.4 }}>{showBalance ? `${balance.toFixed(2)} ETB` : '••••••'}</span>
+            <span style={{ color: '#b9c7c0', fontFamily: 'monospace', fontSize: 8.4 }}>{showBalance ? `${(mainBalance + playBalance).toFixed(2)} ETB` : '••••••'}</span>
             <span style={{ color: '#d4dfda', fontFamily: 'monospace', fontSize: 8.4 }}>ID: {formatRoundId(roundId)}</span>
             <span style={{ width: 13, height: 13, borderRadius: '50%', background: '#2f9d72', color: '#07130f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900 }}>⌄</span>
           </div>
@@ -310,7 +318,7 @@ export default function KenoScreen() {
                   onPlaceBet={handlePlaceBet}
                   onOpenSettings={() => setQuickPickOpen(true)}
                   onOpenInfo={() => setInfoOpen(true)}
-                  userBalance={balance}
+                  userBalance={mainBalance + playBalance}
                   isPlacingBet={isPlacingBet}
                 />
               </motion.div>

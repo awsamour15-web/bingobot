@@ -183,6 +183,12 @@ export function spin(betAmount: number, houseEdgePct = 35): SpinResult {
   return { reels, multiplierReel, paylineWins, totalWin, betAmount };
 }
 
+// GAMBLE FEATURE RULE:
+// After a winning spin, players can choose to gamble their winnings.
+// Gamble mechanics: player guesses RED or BLACK, a random card is revealed.
+// - Correct guess: winnings are DOUBLED
+// - Incorrect guess: winnings are LOST (0 payout)
+// This is purely optional and only available on wins > 0.
 export function gamble(currentWin: number, guess: 'red' | 'black'): GambleResult {
   const suits: Array<'red' | 'black'> = ['red', 'black'];
   const actual = suits[randInt(2)]!;

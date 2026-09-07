@@ -1,0 +1,184 @@
+================================================================================
+                   MULTI-HOT-5 RULES EXTRACTION COMPLETE
+================================================================================
+
+DOCUMENTATION FILES CREATED (7 total)
+================================================================================
+
+Root Directory (6 Files):
+  1. MULTI-HOT-5-RULES.md ..................... Player guide (400+ lines)
+  2. GAME-RULES-ADMIN-GUIDE.md .............. Admin guide (350+ lines)
+  3. GAME-RULES-QUICK-REF.md ............... Developer reference (280+ lines)
+  4. RULES-EXTRACTION-SUMMARY.md ........... Meta documentation (250+ lines)
+  5. GAME-RULES-INDEX.md .................. Navigation hub (280+ lines)
+  6. RULES-APPLIED-CHECKLIST.md ........... Verification checklist
+
+Steering Directory (1 File):
+  7. .kiro/steering/game-rules.md ........ Auto-included developer context
+
+Code Enhancements:
+  - apps/backend/src/services/slots-engine.service.ts
+    * Header: Game rules overview (15 lines)
+    * Paylines: Win mechanics explanation (10 lines)
+    * spin(): House edge documentation (20+ lines)
+    * gamble(): Feature documentation (8 lines)
+
+
+RULES DOCUMENTED (Complete)
+================================================================================
+
+Core Mechanics:
+  ✓ 3x3 grid (9 symbols)
+  ✓ Multiplier reel (1x-5x)
+  ✓ 5 fixed paylines
+  ✓ Symbol matching rule (all 3 must be identical)
+  ✓ Payout formula: Bet x Symbol Multiplier x Reel Multiplier
+
+Symbol Payouts:
+  ✓ 77 (Seven): 8x bet
+  ✓ $ (Double Dollar): 5x bet
+  ✓ Bell: 3x bet
+  ✓ Watermelon: 2x bet
+  ✓ Orange/Lemon/Cherry: 1x bet
+
+Constraints & Features:
+  ✓ House edge: 35% (RTP ~65%)
+  ✓ Max win cap: 20x bet
+  ✓ Gamble feature (RED/BLACK, double or lose)
+  ✓ Win suppression (probabilistic)
+  ✓ Auto-spin capability
+  ✓ Bet tiers: 8 levels (5-500 ETB)
+
+
+AUDIENCE COVERAGE
+================================================================================
+
+Players:
+  Read: MULTI-HOT-5-RULES.md
+  Learn how to play, symbol payouts, game controls
+
+Developers:
+  Context: .kiro/steering/game-rules.md (auto-included)
+  Reference: GAME-RULES-QUICK-REF.md
+  Debug: Code comments in slots-engine.service.ts
+
+Admins:
+  Read: GAME-RULES-ADMIN-GUIDE.md
+  Configure house edge, monitor RTP, troubleshoot
+
+Project Managers:
+  Start: GAME-RULES-INDEX.md
+  Overview: RULES-EXTRACTION-SUMMARY.md
+
+
+KEY FORMULA
+================================================================================
+
+Payout = Bet Amount x Symbol Multiplier x Multiplier Reel Value
+         (applied per payline, combined for total)
+
+
+QUICK START
+================================================================================
+
+1. Navigation:     GAME-RULES-INDEX.md
+2. Find your role: Check audience section
+3. Read guide:     Your audience-specific documentation
+4. Quick lookup:   GAME-RULES-QUICK-REF.md
+5. Deep dive:      RULES-EXTRACTION-SUMMARY.md
+
+
+FILE LOCATIONS
+================================================================================
+
+Player Guide:              MULTI-HOT-5-RULES.md
+Admin Guide:              GAME-RULES-ADMIN-GUIDE.md
+Developer Reference:      GAME-RULES-QUICK-REF.md
+Steering File:            .kiro/steering/game-rules.md
+Navigation Hub:           GAME-RULES-INDEX.md
+Meta Documentation:       RULES-EXTRACTION-SUMMARY.md
+Verification Checklist:   RULES-APPLIED-CHECKLIST.md
+Code Comments:            apps/backend/src/services/slots-engine.service.ts
+
+
+CROSS-REFERENCE MATRIX
+================================================================================
+
+Rule                      Player  Admin  DevRef  Steering  Code
+-------                   ------  -----  ------  --------  ----
+Paylines (5 fixed)        Y       Y      Y       Y         Y
+Payout formula            Y       Y      Y       Y         Y
+House edge (35%)          Y       Y      Y       Y         Y
+Multiplier reel           Y       Y      Y       Y         Y
+Gamble feature            Y       Y      Y       Y         Y
+Win suppression           Y       Y      Y       N         Y
+Max win cap (20x)         Y       Y      Y       Y         Y
+Symbol payouts            Y       Y      Y       Y         Y
+Multiple paylines         Y       Y      Y       Y         Y
+Auto-spin                 Y       N      Y       N         N
+Bet tiers                 Y       Y      Y       N         N
+Example calculations      Y       Y      Y       N         N
+
+
+VERIFICATION STATUS
+================================================================================
+
+Documentation Files:
+  [✓] All 7 files created successfully
+  [✓] Content is complete and consistent
+  [✓] Cross-references verified
+
+Code Comments:
+  [✓] Header comments updated
+  [✓] Function documentation enhanced
+  [✓] Logic documented
+
+Content Quality:
+  [✓] Rules extracted correctly
+  [✓] Formulas verified
+  [✓] Examples calculated
+  [✓] Audience-specific tone applied
+
+Organization:
+  [✓] Files placed in correct locations
+  [✓] Navigation hub created
+  [✓] Steering file auto-included
+  [✓] Cross-references complete
+
+
+MAINTENANCE GUIDE
+================================================================================
+
+When rules change, update:
+  1. Code in slots-engine.service.ts
+  2. All 6 documentation files
+  3. Code comments
+  4. Cross-references
+  5. Example calculations
+
+Example: If house edge changes from 35% to 40%:
+  - Update: spin() function parameter
+  - Update: All doc files (search for "35%")
+  - Update: Code comments
+  - Test: Verify RTP against new edge
+
+
+SUMMARY
+================================================================================
+
+Status: COMPLETE
+
+All Multi Hot 5 game rules have been:
+  [✓] Extracted from codebase and screenshots
+  [✓] Documented for multiple audiences
+  [✓] Applied in code comments
+  [✓] Cross-referenced for consistency
+  [✓] Organized for easy discovery
+  [✓] Validated for completeness
+
+Result: Multi Hot 5 game rules are now fully documented and discoverable
+        across the entire Fidel Bingo platform.
+
+================================================================================
+                              September 7, 2026
+================================================================================

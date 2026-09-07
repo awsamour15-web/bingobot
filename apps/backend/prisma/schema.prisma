@@ -35,6 +35,7 @@ model Player {
   slot_spins              SlotSpin[]
   keno_bets               KenoBet[]
   plinko_bets             PlinkoBet[]
+  royal_drop_bets         RoyalDropBet[]
   deposit_attempts        DepositAttempt[]
 
   @@index([telegram_id])
@@ -590,4 +591,22 @@ model SystemSetting {
   updated_at DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ─── Royal Drop Game ──────────────────────────────────────────────────────────
+
+model RoyalDropBet {
+  id                 String   @id @default(uuid())
+  player_id          String
+  bet_amount         Decimal  @db.Decimal(14, 2)
+  cashout_multiplier Float    @default(0.0)
+  payout             Decimal? @db.Decimal(14, 2)
+  bonus_triggered    Boolean  @default(false)
+  status             String   @default("pending")
+  created_at         DateTime @default(now())
+  player             Player   @relation(fields: [player_id], references: [id])
+
+  @@index([player_id])
+  @@index([created_at])
+  @@map("royal_drop_bets")
 }

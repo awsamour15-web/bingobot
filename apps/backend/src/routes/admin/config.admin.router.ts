@@ -42,6 +42,10 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'keno_allowed_ids',
     'plinko_allowed_usernames',
     'active_coupons',
+    'deposit_bonus_pct',
+    'deposit_bonus_wallet',
+    'deposit_bonus_start',
+    'deposit_bonus_end',
   ]);
 
   if (!ALLOWED_CONFIG_KEYS.has(key)) {
