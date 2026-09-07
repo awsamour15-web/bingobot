@@ -495,19 +495,21 @@ export default function RoyalDropScreen() {
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        minHeight: 56, boxSizing: 'border-box', padding: '6px 12px', zIndex: 10, position: 'relative',
-        background: 'rgba(3,25,19,0.94)', backdropFilter: 'blur(6px)',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        minHeight: 60, boxSizing: 'border-box', padding: '0 16px', zIndex: 10, position: 'relative',
+        background: 'linear-gradient(180deg, rgba(3,40,25,0.95) 0%, rgba(2,20,15,0.95) 100%)', 
+        backdropFilter: 'blur(10px)',
+        borderBottom: '2px solid rgba(245,197,24,0.3)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 120 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 22, fontWeight: 900 }}>♙</div>
-          <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 120 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg, #f5c518, #d4a017)', color: '#07150f', fontSize: 24, fontWeight: 900, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>♙</div>
+          <span style={{ fontSize: 18, fontWeight: 900, fontStyle: 'italic', color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
         </div>
 
         <button onClick={() => navigate('/')} aria-label="Go home" style={{
-          minHeight: 38, padding: '0 20px', borderRadius: 22,
-          border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.05)',
-          color: '#e2e8f0', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
+          minHeight: 36, padding: '0 24px', borderRadius: 20,
+          border: '1px solid rgba(245,197,24,0.3)', background: 'rgba(255,255,255,0.08)',
+          color: '#f5c518', fontSize: 14, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
+          transition: 'all 0.2s ease',
         }}>⌂&nbsp; HOME</button>
 
         {/* Royal Drop logo style */}
