@@ -447,134 +447,165 @@ export default function RoyalDropScreen() {
 
   return (
     <div style={{
-      minHeight: '100dvh',
-      background: 'linear-gradient(180deg,#1a2a4a 0%,#0f1a2e 40%,#07101c 100%)',
+      height: '100dvh',
+      background: 'linear-gradient(180deg,#87ceeb 0%,#5ba3d0 30%,#3a7ab8 60%,#1a4a7a 100%)',
       color: '#f8fafc',
       display: 'flex', flexDirection: 'column',
       maxWidth: 480, margin: '0 auto',
-      position: 'relative',
+      position: 'relative', overflow: 'hidden',
     }}>
       <style>{`
         @keyframes rdPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
         @keyframes rdSlideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
         @keyframes rdGlow { 0%,100%{box-shadow:0 0 8px rgba(251,191,36,0.4)} 50%{box-shadow:0 0 22px rgba(251,191,36,0.9)} }
         @keyframes rdShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-3px)} 40%,80%{transform:translateX(3px)} }
-        @keyframes rdExplosion { 0%{transform:scale(0);opacity:1} 100%{transform:scale(2.5);opacity:0} }
         @keyframes rdHitFlash { 0%{filter:brightness(1)} 30%{filter:brightness(2.5) saturate(2)} 100%{filter:brightness(1)} }
         @keyframes rdDestroy { 0%{transform:scale(1);opacity:1} 60%{transform:scale(1.3) rotate(8deg);opacity:0.6} 100%{transform:scale(0);opacity:0} }
         @keyframes rdChestOpen { 0%{transform:scale(0.8) rotate(-5deg);opacity:0} 60%{transform:scale(1.15) rotate(3deg)} 100%{transform:scale(1) rotate(0deg);opacity:1} }
-        @keyframes rdReelSpin { 0%{transform:translateY(-20px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+        @keyframes rdReelSpin { 0%{transform:translateY(-14px);opacity:0} 100%{transform:translateY(0);opacity:1} }
         @keyframes rdWinPop { 0%{transform:scale(0.85);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
-        @keyframes rdRocketFire { 0%,100%{transform:scaleY(1) translateY(0)} 50%{transform:scaleY(1.3) translateY(2px)} }
         @keyframes rdSpinBtn { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-        @keyframes rdBonusBadge { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
-        .rd-spin-btn:active { transform: scale(0.95) !important; }
-        .rd-reel-cell { animation: rdReelSpin 0.25s ease forwards; }
+        @keyframes rdBonusBadge { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+        @keyframes rdArchFloat { 0%,100%{opacity:0.18} 50%{opacity:0.28} }
+        .rd-spin-btn:active { transform: scale(0.92) !important; }
         .rd-hit { animation: rdHitFlash 0.3s ease forwards !important; }
         .rd-destroy { animation: rdDestroy 0.3s ease forwards !important; }
         .rd-chest-open { animation: rdChestOpen 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards !important; }
       `}</style>
 
+      {/* ── Arch / castle background decoration ─────────────────────────────── */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        overflow: 'hidden',
+      }}>
+        {/* Left arch pillar */}
+        <div style={{
+          position: 'absolute', left: -18, top: 0, bottom: 0, width: 72,
+          background: 'linear-gradient(90deg,rgba(210,180,120,0.55),rgba(210,180,120,0.15))',
+          borderRadius: '0 60px 60px 0',
+          animation: 'rdArchFloat 4s ease infinite',
+        }} />
+        {/* Right arch pillar */}
+        <div style={{
+          position: 'absolute', right: -18, top: 0, bottom: 0, width: 72,
+          background: 'linear-gradient(270deg,rgba(210,180,120,0.55),rgba(210,180,120,0.15))',
+          borderRadius: '60px 0 0 60px',
+          animation: 'rdArchFloat 4s ease infinite 0.5s',
+        }} />
+        {/* Arch top curve */}
+        <div style={{
+          position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
+          width: '90%', height: 120,
+          border: '12px solid rgba(210,180,120,0.35)',
+          borderRadius: '50% 50% 0 0',
+          borderBottom: 'none',
+        }} />
+        {/* Purple carpet at bottom */}
+        <div style={{
+          position: 'absolute', bottom: 60, left: 0, right: 0, height: 32,
+          background: 'linear-gradient(180deg,rgba(120,60,160,0.6),rgba(80,20,120,0.7))',
+        }} />
+      </div>
+
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-        background: 'rgba(7,16,28,0.9)',
-        position: 'sticky', top: 0, zIndex: 10,
+        padding: '10px 14px', zIndex: 10, position: 'relative',
+        background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
       }}>
         <button onClick={() => navigate(-1)} style={{
-          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-          color: '#fff', borderRadius: 10, padding: '8px 14px',
+          background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
+          color: '#fff', borderRadius: 10, padding: '6px 12px',
           fontSize: 13, fontWeight: 700, cursor: 'pointer',
         }}>← Back</button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>👑</span>
-          <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: '0.04em', color: '#f5c518' }}>ROYAL DROP</span>
+        {/* Royal Drop logo style */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
+          <span style={{ fontSize: 11, fontWeight: 900, color: '#fbbf24', letterSpacing: '0.05em', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>👑 ROYAL</span>
+          <span style={{ fontSize: 11, fontWeight: 900, color: '#fbbf24', letterSpacing: '0.05em', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>DROP</span>
         </div>
 
-        <button onClick={() => setShowRules(true)} style={{
-          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-          color: '#94a3b8', borderRadius: 10, padding: '8px 14px',
-          fontSize: 13, fontWeight: 700, cursor: 'pointer',
-        }}>☰</button>
-      </div>
-
-      {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', padding: '8px 16px 0', gap: 6 }}>
-        {(['GAME', 'HISTORY'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{
-            padding: '7px 16px', borderRadius: 8,
-            border: `1px solid ${activeTab === tab ? 'rgba(245,197,24,0.5)' : 'rgba(255,255,255,0.07)'}`,
-            background: activeTab === tab ? 'rgba(245,197,24,0.1)' : 'transparent',
-            color: activeTab === tab ? '#f5c518' : '#64748b',
-            fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
-          }}>{tab}</button>
-        ))}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => setActiveTab(activeTab === 'HISTORY' ? 'GAME' : 'HISTORY')} style={{
+            background: activeTab === 'HISTORY' ? 'rgba(245,197,24,0.25)' : 'rgba(0,0,0,0.3)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: activeTab === 'HISTORY' ? '#f5c518' : '#fff', borderRadius: 10, padding: '6px 10px',
+            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>📋</button>
+          <button onClick={() => setShowRules(true)} style={{
+            background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
+            color: '#fff', borderRadius: 10, padding: '6px 10px',
+            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>☰</button>
+        </div>
       </div>
 
       {activeTab === 'HISTORY' ? (
-        <div style={{ padding: '16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', position: 'relative', zIndex: 1 }}>
           <HistoryTab history={history} />
         </div>
       ) : (
-        <>
-          {/* ── Reel display ─────────────────────────────────────────────────── */}
-          {activeSpin && (
-            <div style={{
-              margin: '8px 16px 0',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 12, padding: '8px 6px',
-              animation: 'rdSlideUp 0.25s ease',
-            }}>
-              <div style={{ fontSize: 9, color: '#64748b', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 6, textAlign: 'center' }}>
-                {phase === 'bonus'
-                  ? <span style={{ color: '#f59e0b', animation: 'rdBonusBadge 1s ease infinite' }}>🎰 BONUS SPIN {bonusSpinIdx}/4</span>
-                  : 'REELS'}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+
+          {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
+          <div style={{
+            margin: '8px 12px 0',
+            background: 'rgba(235,220,180,0.92)',
+            border: '2px solid rgba(200,170,100,0.8)',
+            borderRadius: 12, padding: '6px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            animation: activeSpin ? 'rdSlideUp 0.2s ease' : undefined,
+          }}>
+            {phase === 'bonus' && (
+              <div style={{ textAlign: 'center', fontSize: 9, fontWeight: 900, color: '#b45309', letterSpacing: '0.1em', marginBottom: 4, animation: 'rdBonusBadge 1s ease infinite' }}>
+                🎰 BONUS SPIN {bonusSpinIdx}/4
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
-                {activeSpin.reels.map((col, ci) => (
-                  <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {col.map((sym, ri) => (
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
+              {Array.from({ length: 5 }, (_, ci) => (
+                <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {Array.from({ length: 3 }, (__, ri) => {
+                    const sym = activeSpin?.reels[ci]?.[ri];
+                    return (
                       <div key={ri} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: sym.type === 'bonus' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${sym.type === 'bonus' ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.07)'}`,
-                        borderRadius: 5, padding: '3px',
-                        aspectRatio: '1',
+                        background: sym?.type === 'bonus' ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.5)',
+                        border: `1px solid ${sym?.type === 'bonus' ? 'rgba(245,158,11,0.6)' : 'rgba(180,140,80,0.4)'}`,
+                        borderRadius: 5, padding: '2px', aspectRatio: '1',
+                        minHeight: 32,
                       }}>
-                        <ReelSymbolCell sym={sym} animKey={ci * 3 + ri} />
+                        {sym && <ReelSymbolCell sym={sym} animKey={ci * 3 + ri} />}
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-
-              {/* Scatter count */}
-              {activeSpin.scatterCount >= 1 && (
-                <div style={{
-                  marginTop: 6, textAlign: 'center', fontSize: 10, fontWeight: 800,
-                  color: activeSpin.scatterCount >= 3 ? '#f59e0b' : '#64748b',
-                  animation: activeSpin.scatterCount >= 3 ? 'rdPulse 0.8s ease infinite' : undefined,
-                }}>
-                  🐓 {activeSpin.scatterCount} scatter{activeSpin.scatterCount > 1 ? 's' : ''}
-                  {activeSpin.scatterCount >= 3 && ' — BONUS TRIGGERED!'}
+                    );
+                  })}
                 </div>
-              )}
+              ))}
             </div>
-          )}
+            {activeSpin && activeSpin.scatterCount >= 1 && (
+              <div style={{
+                marginTop: 4, textAlign: 'center', fontSize: 9, fontWeight: 800,
+                color: activeSpin.scatterCount >= 3 ? '#b45309' : '#78716c',
+                animation: activeSpin.scatterCount >= 3 ? 'rdPulse 0.8s ease infinite' : undefined,
+              }}>
+                🐓 {activeSpin.scatterCount} scatter{activeSpin.scatterCount > 1 ? 's' : ''}
+                {activeSpin.scatterCount >= 3 && ' — BONUS!'}
+              </div>
+            )}
+          </div>
 
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
-          <div style={{ margin: '8px 16px 0' }}>
+          <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column' }}>
             <div style={{
-              background: 'rgba(15,22,40,0.9)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 14, padding: '8px 6px',
+              flex: 1,
+              background: 'rgba(20,35,60,0.55)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 12, padding: '6px',
+              display: 'flex', flexDirection: 'column', gap: 2,
             }}>
               {/* 7 crate rows */}
               {Array.from({ length: 7 }, (_, row) => (
-                <div key={row} style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 2 }}>
+                <div key={row} style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, flex: 1 }}>
                   {Array.from({ length: 5 }, (__, col) => {
                     const cell = currentGrid[col]?.[row];
                     if (!cell) return <div key={col} />;
@@ -592,7 +623,7 @@ export default function RoyalDropScreen() {
               ))}
 
               {/* Chest row */}
-              <div style={{ marginTop: 3, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
                 {Array.from({ length: 5 }, (_, col) => {
                   const opened = openedChests.find(c => c.column === col);
                   return (
@@ -607,137 +638,128 @@ export default function RoyalDropScreen() {
             </div>
           </div>
 
-          {/* ── Win / chest multiplier display ──────────────────────────────── */}
+          {/* ── Win display ──────────────────────────────────────────────────── */}
           {phase === 'result' && result && result.totalWin > 0 && (
             <div style={{
-              margin: '8px 16px 0',
-              background: 'linear-gradient(135deg,rgba(251,191,36,0.12),rgba(245,158,11,0.08))',
-              border: '1px solid rgba(251,191,36,0.3)',
-              borderRadius: 12, padding: '12px 14px',
-              textAlign: 'center',
+              margin: '6px 12px 0',
+              background: 'linear-gradient(135deg,rgba(251,191,36,0.2),rgba(245,158,11,0.1))',
+              border: '1px solid rgba(251,191,36,0.5)',
+              borderRadius: 10, padding: '8px 12px', textAlign: 'center',
               animation: 'rdWinPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards, rdGlow 2s ease 0.5s infinite',
             }}>
-              <div style={{ fontSize: 10, color: '#d97706', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 3 }}>TOTAL WIN</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#fbbf24', letterSpacing: '-1px' }}>
+              <div style={{ fontSize: 9, color: '#d97706', fontWeight: 800, letterSpacing: '0.1em' }}>TOTAL WIN</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#fbbf24' }}>
                 {result.totalWin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB
               </div>
-              <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>
-                {result.multiplier.toFixed(2)}x
-                {result.bonusSpins.length > 0 && ' (includes 4 bonus spins)'}
-              </div>
-              {openedChests.length > 0 && (
-                <div style={{ marginTop: 7, display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {openedChests.map((c, i) => (
-                    <div key={i} style={{
-                      background: 'rgba(251,191,36,0.2)', border: '1px solid rgba(251,191,36,0.4)',
-                      borderRadius: 7, padding: '3px 8px',
-                      fontSize: 11, fontWeight: 900, color: '#fbbf24',
-                    }}>🎁 {c.multiplier}x</div>
-                  ))}
-                </div>
-              )}
+              <div style={{ fontSize: 10, color: '#92400e' }}>{result.multiplier.toFixed(2)}x</div>
             </div>
           )}
 
           {/* ── Error ────────────────────────────────────────────────────────── */}
           {error && (
             <div style={{
-              margin: '8px 16px 0', padding: '10px 14px', borderRadius: 10,
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
-              color: '#fca5a5', fontSize: 12, fontWeight: 600, animation: 'rdShake 0.4s ease',
+              margin: '4px 12px 0', padding: '8px 12px', borderRadius: 8,
+              background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+              color: '#fca5a5', fontSize: 11, fontWeight: 600, animation: 'rdShake 0.4s ease',
             }}>{error}</div>
           )}
 
-          {/* ── Bottom controls ──────────────────────────────────────────────── */}
+          {/* ── Bottom controls bar ──────────────────────────────────────────── */}
           <div style={{
-            position: 'sticky', bottom: 0,
-            background: 'rgba(7,16,28,0.96)',
-            borderTop: '1px solid rgba(255,255,255,0.07)',
-            padding: '10px 16px',
-            paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
-            display: 'flex', flexDirection: 'column', gap: 8,
+            background: 'rgba(10,18,35,0.97)',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            padding: '8px 14px',
+            paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
           }}>
-            {/* Bet selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => setBetIdx(i => Math.max(0, i - 1))} disabled={betIdx === 0 || phase === 'spinning'} style={{
-                width: 32, height: 32, borderRadius: 7,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                opacity: betIdx === 0 ? 0.4 : 1,
-              }}>−</button>
-
-              <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}>BET</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: '#f5c518', letterSpacing: '-0.5px' }}>
-                  {betAmount.toLocaleString()} ETB
-                </div>
-              </div>
-
-              <button onClick={() => setBetIdx(i => Math.min(BET_OPTIONS.length - 1, i + 1))} disabled={betIdx === BET_OPTIONS.length - 1 || phase === 'spinning'} style={{
-                width: 32, height: 32, borderRadius: 7,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                opacity: betIdx === BET_OPTIONS.length - 1 ? 0.4 : 1,
-              }}>+</button>
-
-              {/* Balance */}
-              <div style={{ textAlign: 'right', minWidth: 76 }}>
-                <div style={{ fontSize: 9, color: '#475569', fontWeight: 700 }}>BALANCE</div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8' }}>
-                  {balance === null ? '—' : `${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB`}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick bet chips */}
-            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {/* Bet chips row */}
+            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}>
               {BET_OPTIONS.map((b, i) => (
-                <button key={b} onClick={() => setBetIdx(i)} style={{
-                  flexShrink: 0, padding: '5px 10px', borderRadius: 6,
-                  border: `1px solid ${betIdx === i ? 'rgba(245,197,24,0.6)' : 'rgba(255,255,255,0.08)'}`,
-                  background: betIdx === i ? 'rgba(245,197,24,0.12)' : 'rgba(255,255,255,0.04)',
+                <button key={b} onClick={() => setBetIdx(i)} disabled={phase === 'spinning'} style={{
+                  flexShrink: 0, padding: '4px 8px', borderRadius: 6,
+                  border: `1px solid ${betIdx === i ? 'rgba(245,197,24,0.7)' : 'rgba(255,255,255,0.1)'}`,
+                  background: betIdx === i ? 'rgba(245,197,24,0.18)' : 'rgba(255,255,255,0.05)',
                   color: betIdx === i ? '#f5c518' : '#64748b',
                   fontSize: 10, fontWeight: 800, cursor: 'pointer',
                 }}>{b >= 1000 ? `${b / 1000}K` : b}</button>
               ))}
             </div>
 
-            {/* Spin button */}
-            <button
-              className="rd-spin-btn"
-              onClick={() => void doSpin()}
-              disabled={!canSpin}
-              style={{
-                width: '100%', height: 46, borderRadius: 12, border: 'none',
-                background: phase === 'spinning'
-                  ? 'linear-gradient(135deg,#374151,#1f2937)'
-                  : 'linear-gradient(135deg,#f59e0b,#d97706)',
-                color: phase === 'spinning' ? '#6b7280' : '#000',
-                fontSize: 15, fontWeight: 900, letterSpacing: '0.06em',
-                cursor: canSpin ? 'pointer' : 'default',
-                boxShadow: canSpin ? '0 6px 20px rgba(245,158,11,0.4)' : 'none',
-                transition: 'all 0.2s ease',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              {phase === 'spinning' ? (
-                <>
-                  <span style={{ display: 'inline-block', animation: 'rdSpinBtn 0.8s linear infinite' }}>⟳</span>
-                  SPINNING...
-                </>
-              ) : phase === 'bonus' ? '🎰 BONUS SPIN' : '🚀 SPIN'}
-            </button>
+            {/* Action row: BET | SPIN | BALANCE */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Left: BET */}
+              <div style={{
+                flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 10,
+                padding: '6px 10px', border: '1px solid rgba(255,255,255,0.1)',
+              }}>
+                <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}>BET: ETB</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button onClick={() => setBetIdx(i => Math.max(0, i - 1))} disabled={betIdx === 0 || phase === 'spinning'} style={{
+                    background: 'none', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', padding: 0, lineHeight: 1,
+                    opacity: betIdx === 0 ? 0.3 : 1,
+                  }}>‹</button>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: '#f5c518', flex: 1, textAlign: 'center' }}>
+                    {betAmount.toLocaleString()}
+                  </span>
+                  <button onClick={() => setBetIdx(i => Math.min(BET_OPTIONS.length - 1, i + 1))} disabled={betIdx === BET_OPTIONS.length - 1 || phase === 'spinning'} style={{
+                    background: 'none', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', padding: 0, lineHeight: 1,
+                    opacity: betIdx === BET_OPTIONS.length - 1 ? 0.3 : 1,
+                  }}>›</button>
+                </div>
+              </div>
+
+              {/* Center: SPIN button (large circle) */}
+              <button
+                className="rd-spin-btn"
+                onClick={() => void doSpin()}
+                disabled={!canSpin}
+                style={{
+                  width: 64, height: 64, borderRadius: '50%', border: 'none', flexShrink: 0,
+                  background: phase === 'spinning'
+                    ? 'linear-gradient(135deg,#374151,#1f2937)'
+                    : 'linear-gradient(135deg,#22c55e,#16a34a)',
+                  color: '#fff',
+                  fontSize: 24,
+                  cursor: canSpin ? 'pointer' : 'default',
+                  boxShadow: canSpin ? '0 4px 18px rgba(34,197,94,0.5), 0 0 0 3px rgba(34,197,94,0.15)' : 'none',
+                  transition: 'all 0.2s ease',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                {phase === 'spinning'
+                  ? <span style={{ animation: 'rdSpinBtn 0.8s linear infinite', display: 'inline-block' }}>⟳</span>
+                  : '🔄'}
+              </button>
+
+              {/* Right: BALANCE */}
+              <div style={{
+                flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 10,
+                padding: '6px 10px', border: '1px solid rgba(255,255,255,0.1)',
+                textAlign: 'right',
+              }}>
+                <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}>ETB</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#94a3b8' }}>
+                  {balance === null ? '—' : balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+
+            {/* Phase label */}
+            {phase === 'bonus' && (
+              <div style={{ textAlign: 'center', marginTop: 6, fontSize: 11, fontWeight: 900, color: '#f59e0b', animation: 'rdBonusBadge 1s ease infinite' }}>
+                🎰 BONUS SPIN {bonusSpinIdx}/4
+              </div>
+            )}
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Toast ────────────────────────────────────────────────────────────── */}
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 120, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', bottom: 110, left: '50%', transform: 'translateX(-50%)',
           background: 'rgba(15,23,42,0.96)', border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 12, padding: '10px 20px',
-          fontSize: 13, fontWeight: 700, color: '#f0f9ff',
+          borderRadius: 12, padding: '9px 18px',
+          fontSize: 12, fontWeight: 700, color: '#f0f9ff',
           whiteSpace: 'nowrap', zIndex: 400,
           boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
           animation: 'rdSlideUp 0.3s ease',
