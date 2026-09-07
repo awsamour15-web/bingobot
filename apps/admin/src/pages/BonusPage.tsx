@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon } from '../lib/api';
+import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon, CouponRedemption } from '../lib/api';
 import {
   listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
   createPromotion,
   updatePromotion, setPromotionStatus, deletePromotion,
-  listCoupons, createCoupon, deleteCoupon,
+  listCoupons, createCoupon, deleteCoupon, getCouponRedemptions,
   getConfig, updateConfig,
 } from '../lib/api';
 import {
@@ -772,12 +772,82 @@ function DepositBonusPanel() {
 // Coupon Panel
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Redemptions drawer ───────────────────────────────────────────────────────
+function CouponRedemptionsDrawer({ code, onClose }: { code: string; onClose: () => void }) {
+  const [redemptions, setRedemptions] = useState<CouponRedemption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCouponRedemptions(code)
+      .then(data => { setRedemptions(data); setLoading(false); })
+      .catch(e => { setError(e.message ?? 'Failed to load'); setLoading(false); });
+  }, [code]);
+
+  const overlayStyle: React.CSSProperties = {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000,
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+  };
+  const drawerStyle: React.CSSProperties = {
+    background: C.bgCard, borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 720,
+    maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+  };
+
+  return (
+    <div style={overlayStyle} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={drawerStyle}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>🎟️ Redemptions for <span style={{ fontFamily: 'monospace', color: C.primary }}>{code}</span></div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{loading ? '…' : `${redemptions.length} player${redemptions.length !== 1 ? 's' : ''} redeemed this coupon`}</div>
+          </div>
+          <Btn size="sm" variant="outline" onClick={onClose}>✕ Close</Btn>
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {error && <Alert type="error">{error}</Alert>}
+          <Table>
+            <thead>
+              <tr>
+                <Th>Player</Th>
+                <Th>Phone</Th>
+                <Th>Amount</Th>
+                <Th>Wallet</Th>
+                <Th>Redeemed At</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? <TrLoading cols={5} /> : !redemptions.length ? (
+                <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: C.muted }}>
+                  No one has redeemed this coupon yet.
+                </td></tr>
+              ) : redemptions.map(r => (
+                <tr key={r.transactionId}>
+                  <Td><span style={{ fontWeight: 600 }}>{r.playerName || '—'}</span></Td>
+                  <Td><span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.playerPhone}</span></Td>
+                  <Td><strong>{r.amount} ETB</strong></Td>
+                  <Td>
+                    <Badge variant={r.walletType === 'play' ? 'info' : 'success'}>
+                      {r.walletType === 'play' ? '🎮 Play' : '💰 Main'}
+                    </Badge>
+                  </Td>
+                  <Td><span style={{ fontSize: 12, color: C.muted }}>{new Date(r.redeemedAt).toLocaleString()}</span></Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CouponPanel() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [viewingRedemptions, setViewingRedemptions] = useState<string | null>(null);
 
   // Form state
   const [code, setCode] = useState('');
@@ -836,6 +906,10 @@ function CouponPanel() {
 
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      {viewingRedemptions && (
+        <CouponRedemptionsDrawer code={viewingRedemptions} onClose={() => setViewingRedemptions(null)} />
+      )}
+
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
         <StatCard icon="🎟️" label="Total Coupons" value={coupons.length} color={C.primary} />
@@ -902,7 +976,7 @@ function CouponPanel() {
                 <Th>Wallet</Th>
                 <Th>Uses</Th>
                 <Th>Status</Th>
-                <Th>Action</Th>
+                <Th>Actions</Th>
               </tr>
             </thead>
             <tbody>
@@ -927,9 +1001,18 @@ function CouponPanel() {
                         </Badge>
                       </Td>
                       <Td>
-                        <div style={{ fontSize: 12 }}>
+                        <button
+                          onClick={() => c.usedCount > 0 && setViewingRedemptions(c.code)}
+                          style={{
+                            background: 'none', border: 'none', cursor: c.usedCount > 0 ? 'pointer' : 'default',
+                            padding: 0, color: c.usedCount > 0 ? C.primary : C.muted,
+                            fontWeight: c.usedCount > 0 ? 700 : 400, fontSize: 13,
+                            textDecoration: c.usedCount > 0 ? 'underline' : 'none',
+                          }}
+                          title={c.usedCount > 0 ? 'Click to see who redeemed' : 'No redemptions yet'}
+                        >
                           {c.usedCount}{c.maxUses !== null ? ` / ${c.maxUses}` : ' / ∞'}
-                        </div>
+                        </button>
                       </Td>
                       <Td>
                         <Badge variant={isExhausted ? 'danger' : 'success'}>
@@ -937,14 +1020,21 @@ function CouponPanel() {
                         </Badge>
                       </Td>
                       <Td>
-                        <Btn
-                          variant="danger"
-                          size="sm"
-                          disabled={deleting === c.code}
-                          onClick={() => handleDelete(c.code)}
-                        >
-                          {deleting === c.code ? '...' : '🗑️'}
-                        </Btn>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {c.usedCount > 0 && (
+                            <Btn size="sm" variant="outline" onClick={() => setViewingRedemptions(c.code)}>
+                              👥
+                            </Btn>
+                          )}
+                          <Btn
+                            variant="danger"
+                            size="sm"
+                            disabled={deleting === c.code}
+                            onClick={() => handleDelete(c.code)}
+                          >
+                            {deleting === c.code ? '...' : '🗑️'}
+                          </Btn>
+                        </div>
                       </Td>
                     </tr>
                   );

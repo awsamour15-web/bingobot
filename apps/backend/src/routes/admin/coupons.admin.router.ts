@@ -84,6 +84,33 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   res.status(201).json(newCoupon);
 });
 
+// GET /api/admin/coupons/:code/redemptions — list every player who redeemed this coupon
+router.get('/:code/redemptions', async (req: Request, res: Response): Promise<void> => {
+  const code = (req.params['code'] as string).toUpperCase();
+
+  const transactions = await prisma.transaction.findMany({
+    where: { type: 'bonus' as any, note: { contains: `COUPON:${code}` } },
+    orderBy: { created_at: 'desc' },
+    include: {
+      wallet: {
+        include: { player: { select: { id: true, username: true, phone: true } } },
+      },
+    },
+  });
+
+  res.json(
+    transactions.map((t) => ({
+      transactionId: t.id,
+      playerId: t.wallet.player.id,
+      playerName: t.wallet.player.username,
+      playerPhone: t.wallet.player.phone ?? '—',
+      amount: Number(t.amount),
+      walletType: t.wallet.type,
+      redeemedAt: t.created_at.toISOString(),
+    })),
+  );
+});
+
 // DELETE /api/admin/coupons/:code — remove a coupon
 router.delete('/:code', async (req: Request, res: Response): Promise<void> => {
   const code = (req.params['code'] as string).toUpperCase();

@@ -784,3 +784,17 @@ export function createCoupon(data: Omit<Coupon, 'usedCount'>): Promise<Coupon> {
 export function deleteCoupon(code: string): Promise<{ success: boolean }> {
   return adminApiRequest('DELETE', `/api/admin/coupons/${encodeURIComponent(code)}`);
 }
+
+export interface CouponRedemption {
+  transactionId: string;
+  playerId: string;
+  playerName: string;
+  playerPhone: string;
+  amount: number;
+  walletType: string;
+  redeemedAt: string;
+}
+
+export function getCouponRedemptions(code: string): Promise<CouponRedemption[]> {
+  return adminApiRequest<CouponRedemption[]>('GET', `/api/admin/coupons/${encodeURIComponent(code)}/redemptions`);
+}
