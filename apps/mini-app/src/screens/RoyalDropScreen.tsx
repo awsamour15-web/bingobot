@@ -479,30 +479,30 @@ export default function RoyalDropScreen() {
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', zIndex: 10, position: 'relative',
+        minHeight: 58, boxSizing: 'border-box', padding: '8px 14px', zIndex: 10, position: 'relative',
         background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(6px)',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
       }}>
         <button onClick={() => navigate(-1)} style={{
           background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
           color: '#fff', borderRadius: 10, padding: '6px 12px',
-          fontSize: 13, fontWeight: 700, cursor: 'pointer',
-        }}>← Back</button>
+          fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40,
+        }} aria-label="Go back">← Back</button>
 
         {/* Royal Drop logo style */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1 }}>
-          <span style={{ fontSize: 11, fontWeight: 900, color: '#fbbf24', letterSpacing: '0.05em', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>👑 ROYAL</span>
-          <span style={{ fontSize: 11, fontWeight: 900, color: '#fbbf24', letterSpacing: '0.05em', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>DROP</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.85, transform: 'rotate(-4deg)' }}>
+          <span style={{ fontSize: 17, fontWeight: 900, color: '#fff0a6', letterSpacing: '-0.08em', textShadow: '0 2px 0 #8b5a1e, 0 0 10px rgba(251,191,36,0.45)' }}>ROYAL</span>
+          <span style={{ fontSize: 16, fontWeight: 900, color: '#fbbf24', letterSpacing: '-0.06em', textShadow: '0 2px 0 #8b5a1e, 0 0 10px rgba(251,191,36,0.45)' }}>DROP</span>
         </div>
 
         <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => setActiveTab(activeTab === 'HISTORY' ? 'GAME' : 'HISTORY')} style={{
+          <button aria-label="View spin history" onClick={() => setActiveTab(activeTab === 'HISTORY' ? 'GAME' : 'HISTORY')} style={{
             background: activeTab === 'HISTORY' ? 'rgba(245,197,24,0.25)' : 'rgba(0,0,0,0.3)',
             border: '1px solid rgba(255,255,255,0.15)',
             color: activeTab === 'HISTORY' ? '#f5c518' : '#fff', borderRadius: 10, padding: '6px 10px',
             fontSize: 12, fontWeight: 700, cursor: 'pointer',
           }}>📋</button>
-          <button onClick={() => setShowRules(true)} style={{
+          <button aria-label="Open game rules" onClick={() => setShowRules(true)} style={{
             background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
             color: '#fff', borderRadius: 10, padding: '6px 10px',
             fontSize: 12, fontWeight: 700, cursor: 'pointer',
@@ -519,7 +519,7 @@ export default function RoyalDropScreen() {
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
           <div style={{
-            margin: '8px 12px 0',
+            width: 'calc(100% - 24px)', maxWidth: 336, alignSelf: 'center', margin: '8px 12px 0',
             background: 'rgba(235,220,180,0.92)',
             border: '2px solid rgba(200,170,100,0.8)',
             borderRadius: 12, padding: '6px',
@@ -564,9 +564,9 @@ export default function RoyalDropScreen() {
           </div>
 
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
-          <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{
-              flex: 1,
+              width: 'calc(100% - 24px)', maxWidth: 336, aspectRatio: '5 / 8',
               background: 'rgba(20,35,60,0.55)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 12, padding: '6px',
@@ -640,6 +640,12 @@ export default function RoyalDropScreen() {
             padding: '8px 14px',
             paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
           }}>
+            <div style={{
+              textAlign: 'center', marginBottom: 7, color: '#fff', fontSize: 13,
+              fontWeight: 900, letterSpacing: '0.06em', textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+            }}>
+              {phase === 'spinning' ? 'SPINNING...' : phase === 'bonus' ? 'BONUS ROUND' : 'PLACE YOUR BET'}
+            </div>
             {/* Bet chips row */}
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}>
               {BET_OPTIONS.map((b, i) => (
