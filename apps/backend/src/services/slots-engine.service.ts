@@ -4,9 +4,9 @@
 //
 // GAME RULES:
 // - Players bet on a spin of 3 reels (3 rows each)
-// - Multiplier reel generates 1x–5x value
+// - Multiplier reel generates 1x, 2x, or 5x value
 // - 5 fixed paylines determine if symbols match for a win
-// - Symbol payouts: 77=8×, $=5×, Bell=3×, Fruit=1-2×
+// - Symbol payouts: 77=15×, $$=10×, Bell=5×, Watermelon/Grape=4×, Orange/Plum/Cherry=2×
 // - Win = Bet × Symbol Multiplier × Multiplier Reel (applied per payline)
 // - Multiple paylines can win on a single spin (totals combined)
 // - House edge suppresses wins probabilistically to maintain RTP
@@ -23,15 +23,17 @@ export type Symbol = typeof SYMBOLS[number];
 
 // Payout multipliers per symbol (3-of-a-kind on a payline, before reel multiplier)
 // These are applied as: bet × symbol_multiplier × multiplier_reel_value
-// Reduced to keep RTP reasonable even when wins land
+// Verified against UI paytable at 5 ETB bet:
+//   77=75 ETB → 15×, $$=50 ETB → 10×, Bell=25 ETB → 5×,
+//   Watermelon/Grape=20 ETB → 4×, Orange/Plum/Cherry=10 ETB → 2×
 export const PAYOUTS: Record<Symbol, number> = {
-  seven:         8,
-  double_dollar: 5,
-  bell:           3,
-  watermelon:     2,
-  orange:         1,
-  lemon:          1,
-  cherry:         1,
+  seven:         15,
+  double_dollar: 10,
+  bell:           5,
+  watermelon:     4,
+  orange:         2,
+  lemon:          2,
+  cherry:         2,
 };
 
 // Reel strips per column — weighted for controlled hit frequency
@@ -62,8 +64,8 @@ const REEL_2: Symbol[] = [
 
 const REELS = [REEL_0, REEL_1, REEL_2] as const;
 
-// Multiplier reel: mostly 1x, max 3x
-const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 3, 1];
+// Multiplier reel: mostly 1x, occasional 2x, rare 5x (matches UI paytable display)
+const MULTIPLIER_STRIP = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 5, 1];
 
 // ─── Paylines ─────────────────────────────────────────────────────────────────
 // 5 fixed paylines. Each payline is [col0_row, col1_row, col2_row]

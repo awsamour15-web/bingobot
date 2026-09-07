@@ -508,7 +508,7 @@ function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
             ✦ MULTIPLIER REEL
           </div>
           <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, marginBottom: 20 }}>
-            Besides these standard rules, the game also includes the X Multiplier, which can appear on the left side reel. With five possible multipliers (1x, 2x, 3x, 4x, 5x) your wins will be multiplied for even greater rewards.
+            Besides these standard rules, the game also includes the X Multiplier, which can appear on the left side reel. With three possible multipliers (1x, 2x, 5x) your wins will be multiplied for even greater rewards.
           </div>
           {/* Multiplier reel illustration */}
           <div style={{ display: "flex", justifyContent: "center" }}>
@@ -519,6 +519,7 @@ function RulesScreen({ bet, onClose }: { bet: number; onClose: () => void }) {
               {([
                 { v: "1x", val: 1, mid: false },
                 { v: "2x", val: 2, mid: true  },
+                { v: "5x", val: 5, mid: false },
               ] as const).map(({ v, val, mid }) => {
                 const cfg = MUL_COLORS[val]!;
                 return (
