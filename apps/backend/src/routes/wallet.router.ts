@@ -580,4 +580,42 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
   }
 });
 
+// ─── GET /api/wallet/available-coupons ───────────────────────────────────────
+// Returns publicly visible, non-exhausted coupons so players can see what's available.
+
+router.get('/available-coupons', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const setting = await prisma.systemSetting.findUnique({ where: { key: 'active_coupons' } });
+    if (!setting?.value) { res.json([]); return; }
+
+    type CouponDef = { code: string; amount: number; wallet: string; maxUses: number | null; description: string };
+    const coupons: CouponDef[] = JSON.parse(setting.value as string);
+
+    // Filter out exhausted coupons
+    const results = await Promise.all(
+      coupons.map(async (c) => {
+        if (c.maxUses === null) return { ...c, usedCount: 0, exhausted: false };
+        const usedCount = await prisma.transaction.count({
+          where: { type: 'bonus' as any, note: { contains: `COUPON:${c.code}` } },
+        });
+        return { ...c, usedCount, exhausted: usedCount >= c.maxUses };
+      }),
+    );
+
+    res.json(
+      results
+        .filter((c) => !c.exhausted)
+        .map(({ code, amount, wallet, description, maxUses, usedCount }) => ({
+          code,
+          amount,
+          wallet,
+          description,
+          remaining: maxUses === null ? null : maxUses - usedCount,
+        })),
+    );
+  } catch {
+    res.json([]);
+  }
+});
+
 export default router;

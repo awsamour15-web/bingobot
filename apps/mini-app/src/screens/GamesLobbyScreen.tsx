@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Gift, TicketPercent, Trophy } from 'lucide-react';
 import { initAuth, getAgentJwt } from '../lib/auth';
-import { getProfile, checkKenoAccess, checkPlinkoAccess, checkRoyalDropAccess, redeemCoupon } from '../lib/api';
+import { getProfile, checkKenoAccess, checkPlinkoAccess, checkRoyalDropAccess, redeemCoupon, getAvailableCoupons, type AvailableCoupon } from '../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -330,6 +330,8 @@ export default function GamesLobbyScreen() {
   const [couponCode, setCouponCode] = useState('');
   const [couponStatus, setCouponStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [couponMessage, setCouponMessage] = useState('');
+  const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
+  const [showCoupons, setShowCoupons] = useState(false);
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
   const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
@@ -339,11 +341,12 @@ export default function GamesLobbyScreen() {
     async function load() {
       try {
         await initAuth();
-        const [profile, kenoAccess, plinkoAccess, royalDropAccess] = await Promise.all([
+        const [profile, kenoAccess, plinkoAccess, royalDropAccess, coupons] = await Promise.all([
           getProfile(),
           checkKenoAccess().catch(() => ({ allowed: false })),
           checkPlinkoAccess().catch(() => ({ allowed: false })),
           checkRoyalDropAccess().catch(() => ({ allowed: false })),
+          getAvailableCoupons().catch(() => [] as AvailableCoupon[]),
         ]);
         if (!cancelled) {
           setIsAgent(!!getAgentJwt());
@@ -353,6 +356,7 @@ export default function GamesLobbyScreen() {
           setKenoAllowed(kenoAccess.allowed);
           setPlinkoAllowed(plinkoAccess.allowed);
           setRoyalDropAllowed(royalDropAccess.allowed);
+          setAvailableCoupons(coupons);
         }
       } catch { /* ignore */ }
     }
@@ -401,6 +405,8 @@ export default function GamesLobbyScreen() {
       setCouponStatus('success');
       setCouponMessage(response.message);
       setCouponCode('');
+      // Refresh available coupons (remaining count may have changed)
+      getAvailableCoupons().then(setAvailableCoupons).catch(() => {});
     } catch (error) {
       const responseError = error as { responseData?: { message?: string } };
       setCouponStatus('error');
@@ -450,12 +456,39 @@ export default function GamesLobbyScreen() {
       </button>
 
       <div style={{ margin: '16px 20px 0', padding: '12px', borderRadius: 15, background: 'rgba(15,23,37,0.82)', border: '1px solid rgba(134,165,226,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8, color: '#f3cf64', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}><TicketPercent size={15} /> ACCEPT COUPON</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#f3cf64', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}><TicketPercent size={15} /> ACCEPT COUPON</div>
+          {availableCoupons.length > 0 && (
+            <button onClick={() => setShowCoupons(v => !v)} style={{ border: 0, background: 'rgba(243,207,100,0.12)', color: '#f3cf64', borderRadius: 6, padding: '3px 8px', fontSize: 9, fontWeight: 900, cursor: 'pointer', letterSpacing: '0.06em' }}>
+              {showCoupons ? 'HIDE' : `${availableCoupons.length} AVAILABLE ▾`}
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 7 }}>
           <input value={couponCode} onChange={event => { setCouponCode(event.target.value.toUpperCase()); setCouponStatus('idle'); setCouponMessage(''); }} onKeyDown={event => { if (event.key === 'Enter') void handleCouponRedeem(); }} placeholder="ENTER CODE" maxLength={24} aria-label="Coupon code" style={{ minWidth: 0, flex: 1, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, background: '#03130f', color: '#fff', padding: '8px 10px', fontSize: 11, fontWeight: 800, outline: 'none' }} />
           <button onClick={() => void handleCouponRedeem()} disabled={!couponCode.trim() || couponStatus === 'loading'} style={{ border: 0, borderRadius: 9, padding: '0 12px', background: couponCode.trim() ? '#eeb52c' : '#26352e', color: couponCode.trim() ? '#102018' : '#7d8983', fontSize: 10, fontWeight: 900, cursor: couponCode.trim() ? 'pointer' : 'default' }}>{couponStatus === 'loading' ? '...' : 'ACCEPT'}</button>
         </div>
         {couponMessage && <div role="status" style={{ marginTop: 7, color: couponStatus === 'success' ? '#55d993' : '#ff8c82', fontSize: 10, fontWeight: 700 }}>{couponMessage}</div>}
+        {showCoupons && availableCoupons.length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {availableCoupons.map(c => (
+              <button
+                key={c.code}
+                onClick={() => { setCouponCode(c.code); setShowCoupons(false); setCouponStatus('idle'); setCouponMessage(''); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(243,207,100,0.07)', border: '1px solid rgba(243,207,100,0.2)', borderRadius: 8, padding: '8px 10px', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: 12, color: '#f3cf64', letterSpacing: '0.08em' }}>{c.code}</div>
+                  {c.description && <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>{c.description}</div>}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: c.wallet === 'play' ? '#61d9ba' : '#f3cf64' }}>{c.amount} ETB</div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>{c.wallet} wallet{c.remaining !== null ? ` · ${c.remaining} left` : ''}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '30px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 21, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}><Trophy size={22} color="#f3cf64" /> PLAY NOW</div><span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>{availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS</span></div><div style={{ marginTop: 4, color: '#78869c', fontSize: 11, fontWeight: 600 }}>Pick a game and make your move</div><div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>{([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>)}</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>{filteredGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} /></div>)}</div></div>

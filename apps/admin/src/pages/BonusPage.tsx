@@ -901,12 +901,13 @@ function CouponPanel() {
                 <Th>Amount</Th>
                 <Th>Wallet</Th>
                 <Th>Uses</Th>
+                <Th>Status</Th>
                 <Th>Action</Th>
               </tr>
             </thead>
             <tbody>
-              {loading ? <TrLoading cols={5} /> : !coupons.length ? (
-                <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: C.muted }}>
+              {loading ? <TrLoading cols={6} /> : !coupons.length ? (
+                <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: C.muted }}>
                   <div style={{ fontSize: 36, marginBottom: 8 }}>🎟️</div>
                   <div>No coupons yet. Create one to get started.</div>
                 </td></tr>
@@ -915,7 +916,10 @@ function CouponPanel() {
                   const isExhausted = c.maxUses !== null && c.usedCount >= c.maxUses;
                   return (
                     <tr key={c.code} style={{ opacity: isExhausted ? 0.6 : 1 }}>
-                      <Td><span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 13, color: C.primary, letterSpacing: '0.05em' }}>{c.code}</span></Td>
+                      <Td>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 13, color: C.primary, letterSpacing: '0.05em' }}>{c.code}</span>
+                        {c.description && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{c.description}</div>}
+                      </Td>
                       <Td><strong style={{ fontSize: 14 }}>{c.amount} ETB</strong></Td>
                       <Td>
                         <Badge variant={c.wallet === 'play' ? 'info' : 'success'}>
@@ -924,9 +928,13 @@ function CouponPanel() {
                       </Td>
                       <Td>
                         <div style={{ fontSize: 12 }}>
-                          {c.usedCount}{c.maxUses !== null ? ` / ${c.maxUses}` : ''} 
-                          {isExhausted && <> <Badge variant="danger">Exhausted</Badge></>}
+                          {c.usedCount}{c.maxUses !== null ? ` / ${c.maxUses}` : ' / ∞'}
                         </div>
+                      </Td>
+                      <Td>
+                        <Badge variant={isExhausted ? 'danger' : 'success'}>
+                          {isExhausted ? 'Exhausted' : 'Active'}
+                        </Badge>
                       </Td>
                       <Td>
                         <Btn

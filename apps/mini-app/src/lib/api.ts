@@ -723,6 +723,18 @@ export function redeemCoupon(code: string): Promise<{ success: boolean; amount: 
   return apiRequest('POST', '/api/wallet/redeem-coupon', { code });
 }
 
+export interface AvailableCoupon {
+  code: string;
+  amount: number;
+  wallet: 'main' | 'play';
+  description: string;
+  remaining: number | null;
+}
+
+export function getAvailableCoupons(): Promise<AvailableCoupon[]> {
+  return apiRequest('GET', '/api/wallet/available-coupons');
+}
+
 // ─── Royal Drop Game ──────────────────────────────────────────────────────────
 
 export type RocketColor = 'blue' | 'green' | 'purple' | 'red';
