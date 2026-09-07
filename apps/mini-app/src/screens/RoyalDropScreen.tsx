@@ -83,22 +83,22 @@ function CrateBlock({
   const hpPct = cell.maxHp > 0 ? cell.hp / cell.maxHp : 0;
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-      aspectRatio: '1',
-      background: cell.hp <= 0 ? 'transparent' : cfg.bg,
-      border: cell.hp <= 0 ? '1px dashed rgba(255,255,255,0.08)' : `1.5px solid ${cfg.border}`,
-      borderRadius: 5,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      transition: 'all 0.2s ease',
-      boxShadow: isHit ? `0 0 12px ${cfg.border}` : 'none',
-      opacity: isDestroying ? 0 : 1,
-      transform: isDestroying ? 'scale(1.2)' : 'scale(1)',
-    }}>
+    <div
+      className={isDestroying ? 'rd-destroy' : isHit ? 'rd-hit' : undefined}
+      style={{
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '1',
+        background: cell.hp <= 0 ? 'transparent' : cfg.bg,
+        border: cell.hp <= 0 ? '1px dashed rgba(255,255,255,0.06)' : `1.5px solid ${cfg.border}`,
+        borderRadius: 4,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        transition: 'box-shadow 0.15s ease',
+        boxShadow: isHit ? `0 0 10px ${cfg.border}, 0 0 20px ${cfg.border}55` : 'none',
+      }}>
       {cell.hp > 0 && (
         <>
           {/* HP bar */}
@@ -110,11 +110,10 @@ function CrateBlock({
               height: '100%',
               width: `${hpPct * 100}%`,
               background: hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#f59e0b' : '#ef4444',
-              transition: 'width 0.3s ease',
+              transition: 'width 0.25s ease',
             }} />
           </div>
-          {/* Crate icon — crown for royal, X for others */}
-          <span style={{ fontSize: 10, opacity: 0.8 }}>
+          <span style={{ fontSize: 8, opacity: 0.85 }}>
             {cell.type === 'royal' ? '👑' : cell.type === 'metal' ? '🔩' : cell.type === 'stone' ? '🪨' : '📦'}
           </span>
         </>
@@ -125,45 +124,50 @@ function CrateBlock({
 
 function ChestBlock({ opened, multiplier }: { opened: boolean; multiplier?: number }) {
   return (
-    <div style={{
-      width: '100%',
-      aspectRatio: '1',
-      background: opened
-        ? 'linear-gradient(145deg,#fbbf24,#d97706)'
-        : 'linear-gradient(145deg,#7a5a20,#4a3510)',
-      border: `1.5px solid ${opened ? '#fcd34d' : '#a0722a'}`,
-      borderRadius: 5,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: opened ? '0 0 16px rgba(251,191,36,0.6)' : 'none',
-      transition: 'all 0.4s ease',
-      fontSize: 8,
-      fontWeight: 900,
-      color: opened ? '#92400e' : '#d97706',
-      gap: 1,
-    }}>
-      <span style={{ fontSize: 14 }}>{opened ? '🎁' : '🔒'}</span>
+    <div
+      className={opened ? 'rd-chest-open' : undefined}
+      style={{
+        width: '100%',
+        aspectRatio: '1',
+        background: opened
+          ? 'linear-gradient(145deg,#fbbf24,#d97706)'
+          : 'linear-gradient(145deg,#7a5a20,#4a3510)',
+        border: `1.5px solid ${opened ? '#fcd34d' : '#a0722a'}`,
+        borderRadius: 4,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: opened ? '0 0 14px rgba(251,191,36,0.7), 0 0 28px rgba(251,191,36,0.3)' : 'none',
+        transition: 'box-shadow 0.3s ease',
+        fontSize: 7,
+        fontWeight: 900,
+        color: opened ? '#92400e' : '#d97706',
+        gap: 1,
+      }}>
+      <span style={{ fontSize: 12 }}>{opened ? '🎁' : '🔒'}</span>
       {opened && multiplier && (
-        <span style={{ fontSize: 9, color: '#92400e' }}>{multiplier}x</span>
+        <span style={{ fontSize: 8, color: '#92400e' }}>{multiplier}x</span>
       )}
     </div>
   );
 }
 
-function ReelSymbolCell({ sym }: { sym: ReelSymbol }) {
-  const size = 28;
-  if (sym.type === 'bonus') return <BonusSvg size={size} />;
-  if (sym.type === 'bomb') return <BombSvg size={size} />;
+function ReelSymbolCell({ sym, animKey }: { sym: ReelSymbol; animKey?: number }) {
+  const size = 22;
+  const style = animKey !== undefined
+    ? { animation: `rdReelSpin 0.2s ease ${(animKey % 5) * 0.04}s both` }
+    : {};
+  if (sym.type === 'bonus') return <div style={style}><BonusSvg size={size} /></div>;
+  if (sym.type === 'bomb') return <div style={style}><BombSvg size={size} /></div>;
   const color = ROCKET_COLORS[sym.color ?? 'blue'] ?? '#3b82f6';
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', ...style }}>
       <RocketSvg color={color} size={size} />
       <div style={{
-        position: 'absolute', bottom: -2, right: -2,
-        background: 'rgba(0,0,0,0.7)', borderRadius: 3,
-        fontSize: 7, fontWeight: 900, color: '#fff',
+        position: 'absolute', bottom: -1, right: -2,
+        background: 'rgba(0,0,0,0.75)', borderRadius: 3,
+        fontSize: 6, fontWeight: 900, color: '#fff',
         padding: '1px 2px', lineHeight: 1,
       }}>{sym.damage}</div>
     </div>
@@ -452,11 +456,23 @@ export default function RoyalDropScreen() {
     }}>
       <style>{`
         @keyframes rdPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
-        @keyframes rdSlideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-        @keyframes rdGlow { 0%,100%{box-shadow:0 0 8px rgba(251,191,36,0.4)} 50%{box-shadow:0 0 20px rgba(251,191,36,0.8)} }
-        @keyframes rdShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-4px)} 40%,80%{transform:translateX(4px)} }
-        @keyframes rdExplosion { 0%{transform:scale(0);opacity:1} 100%{transform:scale(2);opacity:0} }
-        .rd-spin-btn:active { transform: scale(0.96) !important; }
+        @keyframes rdSlideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+        @keyframes rdGlow { 0%,100%{box-shadow:0 0 8px rgba(251,191,36,0.4)} 50%{box-shadow:0 0 22px rgba(251,191,36,0.9)} }
+        @keyframes rdShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-3px)} 40%,80%{transform:translateX(3px)} }
+        @keyframes rdExplosion { 0%{transform:scale(0);opacity:1} 100%{transform:scale(2.5);opacity:0} }
+        @keyframes rdHitFlash { 0%{filter:brightness(1)} 30%{filter:brightness(2.5) saturate(2)} 100%{filter:brightness(1)} }
+        @keyframes rdDestroy { 0%{transform:scale(1);opacity:1} 60%{transform:scale(1.3) rotate(8deg);opacity:0.6} 100%{transform:scale(0);opacity:0} }
+        @keyframes rdChestOpen { 0%{transform:scale(0.8) rotate(-5deg);opacity:0} 60%{transform:scale(1.15) rotate(3deg)} 100%{transform:scale(1) rotate(0deg);opacity:1} }
+        @keyframes rdReelSpin { 0%{transform:translateY(-20px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+        @keyframes rdWinPop { 0%{transform:scale(0.85);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
+        @keyframes rdRocketFire { 0%,100%{transform:scaleY(1) translateY(0)} 50%{transform:scaleY(1.3) translateY(2px)} }
+        @keyframes rdSpinBtn { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+        @keyframes rdBonusBadge { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+        .rd-spin-btn:active { transform: scale(0.95) !important; }
+        .rd-reel-cell { animation: rdReelSpin 0.25s ease forwards; }
+        .rd-hit { animation: rdHitFlash 0.3s ease forwards !important; }
+        .rd-destroy { animation: rdDestroy 0.3s ease forwards !important; }
+        .rd-chest-open { animation: rdChestOpen 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards !important; }
       `}</style>
 
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
@@ -506,27 +522,29 @@ export default function RoyalDropScreen() {
           {/* ── Reel display ─────────────────────────────────────────────────── */}
           {activeSpin && (
             <div style={{
-              margin: '12px 16px 0',
+              margin: '8px 16px 0',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 14, padding: '10px 8px',
-              animation: 'rdSlideUp 0.3s ease',
+              borderRadius: 12, padding: '8px 6px',
+              animation: 'rdSlideUp 0.25s ease',
             }}>
-              <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8, textAlign: 'center' }}>
-                {phase === 'bonus' ? `🎰 BONUS SPIN ${bonusSpinIdx}/4` : 'REELS'}
+              <div style={{ fontSize: 9, color: '#64748b', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 6, textAlign: 'center' }}>
+                {phase === 'bonus'
+                  ? <span style={{ color: '#f59e0b', animation: 'rdBonusBadge 1s ease infinite' }}>🎰 BONUS SPIN {bonusSpinIdx}/4</span>
+                  : 'REELS'}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
                 {activeSpin.reels.map((col, ci) => (
-                  <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {col.map((sym, ri) => (
                       <div key={ri} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: sym.type === 'bonus' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)',
                         border: `1px solid ${sym.type === 'bonus' ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.07)'}`,
-                        borderRadius: 6, padding: '4px',
+                        borderRadius: 5, padding: '3px',
                         aspectRatio: '1',
                       }}>
-                        <ReelSymbolCell sym={sym} />
+                        <ReelSymbolCell sym={sym} animKey={ci * 3 + ri} />
                       </div>
                     ))}
                   </div>
@@ -536,8 +554,9 @@ export default function RoyalDropScreen() {
               {/* Scatter count */}
               {activeSpin.scatterCount >= 1 && (
                 <div style={{
-                  marginTop: 8, textAlign: 'center', fontSize: 11, fontWeight: 800,
+                  marginTop: 6, textAlign: 'center', fontSize: 10, fontWeight: 800,
                   color: activeSpin.scatterCount >= 3 ? '#f59e0b' : '#64748b',
+                  animation: activeSpin.scatterCount >= 3 ? 'rdPulse 0.8s ease infinite' : undefined,
                 }}>
                   🐓 {activeSpin.scatterCount} scatter{activeSpin.scatterCount > 1 ? 's' : ''}
                   {activeSpin.scatterCount >= 3 && ' — BONUS TRIGGERED!'}
@@ -547,15 +566,15 @@ export default function RoyalDropScreen() {
           )}
 
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
-          <div style={{ margin: '10px 16px 0' }}>
+          <div style={{ margin: '8px 16px 0' }}>
             <div style={{
               background: 'rgba(15,22,40,0.9)',
               border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 16, padding: '10px 8px',
+              borderRadius: 14, padding: '8px 6px',
             }}>
               {/* 7 crate rows */}
               {Array.from({ length: 7 }, (_, row) => (
-                <div key={row} style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3, marginBottom: 3 }}>
+                <div key={row} style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 2 }}>
                   {Array.from({ length: 5 }, (__, col) => {
                     const cell = currentGrid[col]?.[row];
                     if (!cell) return <div key={col} />;
@@ -573,7 +592,7 @@ export default function RoyalDropScreen() {
               ))}
 
               {/* Chest row */}
-              <div style={{ marginTop: 4, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3 }}>
+              <div style={{ marginTop: 3, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
                 {Array.from({ length: 5 }, (_, col) => {
                   const opened = openedChests.find(c => c.column === col);
                   return (
@@ -591,28 +610,28 @@ export default function RoyalDropScreen() {
           {/* ── Win / chest multiplier display ──────────────────────────────── */}
           {phase === 'result' && result && result.totalWin > 0 && (
             <div style={{
-              margin: '10px 16px 0',
+              margin: '8px 16px 0',
               background: 'linear-gradient(135deg,rgba(251,191,36,0.12),rgba(245,158,11,0.08))',
               border: '1px solid rgba(251,191,36,0.3)',
-              borderRadius: 14, padding: '14px 16px',
+              borderRadius: 12, padding: '12px 14px',
               textAlign: 'center',
-              animation: 'rdGlow 2s ease infinite',
+              animation: 'rdWinPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards, rdGlow 2s ease 0.5s infinite',
             }}>
-              <div style={{ fontSize: 11, color: '#d97706', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 4 }}>TOTAL WIN</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: '#fbbf24', letterSpacing: '-1px' }}>
+              <div style={{ fontSize: 10, color: '#d97706', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 3 }}>TOTAL WIN</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#fbbf24', letterSpacing: '-1px' }}>
                 {result.totalWin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB
               </div>
-              <div style={{ fontSize: 12, color: '#92400e', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>
                 {result.multiplier.toFixed(2)}x
                 {result.bonusSpins.length > 0 && ' (includes 4 bonus spins)'}
               </div>
               {openedChests.length > 0 && (
-                <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div style={{ marginTop: 7, display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
                   {openedChests.map((c, i) => (
                     <div key={i} style={{
                       background: 'rgba(251,191,36,0.2)', border: '1px solid rgba(251,191,36,0.4)',
-                      borderRadius: 8, padding: '4px 10px',
-                      fontSize: 12, fontWeight: 900, color: '#fbbf24',
+                      borderRadius: 7, padding: '3px 8px',
+                      fontSize: 11, fontWeight: 900, color: '#fbbf24',
                     }}>🎁 {c.multiplier}x</div>
                   ))}
                 </div>
@@ -634,37 +653,37 @@ export default function RoyalDropScreen() {
             position: 'sticky', bottom: 0,
             background: 'rgba(7,16,28,0.96)',
             borderTop: '1px solid rgba(255,255,255,0.07)',
-            padding: '12px 16px',
-            paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-            display: 'flex', flexDirection: 'column', gap: 10,
+            padding: '10px 16px',
+            paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+            display: 'flex', flexDirection: 'column', gap: 8,
           }}>
             {/* Bet selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={() => setBetIdx(i => Math.max(0, i - 1))} disabled={betIdx === 0 || phase === 'spinning'} style={{
-                width: 36, height: 36, borderRadius: 8,
+                width: 32, height: 32, borderRadius: 7,
                 background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 opacity: betIdx === 0 ? 0.4 : 1,
               }}>−</button>
 
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}>BET</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#f5c518', letterSpacing: '-0.5px' }}>
+                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: '0.08em' }}>BET</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#f5c518', letterSpacing: '-0.5px' }}>
                   {betAmount.toLocaleString()} ETB
                 </div>
               </div>
 
               <button onClick={() => setBetIdx(i => Math.min(BET_OPTIONS.length - 1, i + 1))} disabled={betIdx === BET_OPTIONS.length - 1 || phase === 'spinning'} style={{
-                width: 36, height: 36, borderRadius: 8,
+                width: 32, height: 32, borderRadius: 7,
                 background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 opacity: betIdx === BET_OPTIONS.length - 1 ? 0.4 : 1,
               }}>+</button>
 
               {/* Balance */}
-              <div style={{ textAlign: 'right', minWidth: 80 }}>
+              <div style={{ textAlign: 'right', minWidth: 76 }}>
                 <div style={{ fontSize: 9, color: '#475569', fontWeight: 700 }}>BALANCE</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#94a3b8' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8' }}>
                   {balance === null ? '—' : `${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB`}
                 </div>
               </div>
@@ -689,18 +708,24 @@ export default function RoyalDropScreen() {
               onClick={() => void doSpin()}
               disabled={!canSpin}
               style={{
-                width: '100%', height: 52, borderRadius: 14, border: 'none',
+                width: '100%', height: 46, borderRadius: 12, border: 'none',
                 background: phase === 'spinning'
                   ? 'linear-gradient(135deg,#374151,#1f2937)'
                   : 'linear-gradient(135deg,#f59e0b,#d97706)',
                 color: phase === 'spinning' ? '#6b7280' : '#000',
-                fontSize: 16, fontWeight: 900, letterSpacing: '0.06em',
+                fontSize: 15, fontWeight: 900, letterSpacing: '0.06em',
                 cursor: canSpin ? 'pointer' : 'default',
-                boxShadow: canSpin ? '0 8px 24px rgba(245,158,11,0.35)' : 'none',
+                boxShadow: canSpin ? '0 6px 20px rgba(245,158,11,0.4)' : 'none',
                 transition: 'all 0.2s ease',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
-              {phase === 'spinning' ? '⟳ SPINNING...' : phase === 'bonus' ? '🎰 BONUS SPIN' : '🚀 SPIN'}
+              {phase === 'spinning' ? (
+                <>
+                  <span style={{ display: 'inline-block', animation: 'rdSpinBtn 0.8s linear infinite' }}>⟳</span>
+                  SPINNING...
+                </>
+              ) : phase === 'bonus' ? '🎰 BONUS SPIN' : '🚀 SPIN'}
             </button>
           </div>
         </>
