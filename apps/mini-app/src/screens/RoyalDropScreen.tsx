@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import royalDropBg from '../assets/royal-drop-bg.png';
 import { spinRoyalDrop, getRoyalDropHistory, getProfile, checkRoyalDropAccess } from '../lib/api';
 import type {
   RoyalDropSpinResponse, SpinOutcome, CrateCell, ReelSymbol,
@@ -448,7 +449,10 @@ export default function RoyalDropScreen() {
   return (
     <div style={{
       height: '100dvh',
-      background: 'linear-gradient(180deg,#87ceeb 0%,#5ba3d0 30%,#3a7ab8 60%,#1a4a7a 100%)',
+      backgroundImage: `url(${royalDropBg})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center bottom',
+      backgroundRepeat: 'no-repeat',
       color: '#f8fafc',
       display: 'flex', flexDirection: 'column',
       maxWidth: 480, margin: '0 auto',
@@ -466,46 +470,11 @@ export default function RoyalDropScreen() {
         @keyframes rdWinPop { 0%{transform:scale(0.85);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
         @keyframes rdSpinBtn { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
         @keyframes rdBonusBadge { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-        @keyframes rdArchFloat { 0%,100%{opacity:0.18} 50%{opacity:0.28} }
         .rd-spin-btn:active { transform: scale(0.92) !important; }
         .rd-hit { animation: rdHitFlash 0.3s ease forwards !important; }
         .rd-destroy { animation: rdDestroy 0.3s ease forwards !important; }
         .rd-chest-open { animation: rdChestOpen 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards !important; }
       `}</style>
-
-      {/* ── Arch / castle background decoration ─────────────────────────────── */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        overflow: 'hidden',
-      }}>
-        {/* Left arch pillar */}
-        <div style={{
-          position: 'absolute', left: -18, top: 0, bottom: 0, width: 72,
-          background: 'linear-gradient(90deg,rgba(210,180,120,0.55),rgba(210,180,120,0.15))',
-          borderRadius: '0 60px 60px 0',
-          animation: 'rdArchFloat 4s ease infinite',
-        }} />
-        {/* Right arch pillar */}
-        <div style={{
-          position: 'absolute', right: -18, top: 0, bottom: 0, width: 72,
-          background: 'linear-gradient(270deg,rgba(210,180,120,0.55),rgba(210,180,120,0.15))',
-          borderRadius: '60px 0 0 60px',
-          animation: 'rdArchFloat 4s ease infinite 0.5s',
-        }} />
-        {/* Arch top curve */}
-        <div style={{
-          position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
-          width: '90%', height: 120,
-          border: '12px solid rgba(210,180,120,0.35)',
-          borderRadius: '50% 50% 0 0',
-          borderBottom: 'none',
-        }} />
-        {/* Purple carpet at bottom */}
-        <div style={{
-          position: 'absolute', bottom: 60, left: 0, right: 0, height: 32,
-          background: 'linear-gradient(180deg,rgba(120,60,160,0.6),rgba(80,20,120,0.7))',
-        }} />
-      </div>
 
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
