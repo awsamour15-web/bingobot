@@ -528,7 +528,7 @@ export default function RoyalDropScreen() {
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
           <div style={{
-            width: 'calc(100% - 28px)', maxWidth: 520, alignSelf: 'center', margin: '8px 12px 0',
+            width: '80%', maxWidth: 520, alignSelf: 'center', margin: '8px auto 0',
             background: 'rgba(235,220,180,0.92)',
             border: '2px solid rgba(200,170,100,0.8)',
             borderRadius: 12, padding: '6px',
@@ -575,7 +575,7 @@ export default function RoyalDropScreen() {
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
           <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{
-              width: 'calc(100% - 28px)', maxWidth: 520, aspectRatio: '5 / 8',
+              width: '80%', maxWidth: 520, height: '50%', minHeight: 0, aspectRatio: 'auto',
               background: 'linear-gradient(180deg,rgba(29,46,72,0.72),rgba(9,18,31,0.72))',
               border: '2px solid rgba(217,179,102,0.45)',
               borderRadius: 14, padding: '7px',
