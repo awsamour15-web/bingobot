@@ -82,6 +82,9 @@ function CrateBlock({
 }) {
   const cfg = CRATE_COLORS[cell.type] ?? CRATE_COLORS['wooden']!;
   const hpPct = cell.maxHp > 0 ? cell.hp / cell.maxHp : 0;
+  const crateSurface = cell.type === 'wooden' || cell.type === 'sturdy'
+    ? `linear-gradient(90deg,rgba(255,220,130,0.18) 0 2%,transparent 2% 48%,rgba(70,30,8,0.22) 48% 52%,transparent 52% 98%,rgba(255,220,130,0.16) 98%), repeating-linear-gradient(0deg,${cfg.bg},${cfg.bg} 9px,rgba(255,220,130,0.16) 10px,${cfg.bg} 12px)`
+    : `linear-gradient(135deg,rgba(255,255,255,0.18),transparent 35%), repeating-linear-gradient(0deg,${cfg.bg},${cfg.bg} 11px,rgba(255,255,255,0.08) 12px,${cfg.bg} 14px)`;
 
   return (
     <div
@@ -90,15 +93,15 @@ function CrateBlock({
         position: 'relative',
         width: '100%',
         aspectRatio: '1',
-        background: cell.hp <= 0 ? 'transparent' : cfg.bg,
-        border: cell.hp <= 0 ? '1px dashed rgba(255,255,255,0.06)' : `1.5px solid ${cfg.border}`,
-        borderRadius: 4,
+        background: cell.hp <= 0 ? 'transparent' : crateSurface,
+        border: cell.hp <= 0 ? '1px dashed rgba(255,255,255,0.06)' : `2px solid ${cfg.border}`,
+        borderRadius: 5,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
         transition: 'box-shadow 0.15s ease',
-        boxShadow: isHit ? `0 0 10px ${cfg.border}, 0 0 20px ${cfg.border}55` : 'none',
+        boxShadow: isHit ? `0 0 10px ${cfg.border}, 0 0 20px ${cfg.border}55` : 'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 2px rgba(0,0,0,0.24)',
       }}>
       {cell.hp > 0 && (
         <>
@@ -114,7 +117,7 @@ function CrateBlock({
               transition: 'width 0.25s ease',
             }} />
           </div>
-          <span style={{ fontSize: 8, opacity: 0.85 }}>
+          <span style={{ fontSize: 15, opacity: 0.92, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.7))' }}>
             {cell.type === 'royal' ? '👑' : cell.type === 'metal' ? '🔩' : cell.type === 'stone' ? '🪨' : '📦'}
           </span>
         </>
@@ -134,19 +137,19 @@ function ChestBlock({ opened, multiplier }: { opened: boolean; multiplier?: numb
           ? 'linear-gradient(145deg,#fbbf24,#d97706)'
           : 'linear-gradient(145deg,#7a5a20,#4a3510)',
         border: `1.5px solid ${opened ? '#fcd34d' : '#a0722a'}`,
-        borderRadius: 4,
+        borderRadius: 5,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: opened ? '0 0 14px rgba(251,191,36,0.7), 0 0 28px rgba(251,191,36,0.3)' : 'none',
         transition: 'box-shadow 0.3s ease',
-        fontSize: 7,
+        fontSize: 9,
         fontWeight: 900,
         color: opened ? '#92400e' : '#d97706',
         gap: 1,
       }}>
-      <span style={{ fontSize: 12 }}>{opened ? '🎁' : '🔒'}</span>
+      <span style={{ fontSize: 18, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.65))' }}>{opened ? '🎁' : '🔒'}</span>
       {opened && multiplier && (
         <span style={{ fontSize: 8, color: '#92400e' }}>{multiplier}x</span>
       )}
@@ -155,7 +158,7 @@ function ChestBlock({ opened, multiplier }: { opened: boolean; multiplier?: numb
 }
 
 function ReelSymbolCell({ sym, animKey }: { sym: ReelSymbol; animKey?: number }) {
-  const size = 22;
+  const size = 42;
   const style = animKey !== undefined
     ? { animation: `rdReelSpin 0.2s ease ${(animKey % 5) * 0.04}s both` }
     : {};
@@ -168,7 +171,7 @@ function ReelSymbolCell({ sym, animKey }: { sym: ReelSymbol; animKey?: number })
       <div style={{
         position: 'absolute', bottom: -1, right: -2,
         background: 'rgba(0,0,0,0.75)', borderRadius: 3,
-        fontSize: 6, fontWeight: 900, color: '#fff',
+        fontSize: 9, fontWeight: 900, color: '#fff',
         padding: '1px 2px', lineHeight: 1,
       }}>{sym.damage}</div>
     </div>
@@ -478,7 +481,7 @@ export default function RoyalDropScreen() {
 
       {/* ── App chrome ─────────────────────────────────────────────────────── */}
       <div style={{
-        minHeight: 54, boxSizing: 'border-box', padding: '0 16px',
+        minHeight: 78, boxSizing: 'border-box', padding: '0 22px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: '#1c2938', color: '#f8fafc', zIndex: 11,
       }}>
@@ -486,7 +489,7 @@ export default function RoyalDropScreen() {
           width: 40, height: 40, border: 0, background: 'transparent', color: '#fff',
           fontSize: 34, lineHeight: 1, cursor: 'pointer', padding: 0,
         }}>‹</button>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '0.01em' }}>Kana Games</span>
+        <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '0.01em' }}>Kana Games</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, color: '#fff' }}>
           <span style={{ fontSize: 30, lineHeight: 0, transform: 'translateY(-3px)' }}>⌄</span>
           <span aria-hidden="true" style={{ fontSize: 25, lineHeight: 1 }}>⋮</span>
@@ -496,19 +499,19 @@ export default function RoyalDropScreen() {
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        minHeight: 58, boxSizing: 'border-box', padding: '8px 12px', zIndex: 10, position: 'relative',
+        minHeight: 72, boxSizing: 'border-box', padding: '8px 20px', zIndex: 10, position: 'relative',
         background: 'rgba(3,25,19,0.94)', backdropFilter: 'blur(6px)',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 120 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 22, fontWeight: 900 }}>♙</div>
-          <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
+          <div style={{ width: 48, height: 48, borderRadius: 12, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 28, fontWeight: 900 }}>♙</div>
+          <span style={{ fontSize: 20, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
         </div>
 
         <button onClick={() => navigate('/')} aria-label="Go home" style={{
-          minHeight: 38, padding: '0 22px', borderRadius: 22,
+          minHeight: 48, padding: '0 28px', borderRadius: 26,
           border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.05)',
-          color: '#e2e8f0', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
+          color: '#e2e8f0', fontSize: 16, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
         }}>⌂&nbsp; HOME</button>
 
         {/* Royal Drop logo style */}
