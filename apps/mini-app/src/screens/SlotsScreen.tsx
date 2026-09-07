@@ -806,21 +806,45 @@ export default function SlotsScreen() {
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <div style={{
-          position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
-          height: 78, boxSizing: "border-box", padding: "0 16px 18px",
+          position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between",
+          height: 78, boxSizing: "border-box", padding: "0 16px",
           background: "rgba(0,0,0,0.72)",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {/* Home button – left */}
+          <button onClick={() => navigate('/')} aria-label="Go home" style={{
+            width: 52, height: 52, borderRadius: 999,
+            background: "rgba(9,22,18,0.85)",
+            border: "1.5px solid rgba(255,255,255,0.18)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", color: "#f6f9f8", flexShrink: 0,
+            boxShadow: "0 2px 12px rgba(0,0,0,0.45)",
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 11.5L12 3l9 8.5V21a1 1 0 0 1-1 1H15v-6h-6v6H4a1 1 0 0 1-1-1V11.5Z" fill="currentColor" opacity="0.92"/>
+            </svg>
+          </button>
+
+          {/* Center title */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 18, height: 18, borderRadius: 5, background: "#f5c518", boxShadow: "0 0 0 2px rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#07150f", fontSize: 12, fontWeight: 900 }}>F</div>
             <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: "#f2f4f5", whiteSpace: "nowrap" }}>FIDEL BINGO</div>
           </div>
-          <button onClick={() => navigate('/')} aria-label="Go home" style={{
-            position: "absolute", top: 10, right: 10, zIndex: 5,
-            width: 54, height: 54, borderRadius: 999, background: "rgba(9,20,19,0.72)", border: "1px solid rgba(255,255,255,0.18)",
-            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#f6f9f8", fontSize: 28,
+
+          {/* Rules button – right */}
+          <button onClick={() => setShowRules(true)} aria-label="Rules and payouts" style={{
+            width: 52, height: 52, borderRadius: 999,
+            background: "rgba(9,22,18,0.85)",
+            border: "1.5px solid rgba(255,255,255,0.18)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", color: "#f6f9f8", flexShrink: 0,
+            boxShadow: "0 2px 12px rgba(0,0,0,0.45)",
           }}>
-            <span aria-hidden="true">⌂</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="6" width="18" height="2.2" rx="1.1" fill="currentColor"/>
+              <rect x="3" y="11" width="14" height="2.2" rx="1.1" fill="currentColor"/>
+              <rect x="3" y="16" width="10" height="2.2" rx="1.1" fill="currentColor"/>
+            </svg>
           </button>
         </div>
 

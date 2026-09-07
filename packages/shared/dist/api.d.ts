@@ -20,6 +20,10 @@ export interface PlayerProfile {
     created_at: string;
     mainWallet: WalletBalance;
     playWallet: WalletBalance;
+    loginStreak: number;
+    longestStreak: number;
+    totalGamesPlayed: number;
+    totalWins: number;
 }
 export interface WalletBalance {
     id: string;

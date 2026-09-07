@@ -1,4 +1,4 @@
-// GET /api/players/me         — player profile + wallet balances
+// GET /api/players/me         — player profile + wallet balances + streak + stats
 // POST /api/players/verify-phone — phone verification
 // Requirements: 1.5, 7.1, 9.4
 
@@ -21,6 +21,12 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
     where: { id: playerId },
     include: {
       wallets: true,
+      _count: {
+        select: {
+          round_entries: true,
+          round_wins: true,
+        },
+      },
     },
   });
 
@@ -35,6 +41,51 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
   if (!mainWallet || !playWallet) {
     res.status(500).json({ error: 'WALLET_MISSING', message: 'Player wallets not found' });
     return;
+  }
+
+  // ── Daily streak logic (UTC+3 / Addis Ababa time) ────────────────────────
+  const nowUtc = new Date();
+  // UTC+3 offset in ms
+  const ADDIS_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const nowAddis = new Date(nowUtc.getTime() + ADDIS_OFFSET_MS);
+  // Today's date string in Addis time "YYYY-MM-DD"
+  const todayStr = nowAddis.toISOString().slice(0, 10);
+
+  let loginStreak = player.login_streak ?? 1;
+  let longestStreak = player.longest_streak ?? 1;
+
+  const lastLoginDate = player.last_login_date;
+  const lastStr = lastLoginDate
+    ? new Date(lastLoginDate.getTime() + ADDIS_OFFSET_MS).toISOString().slice(0, 10)
+    : null;
+
+  if (lastStr !== todayStr) {
+    if (lastStr) {
+      // Check if yesterday
+      const yesterday = new Date(nowAddis);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+      if (lastStr === yesterdayStr) {
+        loginStreak += 1;
+      } else {
+        loginStreak = 1;
+      }
+    } else {
+      loginStreak = 1;
+    }
+
+    longestStreak = Math.max(longestStreak, loginStreak);
+
+    // Update streak in background (non-blocking)
+    void prisma.player.update({
+      where: { id: playerId },
+      data: {
+        login_streak: loginStreak,
+        longest_streak: longestStreak,
+        last_login_date: new Date(todayStr + 'T00:00:00.000Z'),
+      },
+    }).catch(() => { /* ignore streak update errors */ });
   }
 
   const profile: PlayerProfile = {
@@ -54,6 +105,10 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
       type: playWallet.type,
       balance: Number(playWallet.balance),
     },
+    loginStreak,
+    longestStreak,
+    totalGamesPlayed: player._count.round_entries,
+    totalWins: player._count.round_wins,
   };
 
   res.status(200).json(profile);

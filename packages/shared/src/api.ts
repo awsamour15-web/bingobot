@@ -33,6 +33,11 @@ export interface PlayerProfile {
   created_at: string;
   mainWallet: WalletBalance;
   playWallet: WalletBalance;
+  // Streak & stats (computed on fetch)
+  loginStreak: number;
+  longestStreak: number;
+  totalGamesPlayed: number;
+  totalWins: number;
 }
 
 export interface WalletBalance {
