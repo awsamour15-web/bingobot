@@ -41,6 +41,7 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'deposit_receiver_name',
     'keno_allowed_ids',
     'plinko_allowed_usernames',
+    'royal_drop_allowed_usernames',
     'active_coupons',
     'deposit_bonus_pct',
     'deposit_bonus_wallet',
