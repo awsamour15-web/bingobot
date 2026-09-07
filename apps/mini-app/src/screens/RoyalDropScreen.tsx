@@ -158,7 +158,7 @@ function ChestBlock({ opened, multiplier }: { opened: boolean; multiplier?: numb
 }
 
 function ReelSymbolCell({ sym, animKey }: { sym: ReelSymbol; animKey?: number }) {
-  const size = 42;
+  const size = 32;
   const style = animKey !== undefined
     ? { animation: `rdReelSpin 0.2s ease ${(animKey % 5) * 0.04}s both` }
     : {};
@@ -479,39 +479,22 @@ export default function RoyalDropScreen() {
         .rd-chest-open { animation: rdChestOpen 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards !important; }
       `}</style>
 
-      {/* ── App chrome ─────────────────────────────────────────────────────── */}
-      <div style={{
-        minHeight: 78, boxSizing: 'border-box', padding: '0 22px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#1c2938', color: '#f8fafc', zIndex: 11,
-      }}>
-        <button onClick={() => navigate(-1)} aria-label="Go back" style={{
-          width: 40, height: 40, border: 0, background: 'transparent', color: '#fff',
-          fontSize: 34, lineHeight: 1, cursor: 'pointer', padding: 0,
-        }}>‹</button>
-        <span style={{ fontSize: 25, fontWeight: 800, letterSpacing: '0.01em' }}>Kana Games</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, color: '#fff' }}>
-          <span style={{ fontSize: 30, lineHeight: 0, transform: 'translateY(-3px)' }}>⌄</span>
-          <span aria-hidden="true" style={{ fontSize: 25, lineHeight: 1 }}>⋮</span>
-        </div>
-      </div>
-
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        minHeight: 72, boxSizing: 'border-box', padding: '8px 20px', zIndex: 10, position: 'relative',
+        minHeight: 56, boxSizing: 'border-box', padding: '6px 12px', zIndex: 10, position: 'relative',
         background: 'rgba(3,25,19,0.94)', backdropFilter: 'blur(6px)',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 120 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 28, fontWeight: 900 }}>♙</div>
-          <span style={{ fontSize: 20, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
+          <div style={{ width: 38, height: 38, borderRadius: 10, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 22, fontWeight: 900 }}>♙</div>
+          <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
         </div>
 
         <button onClick={() => navigate('/')} aria-label="Go home" style={{
-          minHeight: 48, padding: '0 28px', borderRadius: 26,
+          minHeight: 38, padding: '0 20px', borderRadius: 22,
           border: '1px solid rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.05)',
-          color: '#e2e8f0', fontSize: 16, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
+          color: '#e2e8f0', fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', cursor: 'pointer',
         }}>⌂&nbsp; HOME</button>
 
         {/* Royal Drop logo style */}
@@ -545,7 +528,7 @@ export default function RoyalDropScreen() {
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
           <div style={{
-            width: 'calc(100% - 36px)', maxWidth: 580, alignSelf: 'center', margin: '14px 12px 0',
+            width: 'calc(100% - 28px)', maxWidth: 520, alignSelf: 'center', margin: '8px 12px 0',
             background: 'rgba(235,220,180,0.92)',
             border: '2px solid rgba(200,170,100,0.8)',
             borderRadius: 12, padding: '6px',
@@ -592,7 +575,7 @@ export default function RoyalDropScreen() {
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
           <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{
-              width: 'calc(100% - 36px)', maxWidth: 580, aspectRatio: '5 / 8',
+              width: 'calc(100% - 28px)', maxWidth: 520, aspectRatio: '5 / 8',
               background: 'linear-gradient(180deg,rgba(29,46,72,0.72),rgba(9,18,31,0.72))',
               border: '2px solid rgba(217,179,102,0.45)',
               borderRadius: 14, padding: '7px',
@@ -634,10 +617,10 @@ export default function RoyalDropScreen() {
           </div>
 
           <button onClick={() => showToast('Bonus purchase is coming soon')} style={{
-            alignSelf: 'center', margin: '10px auto 2px', minHeight: 42, padding: '0 28px',
+            alignSelf: 'center', margin: '6px auto 2px', minHeight: 34, padding: '0 22px',
             borderRadius: 12, border: '2px solid #f7c94a',
             background: 'linear-gradient(180deg,#ffd85b,#e99a17)',
-            color: '#7a2e08', fontSize: 15, fontWeight: 950, letterSpacing: '0.03em',
+            color: '#7a2e08', fontSize: 12, fontWeight: 950, letterSpacing: '0.03em',
             boxShadow: '0 3px 0 #8e4b0b, 0 0 16px rgba(245,158,11,0.35)', cursor: 'pointer',
           }}>♜&nbsp; BUY BONUS</button>
 
@@ -671,11 +654,11 @@ export default function RoyalDropScreen() {
           <div style={{
             background: 'rgba(10,18,35,0.97)',
             borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: '7px 14px 8px',
+            padding: '5px 10px 6px',
             paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
           }}>
             <div style={{
-              textAlign: 'center', marginBottom: 7, color: '#fff', fontSize: 14,
+              textAlign: 'center', marginBottom: 5, color: '#fff', fontSize: 12,
               fontWeight: 900, letterSpacing: '0.06em', textShadow: '0 1px 4px rgba(0,0,0,0.7)',
             }}>
               {phase === 'spinning' ? 'SPINNING...' : phase === 'bonus' ? 'BONUS ROUND' : 'PLACE YOUR BET'}
@@ -722,7 +705,7 @@ export default function RoyalDropScreen() {
                 onClick={() => void doSpin()}
                 disabled={!canSpin}
                 style={{
-                  width: 64, height: 64, borderRadius: '50%', border: 'none', flexShrink: 0,
+                  width: 54, height: 54, borderRadius: '50%', border: 'none', flexShrink: 0,
                   background: phase === 'spinning'
                     ? 'linear-gradient(135deg,#374151,#1f2937)'
                     : 'linear-gradient(135deg,#22c55e,#16a34a)',
