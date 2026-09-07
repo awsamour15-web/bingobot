@@ -455,7 +455,7 @@ export default function RoyalDropScreen() {
       backgroundRepeat: 'no-repeat',
       color: '#f8fafc',
       display: 'flex', flexDirection: 'column',
-      maxWidth: 480, margin: '0 auto',
+      maxWidth: 631, margin: '0 auto',
       position: 'relative', overflow: 'hidden',
     }}>
       <style>{`
@@ -542,7 +542,7 @@ export default function RoyalDropScreen() {
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
           <div style={{
-            width: 'calc(100% - 28px)', maxWidth: 346, alignSelf: 'center', margin: '10px 12px 0',
+            width: 'calc(100% - 36px)', maxWidth: 580, alignSelf: 'center', margin: '14px 12px 0',
             background: 'rgba(235,220,180,0.92)',
             border: '2px solid rgba(200,170,100,0.8)',
             borderRadius: 12, padding: '6px',
@@ -589,7 +589,7 @@ export default function RoyalDropScreen() {
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
           <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{
-              width: 'calc(100% - 28px)', maxWidth: 346, aspectRatio: '5 / 8',
+              width: 'calc(100% - 36px)', maxWidth: 580, aspectRatio: '5 / 8',
               background: 'linear-gradient(180deg,rgba(29,46,72,0.72),rgba(9,18,31,0.72))',
               border: '2px solid rgba(217,179,102,0.45)',
               borderRadius: 14, padding: '7px',
@@ -629,6 +629,14 @@ export default function RoyalDropScreen() {
               </div>
             </div>
           </div>
+
+          <button onClick={() => showToast('Bonus purchase is coming soon')} style={{
+            alignSelf: 'center', margin: '10px auto 2px', minHeight: 42, padding: '0 28px',
+            borderRadius: 12, border: '2px solid #f7c94a',
+            background: 'linear-gradient(180deg,#ffd85b,#e99a17)',
+            color: '#7a2e08', fontSize: 15, fontWeight: 950, letterSpacing: '0.03em',
+            boxShadow: '0 3px 0 #8e4b0b, 0 0 16px rgba(245,158,11,0.35)', cursor: 'pointer',
+          }}>♜&nbsp; BUY BONUS</button>
 
           {/* ── Win display ──────────────────────────────────────────────────── */}
           {phase === 'result' && result && result.totalWin > 0 && (
