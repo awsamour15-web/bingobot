@@ -88,7 +88,7 @@ function CrateBlock({
 
   return (
     <div
-      className={isDestroying ? 'rd-destroy' : isHit ? 'rd-hit' : undefined}
+      className={`rd-crate-cell${isDestroying ? ' rd-destroy' : isHit ? ' rd-hit' : ''}`}
       style={{
         position: 'relative',
         width: '100%',
@@ -129,7 +129,7 @@ function CrateBlock({
 function ChestBlock({ opened, multiplier }: { opened: boolean; multiplier?: number }) {
   return (
     <div
-      className={opened ? 'rd-chest-open' : undefined}
+      className={`rd-chest-cell${opened ? ' rd-chest-open' : ''}`}
       style={{
         width: '100%',
         aspectRatio: '1',
@@ -462,8 +462,11 @@ export default function RoyalDropScreen() {
       position: 'relative', overflow: 'hidden',
     }}>
       <style>{`
-        .rd-game-content { min-height: 0; }
+        .rd-game-content { min-height: 0; overflow: hidden; }
         .rd-cabinet-grid { height: clamp(190px, 31dvh, 360px); flex: 0 1 auto !important; }
+        .rd-cabinet-grid > div { min-height: 0; }
+        .rd-cabinet-grid .rd-crate-cell,
+        .rd-cabinet-grid .rd-chest-cell { min-height: 0; aspect-ratio: auto; }
         .rd-controls { flex-shrink: 0; }
         @media (max-width: 480px) {
           .rd-cabinet-reel { width: 80% !important; margin-top: 6px !important; }
