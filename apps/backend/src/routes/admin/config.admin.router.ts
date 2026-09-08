@@ -48,6 +48,7 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'deposit_bonus_start',
     'deposit_bonus_end',
     'support_contact',
+    'channel_link',
   ]);
 
   if (!ALLOWED_CONFIG_KEYS.has(key)) {

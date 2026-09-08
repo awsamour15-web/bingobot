@@ -69,6 +69,7 @@ async function seedConfig(): Promise<void> {
     { key: 'min_players_to_start', value: '1' },
     { key: 'deposit_telebirr_number', value: '0934942672' },
     { key: 'support_contact', value: '@FidelBingoSupport' },
+    { key: 'channel_link', value: 'https://t.me/FidelBingo_public' },
     { key: 'claim_window_ms', value: '5000' },
     // Channel membership gate — set to @YourChannel or a numeric ID to enforce joining.
     // Leave empty to disable the gate.

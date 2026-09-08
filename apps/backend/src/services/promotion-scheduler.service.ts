@@ -13,40 +13,59 @@ export interface SendTarget {
   channel_id?: string | null;
 }
 
+/** Build the promotion footer from config + env */
+async function buildPromoFooter(): Promise<string> {
+  const [supportRow, channelRow] = await Promise.all([
+    prisma.config.findUnique({ where: { key: 'support_contact' } }),
+    prisma.config.findUnique({ where: { key: 'channel_link' } }),
+  ]);
+
+  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
+  const supportContact = supportRow?.value ?? `@${botUsername}_Support`;
+  const channelLink = channelRow?.value ?? `https://t.me/${botUsername}_public`;
+
+  return (
+    `\n\nለመጫወት🎮 @${botUsername}` +
+    `\n📢 Official Channel: ${channelLink}` +
+    `\n☎️ Contact to Support: ${supportContact}` +
+    `\n🚀 አሁኑኑ ይቀላቀሉ እና የመጀመሪያ BONUS ስጦታዎን ያግኙ!`
+  );
+}
+
 /** Send a single message to one destination (channel ID or user telegram_id) */
 async function sendToOne(
   promotion: { content_type: string; text_content: string | null; media_file_id: string | null; caption?: string | null },
   chatId: string,
 ): Promise<void> {
   if (!bot) throw new Error('Bot not initialized');
-  
+
   const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
   const playLink = `https://t.me/${botUsername}`;
-  
-  // Create inline keyboard with Play button
+
   const keyboard = {
     inline_keyboard: [[
       { text: '🎮 Play Now', url: playLink }
     ]]
   };
-  
+
   const caption = promotion.caption ?? undefined;
-  
+  const footer = await buildPromoFooter();
+
   if (promotion.content_type === 'text' && promotion.text_content) {
-    await bot.api.sendMessage(chatId, promotion.text_content, { reply_markup: keyboard });
+    await bot.api.sendMessage(chatId, promotion.text_content + footer, { reply_markup: keyboard });
   } else if (promotion.content_type === 'image' && promotion.media_file_id) {
     await bot.api.sendPhoto(chatId, promotion.media_file_id, {
-      ...(caption ? { caption } : {}),
+      caption: (caption ?? '') + footer,
       reply_markup: keyboard,
     });
   } else if (promotion.content_type === 'video' && promotion.media_file_id) {
     await bot.api.sendVideo(chatId, promotion.media_file_id, {
-      ...(caption ? { caption } : {}),
+      caption: (caption ?? '') + footer,
       reply_markup: keyboard,
     });
   } else if (promotion.content_type === 'gif' && promotion.media_file_id) {
     await bot.api.sendAnimation(chatId, promotion.media_file_id, {
-      ...(caption ? { caption } : {}),
+      caption: (caption ?? '') + footer,
       reply_markup: keyboard,
     });
   }
