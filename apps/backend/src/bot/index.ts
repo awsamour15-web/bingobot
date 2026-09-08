@@ -694,9 +694,6 @@ export async function processDepositClaim(
     source: auditCtx?.source ?? 'bot',
   });
 
-  // Credit invite bonus to referrer on first deposit (non-blocking, idempotent)
-  void ReferralService.maybeCreditInviteBonus(playerId);
-
   return { success: true, amount, bonusAmount: bonusAmount > 0 ? bonusAmount : 0 };
 }
 
@@ -1116,13 +1113,13 @@ if (BOT_TOKEN) {
 
       // Run all DB updates atomically — use updateMany with phone_verified: false
       // to guard against race conditions (double-tap) granting the bonus twice.
-      const alreadyClaimed = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
         const { count } = await tx.player.updateMany({
           where: { telegram_id: telegramId, phone_verified: false },
           data: { phone, phone_verified: true },
         });
         // count === 0 means another request already verified this player
-        if (count === 0) return true;
+        if (count === 0) return { alreadyClaimed: true, hasReferrer: false };
 
         await tx.wallet.update({
           where: { id: playWalletId },
@@ -1137,20 +1134,31 @@ if (BOT_TOKEN) {
             note: 'Welcome bonus',
           },
         });
-        return false;
+
+        // Check if this new player was referred by someone
+        const fullPlayer = await tx.player.findUnique({
+          where: { id: player.id },
+          select: { referrer_id: true },
+        });
+        const hasReferrer = !!fullPlayer?.referrer_id;
+
+        return { alreadyClaimed: false, hasReferrer, referrerId: fullPlayer?.referrer_id ?? null };
       });
 
-      if (alreadyClaimed) {
+      if (result.alreadyClaimed) {
         await ctx.reply('✅ You are already registered!', { reply_markup: await getMenuForUser(telegramId) });
         return;
+      }
+
+      // Credit 5 ETB to the referrer immediately upon the new player's registration
+      if (result.referrerId) {
+        void ReferralService.maybeCreditInviteBonus(player.id);
       }
 
       await ctx.reply(
         `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: await getMenuForUser(telegramId) },
       );
-
-      // Invite bonus is deferred — credited on first deposit or first game bet.
     } catch (err) {
       console.error('[Bot] Registration error:', err);
       await ctx.reply('Something went wrong during registration. Please try again.');
