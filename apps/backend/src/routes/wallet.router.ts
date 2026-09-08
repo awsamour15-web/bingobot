@@ -581,19 +581,29 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
 });
 
 // ─── GET /api/wallet/available-coupons ───────────────────────────────────────
-// Returns publicly visible, non-exhausted coupons so players can see what's available.
+// Returns coupons the current player has NOT yet redeemed and that aren't exhausted.
 
-router.get('/available-coupons', async (_req: Request, res: Response): Promise<void> => {
+router.get('/available-coupons', async (req: Request, res: Response): Promise<void> => {
   try {
+    const playerId = req.player!.playerId;
     const setting = await prisma.systemSetting.findUnique({ where: { key: 'active_coupons' } });
     if (!setting?.value) { res.json([]); return; }
 
     type CouponDef = { code: string; amount: number; wallet: string; maxUses: number | null; description: string };
     const coupons: CouponDef[] = JSON.parse(setting.value as string);
 
-    // Filter out exhausted coupons
+    // Get player's wallets to check personal redemption history
+    const wallets = await prisma.wallet.findMany({ where: { player_id: playerId }, select: { id: true } });
+    const walletIds = wallets.map(w => w.id);
+
     const results = await Promise.all(
       coupons.map(async (c) => {
+        // Check if this player already redeemed it
+        const alreadyUsed = walletIds.length > 0 && await prisma.transaction.count({
+          where: { wallet_id: { in: walletIds }, type: TxType.bonus, note: { contains: `COUPON:${c.code}` } },
+        }) > 0;
+        if (alreadyUsed) return null;
+
         if (c.maxUses === null) return { ...c, usedCount: 0, exhausted: false };
         const usedCount = await prisma.transaction.count({
           where: { type: TxType.bonus, note: { contains: `COUPON:${c.code}` } },
@@ -604,7 +614,7 @@ router.get('/available-coupons', async (_req: Request, res: Response): Promise<v
 
     res.json(
       results
-        .filter((c) => !c.exhausted)
+        .filter((c): c is NonNullable<typeof c> => c !== null && !c.exhausted)
         .map(({ code, amount, wallet, description, maxUses, usedCount }) => ({
           code,
           amount,
