@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import royalDropBg from '../assets/royal-drop-bg.png';
-import royalDropLogo from '../assets/logo.364655f8.png';
+import royalDropLogo from '../assets/royal-drop-logo.png';
 import { spinRoyalDrop, getRoyalDropHistory, getProfile, checkRoyalDropAccess } from '../lib/api';
 import type {
   RoyalDropSpinResponse, SpinOutcome, CrateCell, ReelSymbol,

@@ -2,6 +2,7 @@
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
+import { TxType } from '@fidel/shared';
 
 const router: RouterType = Router();
 
@@ -35,7 +36,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const usageCounts = await Promise.all(
     coupons.map((c) =>
       prisma.transaction.count({
-        where: { type: 'bonus' as any, note: { contains: `COUPON:${c.code}` } },
+        where: { type: TxType.bonus, note: { contains: `COUPON:${c.code}` } },
       }),
     ),
   );
@@ -89,7 +90,7 @@ router.get('/:code/redemptions', async (req: Request, res: Response): Promise<vo
   const code = (req.params['code'] as string).toUpperCase();
 
   const transactions = await prisma.transaction.findMany({
-    where: { type: 'bonus' as any, note: { contains: `COUPON:${code}` } },
+    where: { type: TxType.bonus, note: { contains: `COUPON:${code}` } },
     orderBy: { created_at: 'desc' },
     include: {
       wallet: {

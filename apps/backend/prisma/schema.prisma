@@ -306,6 +306,10 @@ enum TxType {
   admin_credit
   admin_debit
   refund
+  bonus             // coupon / promo credit
+  ext_game_bet      // Gregmorn Hub bet deduction
+  ext_game_win      // Gregmorn Hub win credit
+  ext_game_rollback // Gregmorn Hub rollback refund
 }
 
 enum GameStatus {
@@ -612,4 +616,43 @@ model RoyalDropBet {
   @@index([player_id])
   @@index([created_at])
   @@map("royal_drop_bets")
+}
+
+// ─── Gregmorn Hub (SoftAPI) Integration ──────────────────────────────────────
+
+model GregmornSession {
+  id           String    @id @default(uuid())
+  player_id    String
+  session_id   String    @unique   // sessionId from Gregmorn openGame
+  game_id      String
+  game_title   String    @default("")
+  currency     String    @default("USD")
+  player_login String
+  status       String    @default("active") // active | closed
+  created_at   DateTime  @default(now())
+  closed_at    DateTime?
+
+  @@index([player_id])
+  @@index([status])
+  @@map("gregmorn_sessions")
+}
+
+model GregmornTransaction {
+  id             String   @id @default(uuid())
+  transaction_id String   @unique   // Gregmorn transactionId — idempotency key
+  session_id     String              // raw Gregmorn sessionid string
+  player_login   String
+  cmd            String              // 'writeBet' | 'rollback'
+  bet            Decimal  @default(0) @db.Decimal(14, 2)
+  win            Decimal  @default(0) @db.Decimal(14, 2)
+  balance_after  Decimal  @default(0) @db.Decimal(14, 2)
+  game_id        String?
+  round_id       String?
+  info           String?
+  created_at     DateTime @default(now())
+
+  @@index([session_id])
+  @@index([player_login])
+  @@index([created_at])
+  @@map("gregmorn_transactions")
 }

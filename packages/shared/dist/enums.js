@@ -12,6 +12,10 @@ export const TxType = {
     admin_credit: 'admin_credit',
     admin_debit: 'admin_debit',
     refund: 'refund',
+    bonus: 'bonus',
+    ext_game_bet: 'ext_game_bet',
+    ext_game_win: 'ext_game_win',
+    ext_game_rollback: 'ext_game_rollback',
 };
 export const GameStatus = {
     pending: 'pending',

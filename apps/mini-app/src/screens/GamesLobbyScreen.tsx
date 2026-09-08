@@ -249,14 +249,17 @@ const GAMES: Game[] = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean; royalDropAllowed: boolean }) {
+function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, accessChecked }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean; royalDropAllowed: boolean; accessChecked: boolean }) {
   const navigate = useNavigate();
+  const [tapped, setTapped] = React.useState(false);
   const poster = { title: game.title, emoji: game.emoji, gradient: game.gradient };
-  const isRestricted = (game.id === 'keno' && !kenoAllowed) || (game.id === 'plinko' && !plinkoAllowed) || (game.id === 'royal-drop' && !royalDropAllowed);
+  // While access hasn't been checked yet, treat restricted games as available (optimistic)
+  const isRestricted = accessChecked && ((game.id === 'keno' && !kenoAllowed) || (game.id === 'plinko' && !plinkoAllowed) || (game.id === 'royal-drop' && !royalDropAllowed));
   const isAvailable = game.available && !isRestricted;
 
   function handleClick() {
-    if (!isAvailable) return;
+    if (!isAvailable || tapped) return;
+    setTapped(true);
     navigate(game.route);
   }
 
@@ -297,6 +300,11 @@ function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed }: { game
           : '0 6px 16px rgba(0,0,0,0.25)';
       }}
     >
+      {tapped && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 10, borderRadius: 18, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#63d4ba', animation: 'lobbyCardSpin 0.7s linear infinite' }} />
+        </div>
+      )}
       <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 52 : 88, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {game.posterSrc && <img src={game.posterSrc} alt={`${game.title} poster`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg,rgba(255,255,255,0.1),transparent 34%), linear-gradient(145deg,transparent 35%,rgba(0,0,0,0.58))' }} />
@@ -335,17 +343,16 @@ export default function GamesLobbyScreen() {
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
   const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         await initAuth();
-        const [profile, kenoAccess, plinkoAccess, royalDropAccess, coupons] = await Promise.all([
+        // Load profile first for fast balance display, then access checks in background
+        const [profile, coupons] = await Promise.all([
           getProfile(),
-          checkKenoAccess().catch(() => ({ allowed: false })),
-          checkPlinkoAccess().catch(() => ({ allowed: false })),
-          checkRoyalDropAccess().catch(() => ({ allowed: false })),
           getAvailableCoupons().catch(() => [] as AvailableCoupon[]),
         ]);
         if (!cancelled) {
@@ -353,10 +360,19 @@ export default function GamesLobbyScreen() {
           setIsSuspended(profile.is_suspended);
           setMainBalance(profile.mainWallet.balance);
           setPlayBalance(profile.playWallet.balance);
+          setAvailableCoupons(coupons);
+        }
+        // Access checks run after profile is shown — don't block UI
+        const [kenoAccess, plinkoAccess, royalDropAccess] = await Promise.all([
+          checkKenoAccess().catch(() => ({ allowed: false })),
+          checkPlinkoAccess().catch(() => ({ allowed: false })),
+          checkRoyalDropAccess().catch(() => ({ allowed: false })),
+        ]);
+        if (!cancelled) {
           setKenoAllowed(kenoAccess.allowed);
           setPlinkoAllowed(plinkoAccess.allowed);
           setRoyalDropAllowed(royalDropAccess.allowed);
-          setAvailableCoupons(coupons);
+          setAccessChecked(true);
         }
       } catch { /* ignore */ }
     }
@@ -382,15 +398,9 @@ export default function GamesLobbyScreen() {
     );
   }
 
-  const availableGames = GAMES.filter(g => {
-    if (g.id === 'poker') return false;
-    if (g.id === 'keno') return true;
-    if (g.id === 'plinko') return true;
-    return true;
-  });
-  const filteredGames = availableGames.filter(game => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'coming') return game.category === 'coming';
+  const availableGames = GAMES.filter(g => g.available);
+  const filteredGames = (activeFilter === 'coming' ? GAMES.filter(g => g.category === 'coming') : availableGames).filter(game => {
+    if (activeFilter === 'all' || activeFilter === 'coming') return true;
     if (activeFilter === 'live') return game.category === 'live' || game.category === 'crash';
     return game.category === 'slots' || game.category === 'numbers';
   });
@@ -405,12 +415,16 @@ export default function GamesLobbyScreen() {
       setCouponStatus('success');
       setCouponMessage(response.message);
       setCouponCode('');
-      // Refresh available coupons (remaining count may have changed)
+      // Refresh available coupons and wallet balances
       getAvailableCoupons().then(setAvailableCoupons).catch(() => {});
+      getProfile().then(p => {
+        setMainBalance(p.mainWallet.balance);
+        setPlayBalance(p.playWallet.balance);
+      }).catch(() => {});
     } catch (error) {
-      const responseError = error as { responseData?: { message?: string } };
+      const responseError = error as { message?: string };
       setCouponStatus('error');
-      setCouponMessage(responseError.responseData?.message ?? 'Invalid or expired coupon');
+      setCouponMessage(responseError.message ?? 'Invalid or expired coupon');
     }
   }
 
@@ -421,6 +435,10 @@ export default function GamesLobbyScreen() {
       color: '#f8fafc', maxWidth: 480, margin: '0 auto', paddingBottom: 100, overflow: 'hidden',
     }}>
       <style>{`
+        @keyframes lobbyCardSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
         @keyframes lobbyPulse {
           0%,100% { opacity:0.6; transform:scale(1); }
           50%      { opacity:1;   transform:scale(1.25); }
@@ -491,7 +509,7 @@ export default function GamesLobbyScreen() {
         )}
       </div>
 
-      <div style={{ padding: '30px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 21, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}><Trophy size={22} color="#f3cf64" /> PLAY NOW</div><span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>{availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS</span></div><div style={{ marginTop: 4, color: '#78869c', fontSize: 11, fontWeight: 600 }}>Pick a game and make your move</div><div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>{([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>)}</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>{filteredGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} /></div>)}</div></div>
+      <div style={{ padding: '30px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 21, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}><Trophy size={22} color="#f3cf64" /> PLAY NOW</div><span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>{availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS</span></div><div style={{ marginTop: 4, color: '#78869c', fontSize: 11, fontWeight: 600 }}>Pick a game and make your move</div><div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>{([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>)}</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>{filteredGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} accessChecked={accessChecked} /></div>)}</div></div>
 
       {/* ── Agent button ──────────────────────────────────────────── */}
       {isAgent && (

@@ -534,7 +534,7 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
   const alreadyUsed = await prisma.transaction.findFirst({
     where: {
       wallet_id: { in: walletIds },
-      type: 'bonus' as any,
+      type: TxType.bonus,
       note: { contains: `COUPON:${normalizedCode}` },
     },
   });
@@ -547,7 +547,7 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
   if (coupon.maxUses !== null) {
     const globalUses = await prisma.transaction.count({
       where: {
-        type: 'bonus' as any,
+        type: TxType.bonus,
         note: { contains: `COUPON:${normalizedCode}` },
       },
     });
@@ -565,7 +565,7 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
       playerId,
       targetWallet,
       coupon.amount,
-      'bonus' as any,
+      TxType.bonus,
       undefined,
       `COUPON:${normalizedCode} — promo credit`,
     );
@@ -596,7 +596,7 @@ router.get('/available-coupons', async (_req: Request, res: Response): Promise<v
       coupons.map(async (c) => {
         if (c.maxUses === null) return { ...c, usedCount: 0, exhausted: false };
         const usedCount = await prisma.transaction.count({
-          where: { type: 'bonus' as any, note: { contains: `COUPON:${c.code}` } },
+          where: { type: TxType.bonus, note: { contains: `COUPON:${c.code}` } },
         });
         return { ...c, usedCount, exhausted: usedCount >= c.maxUses };
       }),

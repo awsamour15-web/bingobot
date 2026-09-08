@@ -14,7 +14,11 @@ export type TxType =
   | 'referral_commission'
   | 'admin_credit'
   | 'admin_debit'
-  | 'refund';
+  | 'refund'
+  | 'bonus'
+  | 'ext_game_bet'
+  | 'ext_game_win'
+  | 'ext_game_rollback';
 export const TxType = {
   deposit: 'deposit' as TxType,
   withdrawal: 'withdrawal' as TxType,
@@ -24,6 +28,10 @@ export const TxType = {
   admin_credit: 'admin_credit' as TxType,
   admin_debit: 'admin_debit' as TxType,
   refund: 'refund' as TxType,
+  bonus: 'bonus' as TxType,
+  ext_game_bet: 'ext_game_bet' as TxType,
+  ext_game_win: 'ext_game_win' as TxType,
+  ext_game_rollback: 'ext_game_rollback' as TxType,
 };
 
 export type GameStatus = 'pending' | 'active' | 'completed' | 'cancelled' | 'void';

@@ -39,6 +39,9 @@ import slotsRouter from './routes/slots.router.js';
 import kenoRouter from './routes/keno.router.js';
 import plinkoRouter from './routes/plinko.router.js';
 import royalDropRouter from './routes/royal-drop.router.js';
+import gregmornRouter from './routes/gregmorn.router.js';
+import gregmornCallbackRouter from './routes/gregmorn-callback.router.js';
+import gregmornAdminRouter from './routes/admin/gregmorn.admin.router.js';
 import helmet from 'helmet';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
@@ -114,6 +117,15 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 
+// ─── Raw body capture for Gregmorn callback signature verification ────────────
+// Must be registered on the callback path only, before the global JSON parser
+// consumes the stream. We use express.json with a verify hook on that prefix.
+app.use('/api/gregmorn/callback', express.json({
+  verify: (req: express.Request & { rawBody?: string }, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  },
+}));
+
 // ─── Player Routes ────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
 app.use('/api/players', playersRouter);
@@ -128,6 +140,8 @@ app.use('/api/slots', slotsRouter);
 app.use('/api/keno', kenoRouter);
 app.use('/api/plinko', plinkoRouter);
 app.use('/api/royal-drop', royalDropRouter);
+app.use('/api/gregmorn', gregmornRouter);
+app.use('/api/gregmorn', gregmornCallbackRouter);
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use('/api/admin/auth', adminAuthRouter);
@@ -145,6 +159,7 @@ app.use('/api/admin/broadcast-targets', jwtAdminMiddleware, broadcastTargetsRout
 app.use('/api/admin/mock-players', jwtAdminMiddleware, adminMockPlayersRouter);
 app.use('/api/admin/games', jwtAdminMiddleware, adminGamesRouter);
 app.use('/api/admin/coupons', jwtAdminMiddleware, adminCouponsRouter);
+app.use('/api/admin/gregmorn', jwtAdminMiddleware, gregmornAdminRouter);
 // broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
