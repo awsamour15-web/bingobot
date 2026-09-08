@@ -639,6 +639,22 @@ export function deletePromotion(id: string): Promise<{ success: boolean }> {
   return adminApiRequest('DELETE', `/api/admin/promotions/${id}`);
 }
 
+export async function uploadPromotionMedia(file: File): Promise<{ file_id: string; content_type: 'image' | 'video' | 'gif' }> {
+  const jwt = getAdminJwt();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_URL}/api/admin/promotions/upload-media`, {
+    method: 'POST',
+    headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error((err as { message?: string }).message ?? 'Upload failed');
+  }
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Cartelas
 // ---------------------------------------------------------------------------

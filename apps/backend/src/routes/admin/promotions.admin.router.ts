@@ -1,5 +1,8 @@
 // Admin promotion management endpoints
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
+import multer from 'multer';
+import { InputFile } from 'grammy';
+import { bot } from '../../bot/index.js';
 import { PromotionService } from '../../services/promotion.service.js';
 import { sendPromotionNow, retryFailedDeliveries } from '../../services/promotion-scheduler.service.js';
 
@@ -8,6 +11,52 @@ type PromotionStatus = 'active' | 'inactive';
 type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 
 const router: RouterType = Router();
+
+// Multer — memory storage, 10 MB limit, images/video/gif only
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
+
+// POST /upload-media — upload a file to Telegram and return its file_id
+// Requires MEDIA_UPLOAD_CHAT_ID env var (any chat/channel the bot is a member of)
+router.post('/upload-media', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) { res.status(400).json({ error: 'NO_FILE', message: 'No file provided' }); return; }
+    if (!bot) { res.status(503).json({ error: 'BOT_UNAVAILABLE', message: 'Bot not initialized' }); return; }
+
+    const chatId = process.env['MEDIA_UPLOAD_CHAT_ID'];
+    if (!chatId) { res.status(503).json({ error: 'NO_UPLOAD_CHAT', message: 'MEDIA_UPLOAD_CHAT_ID not configured' }); return; }
+
+    const inputFile = new InputFile(req.file.buffer, req.file.originalname);
+    const mime = req.file.mimetype;
+
+    let file_id: string;
+    let content_type: 'image' | 'video' | 'gif';
+
+    if (mime === 'image/gif') {
+      const msg = await bot.api.sendAnimation(chatId, inputFile);
+      file_id = msg.animation.file_id;
+      content_type = 'gif';
+    } else if (mime === 'video/mp4') {
+      const msg = await bot.api.sendVideo(chatId, inputFile);
+      file_id = msg.video.file_id;
+      content_type = 'video';
+    } else {
+      const msg = await bot.api.sendPhoto(chatId, inputFile);
+      file_id = msg.photo[msg.photo.length - 1]!.file_id;
+      content_type = 'image';
+    }
+
+    res.json({ file_id, content_type });
+  } catch (err) {
+    res.status(500).json({ error: 'UPLOAD_FAILED', message: (err as Error).message });
+  }
+});
 
 // ── Static routes MUST come before /:id ───────────────────────────────────────
 

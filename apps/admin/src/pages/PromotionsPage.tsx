@@ -15,6 +15,7 @@ import {
   getPromotionStats, getGlobalPromotionStats,
   listBroadcastTargets, createBroadcastTarget, updateBroadcastTarget, deleteBroadcastTarget,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
+  uploadPromotionMedia,
 } from '../lib/api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -231,6 +232,11 @@ function PromotionForm({
   const [textContent, setTextContent] = useState(initial?.text_content ?? '');
   const [mediaFileId, setMediaFileId] = useState(initial?.media_file_id ?? '');
   const [caption, setCaption] = useState(initial?.caption ?? '');
+  // Upload state
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   // Bonus fields
   const [hasBonus, setHasBonus] = useState(!!(initial?.bonus_amount));
   const [bonusAmount, setBonusAmount] = useState(String(initial?.bonus_amount ?? ''));
@@ -308,9 +314,76 @@ function PromotionForm({
         </Field>
       ) : (
         <>
-          <Field label="Telegram File ID" hint="Send the file to the bot first to get its file_id">
-            <input value={mediaFileId} onChange={e => setMediaFileId(e.target.value)} required name="media-file-id" style={inputCss} placeholder="AgACAgIAAxk…" />
+          {/* ── File Upload ── */}
+          <Field label="Upload Image / Video / GIF" hint="Max 10 MB — JPG, PNG, WebP, GIF, MP4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Drop / click zone */}
+              <label style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 8, padding: '20px', borderRadius: 10, cursor: 'pointer',
+                border: `2px dashed ${uploadPreview ? '#22c55e' : 'var(--c-border)'}`,
+                background: uploadPreview ? 'rgba(34,197,94,0.06)' : 'var(--c-bg)',
+                transition: 'all 0.15s',
+              }}>
+                {uploadPreview ? (
+                  contentType === 'video' ? (
+                    <video src={uploadPreview} style={{ maxHeight: 120, maxWidth: '100%', borderRadius: 8 }} controls />
+                  ) : (
+                    <img src={uploadPreview} alt="preview" style={{ maxHeight: 120, maxWidth: '100%', borderRadius: 8, objectFit: 'contain' }} />
+                  )
+                ) : (
+                  <>
+                    <span style={{ fontSize: 28 }}>📁</span>
+                    <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>Click or drag a file here</span>
+                  </>
+                )}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    const f = e.target.files?.[0] ?? null;
+                    setUploadFile(f);
+                    setUploadError(null);
+                    if (f) {
+                      setUploadPreview(URL.createObjectURL(f));
+                    } else {
+                      setUploadPreview(null);
+                    }
+                  }}
+                />
+              </label>
+
+              {/* Upload button + status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Btn size="sm" type="button" variant="outline"
+                  disabled={!uploadFile || uploading}
+                  onClick={async () => {
+                    if (!uploadFile) return;
+                    setUploading(true); setUploadError(null);
+                    try {
+                      const res = await uploadPromotionMedia(uploadFile);
+                      setMediaFileId(res.file_id);
+                    } catch (err) {
+                      setUploadError((err as Error).message);
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}>
+                  {uploading ? 'Uploading…' : '⬆ Upload to Telegram'}
+                </Btn>
+                {mediaFileId && !uploading && (
+                  <span style={{ fontSize: 12, color: '#22c55e' }}>✓ Uploaded</span>
+                )}
+              </div>
+              {uploadError && <Alert type="error">{uploadError}</Alert>}
+
+              {/* Manual file_id fallback */}
+              <Field label="Telegram File ID" hint="Auto-filled after upload, or paste manually">
+                <input value={mediaFileId} onChange={e => setMediaFileId(e.target.value)}
+                  required name="media-file-id" style={inputCss} placeholder="AgACAgIAAxk…" />
+              </Field>
+            </div>
           </Field>
+
           <Field label="Caption (optional)" hint={`${caption.length}/1024`}>
             <textarea name="caption" value={caption} onChange={e => setCaption(e.target.value)}
               maxLength={1024} rows={2} style={{ ...inputCss, resize: 'vertical' }}
