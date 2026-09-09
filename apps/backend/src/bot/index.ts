@@ -209,8 +209,9 @@ export async function buildDepositInstructionText(amount: number): Promise<{ tex
 
   const text =
     `1. ከታቹ ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n` +
-    `   Phone: ${telebirrNumber}${receiverName ? `\n   Name: ${receiverName}` : ''}\n\n` +
-    `2. የካፈሉትን አጭር የደሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
+    `📱 Phone: \`${telebirrNumber}\`` +
+    (receiverName ? `\n👤 Name: ${receiverName}` : '') +
+    `\n\n2. የካፈሉትን አጭር የደሁፍ መልዕክት\\(message\\) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
 
   return { text, telebirrNumber, receiverName };
 }
@@ -1329,18 +1330,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   bot.hears('Deposit 💰', handleDepositStart);
 
-  // ─── Copy phone callback — sends phone number as a formatted announcement ───
-  bot.callbackQuery(/^copy_phone:(.+)$/, async (ctx) => {
-    const phone = ctx.match[1];
-    await ctx.answerCallbackQuery('📋 Phone number copied!');
-    await ctx.reply(
-      `📢 *PAYMENT NUMBER*\n\n` +
-      `📱 \`${phone}\`\n\n` +
-      `👆 Tap the number above to copy it, then paste when sending your transfer.`,
-      { parse_mode: 'Markdown' }
-    );
-  });
-
   // ─── /menu command — refresh the keyboard for existing users ──────────────
   bot.command('menu', async (ctx) => {
     if (!ctx.from) return;
@@ -1422,12 +1411,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
         const { text: instructionText, telebirrNumber, receiverName } = await buildDepositInstructionText(amount);
         depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber, receiverName });
-        await ctx.reply(instructionText, {
-          reply_markup: new InlineKeyboard().text(
-            `📋 Copy Phone: ${telebirrNumber}`,
-            `copy_phone:${telebirrNumber}`,
-          ),
-        });
+        await ctx.reply(instructionText, { parse_mode: 'MarkdownV2' });
         return;
       }
 
