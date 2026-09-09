@@ -891,7 +891,7 @@ function CouponPanel() {
         wallet,
         maxUses: maxUses ? Number(maxUses) : null,
         description: description.trim(),
-        claimRequirements: Object.keys(cleanReqs).length > 0 ? cleanReqs : undefined,
+        ...(Object.keys(cleanReqs).length > 0 ? { claimRequirements: cleanReqs } : {}),
       });
       setSuccess('✓ Coupon created successfully');
       setCode(''); setAmount(''); setMaxUses(''); setDescription(''); setWdReqs({});
@@ -976,7 +976,7 @@ function CouponPanel() {
                   <input
                     type="number" min={0} step={1}
                     value={wdReqs.minDepositToday ?? ''}
-                    onChange={e => setWdReqs(r => ({ ...r, minDepositToday: e.target.value ? Number(e.target.value) : undefined }))}
+                    onChange={e => setWdReqs(r => { const n = { ...r }; if (e.target.value) n.minDepositToday = Number(e.target.value); else delete n.minDepositToday; return n; })}
                     placeholder="no requirement"
                     style={inputCss}
                   />
@@ -985,7 +985,7 @@ function CouponPanel() {
                   <input
                     type="number" min={0} step={1}
                     value={wdReqs.minTotalDeposit ?? ''}
-                    onChange={e => setWdReqs(r => ({ ...r, minTotalDeposit: e.target.value ? Number(e.target.value) : undefined }))}
+                    onChange={e => setWdReqs(r => { const n = { ...r }; if (e.target.value) n.minTotalDeposit = Number(e.target.value); else delete n.minTotalDeposit; return n; })}
                     placeholder="no requirement"
                     style={inputCss}
                   />
@@ -994,7 +994,7 @@ function CouponPanel() {
                   <input
                     type="number" min={0} step={1}
                     value={wdReqs.minGamesToday ?? ''}
-                    onChange={e => setWdReqs(r => ({ ...r, minGamesToday: e.target.value ? Number(e.target.value) : undefined }))}
+                    onChange={e => setWdReqs(r => { const n = { ...r }; if (e.target.value) n.minGamesToday = Number(e.target.value); else delete n.minGamesToday; return n; })}
                     placeholder="no requirement"
                     style={inputCss}
                   />
@@ -1003,7 +1003,7 @@ function CouponPanel() {
                   <input
                     type="number" min={0} step={1}
                     value={wdReqs.minInvitations ?? ''}
-                    onChange={e => setWdReqs(r => ({ ...r, minInvitations: e.target.value ? Number(e.target.value) : undefined }))}
+                    onChange={e => setWdReqs(r => { const n = { ...r }; if (e.target.value) n.minInvitations = Number(e.target.value); else delete n.minInvitations; return n; })}
                     placeholder="no requirement"
                     style={inputCss}
                   />
