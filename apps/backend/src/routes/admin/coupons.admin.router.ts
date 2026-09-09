@@ -88,7 +88,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     wallet: wallet === 'main' ? 'main' : 'play',
     maxUses: maxUses === null || maxUses === undefined ? null : Number(maxUses),
     description: String(description),
-    claimRequirements: claimRequirements ?? undefined,
+    ...(claimRequirements ? { claimRequirements } : {}),
   };
 
   coupons.push(newCoupon);
