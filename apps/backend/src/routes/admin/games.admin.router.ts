@@ -1,5 +1,5 @@
-// Admin games stats endpoint
-// GET /api/admin/games/stats — per-game transaction totals, profit/loss
+﻿// Admin games stats endpoint
+// GET /api/admin/games/stats -- per-game transaction totals, profit/loss
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
@@ -14,11 +14,13 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
     kenoStats,
     slotsStats,
     plinkoStats,
+    royalDropStats,
     recentBingo,
     recentCrash,
     recentKeno,
     recentSlots,
     recentPlinko,
+    recentRoyalDrop,
   ] = await Promise.all([
     // Bingo
     prisma.gameRound.aggregate({
@@ -43,6 +45,11 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
     }),
     // Plinko bets
     prisma.plinkoBet.aggregate({
+      _sum: { bet_amount: true, payout: true },
+      _count: { id: true },
+    }),
+    // Royal Drop bets
+    prisma.royalDropBet.aggregate({
       _sum: { bet_amount: true, payout: true },
       _count: { id: true },
     }),
@@ -110,6 +117,21 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         player: { select: { username: true } },
       },
     }),
+    // Recent Royal Drop bets (last 50)
+    prisma.royalDropBet.findMany({
+      orderBy: { created_at: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        bet_amount: true,
+        payout: true,
+        cashout_multiplier: true,
+        bonus_triggered: true,
+        status: true,
+        created_at: true,
+        player: { select: { username: true } },
+      },
+    }),
   ]);
 
   // Bingo totals
@@ -134,6 +156,9 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
 
   const plinkoTotalBets = Number(plinkoStats._sum.bet_amount ?? 0);
   const plinkoTotalPaid = Number(plinkoStats._sum.payout ?? 0);
+
+  const royalDropTotalBets = Number(royalDropStats._sum.bet_amount ?? 0);
+  const royalDropTotalPaid = Number(royalDropStats._sum.payout ?? 0);
 
   res.json({
     games: [
@@ -162,10 +187,16 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         profit: slotsTotalBets - slotsTotalWins,
       },
       {
-        key: 'plinko', name: 'Plinko', icon: '�',
+        key: 'plinko', name: 'Plinko', icon: '🪃',
         totalRounds: plinkoStats._count.id,
         totalBets: plinkoTotalBets, totalPaid: plinkoTotalPaid,
         profit: plinkoTotalBets - plinkoTotalPaid,
+      },
+      {
+        key: 'royal_drop', name: 'Royal Drop', icon: '👑',
+        totalRounds: royalDropStats._count.id,
+        totalBets: royalDropTotalBets, totalPaid: royalDropTotalPaid,
+        profit: royalDropTotalBets - royalDropTotalPaid,
       },
     ],
     transactions: {
@@ -227,6 +258,18 @@ router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
         rows: p.rows,
         risk: p.risk,
         date: p.created_at.toISOString(),
+      })),
+      royal_drop: recentRoyalDrop.map((r) => ({
+        id: r.id,
+        type: r.status,
+        username: r.player.username,
+        totalBet: Number(r.bet_amount),
+        paid: Number(r.payout ?? 0),
+        profit: Number(r.bet_amount) - Number(r.payout ?? 0),
+        players: 1,
+        multiplier: r.cashout_multiplier,
+        bonusTriggered: r.bonus_triggered,
+        date: r.created_at.toISOString(),
       })),
     },
   });

@@ -769,6 +769,7 @@ export interface GamesStatsResponse {
     keno: GameTx[];
     slots: GameTx[];
     plinko: GameTx[];
+    royal_drop: GameTx[];
   };
 }
 

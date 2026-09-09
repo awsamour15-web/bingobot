@@ -6,7 +6,7 @@ import {
 import { getGamesStats } from '../lib/api';
 import type { GameStat, GameTx, GamesStatsResponse } from '../lib/api';
 
-type GameKey = 'bingo' | 'crash' | 'keno' | 'slots' | 'plinko';
+type GameKey = 'bingo' | 'crash' | 'keno' | 'slots' | 'plinko' | 'royal_drop';
 
 const GAME_COLORS: Record<GameKey, string> = {
   bingo: '#6366f1',
@@ -14,6 +14,7 @@ const GAME_COLORS: Record<GameKey, string> = {
   keno:  '#22c55e',
   slots: '#f59e0b',
   plinko: '#818cf8',
+  royal_drop: '#f59e0b',
 };
 
 function fmt(n: number) {
@@ -106,18 +107,20 @@ function TransactionsTable({ gameKey, txs, loading }: {
   const isSlots = gameKey === 'slots';
   const isCrash = gameKey === 'crash';
   const isPlinko = gameKey === 'plinko';
+  const isRoyalDrop = gameKey === 'royal_drop';
 
-  const cols = isSlots ? 5 : isCrash ? 6 : isPlinko ? 6 : 5;
+  const cols = isSlots || isRoyalDrop ? 5 : isCrash ? 6 : isPlinko ? 6 : 5;
 
   return (
     <Table>
       <thead>
         <tr>
           <Th>ID</Th>
-          {(isSlots || isPlinko) && <Th>Player</Th>}
+          {(isSlots || isPlinko || isRoyalDrop) && <Th>Player</Th>}
           <Th right>Players</Th>
           {isCrash && <Th right>Crash Point</Th>}
           {isPlinko && <Th right>Multiplier</Th>}
+          {isRoyalDrop && <Th right>Multiplier</Th>}
           <Th right>Bets In (ETB)</Th>
           <Th right>Paid Out (ETB)</Th>
           <Th right>Profit / Loss</Th>
@@ -133,7 +136,7 @@ function TransactionsTable({ gameKey, txs, loading }: {
           txs.map((tx) => (
             <tr key={tx.id}>
               <Td mono muted>{String(tx.id).slice(0, 12)}…</Td>
-              {(isSlots || isPlinko) && <Td><span style={{ fontWeight: 600 }}>@{tx.username ?? '—'}</span></Td>}
+              {(isSlots || isPlinko || isRoyalDrop) && <Td><span style={{ fontWeight: 600 }}>@{tx.username ?? '—'}</span></Td>}
               <Td right muted>{tx.players}</Td>
               {isCrash && (
                 <Td right>
@@ -146,6 +149,16 @@ function TransactionsTable({ gameKey, txs, loading }: {
                 <Td right>
                   <span style={{ fontWeight: 700, color: '#818cf8' }}>
                     {tx.multiplier != null ? `${Number(tx.multiplier).toFixed(2)}x` : '—'}
+                  </span>
+                </Td>
+              )}
+              {isRoyalDrop && (
+                <Td right>
+                  <span style={{ fontWeight: 700, color: '#f59e0b' }}>
+                    {tx.multiplier != null ? `${Number(tx.multiplier).toFixed(2)}x` : '—'}
+                    {(tx as GameTx & { bonusTriggered?: boolean }).bonusTriggered && (
+                      <span style={{ marginLeft: 4, fontSize: 10, background: '#f59e0b', color: '#000', borderRadius: 4, padding: '1px 4px' }}>BONUS</span>
+                    )}
                   </span>
                 </Td>
               )}
@@ -258,11 +271,11 @@ export function GamesPage() {
       
       <Card>
         <CardHeader
-          title={`${data?.games.find(g => g.key === selectedGame)?.icon ?? ''} ${selectedGame.charAt(0).toUpperCase() + selectedGame.slice(1)} — Recent Transactions`}
+          title={`${data?.games.find(g => g.key === selectedGame)?.icon ?? ''} ${selectedGame === 'royal_drop' ? 'Royal Drop' : selectedGame.charAt(0).toUpperCase() + selectedGame.slice(1)} — Recent Transactions`}
           subtitle="Last 50 rounds, each with individual profit / loss"
           action={
             <div style={{ display: 'flex', gap: 6 }}>
-              {(['bingo', 'crash', 'keno', 'slots', 'plinko'] as GameKey[]).map((k) => (
+              {(['bingo', 'crash', 'keno', 'slots', 'plinko', 'royal_drop'] as GameKey[]).map((k) => (
                 <button
                   key={k}
                   onClick={() => setSelectedGame(k)}
@@ -280,7 +293,7 @@ export function GamesPage() {
                     textTransform: 'capitalize',
                   }}
                 >
-                  {k}
+                  {k === 'royal_drop' ? 'Royal Drop' : k}
                 </button>
               ))}
             </div>

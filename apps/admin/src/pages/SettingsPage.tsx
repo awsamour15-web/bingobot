@@ -31,6 +31,7 @@ function HouseEdgeSection() {
   const [slots, setSlots] = useState('15');
   const [keno, setKeno] = useState('15');
   const [plinko, setPlinko] = useState('15');
+  const [royalDrop, setRoyalDrop] = useState('15');
   const [crashMaxMult, setCrashMaxMult] = useState('20');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -42,6 +43,7 @@ function HouseEdgeSection() {
       setSlots(data.find(e => e.key === 'house_edge_slots')?.value ?? '15');
       setKeno(data.find(e => e.key === 'house_edge_keno')?.value ?? '15');
       setPlinko(data.find(e => e.key === 'house_edge_plinko')?.value ?? '15');
+      setRoyalDrop(data.find(e => e.key === 'house_edge_royal_drop')?.value ?? '15');
       setCrashMaxMult(data.find(e => e.key === 'crash_max_multiplier')?.value ?? '40');
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -80,10 +82,11 @@ function HouseEdgeSection() {
   }
 
   const games = [
-    { key: 'crash', label: 'Aviator', icon: '✈️', color: '#ef4444', val: crash, set: setCrash },
-    { key: 'slots', label: 'Slots',   icon: '🎰', color: '#f59e0b', val: slots, set: setSlots },
-    { key: 'keno',  label: 'Keno',    icon: '🎱', color: '#3b82f6', val: keno,  set: setKeno  },
-    { key: 'plinko',label: 'Plinko',  icon: '🪃', color: '#8b5cf6', val: plinko,set: setPlinko},
+    { key: 'crash', label: 'Aviator',    icon: '✈️', color: '#ef4444', val: crash,     set: setCrash     },
+    { key: 'slots', label: 'Slots',      icon: '🎰', color: '#f59e0b', val: slots,     set: setSlots     },
+    { key: 'keno',  label: 'Keno',       icon: '🎱', color: '#3b82f6', val: keno,      set: setKeno      },
+    { key: 'plinko',label: 'Plinko',     icon: '🪃', color: '#8b5cf6', val: plinko,    set: setPlinko    },
+    { key: 'royal_drop', label: 'Royal Drop', icon: '👑', color: '#f59e0b', val: royalDrop, set: setRoyalDrop },
   ];
 
   return (

@@ -33,6 +33,7 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'house_edge_slots',
     'house_edge_keno',
     'house_edge_plinko',
+    'house_edge_royal_drop',
     'crash_max_multiplier',
     'min_players_to_start',
     'max_cartelas_per_player',
@@ -75,7 +76,7 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
   }
 
   // Validate house edge keys — must be 5–50%
-  if (key === 'house_edge_crash' || key === 'house_edge_slots' || key === 'house_edge_keno' || key === 'house_edge_plinko') {
+  if (key === 'house_edge_crash' || key === 'house_edge_slots' || key === 'house_edge_keno' || key === 'house_edge_plinko' || key === 'house_edge_royal_drop') {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed) || parsed < 5 || parsed > 50) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: `${key} must be between 5 and 50 (percent)` });
