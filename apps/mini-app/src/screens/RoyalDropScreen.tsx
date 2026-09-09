@@ -659,14 +659,6 @@ export default function RoyalDropScreen() {
             </div>
           </div>
 
-          <button onClick={() => showToast('Bonus purchase is coming soon')} style={{
-            alignSelf: 'center', margin: '6px auto 2px', minHeight: 34, padding: '0 22px',
-            borderRadius: 12, border: '2px solid #f7c94a',
-            background: 'linear-gradient(180deg,#ffd85b,#e99a17)',
-            color: '#7a2e08', fontSize: 12, fontWeight: 950, letterSpacing: '0.03em',
-            boxShadow: '0 3px 0 #8e4b0b, 0 0 16px rgba(245,158,11,0.35)', cursor: 'pointer',
-          }}>♜&nbsp; BUY BONUS</button>
-
           {/* ── Win display ──────────────────────────────────────────────────── */}
           {phase === 'result' && result && result.totalWin > 0 && (
             <div style={{
