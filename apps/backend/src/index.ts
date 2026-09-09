@@ -49,6 +49,7 @@ import { bot } from './bot/index.js';
 import { RoundScheduler } from './services/round-scheduler.service.js';
 import { CleanupService } from './services/cleanup.service.js';
 import { PromotionScheduler } from './services/promotion-scheduler.service.js';
+import { CouponScheduler } from './services/coupon-scheduler.service.js';
 import { kenoEngine } from './services/keno-engine.service.js';
 import { errorHandler, notFoundHandler, setupGlobalErrorHandlers } from './lib/error-handler.js';
 
@@ -345,6 +346,8 @@ httpServer.listen(PORT, HOST, () => {
   CleanupService.start();
   // Start promotion scheduler
   PromotionScheduler.start();
+  // Start coupon announcement scheduler
+  CouponScheduler.start();
 });
 
 // ─── Telegram Bot — polling for local dev (webhook handled above for production) ───

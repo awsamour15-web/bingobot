@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon, CouponRedemption } from '../lib/api';
+import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon, CouponRedemption, CouponScheduleEntry, BroadcastTarget } from '../lib/api';
 import {
   listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
   createPromotion,
   updatePromotion, setPromotionStatus, deletePromotion,
   listCoupons, createCoupon, deleteCoupon, getCouponRedemptions,
+  listCouponSchedules, createCouponSchedule, deleteCouponSchedule,
+  listBroadcastTargets,
   getConfig, updateConfig,
 } from '../lib/api';
 import {
@@ -1044,7 +1046,134 @@ function CouponPanel() {
           </Table>
         </Card>
       </div>
+
+      {/* ── Schedule Announcements ── */}
+      <CouponScheduleSection coupons={coupons} />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coupon Schedule Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CouponScheduleSection({ coupons }: { coupons: Coupon[] }) {
+  const [schedules, setSchedules] = useState<CouponScheduleEntry[]>([]);
+  const [targets, setTargets] = useState<BroadcastTarget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCode, setSelectedCode] = useState('');
+  const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
+  const [sendAt, setSendAt] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  function load() {
+    Promise.all([listCouponSchedules(), listBroadcastTargets()])
+      .then(([s, t]) => { setSchedules(s); setTargets(t); setLoading(false); })
+      .catch(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function toggleTarget(id: string) {
+    setSelectedTargets(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedCode) { setError('Select a coupon'); return; }
+    if (selectedTargets.size === 0) { setError('Select at least one target'); return; }
+    if (!sendAt) { setError('Set a send time'); return; }
+    setSaving(true); setError(null); setSuccess(null);
+    try {
+      const target_ids = targets
+        .filter(t => selectedTargets.has(t.id))
+        .map(t => t.type === 'bot_broadcast' ? '__bot_broadcast__' : (t.channel_id ?? t.id));
+      await createCouponSchedule({ coupon_code: selectedCode, target_ids, send_at: new Date(sendAt).toISOString() });
+      setSuccess('✓ Schedule created');
+      setSelectedCode(''); setSelectedTargets(new Set()); setSendAt('');
+      load();
+    } catch (err) { setError((err as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: string) {
+    await deleteCouponSchedule(id).catch(() => {});
+    load();
+  }
+
+  const activeCoupons = coupons.filter(c => !c.maxUses || c.usedCount < c.maxUses);
+  const activeTargets = targets.filter(t => t.is_active);
+
+  return (
+    <Card>
+      <CardHeader title="📅 Schedule Coupon Announcement" subtitle="Auto-broadcast a coupon code to Telegram groups at a set time" />
+      {error && <Alert type="error">{error}</Alert>}
+      {success && <Alert type="success">{success}</Alert>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 20, alignItems: 'start' }}>
+        {/* Form */}
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="Coupon">
+            <select value={selectedCode} onChange={e => setSelectedCode(e.target.value)} style={selectCss} required>
+              <option value="">— Select coupon —</option>
+              {activeCoupons.map(c => (
+                <option key={c.code} value={c.code}>{c.code} ({c.amount} ETB)</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Send At">
+            <input type="datetime-local" value={sendAt} onChange={e => setSendAt(e.target.value)} style={inputCss} required />
+          </Field>
+          <Field label="Targets">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {activeTargets.length === 0 && <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>No active targets. Add in Promotions page.</span>}
+              {activeTargets.map(t => (
+                <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--c-text)' }}>
+                  <input type="checkbox" checked={selectedTargets.has(t.id)} onChange={() => toggleTarget(t.id)} />
+                  <span>{t.type === 'bot_broadcast' ? '🤖' : '📢'} {t.name}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
+          <Btn type="submit" disabled={saving}>{saving ? '⏳ Scheduling…' : '📅 Schedule'}</Btn>
+        </form>
+
+        {/* Scheduled list */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--c-muted)', marginBottom: 10 }}>Upcoming</div>
+          {loading ? <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p> : schedules.length === 0 ? (
+            <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>No scheduled announcements.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {schedules.map(s => (
+                <div key={s.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', borderRadius: 10,
+                  background: s.sent ? 'rgba(100,116,139,0.08)' : 'rgba(99,102,241,0.08)',
+                  border: `1px solid ${s.sent ? 'rgba(100,116,139,0.2)' : 'rgba(99,102,241,0.25)'}`,
+                  opacity: s.sent ? 0.6 : 1,
+                }}>
+                  <div>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 13, color: 'var(--c-text)' }}>{s.coupon_code}</div>
+                    <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>
+                      {new Date(s.send_at).toLocaleString()} · {s.target_ids.length} target{s.target_ids.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Badge variant={s.sent ? 'neutral' : 'info'}>{s.sent ? 'Sent' : 'Pending'}</Badge>
+                    {!s.sent && (
+                      <Btn size="sm" variant="danger" onClick={() => handleDelete(s.id)}>✕</Btn>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 

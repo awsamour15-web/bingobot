@@ -1,8 +1,10 @@
 // Admin coupon management — CRUD on the active_coupons system setting
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
+import { randomUUID } from 'crypto';
 import prisma from '../../lib/prisma.js';
 import { TxType } from '@fidel/shared';
+import { CouponScheduler } from '../../services/coupon-scheduler.service.js';
 
 const router: RouterType = Router();
 
@@ -122,6 +124,62 @@ router.delete('/:code', async (req: Request, res: Response): Promise<void> => {
     return;
   }
   await saveCoupons(filtered);
+  res.json({ success: true });
+});
+
+// ── Coupon Schedules ──────────────────────────────────────────────────────────
+
+// GET /schedules — list all coupon announcement schedules
+router.get('/schedules', async (_req: Request, res: Response): Promise<void> => {
+  res.json(await CouponScheduler.loadSchedules());
+});
+
+// POST /schedules — create a new coupon announcement schedule
+router.post('/schedules', async (req: Request, res: Response): Promise<void> => {
+  const { coupon_code, target_ids, send_at } = req.body as {
+    coupon_code?: string;
+    target_ids?: string[];
+    send_at?: string;
+  };
+  if (!coupon_code || typeof coupon_code !== 'string') {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'coupon_code is required' }); return;
+  }
+  if (!Array.isArray(target_ids) || target_ids.length === 0) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'target_ids must be a non-empty array' }); return;
+  }
+  if (!send_at || isNaN(Date.parse(send_at))) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'send_at must be a valid ISO date' }); return;
+  }
+  const normalized = coupon_code.trim().toUpperCase();
+  const coupons = await loadCoupons();
+  const coupon = coupons.find(c => c.code === normalized);
+  if (!coupon) {
+    res.status(404).json({ error: 'NOT_FOUND', message: `Coupon "${normalized}" not found` }); return;
+  }
+  const schedules = await CouponScheduler.loadSchedules();
+  const newSchedule = {
+    id: randomUUID(),
+    coupon_code: normalized,
+    coupon_amount: coupon.amount,
+    coupon_description: coupon.description ?? '',
+    target_ids,
+    send_at,
+    sent: false,
+  };
+  schedules.push(newSchedule);
+  await CouponScheduler.saveSchedules(schedules);
+  res.status(201).json(newSchedule);
+});
+
+// DELETE /schedules/:id — remove a schedule
+router.delete('/schedules/:id', async (req: Request, res: Response): Promise<void> => {
+  const id = req.params['id'] as string;
+  const schedules = await CouponScheduler.loadSchedules();
+  const filtered = schedules.filter(s => s.id !== id);
+  if (filtered.length === schedules.length) {
+    res.status(404).json({ error: 'NOT_FOUND', message: 'Schedule not found' }); return;
+  }
+  await CouponScheduler.saveSchedules(filtered);
   res.json({ success: true });
 });
 

@@ -814,3 +814,25 @@ export interface CouponRedemption {
 export function getCouponRedemptions(code: string): Promise<CouponRedemption[]> {
   return adminApiRequest<CouponRedemption[]>('GET', `/api/admin/coupons/${encodeURIComponent(code)}/redemptions`);
 }
+
+export interface CouponScheduleEntry {
+  id: string;
+  coupon_code: string;
+  coupon_amount: number;
+  coupon_description: string;
+  target_ids: string[];
+  send_at: string;
+  sent: boolean;
+}
+
+export function listCouponSchedules(): Promise<CouponScheduleEntry[]> {
+  return adminApiRequest('GET', '/api/admin/coupons/schedules');
+}
+
+export function createCouponSchedule(data: { coupon_code: string; target_ids: string[]; send_at: string }): Promise<CouponScheduleEntry> {
+  return adminApiRequest('POST', '/api/admin/coupons/schedules', data);
+}
+
+export function deleteCouponSchedule(id: string): Promise<{ success: boolean }> {
+  return adminApiRequest('DELETE', `/api/admin/coupons/schedules/${id}`);
+}

@@ -340,6 +340,7 @@ export default function GamesLobbyScreen() {
   const [couponMessage, setCouponMessage] = useState('');
   const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
   const [showCoupons, setShowCoupons] = useState(false);
+  const [claimedCoupon, setClaimedCoupon] = useState<{ amount: number; message: string } | null>(null);
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
   const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
@@ -415,6 +416,7 @@ export default function GamesLobbyScreen() {
       setCouponStatus('success');
       setCouponMessage(response.message);
       setCouponCode('');
+      setClaimedCoupon({ amount: response.amount, message: response.message });
       // Refresh available coupons and wallet balances
       getAvailableCoupons().then(setAvailableCoupons).catch(() => {});
       getProfile().then(p => {
@@ -434,6 +436,59 @@ export default function GamesLobbyScreen() {
       background: 'radial-gradient(circle at 92% 3%,rgba(74,105,186,0.2),transparent 24%), radial-gradient(circle at -10% 30%,rgba(35,177,145,0.13),transparent 32%), linear-gradient(180deg,#0b111d 0%,#070b13 44%,#04060b 100%)',
       color: '#f8fafc', maxWidth: 480, margin: '0 auto', paddingBottom: 100, overflow: 'hidden',
     }}>
+      {/* ── Claimed Coupon Popup ── */}
+      {claimedCoupon && (
+        <div
+          onClick={() => setClaimedCoupon(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 340, borderRadius: 24, overflow: 'hidden',
+              background: 'linear-gradient(145deg,#0d2a1f,#0a1c30)',
+              border: '1px solid rgba(99,212,186,0.35)',
+              boxShadow: '0 0 60px rgba(99,212,186,0.25), 0 24px 60px rgba(0,0,0,0.6)',
+              textAlign: 'center',
+            }}
+          >
+            {/* Gold top banner */}
+            <div style={{ background: 'linear-gradient(90deg,#c8973a,#f3cf64,#c8973a)', padding: '18px 24px' }}>
+              <div style={{ fontSize: 36 }}>🎟️</div>
+              <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.12em', color: '#0a1405', marginTop: 4 }}>COUPON CLAIMED!</div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '28px 24px 32px' }}>
+              <div style={{ fontSize: 48, fontWeight: 900, color: '#f3cf64', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                +{claimedCoupon.amount}
+                <span style={{ fontSize: 20, fontWeight: 700, color: '#9ae1d1', marginLeft: 6 }}>ETB</span>
+              </div>
+              <div style={{ marginTop: 10, fontSize: 13, color: '#9ae1d1', fontWeight: 600 }}>
+                {claimedCoupon.message}
+              </div>
+              <div style={{ margin: '20px 0 0', fontSize: 11, color: 'rgba(148,163,184,0.7)', letterSpacing: '0.04em' }}>
+                Your balance has been updated ✓
+              </div>
+              <button
+                onClick={() => setClaimedCoupon(null)}
+                style={{
+                  marginTop: 20, width: '100%', border: 0, borderRadius: 12,
+                  padding: '13px 0', fontSize: 13, fontWeight: 900, letterSpacing: '0.06em',
+                  background: 'linear-gradient(90deg,#22c77e,#16a05e)', color: '#fff',
+                  cursor: 'pointer', boxShadow: '0 4px 16px rgba(34,199,126,0.35)',
+                }}
+              >
+                🎮 PLAY NOW
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`
         @keyframes lobbyCardSpin {
           from { transform: rotate(0deg); }
