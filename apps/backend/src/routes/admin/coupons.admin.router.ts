@@ -58,7 +58,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
 // POST /api/admin/coupons — create a new coupon
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const { code, amount, wallet = 'play', maxUses = null, description = '', withdrawalRequirements } =
+  const { code, amount, wallet = 'play', maxUses = null, description = '', claimRequirements } =
     req.body as Partial<CouponDef>;
 
   if (!code || typeof code !== 'string' || code.trim() === '') {
@@ -88,7 +88,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     wallet: wallet === 'main' ? 'main' : 'play',
     maxUses: maxUses === null || maxUses === undefined ? null : Number(maxUses),
     description: String(description),
-    claimRequirements: withdrawalRequirements ?? undefined,
+    claimRequirements: claimRequirements ?? undefined,
   };
 
   coupons.push(newCoupon);
