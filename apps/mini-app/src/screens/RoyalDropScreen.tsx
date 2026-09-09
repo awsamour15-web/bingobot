@@ -605,9 +605,10 @@ export default function RoyalDropScreen() {
             </div>
             {activeSpin && activeSpin.scatterCount >= 1 && (
               <div style={{
-                marginTop: 4, textAlign: 'center', fontSize: 9, fontWeight: 800,
+                marginTop: 2, textAlign: 'center', fontSize: 7, fontWeight: 800,
                 color: activeSpin.scatterCount >= 3 ? '#b45309' : '#78716c',
                 animation: activeSpin.scatterCount >= 3 ? 'rdPulse 0.8s ease infinite' : undefined,
+                lineHeight: 1.2,
               }}>
                 🐓 {activeSpin.scatterCount} scatter{activeSpin.scatterCount > 1 ? 's' : ''}
                 {activeSpin.scatterCount >= 3 && ' — BONUS!'}
@@ -616,9 +617,9 @@ export default function RoyalDropScreen() {
           </div>
 
           {/* ── Crate grid ───────────────────────────────────────────────────── */}
-          <div style={{ flex: 1, margin: '6px 12px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ flex: 1, margin: '4px 8px 0', display: 'flex', flexDirection: 'column', alignItems: 'stretch', minHeight: 0 }}>
             <div className="rd-cabinet-grid" style={{
-              width: '47%', maxWidth: 330, height: '48dvh', minHeight: 0, aspectRatio: 'auto',
+              width: '100%', flex: 1, minHeight: 0, aspectRatio: 'auto',
               background: 'linear-gradient(180deg,rgba(29,46,72,0.72),rgba(9,18,31,0.72))',
               border: '2px solid rgba(217,179,102,0.45)',
               borderRadius: 14, padding: '7px',
@@ -706,20 +707,35 @@ export default function RoyalDropScreen() {
             }}>
               {phase === 'spinning' ? 'SPINNING...' : phase === 'bonus' ? 'BONUS ROUND' : 'PLACE YOUR BET'}
             </div>
-            {/* Bet chips row */}
-            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}>
-              {BET_OPTIONS.map((b, i) => (
-                <button className="rd-bet-chip" key={b} onClick={() => setBetIdx(i)} disabled={phase === 'spinning'} style={{
-                  flexShrink: 0, padding: '4px 8px', borderRadius: 6,
-                  border: `1px solid ${betIdx === i ? 'rgba(245,197,24,0.7)' : 'rgba(255,255,255,0.1)'}`,
-                  background: betIdx === i ? 'rgba(245,197,24,0.18)' : 'rgba(255,255,255,0.05)',
-                  color: betIdx === i ? '#f5c518' : '#64748b',
-                  fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                }}>{b >= 1000 ? `${b / 1000}K` : b}</button>
-              ))}
-            </div>
+            {/* Bet chips row — hidden when showing win result */}
+            {!(phase === 'result' && result && result.totalWin > 0) && (
+              <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}>
+                {BET_OPTIONS.map((b, i) => (
+                  <button className="rd-bet-chip" key={b} onClick={() => setBetIdx(i)} disabled={phase === 'spinning'} style={{
+                    flexShrink: 0, padding: '4px 8px', borderRadius: 6,
+                    border: `1px solid ${betIdx === i ? 'rgba(245,197,24,0.7)' : 'rgba(255,255,255,0.1)'}`,
+                    background: betIdx === i ? 'rgba(245,197,24,0.18)' : 'rgba(255,255,255,0.05)',
+                    color: betIdx === i ? '#f5c518' : '#64748b',
+                    fontSize: 10, fontWeight: 800, cursor: 'pointer',
+                  }}>{b >= 1000 ? `${b / 1000}K` : b}</button>
+                ))}
+              </div>
+            )}
 
-            {/* Action row: BET | SPIN | BALANCE */}
+            {/* Action row: BET | SPIN | BALANCE  — or Play Again when win shown */}
+            {phase === 'result' && result && result.totalWin > 0 ? (
+              <button
+                className="rd-spin-btn"
+                onClick={() => void doSpin()}
+                style={{
+                  width: '100%', height: 48, borderRadius: 14, border: 'none',
+                  background: 'linear-gradient(135deg,#22c55e,#16a34a)',
+                  color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer',
+                  boxShadow: '0 4px 18px rgba(34,197,94,0.5)',
+                  letterSpacing: '0.06em',
+                }}
+              >▶ PLAY AGAIN</button>
+            ) : (
             <div className="rd-action-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* Left: BET */}
               <div style={{
@@ -777,6 +793,7 @@ export default function RoyalDropScreen() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Phase label */}
             {phase === 'bonus' && (
