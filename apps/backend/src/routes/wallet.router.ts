@@ -460,6 +460,7 @@ router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response):
     return;
   }
 
+  try {
     // Debit atomically at request time — prevents double-spend across concurrent requests
     await WalletService.debit(
       playerId,
