@@ -781,6 +781,13 @@ export function getGamesStats(): Promise<GamesStatsResponse> {
 // Coupons
 // ---------------------------------------------------------------------------
 
+export interface WithdrawalRequirements {
+  minDepositToday?: number;
+  minTotalDeposit?: number;
+  minGamesToday?: number;
+  minInvitations?: number;
+}
+
 export interface Coupon {
   code: string;
   amount: number;
@@ -788,6 +795,7 @@ export interface Coupon {
   maxUses: number | null;
   description: string;
   usedCount: number;
+  claimRequirements?: WithdrawalRequirements;
 }
 
 export function listCoupons(): Promise<Coupon[]> {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon, CouponRedemption, CouponScheduleEntry, BroadcastTarget } from '../lib/api';
+import type { Promotion, BonusCriteria, EligibilityResult, BonusApplyResult, BonusDistribution, Coupon, WithdrawalRequirements, CouponRedemption, CouponScheduleEntry, BroadcastTarget } from '../lib/api';
 import {
   listPromotions,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
@@ -857,6 +857,7 @@ function CouponPanel() {
   const [wallet, setWallet] = useState<'main' | 'play'>('play');
   const [maxUses, setMaxUses] = useState('');
   const [description, setDescription] = useState('');
+  const [wdReqs, setWdReqs] = useState<WithdrawalRequirements>({});
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -877,15 +878,23 @@ function CouponPanel() {
     if (!amt || amt <= 0) { setError('Amount must be > 0'); return; }
     setSaving(true); setError(null); setSuccess(null);
     try {
+      // Clean up empty withdrawal requirements
+      const cleanReqs: WithdrawalRequirements = {};
+      if (wdReqs.minDepositToday) cleanReqs.minDepositToday = Number(wdReqs.minDepositToday);
+      if (wdReqs.minTotalDeposit) cleanReqs.minTotalDeposit = Number(wdReqs.minTotalDeposit);
+      if (wdReqs.minGamesToday) cleanReqs.minGamesToday = Number(wdReqs.minGamesToday);
+      if (wdReqs.minInvitations) cleanReqs.minInvitations = Number(wdReqs.minInvitations);
+
       const created = await createCoupon({
         code: code.trim().toUpperCase(),
         amount: amt,
         wallet,
         maxUses: maxUses ? Number(maxUses) : null,
         description: description.trim(),
+        claimRequirements: Object.keys(cleanReqs).length > 0 ? cleanReqs : undefined,
       });
       setSuccess('✓ Coupon created successfully');
-      setCode(''); setAmount(''); setMaxUses(''); setDescription('');
+      setCode(''); setAmount(''); setMaxUses(''); setDescription(''); setWdReqs({});
       setCoupons(prev => [...prev, { ...created, usedCount: 0 }]);
       load();
     } catch (e: any) { setError(e.message ?? 'Failed'); }
@@ -953,6 +962,55 @@ function CouponPanel() {
             <Field label="📝 Description (optional)">
               <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Black Friday special" style={inputCss} />
             </Field>
+
+            {/* Claim Requirements */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)', borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#ca8a04' }}>
+                🔒 Claim Requirements (optional)
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+                Player must meet these conditions before they can claim this coupon. Leave blank = no requirement.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Field label="💰 Deposit Today (ETB)" hint="Min deposit amount today">
+                  <input
+                    type="number" min={0} step={1}
+                    value={wdReqs.minDepositToday ?? ''}
+                    onChange={e => setWdReqs(r => ({ ...r, minDepositToday: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="no requirement"
+                    style={inputCss}
+                  />
+                </Field>
+                <Field label="💳 Total Deposit Ever (ETB)" hint="Min lifetime deposits">
+                  <input
+                    type="number" min={0} step={1}
+                    value={wdReqs.minTotalDeposit ?? ''}
+                    onChange={e => setWdReqs(r => ({ ...r, minTotalDeposit: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="no requirement"
+                    style={inputCss}
+                  />
+                </Field>
+                <Field label="🎮 Games Today" hint="Min games played today (all types)">
+                  <input
+                    type="number" min={0} step={1}
+                    value={wdReqs.minGamesToday ?? ''}
+                    onChange={e => setWdReqs(r => ({ ...r, minGamesToday: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="no requirement"
+                    style={inputCss}
+                  />
+                </Field>
+                <Field label="👥 Invitations" hint="Min friends invited (referrals)">
+                  <input
+                    type="number" min={0} step={1}
+                    value={wdReqs.minInvitations ?? ''}
+                    onChange={e => setWdReqs(r => ({ ...r, minInvitations: e.target.value ? Number(e.target.value) : undefined }))}
+                    placeholder="no requirement"
+                    style={inputCss}
+                  />
+                </Field>
+              </div>
+            </div>
+
             <Btn type="submit" disabled={saving}>
               {saving ? '⏳ Creating…' : '✨ Create Coupon'}
             </Btn>
@@ -995,6 +1053,30 @@ function CouponPanel() {
                       <Td>
                         <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 13, color: C.primary, letterSpacing: '0.05em' }}>{c.code}</span>
                         {c.description && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{c.description}</div>}
+                        {c.claimRequirements && Object.keys(c.claimRequirements).length > 0 && (
+                          <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                            {c.claimRequirements.minDepositToday && (
+                              <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(234,179,8,0.15)', color: '#ca8a04', fontWeight: 700 }}>
+                                💰 Dep today ≥{c.claimRequirements.minDepositToday}
+                              </span>
+                            )}
+                            {c.claimRequirements.minTotalDeposit && (
+                              <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(234,179,8,0.15)', color: '#ca8a04', fontWeight: 700 }}>
+                                💳 Total dep ≥{c.claimRequirements.minTotalDeposit}
+                              </span>
+                            )}
+                            {c.claimRequirements.minGamesToday && (
+                              <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(234,179,8,0.15)', color: '#ca8a04', fontWeight: 700 }}>
+                                🎮 Games today ≥{c.claimRequirements.minGamesToday}
+                              </span>
+                            )}
+                            {c.claimRequirements.minInvitations && (
+                              <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'rgba(234,179,8,0.15)', color: '#ca8a04', fontWeight: 700 }}>
+                                👥 Invites ≥{c.claimRequirements.minInvitations}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </Td>
                       <Td><strong style={{ fontSize: 14 }}>{c.amount} ETB</strong></Td>
                       <Td>

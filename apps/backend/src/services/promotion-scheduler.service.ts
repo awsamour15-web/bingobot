@@ -20,13 +20,13 @@ async function buildPromoFooter(): Promise<string> {
     prisma.config.findUnique({ where: { key: 'channel_link' } }),
   ]);
 
-  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
+  const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
   const supportContact = supportRow?.value ?? `@${botUsername}_Support`;
-  const channelLink = channelRow?.value ?? `https://t.me/${botUsername}_public`;
+  const channelLink = channelRow?.value ?? '';
 
   return (
     `\n\nለመጫወት🎮 @${botUsername}` +
-    `\n📢 Official Channel: ${channelLink}` +
+    (channelLink ? `\n📢 Official Channel: ${channelLink}` : '') +
     `\n☎️ Contact to Support: ${supportContact}` +
     `\n🚀 አሁኑኑ ይቀላቀሉ እና የመጀመሪያ BONUS ስጦታዎን ያግኙ!`
   );

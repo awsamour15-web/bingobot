@@ -35,7 +35,11 @@ const errorMessages: Record<string, string> = {
   PLAYER_SUSPENDED: 'መለያዎ ታግዷል። እባክዎ ድጋፍ ያግኙ።\nAccount suspended. Contact support.',
   MAX_CARTELAS_EXCEEDED: 'ከ2 ካርቴላ በላይ መምረጥ አይቻልም።\nMax 2 cartelas allowed.',
   
-  // Server errors
+  // Coupon errors
+  COUPON_NOT_FOUND: 'Coupon not found or expired.',
+  COUPON_EXHAUSTED: 'All coupons for today have been claimed. Be quick next time!',
+  ALREADY_REDEEMED: 'You have already claimed this coupon.',
+  CLAIM_REQUIREMENT_NOT_MET: 'Coupon claim requirement not met.',
   INTERNAL_ERROR: 'የሰርቨር ስህተት። እባክዎ ቆየት ብለው ይሞክሩ።\nServer error. Try again later.',
   DATABASE_ERROR: 'የውሂብ ጎታ ስህተት። እባክዎ ቆየት ብለው ይሞክሩ።\nDatabase error. Try again later.',
   EXTERNAL_SERVICE_ERROR: 'የውጭ አገልግሎት ስህተት። እባክዎ ቆየት ብለው ይሞክሩ።\nExternal service error. Try later.',

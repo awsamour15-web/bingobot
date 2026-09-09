@@ -340,6 +340,7 @@ export default function GamesLobbyScreen() {
   const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
   const [showCoupons, setShowCoupons] = useState(false);
   const [claimedCoupon, setClaimedCoupon] = useState<{ amount: number; message: string } | null>(null);
+  const [couponAlert, setCouponAlert] = useState<{ type: 'exhausted' | 'already' | 'requirement'; message: string } | null>(null);
   const [kenoAllowed, setKenoAllowed] = useState(false);
   const [plinkoAllowed, setPlinkoAllowed] = useState(false);
   const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
@@ -422,9 +423,22 @@ export default function GamesLobbyScreen() {
         setPlayBalance(p.playWallet.balance);
       }).catch(() => {});
     } catch (error) {
-      const responseError = error as { message?: string };
-      setCouponStatus('error');
-      setCouponMessage(responseError.message ?? 'Invalid or expired coupon');
+      const responseError = error as { message?: string; code?: string };
+      const errorCode = responseError.code ?? '';
+
+      if (errorCode === 'COUPON_EXHAUSTED') {
+        setCouponStatus('idle');
+        setCouponAlert({ type: 'exhausted', message: responseError.message ?? '' });
+      } else if (errorCode === 'ALREADY_REDEEMED') {
+        setCouponStatus('idle');
+        setCouponAlert({ type: 'already', message: responseError.message ?? '' });
+      } else if (errorCode === 'CLAIM_REQUIREMENT_NOT_MET') {
+        setCouponStatus('error');
+        setCouponMessage(responseError.message ?? 'Coupon claim requirement not met.');
+      } else {
+        setCouponStatus('error');
+        setCouponMessage(responseError.message ?? 'Invalid or expired coupon');
+      }
     }
   }
 
@@ -482,6 +496,105 @@ export default function GamesLobbyScreen() {
                 }}
               >
                 🎮 PLAY NOW
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Coupon Alert Popup (exhausted / already redeemed) ── */}
+      {couponAlert && (
+        <div
+          onClick={() => setCouponAlert(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 340, borderRadius: 24, overflow: 'hidden',
+              background: couponAlert.type === 'already'
+                ? 'linear-gradient(145deg,#1a1a2e,#16213e)'
+                : 'linear-gradient(145deg,#1c0a0a,#2a0f0f)',
+              border: `1px solid ${couponAlert.type === 'already' ? 'rgba(99,130,212,0.4)' : 'rgba(212,99,99,0.4)'}`,
+              boxShadow: '0 24px 60px rgba(0,0,0,0.7)',
+              textAlign: 'center',
+            }}
+          >
+            {/* Top banner */}
+            <div style={{
+              background: couponAlert.type === 'already'
+                ? 'linear-gradient(90deg,#3b4fa8,#5b6fd4,#3b4fa8)'
+                : 'linear-gradient(90deg,#a83b3b,#d45b5b,#a83b3b)',
+              padding: '18px 24px',
+            }}>
+              <div style={{ fontSize: 40 }}>
+                {couponAlert.type === 'already' ? '✅' : '😔'}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.1em', color: '#fff', marginTop: 6 }}>
+                {couponAlert.type === 'already' ? 'ALREADY CLAIMED' : 'ALL COUPONS TAKEN'}
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px 22px 28px' }}>
+              {couponAlert.type === 'exhausted' ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#f87171', lineHeight: 1.5, marginBottom: 12 }}>
+                    All coupons for today are gone!
+                  </div>
+                  <div style={{
+                    background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)',
+                    borderRadius: 12, padding: '12px 14px', marginBottom: 18,
+                  }}>
+                    <div style={{ fontSize: 13, color: '#fbbf24', fontWeight: 700, marginBottom: 8 }}>
+                      💡 Tips for next time
+                    </div>
+                    <div style={{ fontSize: 12, color: '#fde68a', lineHeight: 1.9, textAlign: 'left' }}>
+                      🏃 Be fast — coupons run out quickly!{'\n'}
+                      🔔 Follow the bot to catch new codes first{'\n'}
+                      ⚡ Stay active — active players get priority{'\n'}
+                      🎮 Play more games to unlock exclusive coupons
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: '#93c5fd', lineHeight: 1.5, marginBottom: 12 }}>
+                    You already claimed this coupon!
+                  </div>
+                  <div style={{
+                    background: 'rgba(99,130,212,0.1)', border: '1px solid rgba(99,130,212,0.25)',
+                    borderRadius: 12, padding: '12px 14px', marginBottom: 18,
+                  }}>
+                    <div style={{ fontSize: 13, color: '#93c5fd', fontWeight: 700, marginBottom: 8 }}>
+                      💡 Get more coupons
+                    </div>
+                    <div style={{ fontSize: 12, color: '#bfdbfe', lineHeight: 1.9, textAlign: 'left' }}>
+                      🔔 Follow the bot — new coupons drop regularly{'\n'}
+                      ⚡ Stay active to be first in line{'\n'}
+                      🎯 Play more games for exclusive coupon access{'\n'}
+                      👥 Invite friends to unlock special rewards
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <button
+                onClick={() => setCouponAlert(null)}
+                style={{
+                  width: '100%', border: 0, borderRadius: 12,
+                  padding: '13px 0', fontSize: 13, fontWeight: 900, letterSpacing: '0.05em',
+                  background: couponAlert.type === 'already'
+                    ? 'linear-gradient(90deg,#3b4fa8,#5b6fd4)'
+                    : 'linear-gradient(90deg,#b45309,#d97706)',
+                  color: '#fff', cursor: 'pointer',
+                }}
+              >
+                {couponAlert.type === 'already' ? '🎮 Got it, keep playing' : '🔔 OK, I\'ll be faster next time'}
               </button>
             </div>
           </div>

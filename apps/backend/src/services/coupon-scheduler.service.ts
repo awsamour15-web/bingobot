@@ -87,18 +87,22 @@ async function tick(): Promise<void> {
   try {
     const schedules = await loadSchedules();
     const now = new Date();
-    let changed = false;
 
     for (const s of schedules) {
       if (!s.sent && new Date(s.send_at) <= now) {
-        await sendCouponAnnouncement(s);
+        // Mark as sent FIRST before sending — prevents infinite resend if send or save fails
         s.sent = true;
-        changed = true;
-        console.log(`[CouponScheduler] Sent announcement for coupon ${s.coupon_code}`);
+        await saveSchedules(schedules);
+
+        // Now send — if this fails, coupon is already marked sent so it won't retry
+        try {
+          await sendCouponAnnouncement(s);
+          console.log(`[CouponScheduler] Sent announcement for coupon ${s.coupon_code}`);
+        } catch (sendErr) {
+          console.error(`[CouponScheduler] Failed to send coupon ${s.coupon_code}:`, (sendErr as Error).message);
+        }
       }
     }
-
-    if (changed) await saveSchedules(schedules);
   } catch (err) {
     console.error('[CouponScheduler] tick error:', err);
   }

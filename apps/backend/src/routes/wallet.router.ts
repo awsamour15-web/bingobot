@@ -460,7 +460,6 @@ router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response):
     return;
   }
 
-  try {
     // Debit atomically at request time — prevents double-spend across concurrent requests
     await WalletService.debit(
       playerId,
@@ -554,6 +553,86 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
     if (globalUses >= coupon.maxUses) {
       res.status(410).json({ error: 'COUPON_EXHAUSTED', message: 'This coupon has reached its maximum uses' });
       return;
+    }
+  }
+
+  // ── Claim requirements check ─────────────────────────────────────────────
+  // If this coupon has claimRequirements, the player must satisfy them before redeeming.
+  type CouponFull = typeof coupon & {
+    claimRequirements?: {
+      minDepositToday?: number;
+      minTotalDeposit?: number;
+      minGamesToday?: number;
+      minInvitations?: number;
+    };
+  };
+  const reqs = (coupon as CouponFull).claimRequirements;
+  if (reqs && Object.keys(reqs).length > 0) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // minDepositToday
+    if (reqs.minDepositToday && reqs.minDepositToday > 0) {
+      const todayDepAgg = await prisma.transaction.aggregate({
+        where: { wallet_id: { in: walletIds }, type: TxType.deposit, created_at: { gte: todayStart } },
+        _sum: { amount: true },
+      });
+      const depositedToday = Number(todayDepAgg._sum.amount ?? 0);
+      if (depositedToday < reqs.minDepositToday) {
+        res.status(403).json({
+          error: 'CLAIM_REQUIREMENT_NOT_MET',
+          message: `You must deposit at least ETB ${reqs.minDepositToday} today to claim this coupon. You have deposited ETB ${depositedToday.toFixed(0)} today.`,
+        });
+        return;
+      }
+    }
+
+    // minTotalDeposit
+    if (reqs.minTotalDeposit && reqs.minTotalDeposit > 0) {
+      const totalDepAgg = await prisma.transaction.aggregate({
+        where: { wallet_id: { in: walletIds }, type: TxType.deposit },
+        _sum: { amount: true },
+      });
+      const totalDeposited = Number(totalDepAgg._sum.amount ?? 0);
+      if (totalDeposited < reqs.minTotalDeposit) {
+        res.status(403).json({
+          error: 'CLAIM_REQUIREMENT_NOT_MET',
+          message: `You must have deposited a total of at least ETB ${reqs.minTotalDeposit} to claim this coupon. You have deposited ETB ${totalDeposited.toFixed(0)} so far.`,
+        });
+        return;
+      }
+    }
+
+    // minGamesToday
+    if (reqs.minGamesToday && reqs.minGamesToday > 0) {
+      const [bingoToday, slotsToday, crashToday, kenoToday, plinkoToday, royalToday] = await Promise.all([
+        prisma.roundEntry.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
+        prisma.slotSpin.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
+        prisma.crashBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
+        prisma.kenoBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
+        prisma.plinkoBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
+        prisma.royalDropBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
+      ]);
+      const gamesToday = bingoToday + slotsToday + crashToday + kenoToday + plinkoToday + royalToday;
+      if (gamesToday < reqs.minGamesToday) {
+        res.status(403).json({
+          error: 'CLAIM_REQUIREMENT_NOT_MET',
+          message: `You must play at least ${reqs.minGamesToday} game${reqs.minGamesToday !== 1 ? 's' : ''} today to claim this coupon. You have played ${gamesToday} today.`,
+        });
+        return;
+      }
+    }
+
+    // minInvitations
+    if (reqs.minInvitations && reqs.minInvitations > 0) {
+      const inviteCount = await prisma.player.count({ where: { referrer_id: playerId } });
+      if (inviteCount < reqs.minInvitations) {
+        res.status(403).json({
+          error: 'CLAIM_REQUIREMENT_NOT_MET',
+          message: `You must invite at least ${reqs.minInvitations} friend${reqs.minInvitations !== 1 ? 's' : ''} to claim this coupon. You have invited ${inviteCount} so far.`,
+        });
+        return;
+      }
     }
   }
 
