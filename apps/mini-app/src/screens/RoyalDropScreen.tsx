@@ -161,7 +161,7 @@ function ChestBlock({ opened, multiplier }: { opened: boolean; multiplier?: numb
 function ReelSymbolCell({ sym, animKey }: { sym: ReelSymbol; animKey?: number }) {
   const size = 32;
   const style = animKey !== undefined
-    ? { animation: `rdReelSpin 0.2s ease ${(animKey % 5) * 0.04}s both` }
+    ? { animation: `rdReelBlur 0.28s ease ${(animKey % 5) * 0.06}s both` }
     : {};
   if (sym.type === 'bonus') return <div style={style}><BonusSvg size={size} /></div>;
   if (sym.type === 'bomb') return <div style={style}><BombSvg size={size} /></div>;
@@ -302,6 +302,7 @@ export default function RoyalDropScreen() {
   const [destroyedCells, setDestroyedCells] = useState<Set<string>>(new Set());
   const [openedChests, setOpenedChests] = useState<ChestResult[]>([]);
   const [displayGrid, setDisplayGrid] = useState<CrateCell[][] | null>(null);
+  const [screenShaking, setScreenShaking] = useState(false);
 
   const lock = useRef(false);
 
@@ -355,6 +356,12 @@ export default function RoyalDropScreen() {
       destroyed.add(key);
       setDestroyedCells(new Set(destroyed));
       await new Promise(r => setTimeout(r, 80));
+    }
+
+    // Screen shake when 3+ crates destroyed
+    if (spin.destroyedCrates.length >= 3) {
+      setScreenShaking(true);
+      setTimeout(() => setScreenShaking(false), 400);
     }
 
     await new Promise(r => setTimeout(r, 300));
@@ -479,55 +486,78 @@ export default function RoyalDropScreen() {
         @keyframes rdPulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
         @keyframes rdSlideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
         @keyframes rdGlow { 0%,100%{box-shadow:0 0 8px rgba(251,191,36,0.4)} 50%{box-shadow:0 0 22px rgba(251,191,36,0.9)} }
-        @keyframes rdShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-3px)} 40%,80%{transform:translateX(3px)} }
-        @keyframes rdHitFlash { 0%{filter:brightness(1)} 30%{filter:brightness(2.5) saturate(2)} 100%{filter:brightness(1)} }
-        @keyframes rdDestroy { 0%{transform:scale(1);opacity:1} 60%{transform:scale(1.3) rotate(8deg);opacity:0.6} 100%{transform:scale(0);opacity:0} }
-        @keyframes rdChestOpen { 0%{transform:scale(0.8) rotate(-5deg);opacity:0} 60%{transform:scale(1.15) rotate(3deg)} 100%{transform:scale(1) rotate(0deg);opacity:1} }
-        @keyframes rdReelSpin { 0%{transform:translateY(-14px);opacity:0} 100%{transform:translateY(0);opacity:1} }
-        @keyframes rdWinPop { 0%{transform:scale(0.85);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
+        @keyframes rdShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-4px)} 40%,80%{transform:translateX(4px)} }
+        @keyframes rdScreenShake { 0%,100%{transform:translate(0,0)} 15%{transform:translate(-4px,2px)} 30%{transform:translate(4px,-2px)} 45%{transform:translate(-2px,4px)} 60%{transform:translate(3px,-3px)} 75%{transform:translate(-3px,2px)} }
+        @keyframes rdHitFlash { 0%{filter:brightness(1)} 30%{filter:brightness(3) saturate(2.5)} 100%{filter:brightness(1)} }
+        @keyframes rdDestroy { 0%{transform:scale(1);opacity:1} 40%{transform:scale(1.4) rotate(10deg);opacity:0.8} 100%{transform:scale(0) rotate(-15deg);opacity:0} }
+        @keyframes rdExplode { 0%{transform:scale(0);opacity:1} 60%{transform:scale(2.2);opacity:0.7} 100%{transform:scale(3.5);opacity:0} }
+        @keyframes rdSpark { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0} }
+        @keyframes rdRocketFly { 0%{transform:translateY(-100%) scaleY(1.1);opacity:0} 30%{opacity:1} 85%{opacity:1;transform:translateY(0) scaleY(1)} 100%{transform:translateY(0) scaleY(1);opacity:0} }
+        @keyframes rdRocketTrail { 0%{transform:scaleY(0);opacity:0.9;transform-origin:top} 100%{transform:scaleY(1);opacity:0;transform-origin:top} }
+        @keyframes rdChestOpen { 0%{transform:scale(0.7) rotate(-8deg);opacity:0} 50%{transform:scale(1.2) rotate(4deg);opacity:1} 75%{transform:scale(0.95) rotate(-2deg)} 100%{transform:scale(1) rotate(0deg);opacity:1} }
+        @keyframes rdChestGlow { 0%,100%{box-shadow:0 0 12px rgba(251,191,36,0.5),0 0 24px rgba(251,191,36,0.2)} 50%{box-shadow:0 0 24px rgba(251,191,36,0.9),0 0 48px rgba(251,191,36,0.5)} }
+        @keyframes rdReelSpin { 0%{transform:translateY(-20px) rotateX(60deg);opacity:0} 70%{transform:translateY(3px) rotateX(-5deg)} 100%{transform:translateY(0) rotateX(0deg);opacity:1} }
+        @keyframes rdReelBlur { 0%{filter:blur(4px) brightness(1.4);transform:translateY(-24px);opacity:0} 50%{filter:blur(2px)} 100%{filter:blur(0) brightness(1);transform:translateY(0);opacity:1} }
+        @keyframes rdWinPop { 0%{transform:scale(0.7) translateY(10px);opacity:0} 55%{transform:scale(1.08) translateY(-3px)} 80%{transform:scale(0.97)} 100%{transform:scale(1) translateY(0);opacity:1} }
+        @keyframes rdWinShine { 0%{background-position:-200% center} 100%{background-position:200% center} }
         @keyframes rdSpinBtn { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-        @keyframes rdBonusBadge { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-        .rd-spin-btn:active { transform: scale(0.92) !important; }
-        .rd-hit { animation: rdHitFlash 0.3s ease forwards !important; }
-        .rd-destroy { animation: rdDestroy 0.3s ease forwards !important; }
-        .rd-chest-open { animation: rdChestOpen 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards !important; }
+        @keyframes rdBonusBadge { 0%,100%{transform:scale(1);text-shadow:0 0 8px rgba(249,115,22,0.5)} 50%{transform:scale(1.1);text-shadow:0 0 18px rgba(249,115,22,1)} }
+        @keyframes rdHeaderGlow { 0%,100%{box-shadow:0 2px 0 rgba(245,197,24,0.15)} 50%{box-shadow:0 2px 12px rgba(245,197,24,0.35)} }
+        .rd-spin-btn:active { transform: scale(0.88) !important; }
+        .rd-hit { animation: rdHitFlash 0.25s ease forwards !important; }
+        .rd-destroy { animation: rdDestroy 0.35s cubic-bezier(0.22,1,0.36,1) forwards !important; }
+        .rd-chest-open { animation: rdChestOpen 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards, rdChestGlow 1.5s ease 0.5s infinite !important; }
+        .rd-reel-spin { animation: rdReelBlur 0.28s ease both !important; }
+        .rd-screen-shake { animation: rdScreenShake 0.35s ease !important; }
       `}</style>
 
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        minHeight: 54, boxSizing: 'border-box', padding: '0 16px', zIndex: 10, position: 'relative',
-        background: '#0a0e1a', color: '#f8fafc',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        display: 'flex', alignItems: 'center',
+        minHeight: 56, boxSizing: 'border-box', padding: '0 12px', zIndex: 10, position: 'relative',
+        background: 'linear-gradient(180deg,rgba(8,12,24,0.99) 0%,rgba(10,16,28,0.96) 100%)',
+        borderBottom: '1px solid rgba(245,197,24,0.2)',
+        boxShadow: '0 2px 18px rgba(0,0,0,0.55)',
+        gap: 8,
+        animation: 'rdHeaderGlow 3s ease infinite',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, display: 'grid', placeItems: 'center', background: '#f5c518', color: '#07150f', fontSize: 18, fontWeight: 900 }}>♙</div>
-          <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#fff' }}>ϕ<span style={{ color: '#f5c518' }}>GAMES</span></span>
+        {/* Back */}
+        <button onClick={() => navigate('/')} aria-label="Back to lobby" style={{
+          flexShrink: 0, width: 36, height: 36, borderRadius: 10,
+          border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)',
+          color: '#e2e8f0', fontSize: 20, cursor: 'pointer', display: 'grid', placeItems: 'center',
+        }}>←</button>
+
+        {/* Logo center */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <img src={royalDropLogo} alt="Royal Drop" style={{ height: 36, objectFit: 'contain', filter: 'drop-shadow(0 0 8px rgba(245,197,24,0.45))' }} />
         </div>
 
-        <button onClick={() => navigate('/')} aria-label="Go home" style={{
-          minHeight: 32, padding: '0 16px', borderRadius: 16,
-          border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)',
-          color: '#e2e8f0', fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer',
-        }}>⌂&nbsp; HOME</button>
-
-        {/* Royal Drop logo style */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: 120 }}>
-          <img src={royalDropLogo} alt="Royal Drop" style={{ height: 44, objectFit: 'contain' }} />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 120, justifyContent: 'flex-end' }}>
-          <div style={{ padding: '5px 9px', borderRadius: 16, background: 'rgba(0,0,0,0.28)', color: '#f5c518', fontSize: 10, fontWeight: 900, letterSpacing: '0.06em' }}>WALLET&nbsp; ••••</div>
-          <button aria-label="View spin history" onClick={() => setActiveTab(activeTab === 'HISTORY' ? 'GAME' : 'HISTORY')} style={{
-            background: activeTab === 'HISTORY' ? 'rgba(245,197,24,0.25)' : 'rgba(0,0,0,0.3)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            color: activeTab === 'HISTORY' ? '#f5c518' : '#fff', borderRadius: 10, padding: '6px 10px',
-            fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 38,
+        {/* Balance + icons */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{
+            padding: '4px 10px', borderRadius: 10,
+            background: 'rgba(245,197,24,0.1)', border: '1px solid rgba(245,197,24,0.22)',
+            textAlign: 'right',
+          }}>
+            <div style={{ fontSize: 7, color: '#a78a3a', fontWeight: 800, letterSpacing: '0.08em' }}>BALANCE</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#f5c518', lineHeight: 1.1 }}>
+              {balance === null ? '—' : balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <span style={{ fontSize: 8, color: '#a78a3a', marginLeft: 2 }}>ETB</span>
+            </div>
+          </div>
+          <button aria-label="Spin history" onClick={() => setActiveTab(activeTab === 'HISTORY' ? 'GAME' : 'HISTORY')} style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            background: activeTab === 'HISTORY' ? 'rgba(245,197,24,0.2)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${activeTab === 'HISTORY' ? 'rgba(245,197,24,0.5)' : 'rgba(255,255,255,0.1)'}`,
+            color: activeTab === 'HISTORY' ? '#f5c518' : '#94a3b8', cursor: 'pointer', fontSize: 16,
+            display: 'grid', placeItems: 'center',
           }}>📋</button>
-          <button aria-label="Open game rules" onClick={() => setShowRules(true)} style={{
-            background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
-            color: '#fff', borderRadius: 10, padding: '6px 10px',
-            fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 38,
+          <button aria-label="Game rules" onClick={() => setShowRules(true)} style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            color: '#94a3b8', cursor: 'pointer', fontSize: 16,
+            display: 'grid', placeItems: 'center',
           }}>☰</button>
         </div>
       </div>
@@ -537,7 +567,7 @@ export default function RoyalDropScreen() {
           <HistoryTab history={history} />
         </div>
       ) : (
-        <div className="rd-game-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+        <div className={`rd-game-content${screenShaking ? ' rd-screen-shake' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
           <div className="rd-cabinet-reel" style={{
@@ -641,16 +671,24 @@ export default function RoyalDropScreen() {
           {phase === 'result' && result && result.totalWin > 0 && (
             <div style={{
               margin: '6px 12px 0',
-              background: 'linear-gradient(135deg,rgba(251,191,36,0.2),rgba(245,158,11,0.1))',
-              border: '1px solid rgba(251,191,36,0.5)',
-              borderRadius: 10, padding: '8px 12px', textAlign: 'center',
-              animation: 'rdWinPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards, rdGlow 2s ease 0.5s infinite',
+              background: 'linear-gradient(135deg,rgba(251,191,36,0.25),rgba(245,158,11,0.12))',
+              border: '1px solid rgba(251,191,36,0.6)',
+              borderRadius: 12, padding: '10px 14px', textAlign: 'center',
+              animation: 'rdWinPop 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards, rdGlow 2s ease 0.5s infinite',
+              position: 'relative', overflow: 'hidden',
             }}>
-              <div style={{ fontSize: 9, color: '#d97706', fontWeight: 800, letterSpacing: '0.1em' }}>TOTAL WIN</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#fbbf24' }}>
+              {/* Shine sweep */}
+              <div style={{
+                position: 'absolute', inset: 0, pointerEvents: 'none',
+                background: 'linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.22) 50%,transparent 60%)',
+                backgroundSize: '200% 100%',
+                animation: 'rdWinShine 1.6s ease 0.4s infinite',
+              }} />
+              <div style={{ fontSize: 9, color: '#d97706', fontWeight: 800, letterSpacing: '0.12em' }}>🏆 TOTAL WIN</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#fbbf24', textShadow: '0 0 16px rgba(251,191,36,0.7)' }}>
                 {result.totalWin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB
               </div>
-              <div style={{ fontSize: 10, color: '#92400e' }}>{result.multiplier.toFixed(2)}x</div>
+              <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 800 }}>{result.multiplier.toFixed(2)}x multiplier</div>
             </div>
           )}
 
