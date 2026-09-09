@@ -15,7 +15,7 @@ import {
   getPromotionStats, getGlobalPromotionStats,
   listBroadcastTargets, createBroadcastTarget, updateBroadcastTarget, deleteBroadcastTarget,
   getEligiblePlayers, applyPromotionBonus, getBonusDistributions,
-  uploadPromotionMedia,
+  uploadPromotionMedia, deletePromotion,
 } from '../lib/api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -708,6 +708,7 @@ export function PromotionsPage() {
   const [globalStats, setGlobalStats] = useState<GlobalPromotionStats | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'info' | 'error'; msg: string } | null>(null);
 
   function flash(type: 'info' | 'error', msg: string) {
@@ -774,6 +775,17 @@ export function PromotionsPage() {
       void loadLogs(selectedLogPromo || undefined);
     } catch (err) { flash('error', (err as Error).message); }
     finally { setRetrying(null); }
+  }
+
+  async function handleDelete(p: Promotion) {
+    if (!confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
+    setDeleting(p.id);
+    try {
+      await deletePromotion(p.id);
+      flash('info', `"${p.title}" deleted`);
+      void load();
+    } catch { flash('error', 'Delete failed'); }
+    finally { setDeleting(null); }
   }
 
   const activeCount = promotions.filter(p => p.status === 'active').length;
@@ -852,6 +864,9 @@ export function PromotionsPage() {
                             {expandedBonus === p.id ? '▲' : '▼'} Bonus
                           </Btn>
                         )}
+                        <Btn size="sm" variant="danger" onClick={() => handleDelete(p)} disabled={deleting === p.id}>
+                          {deleting === p.id ? '…' : '🗑 Delete'}
+                        </Btn>
                       </div>
                     </Td>
                   </tr>
