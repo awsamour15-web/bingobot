@@ -3,17 +3,19 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
 import { cashierAuthMiddleware } from '../../middleware/cashier-auth.middleware.js';
-import { WalletService } from '../../services/wallet.service.js';
-import { TxType, WalletType } from '@fidel/shared';
+import { TxType } from '@fidel/shared';
 
 const router: RouterType = Router();
 
 router.use(cashierAuthMiddleware);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const byId = (id: string) => ({ id } as unknown as any);
+
 // ─── GET /api/cashier/me ──────────────────────────────────────────────────────
 router.get('/me', async (req: Request, res: Response): Promise<void> => {
   const cashier = await prisma.cashier.findUnique({
-    where: { id: req.cashier!.cashierId },
+    where: byId(req.cashier!.cashierId),
     select: { id: true, username: true, display_name: true, is_active: true },
   });
   if (!cashier) {
@@ -24,7 +26,6 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ─── GET /api/cashier/deposits ────────────────────────────────────────────────
-// Returns pending deposits for the cashier to action
 router.get('/deposits', async (_req: Request, res: Response): Promise<void> => {
   const deposits = await prisma.pendingDeposit.findMany({
     where: { status: 'pending' },
@@ -46,9 +47,9 @@ router.get('/deposits', async (_req: Request, res: Response): Promise<void> => {
 
 // ─── POST /api/cashier/deposits/:id/approve ───────────────────────────────────
 router.post('/deposits/:id/approve', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
-  const deposit = await prisma.pendingDeposit.findUnique({ where: { id } });
+  const deposit = await prisma.pendingDeposit.findUnique({ where: byId(id) });
 
   if (!deposit) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Deposit not found' });
@@ -65,10 +66,9 @@ router.post('/deposits/:id/approve', async (req: Request, res: Response): Promis
 
   await prisma.$transaction(async (tx) => {
     await tx.pendingDeposit.update({
-      where: { id },
+      where: byId(id),
       data: { status: 'claimed', claimed_at: new Date() },
     });
-    // Credit the player's play wallet
     const wallet = await tx.wallet.findUniqueOrThrow({
       where: { player_id_type: { player_id: deposit.player_id!, type: 'play' } },
     });
@@ -92,9 +92,9 @@ router.post('/deposits/:id/approve', async (req: Request, res: Response): Promis
 
 // ─── POST /api/cashier/deposits/:id/reject ────────────────────────────────────
 router.post('/deposits/:id/reject', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
-  const deposit = await prisma.pendingDeposit.findUnique({ where: { id } });
+  const deposit = await prisma.pendingDeposit.findUnique({ where: byId(id) });
   if (!deposit) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Deposit not found' });
     return;
@@ -105,7 +105,7 @@ router.post('/deposits/:id/reject', async (req: Request, res: Response): Promise
   }
 
   await prisma.pendingDeposit.update({
-    where: { id },
+    where: byId(id),
     data: { status: 'cancelled' },
   });
 
@@ -134,7 +134,7 @@ router.get('/withdrawals', async (_req: Request, res: Response): Promise<void> =
 
 // ─── POST /api/cashier/withdrawals/:id/approve ────────────────────────────────
 router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const { txNumber } = req.body as { txNumber?: string };
 
   if (!txNumber?.trim()) {
@@ -142,7 +142,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
     return;
   }
 
-  const withdrawal = await prisma.pendingWithdrawal.findUnique({ where: { id } });
+  const withdrawal = await prisma.pendingWithdrawal.findUnique({ where: byId(id) });
   if (!withdrawal) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Withdrawal not found' });
     return;
@@ -153,7 +153,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
   }
 
   await prisma.pendingWithdrawal.update({
-    where: { id },
+    where: byId(id),
     data: { status: 'approved', tx_number: txNumber.trim() },
   });
 
@@ -162,9 +162,9 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
 
 // ─── POST /api/cashier/withdrawals/:id/reject ─────────────────────────────────
 router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
 
-  const withdrawal = await prisma.pendingWithdrawal.findUnique({ where: { id } });
+  const withdrawal = await prisma.pendingWithdrawal.findUnique({ where: byId(id) });
   if (!withdrawal) {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Withdrawal not found' });
     return;
@@ -174,10 +174,9 @@ router.post('/withdrawals/:id/reject', async (req: Request, res: Response): Prom
     return;
   }
 
-  // Refund the player
   await prisma.$transaction(async (tx) => {
     await tx.pendingWithdrawal.update({
-      where: { id },
+      where: byId(id),
       data: { status: 'rejected' },
     });
     const wallet = await tx.wallet.findUniqueOrThrow({

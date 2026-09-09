@@ -6,6 +6,9 @@ import prisma from '../../lib/prisma.js';
 
 const router: RouterType = Router();
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const byId = (id: string) => ({ id } as unknown as any);
+
 // GET / — list all cashiers
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const cashiers = await prisma.cashier.findMany({
@@ -56,9 +59,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
 // PATCH /:id/suspend
 router.patch('/:id/suspend', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   try {
-    await prisma.cashier.update({ where: { id }, data: { is_active: false } });
+    await prisma.cashier.update({ where: byId(id), data: { is_active: false } });
     res.json({ ok: true });
   } catch {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Cashier not found' });
@@ -67,9 +70,9 @@ router.patch('/:id/suspend', async (req: Request, res: Response): Promise<void> 
 
 // PATCH /:id/restore
 router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   try {
-    await prisma.cashier.update({ where: { id }, data: { is_active: true } });
+    await prisma.cashier.update({ where: byId(id), data: { is_active: true } });
     res.json({ ok: true });
   } catch {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Cashier not found' });
@@ -78,7 +81,7 @@ router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> 
 
 // PATCH /:id/reset-password
 router.patch('/:id/reset-password', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const { password } = req.body as { password?: string };
 
   if (!password || password.length < 6) {
@@ -88,7 +91,7 @@ router.patch('/:id/reset-password', async (req: Request, res: Response): Promise
 
   const password_hash = await bcrypt.hash(password, 12);
   try {
-    await prisma.cashier.update({ where: { id }, data: { password_hash } });
+    await prisma.cashier.update({ where: byId(id), data: { password_hash } });
     res.json({ ok: true });
   } catch {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Cashier not found' });
@@ -97,9 +100,9 @@ router.patch('/:id/reset-password', async (req: Request, res: Response): Promise
 
 // GET /link/:id — get the Telegram deep-link for a cashier to open the cashier app
 router.get('/link/:id', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const cashier = await prisma.cashier.findUnique({
-    where: { id },
+    where: byId(id),
     select: { id: true, username: true },
   });
   if (!cashier) {
@@ -119,9 +122,9 @@ router.get('/link/:id', async (req: Request, res: Response): Promise<void> => {
 
 // DELETE /:id
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   try {
-    await prisma.cashier.delete({ where: { id } });
+    await prisma.cashier.delete({ where: byId(id) });
     res.json({ ok: true });
   } catch {
     res.status(404).json({ error: 'NOT_FOUND', message: 'Cashier not found' });

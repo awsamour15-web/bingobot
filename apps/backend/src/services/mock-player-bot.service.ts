@@ -1,5 +1,5 @@
 // Mock Player Bot Service
-// Auto-joins mock players into pending rounds with a 1-second stagger between each join.
+// Auto-joins mock players into pending rounds with a 300ms stagger between each join.
 // Controlled by config keys:
 //   mock_bot_enabled        — "true" / "false"  (default: false)
 //   mock_bot_count          — how many mock players per round  (default: 3)
@@ -234,7 +234,7 @@ export const MockPlayerBotService = {
         const player = selected[i]!;
         const cartelaNumber = available[i]!;
 
-        if (i > 0) await sleep(1_000);
+        if (i > 0) await sleep(300);
 
         try {
           const current = await prisma.gameRound.findUnique({
