@@ -8,7 +8,7 @@ import { GameStatus, WinPattern } from '@fidel/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
 
 const STAKE_LEVELS = [10, 20, 50];
-const LEAD_TIME_MS = 30_000;
+const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
 const CHECK_INTERVAL_MS = 5_000; // Check every 5 seconds — 1s caused excessive DB queries and OOM
 

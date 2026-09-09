@@ -92,9 +92,9 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
   );
 });
 
-const LOCAL_COUNTDOWN_SEC = 30; // must match LEAD_TIME_MS (30s) in round-scheduler.service.ts
+const LOCAL_COUNTDOWN_SEC = 40; // must match LEAD_TIME_MS (40s) in round-scheduler.service.ts
 
-/** 30-second countdown that starts the moment the hook first mounts. */
+/** 40-second countdown that starts the moment the hook first mounts. */
 function useLocalCountdown() {
   const [msLeft, setMsLeft] = useState(LOCAL_COUNTDOWN_SEC * 1000);
 
