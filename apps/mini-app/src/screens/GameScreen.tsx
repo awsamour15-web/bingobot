@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { initAuth, getAgentJwt } from '../lib/auth';
+import { initAuth } from '../lib/auth';
 import { getRounds, getSystemStats } from '../lib/api';
 import { socket } from '../lib/socket';
 import type { RoundListItem } from '@fidel/shared';
@@ -19,7 +19,6 @@ export default function GameScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [isAgent, setIsAgent] = useState(false);
   const [stats, setStats] = useState<{ totalPlayers: number; totalGames: number } | null>(null);
 
   // Live player counts per round (updated by WebSocket)
@@ -50,7 +49,6 @@ export default function GameScreen() {
           const initial: Record<string, number> = {};
           filtered.forEach(r => { initial[r.id] = r.player_count; });
           setLiveCounts(initial);
-          setIsAgent(!!getAgentJwt());
         }
         if (!cancelled && statsData) setStats(statsData);
       } catch (err: unknown) {
@@ -307,32 +305,6 @@ export default function GameScreen() {
         </div>
       </div>
 
-      {/* ── Agent Dashboard Button ── */}
-      {isAgent && (
-        <div style={{ margin: '0 16px 24px' }}>
-          <button
-            onClick={() => navigate('/agent/dashboard')}
-            style={{
-              display: 'block', width: '100%',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: 'none', borderRadius: 16, padding: '16px 20px',
-              cursor: 'pointer', textAlign: 'left',
-              boxShadow: '0 4px 16px rgba(16,185,129,0.3)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📊</div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 2 }}>Agent Dashboard</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>View your referrals and earnings</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.8)' }}>→</div>
-            </div>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

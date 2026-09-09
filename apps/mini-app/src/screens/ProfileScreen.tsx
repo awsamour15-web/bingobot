@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getProfile, getReferralLink } from '../lib/api';
-import { initAuth } from '../lib/auth';
+import { initAuth, getAgentJwt } from '../lib/auth';
 import { formatMoney } from '../lib/format';
 import type { PlayerProfile, ReferralStats } from '@fidel/shared';
 
@@ -273,17 +274,19 @@ function Achievements({ streak, wins, gamesPlayed }: { streak: number; wins: num
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [referral, setReferral] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
+  const [isAgent, setIsAgent] = useState(false);
 
   useEffect(() => {
     initAuth()
       .then(() => Promise.all([getProfile(), getReferralLink()]))
-      .then(([p, r]) => { setProfile(p); setReferral(r); })
+      .then(([p, r]) => { setProfile(p); setReferral(r); setIsAgent(!!getAgentJwt()); })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, []);
@@ -457,6 +460,33 @@ export default function ProfileScreen() {
           <Toggle on={soundOn} onToggle={toggleSound} />
         </div>
       </Card>
+
+      {/* ── Agent Dashboard ───────────────────────────────────────────────── */}
+      {isAgent && (
+        <Card>
+          <button
+            onClick={() => navigate('/agent/dashboard')}
+            style={{
+              display: 'block', width: '100%',
+              background: 'linear-gradient(135deg,#10b981,#059669)',
+              border: 'none', borderRadius: 14, padding: '16px 18px',
+              cursor: 'pointer', textAlign: 'left',
+              boxShadow: '0 6px 20px rgba(16,185,129,0.28)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📊</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', marginBottom: 2 }}>Agent Dashboard</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>Referrals & earnings</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.7)' }}>→</span>
+            </div>
+          </button>
+        </Card>
+      )}
 
       {/* ── Account Info ─────────────────────────────────────────────────────── */}
       <Card>

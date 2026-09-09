@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Gift, TicketPercent, Trophy } from 'lucide-react';
-import { initAuth, getAgentJwt } from '../lib/auth';
+import { initAuth } from '../lib/auth';
 import { getProfile, checkKenoAccess, checkPlinkoAccess, checkRoyalDropAccess, redeemCoupon, getAvailableCoupons, type AvailableCoupon } from '../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -331,7 +331,6 @@ function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, accessCh
 export default function GamesLobbyScreen() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'all' | 'live' | 'instant' | 'coming'>('all');
-  const [isAgent, setIsAgent] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
   const [mainBalance, setMainBalance] = useState<number | null>(null);
   const [playBalance, setPlayBalance] = useState<number | null>(null);
@@ -357,7 +356,6 @@ export default function GamesLobbyScreen() {
           getAvailableCoupons().catch(() => [] as AvailableCoupon[]),
         ]);
         if (!cancelled) {
-          setIsAgent(!!getAgentJwt());
           setIsSuspended(profile.is_suspended);
           setMainBalance(profile.mainWallet.balance);
           setPlayBalance(profile.playWallet.balance);
@@ -541,32 +539,6 @@ export default function GamesLobbyScreen() {
 
       <div style={{ padding: '30px 20px 0' }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 21, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}><Trophy size={22} color="#f3cf64" /> PLAY NOW</div><span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>{availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS</span></div><div style={{ marginTop: 4, color: '#78869c', fontSize: 11, fontWeight: 600 }}>Pick a game and make your move</div><div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>{([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>)}</div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>{filteredGames.map((game, i) => <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}><GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} accessChecked={accessChecked} /></div>)}</div></div>
 
-      {/* ── Agent button ──────────────────────────────────────────── */}
-      {isAgent && (
-        <div style={{ padding: '20px 16px 0' }}>
-          <button
-            onClick={() => navigate('/agent/dashboard')}
-            style={{
-              display: 'block', width: '100%',
-              background: 'linear-gradient(135deg,#10b981,#059669)',
-              border: 'none', borderRadius: 18, padding: '16px 18px',
-              cursor: 'pointer', textAlign: 'left',
-              boxShadow: '0 6px 20px rgba(16,185,129,0.28)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📊</div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', marginBottom: 2 }}>Agent Dashboard</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>Referrals & earnings</div>
-                </div>
-              </div>
-              <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.7)' }}>→</span>
-            </div>
-          </button>
-        </div>
-      )}
     </div>
   );
 }
