@@ -211,7 +211,7 @@ export async function buildDepositInstructionText(amount: number): Promise<{ tex
     `1. ከታቹ ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n` +
     `📱 Phone: \`${telebirrNumber}\`` +
     (receiverName ? `\n👤 Name: ${receiverName}` : '') +
-    `\n\n2. የካፈሉትን አጭር የደሁፍ መልዕክት\\(message\\) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
+    `\n\n2. የካፈሉትን አጭር የደሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
 
   return { text, telebirrNumber, receiverName };
 }
@@ -1411,7 +1411,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
         const { text: instructionText, telebirrNumber, receiverName } = await buildDepositInstructionText(amount);
         depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber, receiverName });
-        await ctx.reply(instructionText, { parse_mode: 'MarkdownV2' });
+        await ctx.reply(instructionText, { parse_mode: 'Markdown' });
         return;
       }
 
