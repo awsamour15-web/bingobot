@@ -1329,11 +1329,16 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   bot.hears('Deposit 💰', handleDepositStart);
 
-  // ─── Copy phone callback — sends phone number as a separate message ─────────
+  // ─── Copy phone callback — sends phone number as a formatted announcement ───
   bot.callbackQuery(/^copy_phone:(.+)$/, async (ctx) => {
     const phone = ctx.match[1];
-    await ctx.answerCallbackQuery();
-    await ctx.reply(`📋 ${phone}`);
+    await ctx.answerCallbackQuery('📋 Phone number copied!');
+    await ctx.reply(
+      `📢 *PAYMENT NUMBER*\n\n` +
+      `📱 \`${phone}\`\n\n` +
+      `👆 Tap the number above to copy it, then paste when sending your transfer.`,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   // ─── /menu command — refresh the keyboard for existing users ──────────────
