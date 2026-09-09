@@ -78,11 +78,30 @@ export function AgentsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'pending' | 'rejected'>('all');
   const [tab, setTab] = useState<'all' | 'pending' | 'withdrawals'>('all');
+  const [pendingSearch, setPendingSearch] = useState('');
+  const [withdrawalSearch, setWithdrawalSearch] = useState('');
 
-  const filtered = useMemo(
-    () => agents.filter(a => a.telegramUsername.toLowerCase().includes(search.toLowerCase())),
-    [agents, search],
+  const filtered = useMemo(() => agents.filter(a => {
+    const matchSearch = a.telegramUsername.toLowerCase().includes(search.toLowerCase());
+    const matchStatus =
+      statusFilter === 'all' ? true :
+      statusFilter === 'active' ? (a.isActive && a.approvalStatus === 'approved') :
+      statusFilter === 'suspended' ? (!a.isActive && a.approvalStatus === 'approved') :
+      statusFilter === 'pending' ? a.approvalStatus === 'pending' :
+      statusFilter === 'rejected' ? a.approvalStatus === 'rejected' : true;
+    return matchSearch && matchStatus;
+  }), [agents, search, statusFilter]);
+
+  const filteredPending = useMemo(
+    () => pendingAgents.filter(a => a.telegramUsername.toLowerCase().includes(pendingSearch.toLowerCase())),
+    [pendingAgents, pendingSearch],
+  );
+
+  const filteredWithdrawals = useMemo(
+    () => pendingWithdrawals.filter(w => w.telegramUsername.toLowerCase().includes(withdrawalSearch.toLowerCase())),
+    [pendingWithdrawals, withdrawalSearch],
   );
 
   async function load() {
@@ -140,8 +159,8 @@ export function AgentsPage() {
 
   const TABS = [
     { id: 'all' as const,         label: `All Agents (${filtered.length})` },
-    { id: 'pending' as const,     label: `Pending (${pendingAgents.length})`,     badge: pendingAgents.length > 0 },
-    { id: 'withdrawals' as const, label: `Withdrawals (${pendingWithdrawals.length})`, badge: pendingWithdrawals.length > 0 },
+    { id: 'pending' as const,     label: `Pending (${filteredPending.length})`,     badge: pendingAgents.length > 0 },
+    { id: 'withdrawals' as const, label: `Withdrawals (${filteredWithdrawals.length})`, badge: pendingWithdrawals.length > 0 },
   ];
 
   return (
@@ -194,6 +213,20 @@ export function AgentsPage() {
               />
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--c-muted)', pointerEvents: 'none' }}>🔍</span>
             </div>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
+              style={{ ...inputCss, minWidth: 140, cursor: 'pointer' }}
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            {(search || statusFilter !== 'all') && (
+              <Btn size="sm" variant="outline" onClick={() => { setSearch(''); setStatusFilter('all'); }}>Clear</Btn>
+            )}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <Table>
@@ -245,17 +278,25 @@ export function AgentsPage() {
       {tab === 'pending' && (
         <Card>
           <CardHeader title="Pending Applications" subtitle="Agents waiting for approval" />
-          {pendingAgents.length === 0 ? (
+          <div style={{ position: 'relative', marginBottom: 16, maxWidth: 320 }}>
+            <input
+              type="search" placeholder="Search username…" value={pendingSearch}
+              onChange={e => setPendingSearch(e.target.value)}
+              style={{ ...inputCss, paddingLeft: 34, width: '100%', boxSizing: 'border-box' }}
+            />
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--c-muted)', pointerEvents: 'none' }}>🔍</span>
+          </div>
+          {filteredPending.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--c-muted)' }}>
               <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>✓</div>
-              No pending applications.
+              {pendingSearch ? 'No agents match.' : 'No pending applications.'}
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <Table>
                 <thead><tr><Th>Username</Th><Th>Telegram ID</Th><Th>Applied</Th><Th>Actions</Th></tr></thead>
                 <tbody>
-                  {pendingAgents.map(a => (
+                  {filteredPending.map(a => (
                     <tr key={a.id}>
                       <Td><span style={{ fontWeight: 700 }}>@{a.telegramUsername}</span></Td>
                       <Td mono>{a.telegramId || '—'}</Td>
@@ -279,17 +320,25 @@ export function AgentsPage() {
       {tab === 'withdrawals' && (
         <Card>
           <CardHeader title="Commission Withdrawals" subtitle="Agent payout requests awaiting approval" />
-          {pendingWithdrawals.length === 0 ? (
+          <div style={{ position: 'relative', marginBottom: 16, maxWidth: 320 }}>
+            <input
+              type="search" placeholder="Search username…" value={withdrawalSearch}
+              onChange={e => setWithdrawalSearch(e.target.value)}
+              style={{ ...inputCss, paddingLeft: 34, width: '100%', boxSizing: 'border-box' }}
+            />
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--c-muted)', pointerEvents: 'none' }}>🔍</span>
+          </div>
+          {filteredWithdrawals.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--c-muted)' }}>
               <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>💰</div>
-              No pending withdrawals.
+              {withdrawalSearch ? 'No withdrawals match.' : 'No pending withdrawals.'}
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <Table>
                 <thead><tr><Th>Agent</Th><Th>Phone</Th><Th>Amount</Th><Th>Requested</Th><Th>Actions</Th></tr></thead>
                 <tbody>
-                  {pendingWithdrawals.map(w => (
+                  {filteredWithdrawals.map(w => (
                     <tr key={w.id}>
                       <Td><span style={{ fontWeight: 700 }}>@{w.telegramUsername}</span></Td>
                       <Td muted>{w.phone || '—'}</Td>
