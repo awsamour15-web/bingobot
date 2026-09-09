@@ -208,10 +208,6 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   nce.setOnNumberCalled(async (roundId, payload) => {
     io.to(`round:${roundId}`).emit('NUMBER_CALLED', payload);
-    // Feed called numbers to mock bot win injector — must be awaited so the
-    // winning grid is injected before NCE's win-detection pass runs.
-    const rows = await prisma.calledNumber.findMany({ where: { round_id: roundId }, select: { number: true } });
-    await MockPlayerBotService.onNumberCalled(roundId, rows.map((r) => r.number));
   });
 
   nce.setOnRoundVoid((roundId) => {

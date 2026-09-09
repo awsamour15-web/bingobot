@@ -82,6 +82,25 @@ export class NumberCallingEngine {
     gridMap.set(cartelaNumber, grid);
   }
 
+  /** Per-round pre-generated number sequences set by the mock bot pre-simulation */
+  private readonly preGeneratedSequences = new Map<string, number[]>();
+
+  /**
+   * Store a pre-generated 1–75 sequence for a round.
+   * When NCE starts this round it will use this sequence instead of generating a new one,
+   * guaranteeing the predetermined winning cartela wins naturally.
+   */
+  setPreGeneratedSequence(roundId: string, sequence: number[]): void {
+    this.preGeneratedSequences.set(roundId, sequence);
+  }
+
+  /** Retrieve and consume the pre-generated sequence for a round (one-time use). */
+  takePreGeneratedSequence(roundId: string): number[] | undefined {
+    const seq = this.preGeneratedSequences.get(roundId);
+    this.preGeneratedSequences.delete(roundId);
+    return seq;
+  }
+
   /**
    * Start (or resume) calling numbers for a round.
    *
@@ -114,8 +133,10 @@ export class NumberCallingEngine {
     let sequenceIndex: number;
 
     if (existingCalled.length === 0) {
-      // Fresh start — generate new shuffle
-      sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
+      // Use pre-generated sequence from mock bot simulation if available,
+      // otherwise generate a fresh shuffle
+      const preGen = this.takePreGeneratedSequence(roundId);
+      sequence = preGen ?? shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
       sequenceIndex = 0;
     } else {
       // Resume — reconstruct sequence from what was already called,
@@ -269,6 +290,7 @@ export class NumberCallingEngine {
       this.activeTimers.delete(roundId);
     }
     this.gridCache.delete(roundId);
+    this.preGeneratedSequences.delete(roundId);
   }
 
   /**
