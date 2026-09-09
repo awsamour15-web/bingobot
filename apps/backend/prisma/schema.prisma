@@ -592,6 +592,20 @@ model PlinkoBet {
   @@map("plinko_bets")
 }
 
+// ─── Cashier ──────────────────────────────────────────────────────────────────
+
+model Cashier {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  password_hash String
+  display_name  String    @default("")
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@map("cashiers")
+}
+
 model SystemSetting {
   key        String   @id
   value      String

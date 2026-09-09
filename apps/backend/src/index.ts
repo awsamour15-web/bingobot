@@ -42,6 +42,9 @@ import royalDropRouter from './routes/royal-drop.router.js';
 import gregmornRouter from './routes/gregmorn.router.js';
 import gregmornCallbackRouter from './routes/gregmorn-callback.router.js';
 import gregmornAdminRouter from './routes/admin/gregmorn.admin.router.js';
+import cashierAuthRouter from './routes/cashier/auth.cashier.router.js';
+import cashierRouter from './routes/cashier/cashier.router.js';
+import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
 import helmet from 'helmet';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
@@ -161,6 +164,9 @@ app.use('/api/admin/mock-players', jwtAdminMiddleware, adminMockPlayersRouter);
 app.use('/api/admin/games', jwtAdminMiddleware, adminGamesRouter);
 app.use('/api/admin/coupons', jwtAdminMiddleware, adminCouponsRouter);
 app.use('/api/admin/gregmorn', jwtAdminMiddleware, gregmornAdminRouter);
+app.use('/api/cashier/auth', cashierAuthRouter);
+app.use('/api/cashier', cashierRouter);
+app.use('/api/admin/cashiers', jwtAdminMiddleware, adminCashiersRouter);
 // broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────

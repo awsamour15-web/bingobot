@@ -15,6 +15,15 @@ function Root() {
   useEffect(() => {
     WebApp.ready();
     WebApp.expand();
+
+    // Handle startapp deep-links before any session logic.
+    // t.me/bot?startapp=cashier → open /#/cashier
+    const startParam = WebApp.initDataUnsafe?.start_param;
+    if (startParam === 'cashier') {
+      window.location.replace(window.location.pathname + '#/cashier');
+      return;
+    }
+
     // Only clear stale session on fresh app open, not on user-triggered reloads.
     const isReload = performance?.navigation?.type === 1 ||
       (performance?.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';
@@ -24,8 +33,8 @@ function Root() {
       sessionStorage.removeItem('selectedRoundId');
       sessionStorage.removeItem('selectedStake');
       // Reset the hash to home so a stale /#/rounds/:id/game URL doesn't persist
-      // but preserve intentional deep links like /agent/dashboard
-      const keepHashes = ['/agent/dashboard'];
+      // but preserve intentional deep links like /agent/dashboard and /cashier
+      const keepHashes = ['/agent/dashboard', '/cashier'];
       const currentHash = window.location.hash.replace('#', '');
       const shouldKeep = keepHashes.some(h => currentHash.startsWith(h));
       if (!shouldKeep && window.location.hash && window.location.hash !== '#/' && window.location.hash !== '#') {

@@ -165,6 +165,15 @@ function buildAgentDashboardButton(): InlineKeyboard {
   return new InlineKeyboard().webApp('📊 Open Agent Dashboard', `${baseUrl}#/agent/dashboard`);
 }
 
+/**
+ * Builds an InlineKeyboard with a web_app button that opens the cashier screen.
+ * Sent by the bot to cashier accounts so they can manage deposits/withdrawals.
+ */
+function buildCashierButton(): InlineKeyboard {
+  const baseUrl = MINI_APP_URL.endsWith('/') ? MINI_APP_URL : `${MINI_APP_URL}/`;
+  return new InlineKeyboard().webApp('💰 Open Cashier App', `${baseUrl}#/cashier`);
+}
+
 // ─── Helper: Register button prompt text ─────────────────────────────────────
 
 export const REGISTER_PROMPT_TEXT =
@@ -862,6 +871,15 @@ if (BOT_TOKEN) {
       const telegramId = BigInt(from.id);
       const username = from.username ?? from.first_name ?? `user_${from.id}`;
       const botUsername = process.env['BOT_USERNAME'] ?? '';
+
+      // ── Case 0: cashier — open cashier mini-app ───────────────────────────
+      if (typeof payload === 'string' && payload === 'cashier') {
+        await ctx.reply(
+          `💰 Cashier App\n\nTap the button below to open the cashier dashboard.\nLog in with your cashier username and password.`,
+          { reply_markup: buildCashierButton() },
+        );
+        return;
+      }
 
       // ── Case 1: agent_<agentId> — agent self-activation link ──────────────
       if (typeof payload === 'string' && payload.startsWith('agent_')) {
