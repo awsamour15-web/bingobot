@@ -1,16 +1,11 @@
 [phases.setup]
 nixPkgs = ['nodejs_22', 'corepack', 'openssl']
+cmds = ['bash .nixpacks/setup.sh']
 
 [phases.install]
-dependsOn = ['setup']
-cmds = [
-  'corepack enable',
-  'corepack prepare pnpm@9.0.0 --activate',
-  'pnpm install'
-]
+cmds = ['pnpm install']
 
 [phases.build]
-dependsOn = ['install']
 cmds = [
   'pnpm db:generate',
   'pnpm --filter @beteseb/backend exec prisma migrate deploy',
