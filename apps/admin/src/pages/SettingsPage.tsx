@@ -887,6 +887,10 @@ export function SettingsPage() {
                 <p style={sectionTitle}>👑 Royal Drop Access</p>
                 <AccessControlSection configKey="royal_drop_allowed_usernames" idType="usernames" placeholder="kanu_1921, other_user" />
               </div>
+              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <p style={sectionTitle}>🎰 Multi Hot 5 (Slots) Access</p>
+                <AccessControlSection configKey="slots_allowed_usernames" idType="usernames" placeholder="kanu_1921, other_user" />
+              </div>
             </div>
           )}
           {activeTab === 'deposits'   && <DepositAccountsSection />}
