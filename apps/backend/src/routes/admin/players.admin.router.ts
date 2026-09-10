@@ -14,15 +14,19 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const pageSize = Math.min(100, parseInt(req.query['limit'] as string) || 20);
   const search = (req.query['search'] as string | undefined) ?? '';
   const sortBy = (req.query['sortBy'] as string | undefined) ?? 'created_at';
+  const mockFilter = req.query['mock'] as string | undefined;
+
+  const mockWhere = mockFilter === 'true' ? { is_mock: true } : mockFilter === 'false' ? { is_mock: false } : {};
 
   const where = search
     ? {
+        ...mockWhere,
         OR: [
           { username: { contains: search, mode: 'insensitive' as const } },
           { phone: { contains: search } },
         ],
       }
-    : {};
+    : { ...mockWhere };
 
   const [allPlayers, total] = await Promise.all([
     prisma.player.findMany({
@@ -43,6 +47,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     phone: p.phone ?? undefined,
     phone_verified: p.phone_verified,
     is_suspended: p.is_suspended,
+    is_mock: p.is_mock,
     main_wallet_balance: Number(p.wallets.find((w) => w.type === 'main')?.balance ?? 0),
     play_wallet_balance: Number(p.wallets.find((w) => w.type === 'play')?.balance ?? 0),
     created_at: p.created_at.toISOString(),

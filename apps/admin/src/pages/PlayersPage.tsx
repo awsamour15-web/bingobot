@@ -299,11 +299,12 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<'created_at' | 'balance'>('created_at');
+  const [mockFilter, setMockFilter] = useState<'all' | 'mock' | 'regular'>('all');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchPlayers = useCallback((p: number, q: string, sort: string) => {
+  const fetchPlayers = useCallback((p: number, q: string, sort: string, mock: 'all' | 'mock' | 'regular') => {
     setLoading(true); setError(null);
-    getPlayers(p, q || undefined, sort)
+    getPlayers(p, q || undefined, sort, mock)
       .then((res: any) => {
         setPlayers(res.items ?? res.players ?? []);
         setTotal(res.total ?? 0);
@@ -313,20 +314,26 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
       .catch((e: Error) => { setError(e.message ?? 'Failed to load'); setLoading(false); });
   }, []);
 
-  useEffect(() => { fetchPlayers(1, '', sortBy); }, [fetchPlayers, sortBy]);
+  useEffect(() => { fetchPlayers(1, '', sortBy, mockFilter); }, [fetchPlayers, sortBy]);
 
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setSearch(val); setPage(1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchPlayers(1, val, sortBy), 380);
+    debounceRef.current = setTimeout(() => fetchPlayers(1, val, sortBy, mockFilter), 380);
   }
 
   function handleSortToggle() {
     const next = sortBy === 'created_at' ? 'balance' : 'created_at';
     setSortBy(next);
     setPage(1);
-    fetchPlayers(1, search, next);
+    fetchPlayers(1, search, next, mockFilter);
+  }
+
+  function handleMockFilter(f: 'all' | 'mock' | 'regular') {
+    setMockFilter(f);
+    setPage(1);
+    fetchPlayers(1, search, sortBy, f);
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -335,6 +342,26 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
   return (
     <div className="fade-in">
       <PageHeader title="Players" />
+
+      {/* Mock / Regular filter */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        {([['all', '👥 All Players'], ['regular', '🧑 Regular'], ['mock', '🤖 Mock']] as const).map(([f, label]) => (
+          <button
+            key={f}
+            onClick={() => handleMockFilter(f)}
+            style={{
+              padding: '6px 16px', borderRadius: 8, border: '1px solid',
+              cursor: 'pointer', fontSize: 13, fontWeight: mockFilter === f ? 700 : 500,
+              background: mockFilter === f ? 'rgba(99,102,241,0.18)' : 'transparent',
+              borderColor: mockFilter === f ? 'rgba(99,102,241,0.4)' : 'var(--c-border)',
+              color: mockFilter === f ? '#a5b4fc' : 'var(--c-text-secondary)',
+              transition: 'all 0.12s',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
         <StatCard icon="👥" label="Total Players" value={total}                       color={C.primary} />
@@ -384,7 +411,14 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
              !players.length ? <TrEmpty cols={8} message="No players found." /> :
              players.map((p) => (
               <tr key={p.id}>
-                <Td><span style={{ fontWeight: 600 }}>@{p.username}</span></Td>
+                <Td>
+                  <span style={{ fontWeight: 600 }}>@{p.username}</span>
+                  {p.is_mock && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(234,179,8,0.12)', color: '#facc15', border: '1px solid rgba(234,179,8,0.2)' }}>
+                      mock
+                    </span>
+                  )}
+                </Td>
                 <Td mono>{p.telegram_id}</Td>
                 <Td muted={!p.phone}>{p.phone ?? '—'}</Td>
                 <Td><span style={{ fontWeight: 600, color: '#4ade80' }}>{Number(p.main_wallet_balance).toFixed(2)}</span></Td>
@@ -404,11 +438,11 @@ function PlayerList({ onView }: { onView: (id: string) => void }) {
             <span style={{ fontSize: 12, color: 'var(--c-muted)', fontWeight: 600 }}>Page {page} of {totalPages}</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn size="sm" variant="outline" disabled={page <= 1 || loading}
-                onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search, sortBy); }}>
+                onClick={() => { const p = page - 1; setPage(p); fetchPlayers(p, search, sortBy, mockFilter); }}>
                 ← Prev
               </Btn>
               <Btn size="sm" variant="outline" disabled={page >= totalPages || loading}
-                onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search, sortBy); }}>
+                onClick={() => { const p = page + 1; setPage(p); fetchPlayers(p, search, sortBy, mockFilter); }}>
                 Next →
               </Btn>
             </div>

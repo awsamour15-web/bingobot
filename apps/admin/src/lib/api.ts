@@ -102,10 +102,13 @@ export function getPlayers(
   page: number,
   search?: string,
   sortBy?: string,
+  mock?: 'all' | 'mock' | 'regular',
 ): Promise<PaginatedResponse<AdminPlayer>> {
   const params = new URLSearchParams({ page: String(page) });
   if (search) params.set('search', search);
   if (sortBy) params.set('sortBy', sortBy);
+  if (mock === 'mock') params.set('mock', 'true');
+  if (mock === 'regular') params.set('mock', 'false');
   return adminApiRequest<PaginatedResponse<AdminPlayer>>('GET', `/api/admin/players?${params}`);
 }
 

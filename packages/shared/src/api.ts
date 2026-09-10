@@ -160,6 +160,7 @@ export interface AdminPlayer {
   phone?: string | undefined;
   phone_verified: boolean;
   is_suspended: boolean;
+  is_mock: boolean;
   main_wallet_balance: number;
   play_wallet_balance: number;
   created_at: string;
