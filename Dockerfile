@@ -38,4 +38,4 @@ COPY --from=base /app ./
 EXPOSE 3000
 
 # Run migrations and start the app
-CMD pnpm --filter @fidel/backend exec prisma migrate deploy && pnpm start
+CMD cd apps/backend && npx prisma migrate deploy && node dist/index.js

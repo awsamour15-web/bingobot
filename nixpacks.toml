@@ -1,0 +1,20 @@
+[phases.setup]
+nixPkgs = ["nodejs_22", "openssl"]
+aptPkgs = ["corepack"]
+
+[phases.install]
+cmds = [
+    "npm install -g corepack",
+    "corepack enable",
+    "corepack prepare pnpm@9.0.0 --activate",
+    "pnpm install --frozen-lockfile"
+]
+
+[phases.build]
+cmds = [
+    "pnpm db:generate",
+    "pnpm build"
+]
+
+[start]
+cmd = "cd apps/backend && npx prisma migrate deploy && node dist/index.js"
