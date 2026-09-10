@@ -1,0 +1,18 @@
+[phases.setup]
+nixPkgs = ['nodejs_22', 'openssl']
+
+[phases.install]
+cmds = [
+  'npm install -g pnpm@9.0.0',
+  'pnpm install'
+]
+
+[phases.build]
+cmds = [
+  'pnpm db:generate',
+  'pnpm --filter @beteseb/backend exec prisma migrate deploy',
+  'pnpm build'
+]
+
+[start]
+cmd = 'pnpm start'
