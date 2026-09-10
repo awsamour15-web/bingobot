@@ -311,7 +311,7 @@ export interface AdminTransaction {
 export function getPlayerTransactions(
   playerId: string,
   page = 1,
-  type?: 'deposit' | 'withdrawal' | 'game',
+  type?: 'deposit' | 'withdrawal' | 'game' | 'win' | 'loss',
 ): Promise<PaginatedResponse<AdminTransaction>> {
   const params = new URLSearchParams({ page: String(page), pageSize: '30' });
   if (type) params.set('type', type);

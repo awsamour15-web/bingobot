@@ -92,6 +92,10 @@ router.get('/:id/transactions', async (req: Request, res: Response): Promise<voi
     typeCondition = { type: 'withdrawal' };
   } else if (typeFilter === 'game') {
     typeCondition = { type: { in: ['game_entry', 'game_win'] } };
+  } else if (typeFilter === 'win') {
+    typeCondition = { type: { in: ['game_win', 'ext_game_win'] } };
+  } else if (typeFilter === 'loss') {
+    typeCondition = { type: { in: ['game_entry', 'ext_game_bet'] } };
   }
 
   const where = { wallet_id: { in: walletIds }, ...typeCondition };

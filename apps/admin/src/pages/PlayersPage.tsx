@@ -22,7 +22,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
   const [txData, setTxData] = useState<{ items: AdminTransaction[]; total: number; page: number; pageSize: number } | null>(null);
   const [txPage, setTxPage] = useState(1);
   const [txLoading, setTxLoading] = useState(false);
-  const [txFilter, setTxFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'game'>('all');
+  const [txFilter, setTxFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'game' | 'win' | 'loss'>('all');
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
   const [deleteMsg, setDeleteMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
@@ -35,7 +35,7 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
 
   useEffect(() => {
     setTxLoading(true);
-    getPlayerTransactions(playerId, txPage, txFilter === 'all' ? undefined : txFilter)
+    getPlayerTransactions(playerId, txPage, txFilter === 'all' ? undefined : txFilter as 'deposit' | 'withdrawal' | 'game' | 'win' | 'loss')
       .then((d) => { setTxData(d); setTxLoading(false); })
       .catch(() => setTxLoading(false));
   }, [playerId, txPage, txFilter]);
@@ -217,20 +217,20 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
           subtitle={`${txData?.total ?? 0} total transactions`}
           action={
             <div style={{ display: 'flex', gap: 4, background: 'var(--c-bg)', borderRadius: 8, padding: 3, border: '1px solid var(--c-border)' }}>
-              {(['all', 'deposit', 'withdrawal', 'game'] as const).map((f) => (
+              {(['all', 'deposit', 'withdrawal', 'game', 'win', 'loss'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => { setTxFilter(f); setTxPage(1); }}
                   style={{
                     padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12,
                     fontWeight: txFilter === f ? 700 : 500,
-                    background: txFilter === f ? 'rgba(99,102,241,0.18)' : 'transparent',
-                    color: txFilter === f ? '#a5b4fc' : 'var(--c-text-secondary)',
+                    background: txFilter === f ? (f === 'win' ? 'rgba(34,197,94,0.18)' : f === 'loss' ? 'rgba(239,68,68,0.18)' : 'rgba(99,102,241,0.18)') : 'transparent',
+                    color: txFilter === f ? (f === 'win' ? '#4ade80' : f === 'loss' ? '#f87171' : '#a5b4fc') : 'var(--c-text-secondary)',
                     transition: 'all 0.12s',
                     textTransform: 'capitalize',
                   }}
                 >
-                  {f === 'all' ? '📋 All' : f === 'deposit' ? '💰 Deposits' : f === 'withdrawal' ? '💸 Withdrawals' : '🎮 Game'}
+                  {f === 'all' ? '📋 All' : f === 'deposit' ? '💰 Deposits' : f === 'withdrawal' ? '💸 Withdrawals' : f === 'game' ? '🎮 Game' : f === 'win' ? '🏆 Wins' : '💀 Losses'}
                 </button>
               ))}
             </div>
