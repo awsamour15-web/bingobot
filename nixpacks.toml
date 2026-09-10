@@ -1,19 +1,13 @@
 [phases.setup]
 nixPkgs = ["nodejs_22", "openssl"]
-aptPkgs = ["corepack"]
 
 [phases.install]
-cmds = [
-    "npm install -g corepack",
-    "corepack enable",
-    "corepack prepare pnpm@9.0.0 --activate",
-    "pnpm install --frozen-lockfile"
-]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = [
-    "pnpm db:generate",
-    "pnpm build"
+    "npx prisma generate --schema=apps/backend/prisma/schema.prisma",
+    "npm run build"
 ]
 
 [start]
