@@ -115,7 +115,7 @@ router.post('/withdrawals/:id/approve', async (req: Request, res: Response): Pro
     }).catch(() => {});
 
     // Broadcast withdrawal proof to all active group/channel targets (non-blocking)
-    void broadcastWithdrawalProof(withdrawal.player.username, Number(withdrawal.amount), withdrawal.phone, txNumber);
+    // void broadcastWithdrawalProof(withdrawal.player.username, Number(withdrawal.amount), withdrawal.phone, txNumber);
 
     res.json({ success: true, tx_number: txNumber });
   } catch (err) {
