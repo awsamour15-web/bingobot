@@ -13,12 +13,43 @@ import { spin, gamble } from '../services/slots-engine.service.js';
 const router: RouterType = Router();
 router.use(jwtAuthMiddleware);
 
+// ─── Access gate ──────────────────────────────────────────────────────────────
+// Config key `slots_allowed_usernames` — comma-separated usernames, or "all"
+// If key is missing or empty → game is closed to everyone.
+
+async function isSlotsAllowed(playerId: string): Promise<boolean> {
+  const cfg = await prisma.config.findUnique({ where: { key: 'slots_allowed_usernames' } });
+  if (!cfg?.value?.trim()) return false;
+  const raw = cfg.value.trim();
+  if (raw === 'all') return true;
+  const allowed = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });
+  return allowed.includes(player?.username ?? '');
+}
+
+async function slotsAccessMiddleware(req: Request, res: Response, next: () => void): Promise<void> {
+  const playerId = req.player?.playerId;
+  if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
+  if (!(await isSlotsAllowed(playerId))) {
+    res.status(403).json({ error: 'SLOTS_NOT_AVAILABLE', message: 'Multi Hot 5 is not available for your account yet.' });
+    return;
+  }
+  next();
+}
+
+// GET /api/slots/access — lets the frontend check access without loading the game
+router.get('/access', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player?.playerId;
+  if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
+  res.json({ allowed: await isSlotsAllowed(playerId) });
+});
+
 const MIN_BET = 5;
 const MAX_BET = 500;
 
 // ─── POST /api/slots/spin ─────────────────────────────────────────────────────
 
-router.post('/spin', async (req: Request, res: Response): Promise<void> => {
+router.post('/spin', slotsAccessMiddleware, async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
   const { betAmount } = req.body as { betAmount?: unknown };
@@ -95,7 +126,7 @@ router.post('/spin', async (req: Request, res: Response): Promise<void> => {
 
 // ─── POST /api/slots/gamble ───────────────────────────────────────────────────
 
-router.post('/gamble', async (req: Request, res: Response): Promise<void> => {
+router.post('/gamble', slotsAccessMiddleware, async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
   const { spinId, guess } = req.body as { spinId?: string; guess?: unknown };

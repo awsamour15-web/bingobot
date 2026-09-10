@@ -796,6 +796,10 @@ export function checkRoyalDropAccess(): Promise<{ allowed: boolean }> {
   return apiRequest<{ allowed: boolean }>('GET', '/api/royal-drop/access');
 }
 
+export function checkSlotsAccess(): Promise<{ allowed: boolean }> {
+  return apiRequest<{ allowed: boolean }>('GET', '/api/slots/access');
+}
+
 export function spinRoyalDrop(betAmount: number, walletType?: 'main' | 'play'): Promise<RoyalDropSpinResponse> {
   return apiRequest<RoyalDropSpinResponse>('POST', '/api/royal-drop/spin', { betAmount, walletType });
 }

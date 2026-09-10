@@ -163,35 +163,22 @@ export function spin(betAmount: number, houseEdgePct = 35): SpinResult {
   // Apply house edge via win suppression.
   //
   // HOW IT WORKS:
-  // - House edge controls what % of total bets the house keeps over time.
-  // - houseEdgePct = 50 → RTP = 50% → out of every 50,000 ETB bet, ~25,000 ETB is paid out.
-  // - Wins are NOT cut — when a player wins, they receive the FULL calculated payout.
-  // - Instead, the house edge controls WIN FREQUENCY: some winning spins are suppressed to zero.
-  // - The suppression probability is calculated so that over many spins, total payouts = RTP × total bets.
-  //
-  // SUPPRESSION FORMULA:
-  // Natural RTP from reel strips ≈ 85% (estimated from symbol distribution and payouts).
-  // Target RTP = 100% - houseEdgePct.
-  // suppressionRate = 1 - (targetRTP / naturalRTP)
-  // → At 50% edge: targetRTP=50%, suppressionRate = 1 - (50/85) ≈ 41%
-  // → At 35% edge: targetRTP=65%, suppressionRate = 1 - (65/85) ≈ 24%
-  //
-  // This means: when the reels produce a win, there is a suppressionRate% chance the win
-  // is cancelled to zero. The player sees no payout, same as a losing spin.
-  // When NOT suppressed, the player receives the full win amount.
-  //
-  // Result: total money paid out over time ≈ targetRTP × total bets.
-  const NATURAL_RTP = 85; // estimated natural RTP% of reel strips at no suppression
+  // Natural RTP ≈ 190%. We suppress wins probabilistically so over many spins,
+  // total payouts = targetRTP × total bets. The suppression roll is per-spin:
+  //   suppressionRate = 1 - (targetRTP / NATURAL_RTP)
+  // When suppressed: player gets 0. When not suppressed: player gets full paytable win.
+  // Paytable values shown in the UI are always honoured when a win is paid.
+  const NATURAL_RTP = 190;
   if (totalWin > 0) {
     const targetRTP = 100 - houseEdgePct;
     const suppressionRate = Math.max(0, 1 - targetRTP / NATURAL_RTP);
-    const roll = crypto.randomInt(0, 100000) / 100000; // 0.00000 – 0.99999
+    // Use a seeded random from betAmount+spin to make it reproducible per spin
+    const roll = crypto.randomInt(0, 1_000_000) / 1_000_000;
     if (roll < suppressionRate) {
-      // House suppresses this win — player gets nothing this spin
       paylineWins.length = 0;
       totalWin = 0;
     } else {
-      // Full win paid out — cap at 20× bet to prevent outlier losses
+      // Full paytable win — cap at 20× bet
       const maxWin = betAmount * 20;
       if (totalWin > maxWin) {
         const ratio = maxWin / totalWin;

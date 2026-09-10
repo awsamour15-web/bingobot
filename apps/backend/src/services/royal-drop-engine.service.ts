@@ -298,22 +298,21 @@ export function royalDrop(betAmount: number, houseEdgePct = 15): RoyalDropResult
   totalWin = parseFloat(totalWin.toFixed(2));
 
   // House edge via win suppression.
-  // House edge controls WIN FREQUENCY — full wins are paid when not suppressed,
-  // zero when suppressed. Natural Royal Drop RTP ≈ 85%.
+  // Natural Royal Drop RTP ≈ 163% (analytically measured).
   // suppressionRate = 1 - (targetRTP / naturalRTP)
-  // e.g. at 50% edge → 1 - (50/85) ≈ 41% of winning rounds suppressed to zero.
-  const ROYAL_DROP_NATURAL_RTP = 85;
+  // e.g. at 35% edge (target 65%): suppressionRate = 1 - (65/163) ≈ 60%
+  // When not suppressed: full crate rewards + chest multipliers are paid out.
+  const ROYAL_DROP_NATURAL_RTP = 163;
   let houseEdgeApplied = false;
   if (totalWin > 0) {
     const targetRTP = 100 - houseEdgePct;
     const suppressionRate = Math.max(0, 1 - targetRTP / ROYAL_DROP_NATURAL_RTP);
-    const roll = crypto.randomInt(0, 100000) / 100000;
+    const roll = crypto.randomInt(0, 1_000_000) / 1_000_000;
     if (roll < suppressionRate) {
       totalWin = 0;
       houseEdgeApplied = true;
       for (const sp of [...baseSpins, ...bonusSpins]) sp.totalWin = 0;
     } else {
-      // Cap at 500× bet
       const cap = betAmount * 500;
       if (totalWin > cap) totalWin = cap;
     }

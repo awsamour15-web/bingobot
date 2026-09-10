@@ -132,11 +132,13 @@ export class KenoEngine {
     const bets = await prisma.kenoBet.findMany({ where: { round_id: roundId } });
 
     // Read house edge from config (default 15%)
-    // House edge controls WIN FREQUENCY, not win size.
-    // Natural keno RTP ≈ 90%. At 50% edge → target RTP = 50%.
-    // suppressionRate = 1 - (targetRTP / naturalRTP) = 1 - (50/90) ≈ 44%
-    // Winning bets are suppressed to zero at that rate; when not suppressed, full payout is paid.
-    const KENO_NATURAL_RTP = 90;
+    // Natural keno RTP ≈ 88–100% depending on pick count.
+    // We use 100 as the natural RTP ceiling.
+    // suppressionRate = 1 - (targetRTP / NATURAL_RTP)
+    // At 15% edge (target 85%): suppressionRate = 15% of wins suppressed to 0
+    // At 35% edge (target 65%): suppressionRate = 35% of wins suppressed to 0
+    // When not suppressed, the full paytable multiplier is paid out.
+    const KENO_NATURAL_RTP = 100;
     const edgeCfg = await prisma.config.findUnique({ where: { key: 'house_edge_keno' } });
     const houseEdgePct = Math.min(50, Math.max(5, parseInt(edgeCfg?.value ?? '15', 10)));
     const targetRTP = 100 - houseEdgePct;
@@ -147,15 +149,13 @@ export class KenoEngine {
       const picked = bet.picked_numbers.length;
       const baseMultiplier = getKenoMultiplier(picked, matched);
 
-      // Determine payout: full win, or suppressed to zero by house edge
+      // Determine payout: full paytable win, or suppressed to zero by house edge
       let payout = 0;
       if (baseMultiplier > 0) {
         const roll = Math.random();
         if (roll >= suppressionRate) {
-          // Full win paid out
           payout = Math.round(Number(bet.bet_amount) * baseMultiplier * 100) / 100;
         }
-        // else: house suppresses this win → payout stays 0
       }
 
       await prisma.kenoBet.update({
