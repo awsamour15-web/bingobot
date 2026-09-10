@@ -180,6 +180,108 @@ router.patch('/:id/restore', async (req: Request, res: Response): Promise<void> 
   res.json({ success: true });
 });
 
+// DELETE /api/admin/players/:id/transactions/:txId — delete a transaction and reverse its balance effect
+router.delete('/:id/transactions/:txId', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.params['id'] as string;
+  const txId = req.params['txId'] as string;
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Fetch the transaction with wallet info
+      const transaction = await tx.transaction.findUnique({
+        where: { id: txId },
+        include: { wallet: true },
+      });
+
+      if (!transaction) {
+        throw Object.assign(new Error('Transaction not found'), { code: 'NOT_FOUND' });
+      }
+
+      // Ensure the transaction belongs to this player
+      if (transaction.wallet.player_id !== playerId) {
+        throw Object.assign(new Error('Transaction does not belong to this player'), { code: 'FORBIDDEN' });
+      }
+
+      const amount = Number(transaction.amount);
+      const walletType = transaction.wallet.type as WalletType;
+      const refId = transaction.reference_id;
+
+      // 2. Determine reversal: credit types need a debit back, debit types need a credit back
+      const creditTypes: TxType[] = [TxType.game_win, TxType.admin_credit, TxType.deposit, TxType.bonus, TxType.refund, TxType.referral_commission, TxType.ext_game_win];
+      const debitTypes: TxType[] = [TxType.game_entry, TxType.admin_debit, TxType.withdrawal, TxType.ext_game_bet];
+      const txType = transaction.type as TxType;
+
+      if (creditTypes.includes(txType)) {
+        // Was a credit — debit the amount back (check balance first)
+        const wallet = await tx.wallet.findUnique({ where: { id: transaction.wallet_id } });
+        if (!wallet) throw new Error('Wallet not found');
+        const currentBalance = Number(wallet.balance);
+        if (currentBalance < amount) {
+          throw Object.assign(
+            new Error(`Cannot reverse: player only has ${currentBalance.toFixed(2)} ETB but transaction was for ${amount.toFixed(2)} ETB`),
+            { code: 'INSUFFICIENT_BALANCE' },
+          );
+        }
+        await tx.wallet.update({
+          where: { id: transaction.wallet_id },
+          data: { balance: { decrement: amount } },
+        });
+      } else if (debitTypes.includes(txType)) {
+        // Was a debit — credit the amount back
+        await tx.wallet.update({
+          where: { id: transaction.wallet_id },
+          data: { balance: { increment: amount } },
+        });
+      }
+      // For rollback types or unknown types, just delete without balance change
+
+      // 3. If it's a bingo game_entry, also clean up the RoundEntry
+      if (txType === TxType.game_entry && refId) {
+        await tx.roundEntry.deleteMany({
+          where: { round_id: refId, player_id: playerId },
+        });
+      }
+
+      // 4. If it's a bingo game_win, also clean up the RoundWinner
+      if (txType === TxType.game_win && refId) {
+        await tx.roundWinner.deleteMany({
+          where: { round_id: refId, player_id: playerId },
+        });
+        // Also clear winner_player_id on the round if it matches
+        await tx.gameRound.updateMany({
+          where: { id: refId, winner_player_id: playerId },
+          data: { winner_player_id: null, winner_cartela_number: null },
+        });
+      }
+
+      // 5. Delete the transaction record
+      await tx.transaction.delete({ where: { id: txId } });
+
+      return {
+        deleted_tx_id: txId,
+        type: txType,
+        amount,
+        wallet_type: walletType,
+        reversal: creditTypes.includes(txType) ? 'debited' : debitTypes.includes(txType) ? 'credited' : 'none',
+      };
+    });
+
+    res.json({ success: true, ...result });
+  } catch (err: unknown) {
+    const e = err as Error & { code?: string };
+    if (e.code === 'NOT_FOUND') {
+      res.status(404).json({ error: 'NOT_FOUND', message: e.message });
+    } else if (e.code === 'FORBIDDEN') {
+      res.status(403).json({ error: 'FORBIDDEN', message: e.message });
+    } else if (e.code === 'INSUFFICIENT_BALANCE') {
+      res.status(422).json({ error: 'INSUFFICIENT_BALANCE', message: e.message });
+    } else {
+      console.error('[Admin] Delete transaction error:', err);
+      res.status(500).json({ error: 'INTERNAL_ERROR', message: e.message ?? 'Failed to delete transaction' });
+    }
+  }
+});
+
 // POST /api/admin/players/:id/credit — manual wallet adjustment
 router.post('/:id/credit', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;

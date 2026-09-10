@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
-import { getPlayers, getPlayer, suspendPlayer, restorePlayer, creditPlayer, getPlayerTransactions } from '../lib/api';
+import { getPlayers, getPlayer, suspendPlayer, restorePlayer, creditPlayer, getPlayerTransactions, deletePlayerTransaction } from '../lib/api';
 import type { AdminTransaction } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td,
@@ -23,6 +23,8 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
   const [txPage, setTxPage] = useState(1);
   const [txLoading, setTxLoading] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | 'deposit' | 'withdrawal' | 'game'>('all');
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
+  const [deleteMsg, setDeleteMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
     setLoading(true); setError(null);
@@ -67,6 +69,40 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
     } catch (e: unknown) {
       setCreditMsg({ type: 'error', text: (e as Error).message ?? 'Failed to update wallet' });
     } finally { setCreditLoading(false); }
+  }
+
+  async function handleDeleteTransaction(tx: AdminTransaction) {
+    if (!player) return;
+    const reversalNote = ['game_win', 'admin_credit', 'deposit', 'bonus', 'refund', 'referral_commission', 'ext_game_win'].includes(tx.type)
+      ? `This will DEDUCT ${tx.amount.toFixed(2)} ETB from the player's ${tx.walletType} wallet.`
+      : ['game_entry', 'admin_debit', 'withdrawal', 'ext_game_bet'].includes(tx.type)
+      ? `This will REFUND ${tx.amount.toFixed(2)} ETB back to the player's ${tx.walletType} wallet.`
+      : 'Balance will not be changed.';
+
+    if (!window.confirm(`Delete this transaction?\n\nType: ${tx.type}\nAmount: ${tx.amount.toFixed(2)} ETB\n\n${reversalNote}\n\nThis action cannot be undone.`)) return;
+
+    setDeletingTxId(tx.id);
+    setDeleteMsg(null);
+    try {
+      const result = await deletePlayerTransaction(player.id, tx.id);
+      const action = result.reversal === 'debited'
+        ? `Deducted ${result.amount.toFixed(2)} ETB`
+        : result.reversal === 'credited'
+        ? `Refunded ${result.amount.toFixed(2)} ETB`
+        : 'No balance change';
+      setDeleteMsg({ type: 'success', text: `Transaction deleted. ${action}.` });
+      // Refresh transactions and player balance
+      const [updatedTx, updatedPlayer] = await Promise.all([
+        getPlayerTransactions(player.id, txPage, txFilter === 'all' ? undefined : txFilter),
+        getPlayer(player.id),
+      ]);
+      setTxData(updatedTx);
+      setPlayer(updatedPlayer);
+    } catch (e: unknown) {
+      setDeleteMsg({ type: 'error', text: (e as Error).message ?? 'Failed to delete transaction' });
+    } finally {
+      setDeletingTxId(null);
+    }
   }
 
   if (loading) return (
@@ -200,17 +236,19 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
             </div>
           }
         />
+        {deleteMsg && <Alert type={deleteMsg.type}>{deleteMsg.text}</Alert>}
         <Table>
           <thead>
             <tr>
-              <Th>Type</Th><Th>Wallet</Th><Th>Amount (ETB)</Th><Th>Reference</Th><Th>Note</Th><Th>Date</Th>
+              <Th>Type</Th><Th>Wallet</Th><Th>Amount (ETB)</Th><Th>Reference</Th><Th>Note</Th><Th>Date</Th><Th right>Actions</Th>
             </tr>
           </thead>
           <tbody>
-            {txLoading ? <TrLoading cols={6} /> :
-             !txData?.items.length ? <TrEmpty cols={6} message="No transactions yet." /> :
+            {txLoading ? <TrLoading cols={7} /> :
+             !txData?.items.length ? <TrEmpty cols={7} message="No transactions yet." /> :
              txData.items.map((tx) => {
-               const isCredit = ['deposit', 'game_win', 'admin_credit', 'referral_commission', 'refund'].includes(tx.type);
+               const isCredit = ['deposit', 'game_win', 'admin_credit', 'referral_commission', 'refund', 'bonus', 'ext_game_win'].includes(tx.type);
+               const isDeleting = deletingTxId === tx.id;
                return (
                  <tr key={tx.id}>
                    <Td><Badge variant={isCredit ? 'success' : 'danger'}>{tx.type.replace(/_/g, ' ')}</Badge></Td>
@@ -219,6 +257,16 @@ function PlayerDetail({ playerId, onBack }: { playerId: string; onBack: () => vo
                    <Td muted>{tx.reference_id ?? '—'}</Td>
                    <Td muted>{tx.note ?? '—'}</Td>
                    <Td muted>{new Date(tx.created_at).toLocaleString()}</Td>
+                   <Td style={{ textAlign: 'right' }}>
+                     <Btn
+                       size="sm"
+                       variant="danger"
+                       disabled={isDeleting || !!deletingTxId}
+                       onClick={() => handleDeleteTransaction(tx)}
+                     >
+                       {isDeleting ? '…' : '🗑 Delete'}
+                     </Btn>
+                   </Td>
                  </tr>
                );
              })}

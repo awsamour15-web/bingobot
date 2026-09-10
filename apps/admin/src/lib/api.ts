@@ -318,6 +318,25 @@ export function getPlayerTransactions(
   );
 }
 
+export interface DeleteTransactionResult {
+  success: boolean;
+  deleted_tx_id: string;
+  type: string;
+  amount: number;
+  wallet_type: string;
+  reversal: 'debited' | 'credited' | 'none';
+}
+
+export function deletePlayerTransaction(
+  playerId: string,
+  txId: string,
+): Promise<DeleteTransactionResult> {
+  return adminApiRequest<DeleteTransactionResult>(
+    'DELETE',
+    `/api/admin/players/${playerId}/transactions/${txId}`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Admin accounts
 // ---------------------------------------------------------------------------
