@@ -39,14 +39,11 @@ async function sendCouponAnnouncement(schedule: CouponSchedule): Promise<void> {
   const playLink = `https://t.me/${botUsername}`;
 
   const text =
-    `🎟️ *COUPON ALERT!*\n\n` +
-    `Use code: \`${schedule.coupon_code}\`\n` +
-    `💵 *${schedule.coupon_amount} ETB* bonus${schedule.coupon_description ? `\n📝 ${schedule.coupon_description}` : ''}\n\n` +
-    `Redeem it in the game lobby now! 🎮`;
-
-  const keyboard = {
-    inline_keyboard: [[{ text: '🎮 Claim Now', url: playLink }]],
-  };
+    `🎁 *SPECIAL BONUS ALERT!* 🎁\n\n` +
+    `💰 Get *${schedule.coupon_amount} ETB* FREE!\n\n` +
+    `🎟️ Coupon Code: \`${schedule.coupon_code}\`${schedule.coupon_description ? `\n\n📝 ${schedule.coupon_description}` : ''}\n\n` +
+    `⚡ Open Fidel Bingo and enter this code in the game lobby to claim your bonus!\n\n` +
+    `🎮 Good luck and have fun playing!`;
 
   // Resolve targets — if __bot_broadcast__ send to all players
   const chatIds: string[] = [];
@@ -75,7 +72,6 @@ async function sendCouponAnnouncement(schedule: CouponSchedule): Promise<void> {
     try {
       await bot.api.sendMessage(chatId, text, {
         parse_mode: 'Markdown',
-        reply_markup: keyboard,
       });
     } catch (err) {
       console.error(`[CouponScheduler] Failed to send to ${chatId}:`, (err as Error).message);
