@@ -343,6 +343,7 @@ function PromotionForm({
                     const f = e.target.files?.[0] ?? null;
                     setUploadFile(f);
                     setUploadError(null);
+                    setMediaFileId(''); // Clear any previous file ID
                     if (f) {
                       setUploadPreview(URL.createObjectURL(f));
                     } else {
@@ -353,9 +354,9 @@ function PromotionForm({
               </label>
 
               {/* Upload button + status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Btn size="sm" type="button" variant="outline"
-                  disabled={!uploadFile || uploading}
+                  disabled={!uploadFile || uploading || !!mediaFileId}
                   onClick={async () => {
                     if (!uploadFile) return;
                     setUploading(true); setUploadError(null);
@@ -371,15 +372,23 @@ function PromotionForm({
                   {uploading ? 'Uploading…' : '⬆ Upload to Telegram'}
                 </Btn>
                 {mediaFileId && !uploading && (
-                  <span style={{ fontSize: 12, color: '#22c55e' }}>✓ Uploaded</span>
+                  <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>✓ Ready to save</span>
+                )}
+                {uploadFile && !mediaFileId && !uploading && (
+                  <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>⚠ Click Upload to Telegram first</span>
                 )}
               </div>
               {uploadError && <Alert type="error">{uploadError}</Alert>}
+              {!mediaFileId && contentType !== 'text' && (
+                <Alert type="info">
+                  📌 After selecting a file, click "Upload to Telegram" to get the file ID before saving the promotion.
+                </Alert>
+              )}
 
               {/* Manual file_id fallback */}
-              <Field label="Telegram File ID" hint="Auto-filled after upload, or paste manually">
+              <Field label="Telegram File ID" hint="Auto-filled after upload, or paste if you already have one">
                 <input value={mediaFileId} onChange={e => setMediaFileId(e.target.value)}
-                  required name="media-file-id" style={inputCss} placeholder="AgACAgIAAxk…" />
+                  required name="media-file-id" style={inputCss} placeholder="AgACAgIAAxk… (will be filled after upload)" />
               </Field>
             </div>
           </Field>
@@ -595,8 +604,10 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
   const [schedules, setSchedules] = useState<PromotionSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
-  const [frequency, setFrequency] = useState<'once' | 'daily' | 'weekly' | 'monthly'>('once');
+  const [frequency, setFrequency] = useState<'once' | 'daily' | 'weekly' | 'monthly' | 'interval'>('once');
   const [sendAt, setSendAt] = useState('');
+  const [intervalMinutes, setIntervalMinutes] = useState('30');
+  const [endAt, setEndAt] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -616,14 +627,40 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
     e.preventDefault();
     setSaving(true); setError(null);
     try {
+      // Validate interval-specific fields
+      if (frequency === 'interval') {
+        if (!intervalMinutes || Number(intervalMinutes) < 1) {
+          throw new Error('Interval must be at least 1 minute');
+        }
+        if (!endAt) {
+          throw new Error('End time is required for interval schedules');
+        }
+        if (new Date(endAt) <= new Date(sendAt)) {
+          throw new Error('End time must be after start time');
+        }
+      }
+      
       // Resolve channel_ids from selected targets
       const channelIds: string[] = [];
       for (const t of targets.filter(t => selectedTargets.has(t.id))) {
         if (t.type === 'channel' && t.channel_id) channelIds.push(t.channel_id);
         else if (t.type === 'bot_broadcast') channelIds.push('__bot_broadcast__');
       }
-      await createSchedule(promotionId, { channel_ids: channelIds, frequency, send_at: new Date(sendAt).toISOString() });
-      setSelectedTargets(new Set()); setSendAt('');
+      
+      await createSchedule(promotionId, {
+        channel_ids: channelIds,
+        frequency,
+        send_at: new Date(sendAt).toISOString(),
+        ...(frequency === 'interval' ? {
+          interval_minutes: Number(intervalMinutes),
+          end_at: new Date(endAt).toISOString(),
+        } : {}),
+      });
+      
+      setSelectedTargets(new Set());
+      setSendAt('');
+      setEndAt('');
+      setIntervalMinutes('30');
       void load();
     } catch (err) { setError((err as Error).message); }
     finally { setSaving(false); }
@@ -641,7 +678,14 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
             schedules.map(s => (
               <tr key={s.id}>
                 <Td style={{ fontSize: 11 }}>{s.channel_ids.join(', ')}</Td>
-                <Td><Badge variant="info">{s.frequency}</Badge></Td>
+                <Td>
+                  <Badge variant="info">{s.frequency}</Badge>
+                  {s.frequency === 'interval' && s.interval_minutes && (
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                      Every {s.interval_minutes}min until {s.end_at ? new Date(s.end_at).toLocaleString() : '—'}
+                    </div>
+                  )}
+                </Td>
                 <Td muted>{s.next_run_at ? new Date(s.next_run_at).toLocaleString() : '—'}</Td>
                 <Td><Badge variant={s.is_active ? 'success' : 'neutral'}>{s.is_active ? 'active' : 'done'}</Badge></Td>
                 <Td>{s.is_active && <Btn size="sm" variant="danger" onClick={() => cancelSchedule(s.id).then(load)}>Cancel</Btn>}</Td>
@@ -661,16 +705,27 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <Field label="Frequency">
-            <select name="schedule-frequency" value={frequency} onChange={e => setFrequency(e.target.value as typeof frequency)} style={{ ...selectCss, width: 110 }}>
+            <select name="schedule-frequency" value={frequency} onChange={e => setFrequency(e.target.value as typeof frequency)} style={{ ...selectCss, width: 120 }}>
               <option value="once">Once</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
+              <option value="interval">⏱️ Interval</option>
             </select>
           </Field>
-          <Field label="Send At">
+          <Field label={frequency === 'interval' ? 'Start At' : 'Send At'}>
             <input type="datetime-local" name="send-at" value={sendAt} onChange={e => setSendAt(e.target.value)} required style={{ ...inputCss, width: 190 }} />
           </Field>
+          {frequency === 'interval' && (
+            <>
+              <Field label="Repeat Every (minutes)">
+                <input type="number" name="interval-minutes" min="1" step="1" value={intervalMinutes} onChange={e => setIntervalMinutes(e.target.value)} required style={{ ...inputCss, width: 100 }} />
+              </Field>
+              <Field label="End At">
+                <input type="datetime-local" name="end-at" value={endAt} onChange={e => setEndAt(e.target.value)} required style={{ ...inputCss, width: 190 }} />
+              </Field>
+            </>
+          )}
           <Btn type="submit" size="sm" disabled={saving || selectedTargets.size === 0}>{saving ? '…' : 'Add Schedule'}</Btn>
         </div>
       </form>
