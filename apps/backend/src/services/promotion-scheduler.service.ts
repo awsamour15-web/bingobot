@@ -105,12 +105,18 @@ async function resolveTargets(targets: SendTarget[]): Promise<string[]> {
 
 const CHECK_INTERVAL_MS = 60_000; // check every 60 seconds
 
-function advanceNextRunAt(frequency: string, from: Date): Date | null {
+function advanceNextRunAt(frequency: string, from: Date, intervalMinutes?: number | null, endAt?: Date | null): Date | null {
   const d = new Date(from);
   switch (frequency) {
     case 'daily':   d.setDate(d.getDate() + 1); return d;
     case 'weekly':  d.setDate(d.getDate() + 7); return d;
     case 'monthly': d.setMonth(d.getMonth() + 1); return d;
+    case 'interval':
+      if (!intervalMinutes || intervalMinutes < 1) return null;
+      d.setMinutes(d.getMinutes() + intervalMinutes);
+      // Check if next run would be after end_at
+      if (endAt && d > endAt) return null;
+      return d;
     default:        return null; // 'once' — no next run
   }
 }
@@ -207,12 +213,18 @@ async function tick(): Promise<void> {
 
       await sendPromotion(schedule.promotion, schedule);
 
-      const nextRunAt = advanceNextRunAt(schedule.frequency, schedule.next_run_at ?? new Date());
+      const nextRunAt = advanceNextRunAt(
+        schedule.frequency,
+        schedule.next_run_at ?? new Date(),
+        schedule.interval_minutes,
+        schedule.end_at
+      );
+      
       await prisma.promotionSchedule.update({
         where: { id: schedule.id },
         data: {
           next_run_at: nextRunAt,
-          is_active: nextRunAt !== null, // deactivate 'once' schedules
+          is_active: nextRunAt !== null, // deactivate when no next run
         },
       });
     }

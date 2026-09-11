@@ -410,16 +410,19 @@ model PromotionBonusDistribution {
 }
 
 model PromotionSchedule {
-  id           String                      @id @default(uuid())
-  promotion_id String
-  channel_ids  String[]
-  frequency    PromotionScheduleFrequency
-  send_at      DateTime
-  next_run_at  DateTime?
-  is_active    Boolean                     @default(true)
-  created_at   DateTime                    @default(now())
-  promotion    Promotion                   @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
-  logs         PromotionLog[]
+  id                String                      @id @default(uuid())
+  promotion_id      String
+  channel_ids       String[]
+  frequency         PromotionScheduleFrequency
+  send_at           DateTime
+  next_run_at       DateTime?
+  is_active         Boolean                     @default(true)
+  // Interval-specific fields (only used when frequency = 'interval')
+  interval_minutes  Int?                        // Send every X minutes
+  end_at            DateTime?                   // Stop sending after this time
+  created_at        DateTime                    @default(now())
+  promotion         Promotion                   @relation(fields: [promotion_id], references: [id], onDelete: Cascade)
+  logs              PromotionLog[]
 
   @@index([promotion_id])
   @@index([is_active, next_run_at])
@@ -476,6 +479,7 @@ enum PromotionScheduleFrequency {
   daily
   weekly
   monthly
+  interval  // Repeating at fixed minute intervals
 }
 
 // ─── Crash Game ───────────────────────────────────────────────────────────────

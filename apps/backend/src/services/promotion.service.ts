@@ -8,7 +8,7 @@ const MAX_CAPTION_LENGTH = 1024;
 const VALID_CONTENT_TYPES = ['text', 'image', 'video', 'gif'] as const;
 type PromotionContentType = typeof VALID_CONTENT_TYPES[number];
 type PromotionStatus = 'active' | 'inactive';
-type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly' | 'interval';
 
 export interface BonusCriteria {
   /** Minimum main-wallet balance required (ETB) */
@@ -40,6 +40,9 @@ export interface CreateScheduleInput {
   channel_ids: string[];
   frequency: PromotionScheduleFrequency;
   send_at: Date;
+  // Interval-specific fields (only used when frequency = 'interval')
+  interval_minutes?: number;  // Send every X minutes
+  end_at?: Date;              // Stop sending after this time
 }
 
 export interface LogDeliveryInput {
@@ -152,6 +155,20 @@ export const PromotionService = {
 
   async createSchedule(promotionId: string, data: CreateScheduleInput) {
     if (data.channel_ids.length === 0) throw new Error('At least one channel_id is required');
+    
+    // Validate interval-specific fields
+    if (data.frequency === 'interval') {
+      if (!data.interval_minutes || data.interval_minutes < 1) {
+        throw new Error('interval_minutes must be at least 1 for interval schedules');
+      }
+      if (!data.end_at) {
+        throw new Error('end_at is required for interval schedules');
+      }
+      if (data.end_at <= data.send_at) {
+        throw new Error('end_at must be after send_at');
+      }
+    }
+    
     return prisma.promotionSchedule.create({
       data: {
         promotion_id: promotionId,
@@ -159,6 +176,10 @@ export const PromotionService = {
         frequency: data.frequency,
         send_at: data.send_at,
         next_run_at: data.send_at,
+        ...(data.frequency === 'interval' ? {
+          interval_minutes: data.interval_minutes,
+          end_at: data.end_at,
+        } : {}),
       },
     });
   },
