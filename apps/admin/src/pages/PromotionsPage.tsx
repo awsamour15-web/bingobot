@@ -391,7 +391,7 @@ function PromotionForm({
                   </div>
                 </Alert>
               )}
-              {!mediaFileId && contentType !== 'text' && (
+              {!mediaFileId && (
                 <Alert type="info">
                   📌 After selecting a file, click "Upload to Telegram" to get the file ID before saving the promotion.
                   Large files may take 30-60 seconds to upload.
