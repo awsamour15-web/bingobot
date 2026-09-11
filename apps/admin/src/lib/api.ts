@@ -483,7 +483,7 @@ export function deleteBroadcastTarget(id: string): Promise<{ success: boolean }>
 
 export type PromotionContentType = 'text' | 'image' | 'video' | 'gif';
 export type PromotionStatus = 'active' | 'inactive';
-export type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+export type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly' | 'interval';
 
 export interface Promotion {
   id: string;
@@ -509,6 +509,9 @@ export interface PromotionSchedule {
   next_run_at: string | null;
   is_active: boolean;
   created_at: string;
+  // Interval-specific fields
+  interval_minutes?: number | null;
+  end_at?: string | null;
 }
 
 export interface PromotionLog {
@@ -595,6 +598,8 @@ export function createSchedule(promotionId: string, data: {
   channel_ids: string[];
   frequency: PromotionScheduleFrequency;
   send_at: string;
+  interval_minutes?: number;
+  end_at?: string;
 }): Promise<PromotionSchedule> {
   return adminApiRequest('POST', `/api/admin/promotions/${promotionId}/schedules`, data);
 }
@@ -665,16 +670,56 @@ export async function uploadPromotionMedia(file: File): Promise<{ file_id: strin
   const jwt = getAdminJwt();
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${BASE_URL}/api/admin/promotions/upload-media`, {
-    method: 'POST',
-    headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
-    body: formData,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error((err as { message?: string }).message ?? 'Upload failed');
+  
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for large files
+
+      const res = await fetch(`${BASE_URL}/api/admin/promotions/upload-media`, {
+        method: 'POST',
+        headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error((err as { message?: string }).message ?? 'Upload failed');
+      }
+      
+      return res.json();
+    } catch (err) {
+      lastError = err as Error;
+      
+      // Check if it's a network error that we should retry
+      const errorMsg = lastError.message.toLowerCase();
+      const isRetryable = 
+        errorMsg.includes('network') || 
+        errorMsg.includes('fetch') || 
+        errorMsg.includes('timeout') ||
+        errorMsg.includes('aborted') ||
+        lastError.name === 'AbortError';
+
+      if (!isRetryable || attempt === maxRetries - 1) {
+        break;
+      }
+
+      // Wait before retry with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+    }
   }
-  return res.json();
+
+  throw new Error(
+    lastError?.message.includes('timeout') || lastError?.name === 'AbortError'
+      ? 'Upload timeout - file may be too large or connection is slow'
+      : lastError?.message ?? 'Upload failed after retries'
+  );
 }
 
 // ---------------------------------------------------------------------------

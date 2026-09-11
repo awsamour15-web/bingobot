@@ -364,12 +364,17 @@ function PromotionForm({
                       const res = await uploadPromotionMedia(uploadFile);
                       setMediaFileId(res.file_id);
                     } catch (err) {
-                      setUploadError((err as Error).message);
+                      const errMsg = (err as Error).message;
+                      setUploadError(
+                        errMsg.includes('timeout') || errMsg.includes('slow')
+                          ? `${errMsg}. Try a smaller file or check your connection.`
+                          : errMsg
+                      );
                     } finally {
                       setUploading(false);
                     }
                   }}>
-                  {uploading ? 'Uploading…' : '⬆ Upload to Telegram'}
+                  {uploading ? '⏳ Uploading… (may take 30-60s)' : '⬆ Upload to Telegram'}
                 </Btn>
                 {mediaFileId && !uploading && (
                   <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>✓ Ready to save</span>
@@ -378,10 +383,18 @@ function PromotionForm({
                   <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>⚠ Click Upload to Telegram first</span>
                 )}
               </div>
-              {uploadError && <Alert type="error">{uploadError}</Alert>}
+              {uploadError && (
+                <Alert type="error">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <strong>Upload failed</strong>
+                    <span>{uploadError}</span>
+                  </div>
+                </Alert>
+              )}
               {!mediaFileId && contentType !== 'text' && (
                 <Alert type="info">
                   📌 After selecting a file, click "Upload to Telegram" to get the file ID before saving the promotion.
+                  Large files may take 30-60 seconds to upload.
                 </Alert>
               )}
 
