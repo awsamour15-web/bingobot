@@ -6,8 +6,9 @@ cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
 cmds = [
-    "pnpm --filter @fidel/backend exec prisma generate",
-    "pnpm --filter @fidel/backend build"
+  "pnpm --filter @fidel/shared build",
+  "pnpm --filter @fidel/backend exec prisma generate",
+  "pnpm --filter @fidel/backend exec tsc"
 ]
 
 [start]
