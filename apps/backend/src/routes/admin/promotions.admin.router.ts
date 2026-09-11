@@ -8,7 +8,7 @@ import { sendPromotionNow, retryFailedDeliveries } from '../../services/promotio
 
 type PromotionContentType = 'text' | 'image' | 'video' | 'gif';
 type PromotionStatus = 'active' | 'inactive';
-type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly' | 'interval';
 
 const router: RouterType = Router();
 
@@ -54,7 +54,9 @@ router.post('/upload-media', upload.single('file'), async (req: Request, res: Re
 
     res.json({ file_id, content_type });
   } catch (err) {
-    res.status(500).json({ error: 'UPLOAD_FAILED', message: (err as Error).message });
+    const message = (err as Error).message;
+    console.error('[upload-media] Telegram upload failed:', message);
+    res.status(500).json({ error: 'UPLOAD_FAILED', message });
   }
 });
 
@@ -191,11 +193,12 @@ router.get('/:id/schedules', async (req: Request, res: Response): Promise<void> 
 // POST /:id/schedules — create schedule
 router.post('/:id/schedules', async (req: Request, res: Response): Promise<void> => {
   try {
-    const body = req.body as { channel_ids: string[]; frequency: PromotionScheduleFrequency; send_at: string };
+    const body = req.body as { channel_ids: string[]; frequency: PromotionScheduleFrequency; send_at: string; interval_minutes?: number };
     const schedule = await PromotionService.createSchedule(req.params['id'] as string, {
       channel_ids: body.channel_ids,
       frequency: body.frequency,
       send_at: new Date(body.send_at),
+      ...(body.interval_minutes != null ? { interval_minutes: body.interval_minutes } : {}),
     });
     res.status(201).json(schedule);
   } catch (err) {

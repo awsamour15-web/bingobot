@@ -8,7 +8,7 @@ const MAX_CAPTION_LENGTH = 1024;
 const VALID_CONTENT_TYPES = ['text', 'image', 'video', 'gif'] as const;
 type PromotionContentType = typeof VALID_CONTENT_TYPES[number];
 type PromotionStatus = 'active' | 'inactive';
-type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly' | 'interval';
 
 export interface BonusCriteria {
   /** Minimum main-wallet balance required (ETB) */
@@ -40,6 +40,7 @@ export interface CreateScheduleInput {
   channel_ids: string[];
   frequency: PromotionScheduleFrequency;
   send_at: Date;
+  interval_minutes?: number; // required when frequency = 'interval'
 }
 
 export interface LogDeliveryInput {
@@ -152,11 +153,17 @@ export const PromotionService = {
 
   async createSchedule(promotionId: string, data: CreateScheduleInput) {
     if (data.channel_ids.length === 0) throw new Error('At least one channel_id is required');
+    if (data.frequency === 'interval') {
+      if (!data.interval_minutes || data.interval_minutes < 1) {
+        throw new Error('interval_minutes must be at least 1 for interval schedules');
+      }
+    }
     return prisma.promotionSchedule.create({
       data: {
         promotion_id: promotionId,
         channel_ids: data.channel_ids,
         frequency: data.frequency,
+        ...(data.interval_minutes != null ? { interval_minutes: data.interval_minutes } : {}),
         send_at: data.send_at,
         next_run_at: data.send_at,
       },

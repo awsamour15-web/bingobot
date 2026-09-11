@@ -105,9 +105,15 @@ async function resolveTargets(targets: SendTarget[]): Promise<string[]> {
 
 const CHECK_INTERVAL_MS = 60_000; // check every 60 seconds
 
-function advanceNextRunAt(frequency: string, from: Date): Date | null {
+function advanceNextRunAt(frequency: string, from: Date, intervalMinutes?: number | null): Date | null {
   const d = new Date(from);
   switch (frequency) {
+    case 'interval': {
+      const mins = intervalMinutes ?? 0;
+      if (mins < 1) return null;
+      d.setMinutes(d.getMinutes() + mins);
+      return d;
+    }
     case 'daily':   d.setDate(d.getDate() + 1); return d;
     case 'weekly':  d.setDate(d.getDate() + 7); return d;
     case 'monthly': d.setMonth(d.getMonth() + 1); return d;
@@ -207,7 +213,7 @@ async function tick(): Promise<void> {
 
       await sendPromotion(schedule.promotion, schedule);
 
-      const nextRunAt = advanceNextRunAt(schedule.frequency, schedule.next_run_at ?? new Date());
+      const nextRunAt = advanceNextRunAt(schedule.frequency, schedule.next_run_at ?? new Date(), schedule.interval_minutes);
       await prisma.promotionSchedule.update({
         where: { id: schedule.id },
         data: {

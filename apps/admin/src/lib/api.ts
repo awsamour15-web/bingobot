@@ -483,7 +483,7 @@ export function deleteBroadcastTarget(id: string): Promise<{ success: boolean }>
 
 export type PromotionContentType = 'text' | 'image' | 'video' | 'gif';
 export type PromotionStatus = 'active' | 'inactive';
-export type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+export type PromotionScheduleFrequency = 'once' | 'interval' | 'daily' | 'weekly' | 'monthly';
 
 export interface Promotion {
   id: string;
@@ -505,6 +505,7 @@ export interface PromotionSchedule {
   promotion_id: string;
   channel_ids: string[];
   frequency: PromotionScheduleFrequency;
+  interval_minutes: number | null;
   send_at: string;
   next_run_at: string | null;
   is_active: boolean;
@@ -595,6 +596,7 @@ export function createSchedule(promotionId: string, data: {
   channel_ids: string[];
   frequency: PromotionScheduleFrequency;
   send_at: string;
+  interval_minutes?: number;
 }): Promise<PromotionSchedule> {
   return adminApiRequest('POST', `/api/admin/promotions/${promotionId}/schedules`, data);
 }

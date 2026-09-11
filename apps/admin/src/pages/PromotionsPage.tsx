@@ -595,7 +595,9 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
   const [schedules, setSchedules] = useState<PromotionSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
-  const [frequency, setFrequency] = useState<'once' | 'daily' | 'weekly' | 'monthly'>('once');
+  const [frequency, setFrequency] = useState<'once' | 'interval' | 'daily' | 'weekly' | 'monthly'>('once');
+  const [intervalValue, setIntervalValue] = useState('60');
+  const [intervalUnit, setIntervalUnit] = useState<'minutes' | 'hours'>('minutes');
   const [sendAt, setSendAt] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -616,13 +618,20 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
     e.preventDefault();
     setSaving(true); setError(null);
     try {
-      // Resolve channel_ids from selected targets
       const channelIds: string[] = [];
       for (const t of targets.filter(t => selectedTargets.has(t.id))) {
         if (t.type === 'channel' && t.channel_id) channelIds.push(t.channel_id);
         else if (t.type === 'bot_broadcast') channelIds.push('__bot_broadcast__');
       }
-      await createSchedule(promotionId, { channel_ids: channelIds, frequency, send_at: new Date(sendAt).toISOString() });
+      const intervalMins = frequency === 'interval'
+        ? Number(intervalValue) * (intervalUnit === 'hours' ? 60 : 1)
+        : undefined;
+      await createSchedule(promotionId, {
+        channel_ids: channelIds,
+        frequency,
+        send_at: new Date(sendAt).toISOString(),
+        ...(intervalMins != null ? { interval_minutes: intervalMins } : {}),
+      });
       setSelectedTargets(new Set()); setSendAt('');
       void load();
     } catch (err) { setError((err as Error).message); }
@@ -630,6 +639,15 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
   }
 
   const activeTargets = targets.filter(t => t.is_active);
+
+  function formatFrequency(s: { frequency: string; interval_minutes: number | null }) {
+    if (s.frequency === 'interval' && s.interval_minutes) {
+      const mins = s.interval_minutes;
+      if (mins >= 60 && mins % 60 === 0) return `every ${mins / 60}h`;
+      return `every ${mins}m`;
+    }
+    return s.frequency;
+  }
 
   return (
     <div style={{ padding: '4px 0' }}>
@@ -641,7 +659,7 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
             schedules.map(s => (
               <tr key={s.id}>
                 <Td style={{ fontSize: 11 }}>{s.channel_ids.join(', ')}</Td>
-                <Td><Badge variant="info">{s.frequency}</Badge></Td>
+                <Td><Badge variant="info">{formatFrequency(s)}</Badge></Td>
                 <Td muted>{s.next_run_at ? new Date(s.next_run_at).toLocaleString() : '—'}</Td>
                 <Td><Badge variant={s.is_active ? 'success' : 'neutral'}>{s.is_active ? 'active' : 'done'}</Badge></Td>
                 <Td>{s.is_active && <Btn size="sm" variant="danger" onClick={() => cancelSchedule(s.id).then(load)}>Cancel</Btn>}</Td>
@@ -661,14 +679,30 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <Field label="Frequency">
-            <select name="schedule-frequency" value={frequency} onChange={e => setFrequency(e.target.value as typeof frequency)} style={{ ...selectCss, width: 110 }}>
+            <select name="schedule-frequency" value={frequency} onChange={e => setFrequency(e.target.value as typeof frequency)} style={{ ...selectCss, width: 120 }}>
               <option value="once">Once</option>
+              <option value="interval">⏱ Interval</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
             </select>
           </Field>
-          <Field label="Send At">
+          {frequency === 'interval' && (
+            <Field label="Repeat every">
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="number" min="1" name="interval-value"
+                  value={intervalValue} onChange={e => setIntervalValue(e.target.value)}
+                  required style={{ ...inputCss, width: 70 }}
+                />
+                <select name="interval-unit" value={intervalUnit} onChange={e => setIntervalUnit(e.target.value as 'minutes' | 'hours')} style={{ ...selectCss, width: 100 }}>
+                  <option value="minutes">minutes</option>
+                  <option value="hours">hours</option>
+                </select>
+              </div>
+            </Field>
+          )}
+          <Field label="First Send At">
             <input type="datetime-local" name="send-at" value={sendAt} onChange={e => setSendAt(e.target.value)} required style={{ ...inputCss, width: 190 }} />
           </Field>
           <Btn type="submit" size="sm" disabled={saving || selectedTargets.size === 0}>{saving ? '…' : 'Add Schedule'}</Btn>
