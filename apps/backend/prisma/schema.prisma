@@ -307,6 +307,7 @@ enum TxType {
   admin_debit
   refund
   bonus             // coupon / promo credit
+  cashback          // per-game cashback on losses
   ext_game_bet      // Gregmorn Hub bet deduction
   ext_game_win      // Gregmorn Hub win credit
   ext_game_rollback // Gregmorn Hub rollback refund

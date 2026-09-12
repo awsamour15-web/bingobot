@@ -11,6 +11,7 @@
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
+import { CashbackService } from './cashback.service.js';
 
 // ─── Payout table ─────────────────────────────────────────────────────────────
 // PAYOUT_TABLE[picked][matched] = multiplier (0 = loss)
@@ -171,6 +172,11 @@ export class KenoEngine {
           TxType.game_win,
           roundId,
           `Keno win: ${matched}/${picked} match x${baseMultiplier}`,
+        );
+      } else {
+        // Net loss — credit cashback (non-blocking)
+        void CashbackService.maybeCreditCashback(
+          bet.player_id, 'keno', Number(bet.bet_amount), Number(bet.bet_amount), bet.id,
         );
       }
     }

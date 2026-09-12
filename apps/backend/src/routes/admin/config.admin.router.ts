@@ -51,6 +51,19 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'deposit_bonus_end',
     'support_contact',
     'channel_link',
+    // cashback per game
+    'cashback_bingo_enabled',
+    'cashback_bingo_pct',
+    'cashback_crash_enabled',
+    'cashback_crash_pct',
+    'cashback_slots_enabled',
+    'cashback_slots_pct',
+    'cashback_keno_enabled',
+    'cashback_keno_pct',
+    'cashback_plinko_enabled',
+    'cashback_plinko_pct',
+    'cashback_royal_drop_enabled',
+    'cashback_royal_drop_pct',
   ]);
 
   if (!ALLOWED_CONFIG_KEYS.has(key)) {
@@ -90,6 +103,23 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     const parsed = parseFloat(value);
     if (isNaN(parsed) || parsed < 2 || parsed > 1000) {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: 'crash_max_multiplier must be between 2 and 1000' });
+      return;
+    }
+  }
+
+  // Validate cashback enabled keys
+  if (key.startsWith('cashback_') && key.endsWith('_enabled')) {
+    if (value !== 'true' && value !== 'false') {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: `${key} must be "true" or "false"` });
+      return;
+    }
+  }
+
+  // Validate cashback percentage keys
+  if (key.startsWith('cashback_') && key.endsWith('_pct')) {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || parsed < 0 || parsed > 50) {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: `${key} must be between 0 and 50 (percent)` });
       return;
     }
   }

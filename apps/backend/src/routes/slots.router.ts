@@ -9,6 +9,7 @@ import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { spin, gamble } from '../services/slots-engine.service.js';
+import { CashbackService } from '../services/cashback.service.js';
 
 const router: RouterType = Router();
 router.use(jwtAuthMiddleware);
@@ -101,6 +102,9 @@ router.post('/spin', slotsAccessMiddleware, async (req: Request, res: Response):
       status: result.totalWin > 0 ? 'win' : 'loss',
     },
   });
+
+  // Cashback on net loss (non-blocking)
+  void CashbackService.maybeCreditCashback(playerId, 'slots', betAmount, betAmount - result.totalWin, spinRecord.id);
 
   // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
   const { ReferralService } = await import('../services/referral.service.js');

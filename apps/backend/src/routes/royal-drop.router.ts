@@ -9,6 +9,7 @@ import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { royalDrop } from '../services/royal-drop-engine.service.js';
+import { CashbackService } from '../services/cashback.service.js';
 
 const router: RouterType = Router();
 router.use(jwtAuthMiddleware);
@@ -114,6 +115,9 @@ router.post('/spin', royalDropAccessMiddleware, async (req: Request, res: Respon
       status: result.totalWin > 0 ? 'won' : 'lost',
     },
   });
+
+  // Cashback on net loss (non-blocking)
+  void CashbackService.maybeCreditCashback(playerId, 'royal_drop', betAmount, betAmount - result.totalWin, record.id);
 
   // Fetch updated balance
   const wallets = await prisma.wallet.findMany({ where: { player_id: playerId } });

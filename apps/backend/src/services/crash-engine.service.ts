@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
+import { CashbackService } from './cashback.service.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,16 @@ export class CrashEngine {
     });
 
     // Bets with no cashout_at are busts — no payout (money already debited at bet placement)
+    // Credit cashback for busted bets (non-blocking)
+    const bustedBets = await prisma.crashBet.findMany({
+      where: { round_id: roundId, cashout_at: null },
+      select: { id: true, player_id: true, bet_amount: true },
+    });
+    for (const bet of bustedBets) {
+      void CashbackService.maybeCreditCashback(
+        bet.player_id, 'crash', Number(bet.bet_amount), Number(bet.bet_amount), bet.id,
+      );
+    }
     this.onEnded?.(roundId, crashPoint);
   }
 

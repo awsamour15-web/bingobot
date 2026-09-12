@@ -3,6 +3,7 @@
 
 import { GameStatus, TxType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
+import { CashbackService } from './cashback.service.js';
 
 type WinPattern = string;
 import { nce } from './nce.service.js';
@@ -209,6 +210,27 @@ async function distributeWinnings(
 
     // ── After commit: stop number calling, emit ROUND_WON, notify ────────────
     nce.stop(roundId);
+
+    // ── Cashback for non-winners (non-blocking) ───────────────────────────────
+    {
+      const entries = await prisma.roundEntry.findMany({
+        where: { round_id: roundId, is_watching: false },
+        select: { player_id: true },
+      });
+      const roundData = await prisma.gameRound.findUnique({
+        where: { id: roundId },
+        select: { stake: true },
+      });
+      const stake = roundData ? Number(roundData.stake) : 0;
+      const winnerIds = new Set(winnersSnapshot.keys());
+      for (const entry of entries) {
+        if (!winnerIds.has(entry.player_id)) {
+          void CashbackService.maybeCreditCashback(
+            entry.player_id, 'bingo', stake, stake, roundId,
+          );
+        }
+      }
+    }
 
     // Build payload — need usernames
     const playerIds = [...winnersSnapshot.keys()];

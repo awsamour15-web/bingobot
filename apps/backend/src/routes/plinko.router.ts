@@ -8,6 +8,7 @@ import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
+import { CashbackService } from '../services/cashback.service.js';
 
 const router: RouterType = Router();
 router.use(jwtAuthMiddleware);
@@ -215,6 +216,9 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
       payout,
     },
   });
+
+  // Cashback on net loss (non-blocking)
+  void CashbackService.maybeCreditCashback(playerId, 'plinko', betAmount, betAmount - payout, bet.id);
 
   // Credit invite bonus to referrer on first game bet (non-blocking, idempotent)
   const { ReferralService } = await import('../services/referral.service.js');

@@ -16,6 +16,7 @@ export type TxType =
   | 'admin_debit'
   | 'refund'
   | 'bonus'
+  | 'cashback'
   | 'ext_game_bet'
   | 'ext_game_win'
   | 'ext_game_rollback';
@@ -29,6 +30,7 @@ export const TxType = {
   admin_debit: 'admin_debit' as TxType,
   refund: 'refund' as TxType,
   bonus: 'bonus' as TxType,
+  cashback: 'cashback' as TxType,
   ext_game_bet: 'ext_game_bet' as TxType,
   ext_game_win: 'ext_game_win' as TxType,
   ext_game_rollback: 'ext_game_rollback' as TxType,

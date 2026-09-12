@@ -777,10 +777,166 @@ function DepositAccountsSection() {
 }
 
 
+// ─── Cashback Settings ────────────────────────────────────────────────────────
+
+function CashbackSection() {
+  type GameCfg = {
+    key: string; label: string; icon: string; color: string;
+    enabled: boolean; pct: string;
+    setEnabled: (v: boolean) => void; setPct: (v: string) => void;
+  };
+
+  const [bingo,     setBingo]     = useState({ enabled: false, pct: '5' });
+  const [crash,     setCrash]     = useState({ enabled: false, pct: '5' });
+  const [slots,     setSlots]     = useState({ enabled: false, pct: '5' });
+  const [keno,      setKeno]      = useState({ enabled: false, pct: '5' });
+  const [plinko,    setPlinko]    = useState({ enabled: false, pct: '5' });
+  const [royalDrop, setRoyalDrop] = useState({ enabled: false, pct: '5' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [fb, setFb] = useState<Record<string, { type: 'success' | 'error'; msg: string } | null>>({});
+
+  const setters: Record<string, (v: { enabled: boolean; pct: string }) => void> = {
+    bingo: setBingo, crash: setCrash, slots: setSlots,
+    keno: setKeno, plinko: setPlinko, royal_drop: setRoyalDrop,
+  };
+
+  useEffect(() => {
+    getConfig().then((data) => {
+      const get = (key: string, fallback: string) => data.find(e => e.key === key)?.value ?? fallback;
+      setBingo({     enabled: get('cashback_bingo_enabled',      'false') === 'true', pct: get('cashback_bingo_pct',      '5') });
+      setCrash({     enabled: get('cashback_crash_enabled',      'false') === 'true', pct: get('cashback_crash_pct',      '5') });
+      setSlots({     enabled: get('cashback_slots_enabled',      'false') === 'true', pct: get('cashback_slots_pct',      '5') });
+      setKeno({      enabled: get('cashback_keno_enabled',       'false') === 'true', pct: get('cashback_keno_pct',       '5') });
+      setPlinko({    enabled: get('cashback_plinko_enabled',     'false') === 'true', pct: get('cashback_plinko_pct',     '5') });
+      setRoyalDrop({ enabled: get('cashback_royal_drop_enabled', 'false') === 'true', pct: get('cashback_royal_drop_pct', '5') });
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  async function save(gameKey: string, enabled: boolean, pct: string) {
+    const n = parseFloat(pct);
+    if (isNaN(n) || n < 0 || n > 50) {
+      setFb(p => ({ ...p, [gameKey]: { type: 'error', msg: 'Percentage must be 0–50' } }));
+      return;
+    }
+    setSaving(p => ({ ...p, [gameKey]: true }));
+    setFb(p => ({ ...p, [gameKey]: null }));
+    try {
+      await Promise.all([
+        updateConfig(`cashback_${gameKey}_enabled`, String(enabled)),
+        updateConfig(`cashback_${gameKey}_pct`, String(n)),
+      ]);
+      setFb(p => ({ ...p, [gameKey]: { type: 'success', msg: enabled ? `Enabled — ${n}% cashback on losses` : 'Disabled' } }));
+    } catch (e: unknown) {
+      setFb(p => ({ ...p, [gameKey]: { type: 'error', msg: (e as Error).message ?? 'Failed' } }));
+    } finally { setSaving(p => ({ ...p, [gameKey]: false })); }
+  }
+
+  const states: Record<string, { enabled: boolean; pct: string }> = {
+    bingo: bingo, crash: crash, slots: slots,
+    keno: keno, plinko: plinko, royal_drop: royalDrop,
+  };
+
+  const games: Array<{ key: string; label: string; icon: string; color: string }> = [
+    { key: 'bingo',      label: 'Bingo',      icon: '🎯', color: '#6366f1' },
+    { key: 'crash',      label: 'Aviator',    icon: '✈️', color: '#ef4444' },
+    { key: 'slots',      label: 'Slots',      icon: '🎰', color: '#f59e0b' },
+    { key: 'keno',       label: 'Keno',       icon: '🎱', color: '#3b82f6' },
+    { key: 'plinko',     label: 'Plinko',     icon: '🪃', color: '#8b5cf6' },
+    { key: 'royal_drop', label: 'Royal Drop', icon: '👑', color: '#ec4899' },
+  ];
+
+  if (loading) return <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
+        Cashback returns a % of each losing bet to the player's play wallet. Credited automatically after each loss.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        {games.map(g => {
+          const state = states[g.key]!;
+          const setter = setters[g.key]!;
+          return (
+            <div key={g.key} style={{
+              background: 'var(--c-bg-card)', border: `1px solid ${state.enabled ? g.color + '40' : 'var(--c-border)'}`,
+              borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+              transition: 'border-color 0.2s',
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{
+                    fontSize: 20, width: 38, height: 38, borderRadius: 10,
+                    background: `${g.color}18`, border: `1px solid ${g.color}30`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{g.icon}</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>{g.label}</span>
+                </div>
+                {/* Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <div
+                    onClick={() => setter({ ...state, enabled: !state.enabled })}
+                    style={{
+                      width: 44, height: 24, borderRadius: 12, position: 'relative', cursor: 'pointer',
+                      background: state.enabled ? g.color : 'var(--c-border)',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute', top: 3, left: state.enabled ? 23 : 3,
+                      width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                      transition: 'left 0.2s',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: state.enabled ? g.color : 'var(--c-muted)' }}>
+                    {state.enabled ? 'ON' : 'OFF'}
+                  </span>
+                </label>
+              </div>
+
+              {/* Cashback % */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>
+                  <span>0% (none)</span><span>50% (max)</span>
+                </div>
+                <input type="range" min={0} max={50} step={1} value={state.pct}
+                  onChange={e => setter({ ...state, pct: e.target.value })}
+                  disabled={!state.enabled || saving[g.key]}
+                  style={{ width: '100%', accentColor: g.color, opacity: state.enabled ? 1 : 0.4 }} />
+              </div>
+
+              {fb[g.key] && <Alert type={fb[g.key]!.type}>{fb[g.key]!.msg}</Alert>}
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ ...statBox(g.color) }}>
+                  <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Cashback</span>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: g.color }}>{state.pct}%</span>
+                </div>
+                <input type="number" min={0} max={50} step={0.5} value={state.pct}
+                  onChange={e => setter({ ...state, pct: e.target.value })}
+                  disabled={!state.enabled || saving[g.key]}
+                  style={{ ...inputCss, width: 72, textAlign: 'center', fontWeight: 700, opacity: state.enabled ? 1 : 0.5 }} />
+                <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>%</span>
+                <Btn onClick={() => save(g.key, state.enabled, state.pct)} disabled={!!saving[g.key]} fullWidth>
+                  {saving[g.key] ? 'Saving…' : 'Save'}
+                </Btn>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Settings Page — tabbed layout ───────────────────────────────────────────
 
 const TABS = [
   { key: 'house_edge',    label: 'House Edge',       icon: '🎰' },
+  { key: 'cashback',      label: 'Cashback',          icon: '💰' },
   { key: 'cartela',       label: 'Cartela',           icon: '🎴' },
   { key: 'channel',       label: 'Channel Gate',      icon: '📢' },
   { key: 'access',        label: 'Access Control',    icon: '🔒' },
@@ -871,6 +1027,7 @@ export function SettingsPage() {
           })()}
 
           {activeTab === 'house_edge' && <HouseEdgeSection />}
+          {activeTab === 'cashback'   && <CashbackSection />}
           {activeTab === 'cartela'    && <CartelaLimitSection />}
           {activeTab === 'channel'    && <ChannelSettingsSection />}
           {activeTab === 'access'     && (
