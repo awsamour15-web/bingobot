@@ -12,9 +12,17 @@ router.use(jwtAuthMiddleware);
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   const currentPlayerId = req.player?.playerId;
 
+  // Exclude mock players from leaderboard
+  const mockPlayers = await prisma.player.findMany({
+    where: { is_mock: true },
+    select: { id: true },
+  });
+  const mockPlayerIds = mockPlayers.map((p) => p.id);
+
   // Aggregate wins and total prize per player from RoundWinner table
   const topWinners = await prisma.roundWinner.groupBy({
     by: ['player_id'],
+    where: mockPlayerIds.length > 0 ? { player_id: { notIn: mockPlayerIds } } : undefined,
     _count: { id: true },
     _sum: { split_amount: true },
     orderBy: [
@@ -52,6 +60,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   if (currentPlayerId && !leaderboard.some((e) => e.isCurrentPlayer)) {
     const allWinners = await prisma.roundWinner.groupBy({
       by: ['player_id'],
+      where: mockPlayerIds.length > 0 ? { player_id: { notIn: mockPlayerIds } } : undefined,
       _count: { id: true },
       _sum: { split_amount: true },
       orderBy: [
