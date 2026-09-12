@@ -184,6 +184,14 @@ export const PromotionService = {
     });
   },
 
+  /** Delete all inactive/completed schedules for a promotion */
+  async deleteUsedSchedules(promotionId: string) {
+    const result = await prisma.promotionSchedule.deleteMany({
+      where: { promotion_id: promotionId, is_active: false },
+    });
+    return result.count;
+  },
+
   // ── Logs ───────────────────────────────────────────────────────────────────
 
   async logDelivery(entry: LogDeliveryInput) {

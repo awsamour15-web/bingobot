@@ -605,6 +605,10 @@ export function cancelSchedule(scheduleId: string): Promise<{ success: boolean }
   return adminApiRequest('DELETE', `/api/admin/promotions/schedules/${scheduleId}`);
 }
 
+export function deleteUsedSchedules(promotionId: string): Promise<{ deleted: number }> {
+  return adminApiRequest('DELETE', `/api/admin/promotions/${promotionId}/schedules/used`);
+}
+
 export function getPromotionLogs(promotionId?: string, limit = 200): Promise<PromotionLog[]> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (promotionId) params.set('promotionId', promotionId);

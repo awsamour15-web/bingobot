@@ -82,6 +82,12 @@ router.delete('/schedules/:scheduleId', async (req: Request, res: Response): Pro
   res.json({ success: true });
 });
 
+// DELETE /:id/schedules/used — purge inactive/completed schedules for a promotion
+router.delete('/:id/schedules/used', async (req: Request, res: Response): Promise<void> => {
+  const deleted = await PromotionService.deleteUsedSchedules(req.params['id'] as string);
+  res.json({ deleted });
+});
+
 // ── Collection routes ──────────────────────────────────────────────────────────
 
 // GET / — list all promotions

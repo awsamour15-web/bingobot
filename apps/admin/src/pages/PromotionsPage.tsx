@@ -10,7 +10,7 @@ import type {
 } from '../lib/api';
 import {
   listPromotions, createPromotion, updatePromotion, setPromotionStatus,
-  listSchedules, createSchedule, cancelSchedule, getPromotionLogs,
+  listSchedules, createSchedule, cancelSchedule, deleteUsedSchedules, getPromotionLogs,
   duplicatePromotion, sendPromotionNow, retryFailedDeliveries,
   getPromotionStats, getGlobalPromotionStats,
   listBroadcastTargets, createBroadcastTarget, updateBroadcastTarget, deleteBroadcastTarget,
@@ -651,7 +651,15 @@ function ScheduleSection({ promotionId, targets }: { promotionId: string; target
 
   return (
     <div style={{ padding: '4px 0' }}>
-      <SectionTitle>Schedules</SectionTitle>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <SectionTitle>Schedules</SectionTitle>
+        {schedules.some(s => !s.is_active) && (
+          <Btn size="sm" variant="danger" onClick={async () => {
+            await deleteUsedSchedules(promotionId);
+            void load();
+          }}>🧹 Clean Used</Btn>
+        )}
+      </div>
       <Table>
         <thead><tr><Th>Targets</Th><Th>Freq</Th><Th>Next Run</Th><Th>Status</Th><Th>{'  '}</Th></tr></thead>
         <tbody>
@@ -767,7 +775,8 @@ export function PromotionsPage() {
 
   async function loadLogs(id?: string) {
     setLogsLoading(true);
-    setLogs(await getPromotionLogs(id, 200).catch(() => []));
+    const all = await getPromotionLogs(id, 200).catch(() => []);
+    setLogs(all.slice(0, 1));
     setLogsLoading(false);
   }
 
