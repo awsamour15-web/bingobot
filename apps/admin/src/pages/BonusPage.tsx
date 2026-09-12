@@ -1146,6 +1146,7 @@ function CouponScheduleSection({ coupons }: { coupons: Coupon[] }) {
   const [selectedCode, setSelectedCode] = useState('');
   const [selectedTargets, setSelectedTargets] = useState<Set<string>>(new Set());
   const [sendAt, setSendAt] = useState('');
+  const [autoActivate, setAutoActivate] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -1172,9 +1173,9 @@ function CouponScheduleSection({ coupons }: { coupons: Coupon[] }) {
       const target_ids = targets
         .filter(t => selectedTargets.has(t.id))
         .map(t => t.type === 'bot_broadcast' ? '__bot_broadcast__' : (t.channel_id ?? t.id));
-      await createCouponSchedule({ coupon_code: selectedCode, target_ids, send_at: new Date(sendAt).toISOString() });
+      await createCouponSchedule({ coupon_code: selectedCode, target_ids, send_at: new Date(sendAt).toISOString(), auto_activate: autoActivate });
       setSuccess('✓ Schedule created');
-      setSelectedCode(''); setSelectedTargets(new Set()); setSendAt('');
+      setSelectedCode(''); setSelectedTargets(new Set()); setSendAt(''); setAutoActivate(true);
       load();
     } catch (err) { setError((err as Error).message); }
     finally { setSaving(false); }
@@ -1219,6 +1220,13 @@ function CouponScheduleSection({ coupons }: { coupons: Coupon[] }) {
               ))}
             </div>
           </Field>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 12px', borderRadius: 10, background: autoActivate ? 'rgba(99,102,241,0.08)' : 'rgba(100,116,139,0.06)', border: `1px solid ${autoActivate ? 'rgba(99,102,241,0.3)' : 'rgba(100,116,139,0.2)'}` }}>
+            <input type="checkbox" checked={autoActivate} onChange={e => setAutoActivate(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--c-primary)', cursor: 'pointer' }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>⚡ Auto-activate coupon at send time</div>
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>Coupon will be locked until scheduled time, then activated automatically</div>
+            </div>
+          </label>
           <Btn type="submit" disabled={saving}>{saving ? '⏳ Scheduling…' : '📅 Schedule'}</Btn>
         </form>
 
@@ -1245,6 +1253,7 @@ function CouponScheduleSection({ coupons }: { coupons: Coupon[] }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Badge variant={s.sent ? 'neutral' : 'info'}>{s.sent ? 'Sent' : 'Pending'}</Badge>
+                    {!s.sent && s.auto_activate && <Badge variant="warning">⚡ Auto-activate</Badge>}
                     {!s.sent && (
                       <Btn size="sm" variant="danger" onClick={() => handleDelete(s.id)}>✕</Btn>
                     )}

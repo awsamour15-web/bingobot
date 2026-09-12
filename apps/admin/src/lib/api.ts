@@ -860,13 +860,14 @@ export interface CouponScheduleEntry {
   target_ids: string[];
   send_at: string;
   sent: boolean;
+  auto_activate?: boolean;
 }
 
 export function listCouponSchedules(): Promise<CouponScheduleEntry[]> {
   return adminApiRequest('GET', '/api/admin/coupons/schedules');
 }
 
-export function createCouponSchedule(data: { coupon_code: string; target_ids: string[]; send_at: string }): Promise<CouponScheduleEntry> {
+export function createCouponSchedule(data: { coupon_code: string; target_ids: string[]; send_at: string; auto_activate?: boolean }): Promise<CouponScheduleEntry> {
   return adminApiRequest('POST', '/api/admin/coupons/schedules', data);
 }
 

@@ -145,10 +145,11 @@ router.get('/schedules', async (_req: Request, res: Response): Promise<void> => 
 
 // POST /schedules — create a new coupon announcement schedule
 router.post('/schedules', async (req: Request, res: Response): Promise<void> => {
-  const { coupon_code, target_ids, send_at } = req.body as {
+  const { coupon_code, target_ids, send_at, auto_activate } = req.body as {
     coupon_code?: string;
     target_ids?: string[];
     send_at?: string;
+    auto_activate?: boolean;
   };
   if (!coupon_code || typeof coupon_code !== 'string') {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'coupon_code is required' }); return;
@@ -165,6 +166,15 @@ router.post('/schedules', async (req: Request, res: Response): Promise<void> => 
   if (!coupon) {
     res.status(404).json({ error: 'NOT_FOUND', message: `Coupon "${normalized}" not found` }); return;
   }
+
+  // If auto_activate is requested, mark the coupon with active_from = send_at so it's
+  // not redeemable until the scheduler fires and removes the restriction.
+  if (auto_activate) {
+    const idx = coupons.indexOf(coupon);
+    (coupons[idx] as any).active_from = send_at;
+    await saveCoupons(coupons);
+  }
+
   const schedules = await CouponScheduler.loadSchedules();
   const newSchedule = {
     id: randomUUID(),
@@ -174,6 +184,7 @@ router.post('/schedules', async (req: Request, res: Response): Promise<void> => 
     target_ids,
     send_at,
     sent: false,
+    auto_activate: auto_activate === true,
   };
   schedules.push(newSchedule);
   await CouponScheduler.saveSchedules(schedules);

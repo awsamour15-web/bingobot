@@ -13,6 +13,7 @@ export interface CouponSchedule {
   target_ids: string[]; // Telegram channel/group IDs or '__bot_broadcast__'
   send_at: string;      // ISO string
   sent: boolean;
+  auto_activate?: boolean; // if true, activate the coupon in active_coupons when the schedule fires
 }
 
 const SETTING_KEY = 'coupon_schedules';
@@ -83,6 +84,29 @@ async function sendCouponAnnouncement(schedule: CouponSchedule): Promise<void> {
   }
 }
 
+async function activateCouponNow(couponCode: string): Promise<void> {
+  const ACTIVE_KEY = 'active_coupons';
+  const row = await prisma.systemSetting.findUnique({ where: { key: ACTIVE_KEY } });
+  let coupons: any[] = [];
+  try { if (row?.value) coupons = JSON.parse(row.value as string) as any[]; } catch { /* ignore */ }
+
+  const idx = coupons.findIndex((c: any) => c.code === couponCode);
+  if (idx === -1) {
+    console.warn(`[CouponScheduler] auto_activate: coupon "${couponCode}" not found in active_coupons, skipping activation`);
+    return;
+  }
+
+  // Remove active_from restriction so the coupon is now redeemable
+  delete coupons[idx].active_from;
+
+  await prisma.systemSetting.upsert({
+    where: { key: ACTIVE_KEY },
+    update: { value: JSON.stringify(coupons) },
+    create: { key: ACTIVE_KEY, value: JSON.stringify(coupons) },
+  });
+  console.log(`[CouponScheduler] Coupon "${couponCode}" is now active`);
+}
+
 async function tick(): Promise<void> {
   try {
     const schedules = await loadSchedules();
@@ -94,7 +118,16 @@ async function tick(): Promise<void> {
         s.sent = true;
         await saveSchedules(schedules);
 
-        // Now send — if this fails, coupon is already marked sent so it won't retry
+        // Auto-activate the coupon if requested
+        if (s.auto_activate) {
+          try {
+            await activateCouponNow(s.coupon_code);
+          } catch (actErr) {
+            console.error(`[CouponScheduler] Failed to activate coupon ${s.coupon_code}:`, (actErr as Error).message);
+          }
+        }
+
+        // Now send announcement — if this fails, coupon is already marked sent so it won't retry
         try {
           await sendCouponAnnouncement(s);
           console.log(`[CouponScheduler] Sent announcement for coupon ${s.coupon_code}`);

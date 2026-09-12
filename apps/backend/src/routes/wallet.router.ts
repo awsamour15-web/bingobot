@@ -527,6 +527,13 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
     return;
   }
 
+  // Check if the coupon is scheduled to activate in the future
+  const activeFrom = (coupon as any).active_from as string | undefined;
+  if (activeFrom && new Date(activeFrom) > new Date()) {
+    res.status(404).json({ error: 'COUPON_NOT_FOUND', message: 'Invalid or expired coupon code' });
+    return;
+  }
+
   // Check if player already redeemed this code
   const wallets = await prisma.wallet.findMany({ where: { player_id: playerId }, select: { id: true } });
   const walletIds = wallets.map((w) => w.id);
