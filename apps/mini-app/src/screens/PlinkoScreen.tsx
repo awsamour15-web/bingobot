@@ -7,7 +7,6 @@ import plinkoLogo from '../assets/plinko_origin_v2_atlas_1.png';
 type Risk = 'easy' | 'medium' | 'hard';
 type Rows = 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
 
-// ─── Multiplier tables ────────────────────────────────────────────────────────
 const MULTS: Record<number, Record<Risk, number[]>> = {
   8:  { easy:[5,1.8,1.5,1,0.7,0.7,1,1.5,1.8,5],         medium:[10,3,1.2,0.6,0.3,0.6,1.2,3,10],           hard:[20,5,1.5,0.4,0.2,0.4,1.5,5,20] },
   9:  { easy:[5,1.8,1.5,1,0.7,0.7,1,1.5,1.8,5],         medium:[8.2,2.6,1.2,1.1,1,0.5,1,1.1,1.2,2.6,8.2], hard:[14,5,2.2,1,0.5,0.2,0.5,1,2.2,5,14] },
@@ -28,7 +27,6 @@ function toApiRows(r: Rows): 8 | 12 | 16 {
   if (r <= 13) return 12;
   return 16;
 }
-
 function slotFg(m: number): string {
   if (m >= 50)  return '#ef4444';
   if (m >= 10)  return '#fb923c';
@@ -46,7 +44,6 @@ function slotBg(m: number): string {
   return 'rgba(129,140,248,0.15)';
 }
 
-// ─── Audio ────────────────────────────────────────────────────────────────────
 function mkAudio(): AudioContext | null {
   try { return new (window.AudioContext || (window as any).webkitAudioContext)(); } catch { return null; }
 }
@@ -82,7 +79,6 @@ function landSound(ctx: AudioContext, m: number) {
   } catch {}
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface Ball {
   id: string; x: number; y: number; vx: number; vy: number;
   color: string; glow: string; betAmount: number;
@@ -100,7 +96,6 @@ interface Hist    { id:string;betAmount:number;rows:number;risk:string;slot:numb
 
 const MIN_BET = 5, MAX_BET = 10_000;
 
-// ─── Main component ───────────────────────────────────────────────────────────
 export default function PlinkoScreen() {
   const navigate = useNavigate();
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -117,13 +112,13 @@ export default function PlinkoScreen() {
 
   const [boardH, setBoardH] = useState(320);
   const [boardW, setBoardW] = useState(390);
-
   const [mainBal, setMainBal] = useState<number|null>(null);
   const [playBal, setPlayBal] = useState<number|null>(null);
   const [serverBal, setServerBal] = useState<number|null>(null);
   const [bet, setBet]   = useState(5);
   const [rows, setRows] = useState<Rows>(16);
   const [risk, setRisk] = useState<Risk>('hard');
+  const [walletType, setWalletType] = useState<'play'|'main'>('play');
   const [dropping, setDropping] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [recent, setRecent]   = useState<{m:number}[]>([]);
@@ -132,10 +127,8 @@ export default function PlinkoScreen() {
   const [error, setError]     = useState<string|null>(null);
   const [allowed, setAllowed] = useState<boolean|null>(null);
 
-  // keep dropping ref in sync
   useEffect(() => { droppingRef.current = dropping; }, [dropping]);
 
-  // ── Resize board to fill available vertical space ────────────────────────
   useEffect(() => {
     const measure = () => {
       if (!boardRef.current) return;
@@ -149,15 +142,13 @@ export default function PlinkoScreen() {
     return () => ro.disconnect();
   }, []);
 
-  // ── Audio unlock ─────────────────────────────────────────────────────────
   useEffect(() => {
     const unlock = () => { if (!audioRef.current) audioRef.current = mkAudio(); };
     window.addEventListener('touchstart', unlock, { once: true });
-    window.addEventListener('mousedown', unlock, { once: true });
+    window.addEventListener('mousedown',  unlock, { once: true });
     return () => { window.removeEventListener('touchstart', unlock); window.removeEventListener('mousedown', unlock); };
   }, []);
 
-  // ── Bootstrap ────────────────────────────────────────────────────────────
   useEffect(() => {
     getProfile().then(p => { setMainBal(p.mainWallet.balance); setPlayBal(p.playWallet.balance); }).catch(() => {});
     checkPlinkoAccess().then(r => setAllowed(r.allowed)).catch(() => setAllowed(false));
@@ -167,15 +158,13 @@ export default function PlinkoScreen() {
     if (tab === 'history') getPlinkoHistory().then(setHistory).catch(() => {});
   }, [tab]);
 
-  // ── Auto-play ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!autoPlay) { if (autoTmr.current) clearInterval(autoTmr.current); return; }
     autoTmr.current = setInterval(() => { if (!droppingRef.current) handleDrop(); }, 600);
     return () => { if (autoTmr.current) clearInterval(autoTmr.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, bet, rows, risk]);
+  }, [autoPlay, bet, rows, risk, walletType]);
 
-  // ── Geometry ─────────────────────────────────────────────────────────────
   function geom(w: number, h: number, r: number) {
     const topPad = 38, botPad = 48;
     const avail = h - topPad - botPad;
@@ -199,7 +188,6 @@ export default function PlinkoScreen() {
     return { topPad, rowSp, colSp, pegs, pinR, ballR, slotY, slotH, slotX, slots };
   }
 
-  // ── Win effects ──────────────────────────────────────────────────────────
   function winFx(si: number, m: number, sx: number, sy: number, sw: number) {
     const big = m >= 5, jp = m >= 20;
     popsRef.current.set(si, { intensity: jp?1:big?0.7:0.38, ts: Date.now() });
@@ -219,18 +207,14 @@ export default function PlinkoScreen() {
     }
   }
 
-  // ── Canvas render/physics loop ───────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) return;
     let afId: number, lastT = performance.now();
-
-    // Preload background image
     const bgImage = new Image();
     bgImage.src = plinkoBg;
 
     const loop = (now: number) => {
-      (loop as any)._bgImg = bgImage;
       const dt  = Math.min((now - lastT) / 1000, 0.05); lastT = now;
       const w   = boardW, h = boardH;
       const dpr = window.devicePixelRatio || 1;
@@ -243,14 +227,10 @@ export default function PlinkoScreen() {
       const { topPad, rowSp, colSp, pegs, pinR, ballR, slotY, slotH, slotX, slots } = g;
       const muls = getMults(rows, risk);
 
-      // ── Background ────────────────────────────────────────────────────
-      const bgImg = (loop as any)._bgImg as HTMLImageElement | undefined;
-      if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
-        // draw bg covering full canvas, centered/cropped
-        const scale = Math.max(w / bgImg.naturalWidth, h / bgImg.naturalHeight);
-        const iw = bgImg.naturalWidth * scale, ih = bgImg.naturalHeight * scale;
-        ctx.drawImage(bgImg, (w - iw) / 2, (h - ih) / 2, iw, ih);
-        // dark overlay to keep pegs/balls readable
+      if (bgImage.complete && bgImage.naturalWidth > 0) {
+        const scale = Math.max(w / bgImage.naturalWidth, h / bgImage.naturalHeight);
+        const iw = bgImage.naturalWidth * scale, ih = bgImage.naturalHeight * scale;
+        ctx.drawImage(bgImage, (w - iw) / 2, (h - ih) / 2, iw, ih);
         ctx.fillStyle = 'rgba(8,5,16,0.45)';
         ctx.fillRect(0, 0, w, h);
       } else {
@@ -259,19 +239,16 @@ export default function PlinkoScreen() {
         ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, w, h);
       }
 
-      // Top glow
       const tg = ctx.createRadialGradient(w/2, 0, 0, w/2, 0, w*0.38);
       tg.addColorStop(0, 'rgba(160,100,255,0.18)'); tg.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = tg; ctx.fillRect(0, 0, w, h*0.5);
 
-      // Drop hole
       ctx.save();
       ctx.fillStyle = '#200a3c';
       ctx.beginPath(); ctx.ellipse(w/2, topPad-14, 14, 9, 0, 0, Math.PI*2); ctx.fill();
       ctx.strokeStyle = 'rgba(180,70,255,0.7)'; ctx.lineWidth = 2; ctx.stroke();
       ctx.restore();
 
-      // ── Physics ───────────────────────────────────────────────────────
       const SUB = 4, sDt = dt/SUB, G = 650, rst = 0.50;
       for (let s = 0; s < SUB; s++) {
         for (let i = ballsRef.current.length-1; i >= 0; i--) {
@@ -279,19 +256,15 @@ export default function PlinkoScreen() {
           if (b.status !== 'falling') continue;
           b.vy += G*sDt; b.vx *= 1-0.09*sDt; b.vy *= 1-0.015*sDt;
           b.x += b.vx*sDt; b.y += b.vy*sDt;
-
           if (s === 0 && Math.random() > 0.45) {
             b.trail.unshift({x:b.x, y:b.y, a:0.65});
             if (b.trail.length > 8) b.trail.pop();
           }
-
-          // Pyramid walls
           const frac = Math.max(0, Math.min(1, (b.y-topPad)/(rowSp*rows)));
           const hw = (2 + (rows)*frac) * colSp * 0.5;
           const wl = w/2-hw-ballR, wr = w/2+hw+ballR;
           if (b.x < wl) { b.x = wl; b.vx = Math.abs(b.vx)*0.45; }
           if (b.x > wr) { b.x = wr; b.vx = -Math.abs(b.vx)*0.45; }
-
           for (const peg of pegs) {
             const dx = b.x-peg.x, dy = b.y-peg.y;
             const d2 = dx*dx+dy*dy, md = ballR+pinR;
@@ -321,7 +294,6 @@ export default function PlinkoScreen() {
               }
             }
           }
-
           if (b.y >= slotY) {
             b.status = 'landed';
             const si = b.serverSlot !== undefined
@@ -336,7 +308,6 @@ export default function PlinkoScreen() {
         }
       }
 
-      // Resolve landed
       const landed = ballsRef.current.filter(b => b.status==='landed');
       if (landed.length) {
         ballsRef.current = ballsRef.current.filter(b => b.status==='falling');
@@ -346,7 +317,6 @@ export default function PlinkoScreen() {
         if (ballsRef.current.length === 0) setDropping(false);
       }
 
-      // ── Draw pegs ─────────────────────────────────────────────────────
       for (const peg of pegs) {
         ctx.save();
         ctx.shadowColor = 'rgba(230,200,60,0.5)'; ctx.shadowBlur = 5;
@@ -357,7 +327,6 @@ export default function PlinkoScreen() {
         ctx.restore();
       }
 
-      // ── Peg rings ─────────────────────────────────────────────────────
       for (let i=ringsRef.current.length-1; i>=0; i--) {
         const rg=ringsRef.current[i]!;
         rg.r += (rg.maxR-rg.r)*0.22+0.35; rg.a *= 0.83;
@@ -367,7 +336,6 @@ export default function PlinkoScreen() {
         } else ringsRef.current.splice(i,1);
       }
 
-      // ── Slot bars ─────────────────────────────────────────────────────
       const nowMs = Date.now();
       for (let i=0; i<slots; i++) {
         const m = muls[i]??0, fg=slotFg(m), bg2=slotBg(m);
@@ -383,18 +351,14 @@ export default function PlinkoScreen() {
         }
         ctx.save();
         ctx.translate(sx+sw2/2,slotY+oY+slotH/2); ctx.scale(1,scY); ctx.translate(-(sx+sw2/2),-(slotY+oY+slotH/2));
-        // bg
         ctx.fillStyle=bg2;
         ctx.beginPath(); ctx.roundRect(sx,slotY+oY,sw2,slotH,Math.min(4,sw2*0.2)); ctx.fill();
-        // border
         ctx.strokeStyle=fg+'55'; ctx.lineWidth=1;
         ctx.beginPath(); ctx.roundRect(sx,slotY+oY,sw2,slotH,Math.min(4,sw2*0.2)); ctx.stroke();
-        // highlight
         const hl=ctx.createLinearGradient(sx,slotY+oY,sx,slotY+oY+slotH*0.45);
         hl.addColorStop(0,'rgba(255,255,255,0.14)'); hl.addColorStop(1,'rgba(255,255,255,0)');
         ctx.fillStyle=hl;
         ctx.beginPath(); ctx.roundRect(sx,slotY+oY,sw2,slotH*0.45,[Math.min(4,sw2*0.2),Math.min(4,sw2*0.2),0,0]); ctx.fill();
-        // text
         ctx.fillStyle=fg; ctx.shadowColor=fg; ctx.shadowBlur=3;
         const fs=Math.max(5.5,Math.min(9.5,sw2*0.36));
         ctx.font=`bold ${fs}px Inter,sans-serif`;
@@ -403,7 +367,6 @@ export default function PlinkoScreen() {
         ctx.restore();
       }
 
-      // ── Trails + Balls ────────────────────────────────────────────────
       for (const b of ballsRef.current) {
         if (b.status!=='falling') continue;
         for (let t=b.trail.length-1; t>=0; t--) {
@@ -421,7 +384,6 @@ export default function PlinkoScreen() {
         ctx.restore();
       }
 
-      // ── Sparks ───────────────────────────────────────────────────────
       for (let i=sparksRef.current.length-1; i>=0; i--) {
         const p=sparksRef.current[i]!;
         p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.a-=p.dec;
@@ -431,7 +393,6 @@ export default function PlinkoScreen() {
         } else sparksRef.current.splice(i,1);
       }
 
-      // ── Float texts ──────────────────────────────────────────────────
       for (let i=floatsRef.current.length-1; i>=0; i--) {
         const ft=floatsRef.current[i]!;
         ft.y+=ft.vy; ft.a-=0.018;
@@ -453,18 +414,16 @@ export default function PlinkoScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardW, boardH, rows, risk]);
 
-  // ── Drop ─────────────────────────────────────────────────────────────────
   async function handleDrop() {
-    const walletType: 'play'|'main' = (playBal??0) >= bet ? 'play' : 'main';
-    const total = serverBal ?? ((mainBal??0)+(playBal??0));
-    if (total < bet) { setError('Insufficient balance'); return; }
+    const activeBal = walletType === 'play' ? (playBal ?? 0) : (mainBal ?? 0);
+    if (activeBal < bet) { setError('Insufficient balance'); return; }
     setError(null); setDropping(true);
     try {
       const apiRisk = risk==='easy' ? 'low' : risk==='medium' ? 'medium' : 'high';
       const result = await dropPlinko(bet, toApiRows(rows), apiRisk, walletType);
       setServerBal(result.totalBalance);
-      if (walletType==='play') setPlayBal(p=>(p??0)-bet+result.payout);
-      else setMainBal(p=>(p??0)-bet+result.payout);
+      if (walletType === 'play') setPlayBal(p => (p??0) - bet + result.payout);
+      else setMainBal(p => (p??0) - bet + result.payout);
 
       const bc = risk==='hard'
         ? {color:'#f43f5e',glow:'rgba(244,63,94,0.85)'}
@@ -492,76 +451,87 @@ export default function PlinkoScreen() {
     }
   }
 
+  const activeBal = walletType === 'play' ? (playBal??0) : (mainBal??0);
   const totalBal  = serverBal ?? ((mainBal??0)+(playBal??0));
   const maxMul    = Math.max(...getMults(rows, risk));
-  const canDrop   = !dropping && totalBal >= bet;
+  const canDrop   = !dropping && activeBal >= bet;
 
-  // ── Access gate ──────────────────────────────────────────────────────────
   if (allowed === false) {
     return (
       <div style={{height:'100dvh',background:'#0d0a1e',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,color:'#f8fafc',fontFamily:'Inter,sans-serif',textAlign:'center'}}>
         <div style={{fontSize:44}}>🚫</div>
         <div style={{fontSize:18,fontWeight:900,color:'#a78bfa'}}>Plinko Not Available</div>
         <div style={{fontSize:12,color:'#6b7280',maxWidth:260}}>Plinko is not available for your account yet.</div>
-        <button onClick={()=>navigate('/')} style={{marginTop:8,background:'#1e1b4b',border:'1px solid #4f46e5',color:'#a5b4fc',borderRadius:10,padding:'9px 22px',fontSize:12,fontWeight:700,cursor:'pointer'}}>← Back</button>
+        <button onClick={()=>navigate('/')} style={{marginTop:8,background:'#1e1b4b',border:'1px solid #4f46e5',color:'#a5b4fc',borderRadius:10,padding:'9px 22px',fontSize:12,fontWeight:700,cursor:'pointer'}}>Back</button>
       </div>
     );
   }
 
   return (
-    <div style={{
-      height: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'linear-gradient(180deg,#110a24 0%,#08050f 100%)',
-      color: '#f8fafc',
-      fontFamily: 'Inter,sans-serif',
-      maxWidth: 480,
-      margin: '0 auto',
-      overflow: 'hidden',
-    }}>
+    <div style={{height:'100dvh',display:'flex',flexDirection:'column',background:'linear-gradient(180deg,#110a24 0%,#08050f 100%)',color:'#f8fafc',fontFamily:'Inter,sans-serif',maxWidth:480,margin:'0 auto',overflow:'hidden'}}>
 
-      {/* ── Header (fixed height) ── */}
+      {/* Header */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'rgba(17,10,36,0.97)',borderBottom:'1px solid rgba(139,92,246,0.22)',backdropFilter:'blur(10px)'}}>
-        <button onClick={()=>navigate('/')} style={{background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.32)',color:'#c4b5fd',borderRadius:9,padding:'6px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>← Back</button>
-        <span style={{fontSize:11,fontWeight:900,color:'#a78bfa',letterSpacing:'0.28em',textTransform:'uppercase',textShadow:'0 0 10px rgba(167,139,250,0.5)'}}>
-          <img src={plinkoLogo} alt="PLINKO" style={{height:22,objectFit:'contain',display:'block'}} />
-        </span>
+        <button onClick={()=>navigate('/')} style={{background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.32)',color:'#c4b5fd',borderRadius:9,padding:'6px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>Back</button>
+        <img src={plinkoLogo} alt="PLINKO" style={{height:22,objectFit:'contain',display:'block'}} />
         <div style={{textAlign:'right'}}>
-          <div style={{fontSize:7.5,color:'#6b7280',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em'}}>Wallet</div>
+          <div style={{fontSize:7.5,color:'#6b7280',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em'}}>Total</div>
           <div style={{fontSize:12,fontWeight:900,color:'#fbbf24'}}>{totalBal.toFixed(2)} <span style={{fontSize:8,color:'#9ca3af'}}>ETB</span></div>
         </div>
       </div>
 
-      {/* ── Recent strip (fixed height) ── */}
+      {/* Recent strip */}
       <div style={{flexShrink:0,background:'rgba(8,5,16,0.92)',borderBottom:'1px solid rgba(139,92,246,0.1)',padding:'4px 10px',display:'flex',alignItems:'center',gap:5,overflowX:'auto',scrollbarWidth:'none',height:28}}>
         <span style={{fontSize:7.5,color:'#4b5563',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.1em',flexShrink:0}}>Recent:</span>
-        {recent.length===0 && <span style={{fontSize:9,color:'#374151'}}>—</span>}
+        {recent.length===0 && <span style={{fontSize:9,color:'#374151'}}>-</span>}
         {recent.map((r,i)=>{
           const c=r.m>=10?'#f87171':r.m>=2?'#fbbf24':r.m>=1?'#86efac':'#6b7280';
           return <div key={i} style={{flexShrink:0,padding:'1px 7px',borderRadius:20,background:`${c}18`,fontSize:9,fontWeight:900,color:c}}>{r.m.toFixed(1)}x</div>;
         })}
       </div>
 
-      {/* ── Board (flex:1 — takes all remaining space above controls) ── */}
+      {/* Board */}
       <div ref={boardRef} style={{flex:1,position:'relative',overflow:'hidden',minHeight:0}}>
         <canvas ref={canvasRef} style={{display:'block',width:'100%',height:'100%',touchAction:'none'}}/>
         {dropping && ballsRef.current.length>0 && (
-          <div style={{position:'absolute',top:6,right:8,background:'rgba(244,63,94,0.14)',border:'1px solid rgba(244,63,94,0.3)',borderRadius:20,padding:'2px 9px',fontSize:7.5,fontWeight:800,color:'#f87171',letterSpacing:'0.12em'}}>● LIVE</div>
+          <div style={{position:'absolute',top:6,right:8,background:'rgba(244,63,94,0.14)',border:'1px solid rgba(244,63,94,0.3)',borderRadius:20,padding:'2px 9px',fontSize:7.5,fontWeight:800,color:'#f87171',letterSpacing:'0.12em'}}>LIVE</div>
         )}
       </div>
 
-      {/* ── Error ── */}
+      {/* Error */}
       {error && (
         <div style={{flexShrink:0,margin:'4px 12px',padding:'6px 12px',borderRadius:7,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.22)',fontSize:11,color:'#f87171'}}>
           {error}
-          <button onClick={()=>setError(null)} style={{float:'right',background:'none',border:'none',color:'#f87171',cursor:'pointer',fontSize:12}}>✕</button>
+          <button onClick={()=>setError(null)} style={{float:'right',background:'none',border:'none',color:'#f87171',cursor:'pointer',fontSize:12}}>x</button>
         </div>
       )}
 
-      {/* ── LINES selector (fixed height) ── */}
-      <div style={{flexShrink:0,background:'rgba(8,5,16,0.97)',borderTop:'1px solid rgba(139,92,246,0.14)',padding:'6px 10px 5px'}}>
-        <div style={{fontSize:8,color:'#6b7280',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.14em',textAlign:'center',marginBottom:5}}>LINES</div>
+      {/* Wallet selector */}
+      <div style={{flexShrink:0,background:'rgba(8,5,16,0.97)',borderTop:'1px solid rgba(139,92,246,0.14)',padding:'6px 12px 5px'}}>
+        <div style={{display:'flex',gap:6}}>
+          {(['play','main'] as const).map(w => {
+            const bal = w === 'play' ? (playBal??0) : (mainBal??0);
+            const active = walletType === w;
+            const col = w === 'play' ? '#a78bfa' : '#fbbf24';
+            const label = w === 'play' ? 'Play Wallet' : 'Main Wallet';
+            return (
+              <button key={w} onClick={()=>setWalletType(w)} style={{
+                flex:1, padding:'6px 8px', borderRadius:9, cursor:'pointer', textAlign:'left',
+                background: active ? `${col}18` : 'rgba(255,255,255,0.03)',
+                border: active ? `1.5px solid ${col}55` : '1px solid rgba(255,255,255,0.06)',
+                transition:'all .15s',
+              }}>
+                <div style={{fontSize:7.5,color: active ? col : '#4b5563',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:1}}>{label}</div>
+                <div style={{fontSize:13,fontWeight:900,color: active ? col : '#6b7280',fontFamily:'monospace'}}>{bal.toFixed(2)} <span style={{fontSize:8,fontWeight:600,color:'#6b7280'}}>ETB</span></div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Lines selector */}
+      <div style={{flexShrink:0,background:'rgba(8,5,16,0.97)',borderTop:'1px solid rgba(139,92,246,0.14)',padding:'5px 10px 4px'}}>
+        <div style={{fontSize:8,color:'#6b7280',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.14em',textAlign:'center',marginBottom:4}}>LINES</div>
         <div style={{display:'flex',gap:4,justifyContent:'center'}}>
           {([8,9,10,11,12,13,14,15,16] as Rows[]).map(r=>{
             const active=rows===r;
@@ -575,63 +545,52 @@ export default function PlinkoScreen() {
         </div>
       </div>
 
-      {/* ── Bottom controls (fixed height) ── */}
+      {/* Bottom controls */}
       <div style={{flexShrink:0,background:'rgba(10,7,20,0.99)',borderTop:'1px solid rgba(139,92,246,0.14)',padding:'8px 12px 10px'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
 
           {/* Left: bet controls */}
           <div style={{flex:1,display:'flex',flexDirection:'column',gap:5,minWidth:0}}>
-            {/* bet display */}
             <div style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.28)',borderRadius:9,padding:'5px 10px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:4}}>
               <span style={{fontSize:17,fontWeight:900,color:'#e9d5ff',fontFamily:'monospace',minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bet}</span>
               <span style={{fontSize:8,color:'#7c3aed',fontWeight:800,flexShrink:0}}>ETB</span>
             </div>
-            {/* −  + */}
             <div style={{display:'flex',gap:4}}>
               <button onClick={()=>setBet(b=>Math.max(MIN_BET,b<=10?b-1:b<=100?b-5:b-50))}
-                style={{flex:1,padding:'7px 0',borderRadius:8,background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.25)',color:'#c4b5fd',fontSize:17,fontWeight:900,cursor:'pointer'}}>−</button>
+                style={{flex:1,padding:'7px 0',borderRadius:8,background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.25)',color:'#c4b5fd',fontSize:17,fontWeight:900,cursor:'pointer'}}>-</button>
               <button onClick={()=>setBet(b=>Math.min(MAX_BET,b<10?b+1:b<100?b+5:b+50))}
                 style={{flex:1,padding:'7px 0',borderRadius:8,background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.25)',color:'#c4b5fd',fontSize:17,fontWeight:900,cursor:'pointer'}}>+</button>
             </div>
-            {/* X2 / MAX */}
             <div style={{display:'flex',gap:4}}>
               <button onClick={()=>setBet(b=>Math.min(MAX_BET,b*2))}
                 style={{flex:1,padding:'5px 0',borderRadius:7,background:'rgba(22,163,74,0.13)',border:'1px solid rgba(22,163,74,0.32)',color:'#4ade80',fontSize:10,fontWeight:900,cursor:'pointer'}}>X2</button>
-              <button onClick={()=>setBet(Math.max(MIN_BET,Math.min(MAX_BET,Math.floor(totalBal))))}
+              <button onClick={()=>setBet(Math.max(MIN_BET,Math.min(MAX_BET,Math.floor(activeBal))))}
                 style={{flex:1,padding:'5px 0',borderRadius:7,background:'rgba(22,163,74,0.13)',border:'1px solid rgba(22,163,74,0.32)',color:'#4ade80',fontSize:10,fontWeight:900,cursor:'pointer'}}>MAX</button>
             </div>
           </div>
 
           {/* Center: BET button */}
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,flexShrink:0}}>
-            <button
-              onClick={handleDrop}
-              disabled={!canDrop}
-              style={{
-                width:82, height:82, borderRadius:'50%',
-                background: canDrop
-                  ? 'radial-gradient(circle at 38% 32%,#4ade80,#22c55e 55%,#15803d)'
-                  : '#1a1030',
-                border: 'none',
-                color: canDrop ? '#052e16' : '#4b5563',
-                fontSize:13, fontWeight:900, cursor: canDrop?'pointer':'not-allowed',
-                boxShadow: canDrop ? '0 5px 0 #14532d,0 0 22px rgba(34,197,94,0.3)' : 'none',
-                textTransform:'uppercase', letterSpacing:'0.04em',
-                transition:'all .1s', display:'flex', flexDirection:'column',
-                alignItems:'center', justifyContent:'center', gap:2,
-              }}>
+            <button onClick={handleDrop} disabled={!canDrop} style={{
+              width:82, height:82, borderRadius:'50%',
+              background: canDrop ? 'radial-gradient(circle at 38% 32%,#4ade80,#22c55e 55%,#15803d)' : '#1a1030',
+              border:'none', color: canDrop ? '#052e16' : '#4b5563',
+              fontSize:13, fontWeight:900, cursor: canDrop?'pointer':'not-allowed',
+              boxShadow: canDrop ? '0 5px 0 #14532d,0 0 22px rgba(34,197,94,0.3)' : 'none',
+              textTransform:'uppercase', letterSpacing:'0.04em', transition:'all .1s',
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2,
+            }}>
               {dropping && ballsRef.current.length>0
-                ? <><span style={{fontSize:16,animation:'spin 0.8s linear infinite',display:'inline-block'}}>⏳</span></>
+                ? <span style={{fontSize:16,animation:'spin 0.8s linear infinite',display:'inline-block'}}>o</span>
                 : <><span style={{fontSize:16}}>▶</span><span style={{fontSize:10}}>BET</span></>
               }
             </button>
             <div style={{fontSize:8,color:'#6b7280',textAlign:'center'}}>
               max <span style={{color:'#a78bfa',fontWeight:800}}>{maxMul}x</span>
             </div>
-            {/* Auto toggle */}
             <button onClick={()=>setAutoPlay(a=>!a)}
               style={{padding:'3px 10px',borderRadius:6,background:autoPlay?'rgba(239,68,68,0.15)':'rgba(255,255,255,0.04)',border:autoPlay?'1px solid rgba(239,68,68,0.4)':'1px solid rgba(255,255,255,0.08)',color:autoPlay?'#f87171':'#6b7280',fontSize:8,fontWeight:800,cursor:'pointer',letterSpacing:'0.06em'}}>
-              {autoPlay?'■ STOP':'⟳ AUTO'}
+              {autoPlay?'STOP':'AUTO'}
             </button>
           </div>
 
@@ -642,11 +601,11 @@ export default function PlinkoScreen() {
               const cfg = r==='hard'
                 ? {label:'HARD',   col:'#ef4444', border:'rgba(239,68,68,0.4)',  bg:'rgba(239,68,68,0.14)'}
                 : r==='medium'
-                ? {label:'MEDIUM', col:'#f59e0b', border:'rgba(245,158,11,0.35)',bg:'rgba(245,158,11,0.12)'}
+                ? {label:'MED',    col:'#f59e0b', border:'rgba(245,158,11,0.35)',bg:'rgba(245,158,11,0.12)'}
                 : {label:'EASY',   col:'#4ade80', border:'rgba(74,222,128,0.32)',bg:'rgba(74,222,128,0.1)'};
               return (
                 <button key={r} onClick={()=>setRisk(r)}
-                  style={{padding:'7px 12px',borderRadius:9,background:active?cfg.bg:'rgba(255,255,255,0.03)',border:active?`1.5px solid ${cfg.border}`:'1px solid rgba(255,255,255,0.06)',color:active?cfg.col:'#4b5563',fontSize:9,fontWeight:900,cursor:'pointer',letterSpacing:'0.05em',transition:'all .1s',minWidth:62,textAlign:'center'}}>
+                  style={{padding:'7px 10px',borderRadius:9,background:active?cfg.bg:'rgba(255,255,255,0.03)',border:active?`1.5px solid ${cfg.border}`:'1px solid rgba(255,255,255,0.06)',color:active?cfg.col:'#4b5563',fontSize:9,fontWeight:900,cursor:'pointer',letterSpacing:'0.05em',transition:'all .1s',minWidth:52,textAlign:'center'}}>
                   {cfg.label}
                 </button>
               );
@@ -656,7 +615,7 @@ export default function PlinkoScreen() {
         </div>
       </div>
 
-      {/* ── Tab bar (fixed height) ── */}
+      {/* Tab bar */}
       <div style={{flexShrink:0,display:'flex',background:'rgba(7,5,14,0.99)',borderTop:'1px solid rgba(139,92,246,0.14)'}}>
         {([{id:'game',icon:'▶',label:'GAME'},{id:'history',icon:'↺',label:'HISTORY'},{id:'leaders',icon:'✓',label:'LEADERS'}] as const).map(t=>{
           const active=tab===t.id;
@@ -670,12 +629,12 @@ export default function PlinkoScreen() {
         })}
       </div>
 
-      {/* ── History / Leaders overlay ── */}
+      {/* History / Leaders overlay */}
       {tab !== 'game' && (
         <div style={{position:'fixed',inset:0,background:'rgba(8,5,16,0.97)',zIndex:60,maxWidth:480,margin:'0 auto',display:'flex',flexDirection:'column'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',borderBottom:'1px solid rgba(139,92,246,0.18)',flexShrink:0}}>
             <span style={{fontSize:13,fontWeight:900,color:'#c4b5fd'}}>{tab==='history'?'My History':'Leaderboard'}</span>
-            <button onClick={()=>setTab('game')} style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.28)',color:'#c4b5fd',borderRadius:8,padding:'5px 12px',fontSize:11,fontWeight:700,cursor:'pointer'}}>✕ Close</button>
+            <button onClick={()=>setTab('game')} style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.28)',color:'#c4b5fd',borderRadius:8,padding:'5px 12px',fontSize:11,fontWeight:700,cursor:'pointer'}}>Close</button>
           </div>
           <div style={{flex:1,overflowY:'auto'}}>
             {tab==='history' ? <HistTab items={history}/> : <LeadTab/>}
@@ -692,7 +651,6 @@ export default function PlinkoScreen() {
   );
 }
 
-// ─── History tab ──────────────────────────────────────────────────────────────
 function HistTab({ items }: { items: { id:string;betAmount:number;rows:number;risk:string;slot:number;multiplier:number;payout:number;createdAt:string; }[] }) {
   if (!items.length) return (
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:10,color:'#374151',padding:48,height:'100%'}}>
