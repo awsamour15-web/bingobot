@@ -471,14 +471,14 @@ export default function RoyalDropScreen() {
     }}>
       <style>{`
         .rd-game-content { min-height: 0; overflow: hidden; }
-        .rd-cabinet-grid { height: clamp(250px, 48dvh, 380px); flex: 0 1 auto !important; }
+        .rd-cabinet-grid { height: clamp(200px, 38dvh, 320px); flex: 0 1 auto !important; }
         .rd-cabinet-grid > div { min-height: 0; }
         .rd-cabinet-grid .rd-crate-cell,
         .rd-cabinet-grid .rd-chest-cell { min-height: 0; aspect-ratio: auto; }
         .rd-controls { flex-shrink: 0; }
         @media (max-width: 480px) {
-          .rd-cabinet-reel { width: 52% !important; margin-top: 8px !important; }
-          .rd-cabinet-grid { width: 47% !important; height: clamp(220px, 43dvh, 330px) !important; }
+          .rd-cabinet-reel { width: 92% !important; max-width: 420px !important; margin-top: 8px !important; }
+          .rd-cabinet-grid { width: 100% !important; height: clamp(180px, 36dvh, 300px) !important; }
           .rd-controls { padding-left: 8px !important; padding-right: 8px !important; }
           .rd-bet-chip { padding-left: 6px !important; padding-right: 6px !important; }
           .rd-action-row { gap: 6px !important; }
@@ -571,7 +571,7 @@ export default function RoyalDropScreen() {
 
           {/* ── Reel panel (always shown, empty slots when no spin) ─────────── */}
           <div className="rd-cabinet-reel" style={{
-            width: '52%', maxWidth: 360, alignSelf: 'center', margin: '8px auto 0',
+            width: '92%', maxWidth: 420, alignSelf: 'center', margin: '8px auto 0',
             background: 'rgba(235,220,180,0.92)',
             border: '2px solid rgba(200,170,100,0.8)',
             borderRadius: 12, padding: '6px',
@@ -622,8 +622,9 @@ export default function RoyalDropScreen() {
               width: '100%', flex: 1, minHeight: 0, aspectRatio: 'auto',
               background: 'linear-gradient(180deg,rgba(29,46,72,0.72),rgba(9,18,31,0.72))',
               border: '2px solid rgba(217,179,102,0.45)',
-              borderRadius: 14, padding: '7px',
+              borderRadius: 14, padding: '6px',
               display: 'flex', flexDirection: 'column', gap: 2,
+              boxSizing: 'border-box',
             }}>
               {/* 7 crate rows */}
               {Array.from({ length: 7 }, (_, row) => (
