@@ -19,10 +19,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   });
   const mockPlayerIds = mockPlayers.map((p) => p.id);
 
+  const whereClause = mockPlayerIds.length > 0 ? { player_id: { notIn: mockPlayerIds } } : undefined;
+
   // Aggregate wins and total prize per player from RoundWinner table
   const topWinners = await prisma.roundWinner.groupBy({
     by: ['player_id'],
-    where: mockPlayerIds.length > 0 ? { player_id: { notIn: mockPlayerIds } } : undefined,
+    ...(whereClause && { where: whereClause }),
     _count: { id: true },
     _sum: { split_amount: true },
     orderBy: [
@@ -50,8 +52,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     rank: idx + 1,
     playerId: w.player_id,
     username: playerMap.get(w.player_id)?.username ?? 'Unknown',
-    wins: w._count.id,
-    totalPrize: Number(w._sum.split_amount ?? 0),
+    wins: w._count!.id,
+    totalPrize: Number(w._sum?.split_amount ?? 0),
     isCurrentPlayer: w.player_id === currentPlayerId,
   }));
 
@@ -60,7 +62,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   if (currentPlayerId && !leaderboard.some((e) => e.isCurrentPlayer)) {
     const allWinners = await prisma.roundWinner.groupBy({
       by: ['player_id'],
-      where: mockPlayerIds.length > 0 ? { player_id: { notIn: mockPlayerIds } } : undefined,
+      ...(whereClause && { where: whereClause }),
       _count: { id: true },
       _sum: { split_amount: true },
       orderBy: [
@@ -73,8 +75,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       const me = allWinners[myIdx]!;
       currentPlayerRank = {
         rank: myIdx + 1,
-        wins: me._count.id,
-        totalPrize: Number(me._sum.split_amount ?? 0),
+        wins: me._count!.id,
+        totalPrize: Number(me._sum?.split_amount ?? 0),
       };
     }
   }
