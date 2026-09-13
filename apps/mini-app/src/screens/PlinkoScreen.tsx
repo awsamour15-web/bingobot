@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProfile, dropPlinko, getPlinkoHistory, checkPlinkoAccess } from '../lib/api';
+import plinkoBg from '../assets/bg.jpg';
+import plinkoLogo from '../assets/plinko_origin_v2_atlas_1.png';
 
 type Risk = 'easy' | 'medium' | 'hard';
 type Rows = 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
@@ -223,7 +225,12 @@ export default function PlinkoScreen() {
     const ctx = canvas.getContext('2d', { alpha: false }); if (!ctx) return;
     let afId: number, lastT = performance.now();
 
+    // Preload background image
+    const bgImage = new Image();
+    bgImage.src = plinkoBg;
+
     const loop = (now: number) => {
+      (loop as any)._bgImg = bgImage;
       const dt  = Math.min((now - lastT) / 1000, 0.05); lastT = now;
       const w   = boardW, h = boardH;
       const dpr = window.devicePixelRatio || 1;
@@ -237,37 +244,24 @@ export default function PlinkoScreen() {
       const muls = getMults(rows, risk);
 
       // ── Background ────────────────────────────────────────────────────
-      const bg = ctx.createLinearGradient(0, 0, 0, h);
-      bg.addColorStop(0, '#110a24'); bg.addColorStop(1, '#08050f');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-
-      // Side rails
-      const rw = Math.max(14, w * 0.075);
-      for (const [ox, dir] of [[0,1],[w,-1]] as [number,number][]) {
-        const grad = ctx.createLinearGradient(ox, 0, ox + dir*rw, 0);
-        grad.addColorStop(0, 'rgba(168,40,240,0.6)');
-        grad.addColorStop(0.55, 'rgba(210,60,255,0.3)');
-        grad.addColorStop(1, 'rgba(210,60,255,0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(dir > 0 ? ox : ox-rw, 0, rw, h);
-        ctx.strokeStyle = 'rgba(255,80,255,0.45)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(ox+dir*rw*0.55, 0); ctx.lineTo(ox+dir*rw*0.55, h); ctx.stroke();
+      const bgImg = (loop as any)._bgImg as HTMLImageElement | undefined;
+      if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
+        // draw bg covering full canvas, centered/cropped
+        const scale = Math.max(w / bgImg.naturalWidth, h / bgImg.naturalHeight);
+        const iw = bgImg.naturalWidth * scale, ih = bgImg.naturalHeight * scale;
+        ctx.drawImage(bgImg, (w - iw) / 2, (h - ih) / 2, iw, ih);
+        // dark overlay to keep pegs/balls readable
+        ctx.fillStyle = 'rgba(8,5,16,0.45)';
+        ctx.fillRect(0, 0, w, h);
+      } else {
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#110a24'); bgGrad.addColorStop(1, '#08050f');
+        ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, w, h);
       }
-
-      // Yellow/green diagonal stripes on rails
-      ctx.save(); ctx.globalAlpha = 0.15;
-      for (let side = 0; side < 2; side++) {
-        const baseX = side === 0 ? 0 : w - rw*0.9;
-        for (let i = 0; i < 6; i++) {
-          ctx.fillStyle = i%2===0 ? '#b58a00' : '#1e5c14';
-          ctx.fillRect(baseX, h*0.22 + i*20, rw*0.9, 16);
-        }
-      }
-      ctx.restore();
 
       // Top glow
       const tg = ctx.createRadialGradient(w/2, 0, 0, w/2, 0, w*0.38);
-      tg.addColorStop(0, 'rgba(160,100,255,0.22)'); tg.addColorStop(1, 'rgba(0,0,0,0)');
+      tg.addColorStop(0, 'rgba(160,100,255,0.18)'); tg.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = tg; ctx.fillRect(0, 0, w, h*0.5);
 
       // Drop hole
@@ -530,7 +524,9 @@ export default function PlinkoScreen() {
       {/* ── Header (fixed height) ── */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'rgba(17,10,36,0.97)',borderBottom:'1px solid rgba(139,92,246,0.22)',backdropFilter:'blur(10px)'}}>
         <button onClick={()=>navigate('/')} style={{background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.32)',color:'#c4b5fd',borderRadius:9,padding:'6px 11px',fontSize:11,fontWeight:800,cursor:'pointer'}}>← Back</button>
-        <span style={{fontSize:11,fontWeight:900,color:'#a78bfa',letterSpacing:'0.28em',textTransform:'uppercase',textShadow:'0 0 10px rgba(167,139,250,0.5)'}}>PLINKO</span>
+        <span style={{fontSize:11,fontWeight:900,color:'#a78bfa',letterSpacing:'0.28em',textTransform:'uppercase',textShadow:'0 0 10px rgba(167,139,250,0.5)'}}>
+          <img src={plinkoLogo} alt="PLINKO" style={{height:22,objectFit:'contain',display:'block'}} />
+        </span>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:7.5,color:'#6b7280',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em'}}>Wallet</div>
           <div style={{fontSize:12,fontWeight:900,color:'#fbbf24'}}>{totalBal.toFixed(2)} <span style={{fontSize:8,color:'#9ca3af'}}>ETB</span></div>
