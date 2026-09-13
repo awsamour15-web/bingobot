@@ -14,30 +14,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Create database backup
         env:
-          # Must use the DIRECT (unpooled) connection — pg_dump doesn't work over pooled connections
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          PGSSLMODE: require
+          BACKUP_URL: ${{ secrets.BACKUP_URL }}
         run: |
           TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-          BACKUP_FILE="fidelbingo_backup_${TIMESTAMP}.sql"
-          # Strip sslmode param from URL since we pass it via PGSSLMODE env var
-          CLEAN_URL=$(echo "$DIRECT_URL" | sed 's/[?&]sslmode=[^&]*//' | sed 's/[?&]channel_binding=[^&]*//')
+          BACKUP_FILE="fidelbingo_backup_${TIMESTAMP}.json"
           echo "Creating backup: $BACKUP_FILE"
-          pg_dump -Fc -v -d "$CLEAN_URL" -f "$BACKUP_FILE"
+          curl -f -H "Authorization: Bearer ${{ secrets.ADMIN_JWT }}" \
+            "$BACKUP_URL/api/admin/backup" -o "$BACKUP_FILE"
           echo "BACKUP_FILE=$BACKUP_FILE" >> $GITHUB_ENV
 
       - name: Upload backup as artifact
         uses: actions/upload-artifact@v5
         with:
           name: db-backup-${{ github.run_number }}-${{ github.run_attempt }}
-          path: "*.sql"
+          path: "*.json"
           retention-days: 90
 
       - name: Backup summary
