@@ -107,7 +107,6 @@ export default function LiveGameScreen() {
   }, []);
   const [nextCountdown, setNextCountdown] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -466,66 +465,28 @@ export default function LiveGameScreen() {
   // This prevents the board from freezing if socket events are delayed or missed.
   useEffect(() => {
     if (!roundId || !['waiting', 'active'].includes(game.phase)) return;
+    // Poll at 1.5 s — lightweight: only fetch called numbers (no heavy getRound).
+    // This is a safety-net for missed WS events; normal delivery is via socket.
     const iv = setInterval(async () => {
-      setSyncing(true);
       try {
-        const [r, nums] = await Promise.all([
-          getRound(roundId),
-          getCalledNumbers(roundId).catch(() => [] as number[]),
-        ]);
+        const nums = await getCalledNumbers(roundId).catch(() => null);
+        if (!nums) return;
 
-        const mergedSet = new Set(nums);
         setGame((g) => {
           if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
+          // Skip state update if the server hasn't added anything new
+          if (nums.every(n => g.calledNumbers.has(n)) && g.calledNumbers.size === nums.length) return g;
 
-          const last = nums[nums.length - 1] ?? g.lastCalled;
-          const wp = (r.winning_pattern ?? WinPattern.any_line) as WinPattern;
-          if (r.status === 'active') {
-            return {
-              ...g,
-              phase: 'active',
-              derash: r.derash,
-              playerCount: r.player_count,
-              calledNumbers: mergedSet,
-              calledOrder: nums,
-              lastCalled: last ?? g.lastCalled,
-              winningPattern: wp,
-            };
-          }
-
-          if (r.status === 'completed') {
-            return {
-              ...g,
-              phase: 'won',
-              derash: r.derash,
-              playerCount: r.player_count,
-              calledNumbers: mergedSet,
-              calledOrder: nums,
-              lastCalled: last ?? g.lastCalled,
-              winningPattern: wp,
-            };
-          }
-
-          if (r.status === 'void' || r.status === 'cancelled') {
-            return {
-              ...g,
-              phase: r.status === 'void' ? 'void' : 'cancelled',
-              endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled — stake refunded.',
-              derash: r.derash,
-              playerCount: r.player_count,
-              calledNumbers: mergedSet,
-              calledOrder: nums,
-              lastCalled: last ?? g.lastCalled,
-            };
-          }
-
-          return g;
+          // Merge — never remove a number (prevents flicker when REST lags behind WS)
+          const mergedSet = new Set([...g.calledNumbers, ...nums]);
+          const serverSet = new Set(nums);
+          const wsExtras = g.calledOrder.filter(n => !serverSet.has(n));
+          const mergedOrder = [...nums, ...wsExtras];
+          const last = mergedOrder[mergedOrder.length - 1] ?? g.lastCalled;
+          return { ...g, calledNumbers: mergedSet, calledOrder: mergedOrder, lastCalled: last ?? g.lastCalled };
         });
       } catch {}
-      finally {
-        setSyncing(false);
-      }
-    }, 3000);
+    }, 1500);
     return () => clearInterval(iv);
   }, [game.phase, roundId]);
   useEffect(() => {

@@ -54,6 +54,11 @@ export class NumberCallingEngine {
   /** Per-round cartela grid cache — populated once at game start, cleared when round ends */
   private readonly gridCache = new Map<string, Map<number, number[]>>();
 
+  /** Cached call interval — refreshed every 10 s to pick up live config changes without a DB hit per number */
+  private cachedCallInterval: number = 1_000;
+  private callIntervalCachedAt: number = 0;
+  private static readonly INTERVAL_CACHE_TTL_MS = 10_000;
+
   /** Optional callbacks registered by the WebSocket layer */
   private onNumberCalled?: OnNumberCalled;
   private onRoundVoid?: OnRoundVoid;
@@ -487,10 +492,17 @@ export class NumberCallingEngine {
     }).catch(() => {});
   }
 
-  /** Read call_interval_ms from Config, falling back to 1 000 ms. Enforces a 1 000 ms floor. */
+  /** Read call_interval_ms from Config, falling back to 1 000 ms. Enforces a 1 000 ms floor.
+   *  Result is cached for 10 s so the DB is not queried on every single number call. */
   private async readCallInterval(): Promise<number> {
+    const now = Date.now();
+    if (now - this.callIntervalCachedAt < NumberCallingEngine.INTERVAL_CACHE_TTL_MS) {
+      return this.cachedCallInterval;
+    }
     const value = await getConfigInt('call_interval_ms', 1_000);
-    return Math.max(value, 1_000); // never faster than 1 number/second
+    this.cachedCallInterval = Math.max(value, 1_000);
+    this.callIntervalCachedAt = now;
+    return this.cachedCallInterval;
   }
 }
 
