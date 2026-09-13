@@ -46,6 +46,7 @@ import cashierAuthRouter from './routes/cashier/auth.cashier.router.js';
 import cashierRouter from './routes/cashier/cashier.router.js';
 import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
 import adminBackupRouter from './routes/admin/backup.admin.router.js';
+import adminCleanupRouter from './routes/admin/cleanup.admin.router.js';
 import helmet from 'helmet';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
@@ -169,11 +170,22 @@ app.use('/api/cashier/auth', cashierAuthRouter);
 app.use('/api/cashier', cashierRouter);
 app.use('/api/admin/cashiers', jwtAdminMiddleware, adminCashiersRouter);
 app.use('/api/admin/backup', jwtAdminMiddleware, adminBackupRouter);
+app.use('/api/admin/cleanup', jwtAdminMiddleware, adminCleanupRouter);
 // broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const mem = process.memoryUsage();
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    memory: {
+      heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+      rssMB: Math.round(mem.rss / 1024 / 1024),
+      externalMB: Math.round(mem.external / 1024 / 1024),
+    },
+  });
 });
 
 // ─── Telegram Bot webhook route (must be registered before 404 handler) ──────
@@ -317,6 +329,17 @@ setInterval(() => {
     .then(() => console.log('[KeepAlive] Pinged self'))
     .catch(() => {}); // silently ignore errors
 }, 4 * 60 * 1000); // every 4 minutes (keep Render free tier awake)
+
+// ─── Periodic memory usage logging (every 5 minutes) ─────────────────────────
+setInterval(() => {
+  const mem = process.memoryUsage();
+  console.log(
+    `[Memory] heap=${Math.round(mem.heapUsed / 1024 / 1024)}MB/` +
+    `${Math.round(mem.heapTotal / 1024 / 1024)}MB ` +
+    `rss=${Math.round(mem.rss / 1024 / 1024)}MB ` +
+    `ext=${Math.round(mem.external / 1024 / 1024)}MB`,
+  );
+}, 5 * 60_000).unref();
 
 // ─── HTTP server (shared with Socket.IO) ─────────────────────────────────────
 const httpServer = createServer(app);

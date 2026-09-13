@@ -77,11 +77,25 @@ function createRedisSubscriber(): Redis | null {
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
+// Debounce broadcastSystemState so rapid bursts (many simultaneous connects)
+// only hit the DB once per window instead of once per socket.
+let _broadcastDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+let _broadcastIo: InstanceType<typeof SocketIOServer> | null = null;
+
 /**
  * Queries the DB for the current system-wide game state and broadcasts
  * SYSTEM_STATE to all connected clients so they can sync to the right screen.
  */
 async function broadcastSystemState(io: InstanceType<typeof SocketIOServer>): Promise<void> {
+  _broadcastIo = io;
+  if (_broadcastDebounceTimer !== undefined) return; // already scheduled
+  _broadcastDebounceTimer = setTimeout(async () => {
+    _broadcastDebounceTimer = undefined;
+    await _dobroadcastSystemState(_broadcastIo!);
+  }, 200);
+}
+
+async function _dobroadcastSystemState(io: InstanceType<typeof SocketIOServer>): Promise<void> {
   try {
     const [activeRound, pendingRound] = await Promise.all([
       prisma.gameRound.findFirst({
@@ -301,6 +315,11 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   // ── Connection handler ─────────────────────────────────────────────────────
 
+  // Track which Redis channels have been subscribed to — the subscriber is
+  // shared across all sockets, so we only need to subscribe once per channel
+  // and we unsubscribe only when the last room member disconnects.
+  const subscribedChannels = new Set<string>();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   io.on('connection', (socket: any) => {
     const playerId = socket.data.playerId as string;
@@ -328,11 +347,16 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         await socket.join(`round:${roundId}`);
 
         if (subscriber) {
-          await subscriber.subscribe(
+          const channels = [
             `game:${roundId}:number`,
             `round:${roundId}:void`,
             `round:${roundId}:cancelled`,
-          );
+          ];
+          const newChannels = channels.filter((ch) => !subscribedChannels.has(ch));
+          if (newChannels.length > 0) {
+            await subscriber.subscribe(...newChannels);
+            for (const ch of newChannels) subscribedChannels.add(ch);
+          }
         }
 
         // Only broadcast player count if the player actually has an entry
@@ -346,6 +370,37 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         if (ack) ack({ ok: true });
       },
     );
+
+    // ── DISCONNECT — unsubscribe Redis channels when room empties ─────────────
+    socket.on('disconnect', async () => {
+      if (!subscriber) return;
+      // For each channel this socket may have been listening to, check if the
+      // corresponding room is now empty and unsubscribe if so.
+      const roomsToCheck = new Set<string>();
+      for (const ch of subscribedChannels) {
+        const roundMatch = ch.match(/^(?:game|round):(.+?):/);
+        if (roundMatch) roomsToCheck.add(roundMatch[1] as string);
+      }
+      for (const roundId of roomsToCheck) {
+        const room = io.sockets.adapter.rooms.get(`round:${roundId}`);
+        if (!room || room.size === 0) {
+          const channels = [
+            `game:${roundId}:number`,
+            `round:${roundId}:void`,
+            `round:${roundId}:cancelled`,
+          ];
+          const toUnsub = channels.filter((ch) => subscribedChannels.has(ch));
+          if (toUnsub.length > 0) {
+            try {
+              await subscriber.unsubscribe(...toUnsub);
+              for (const ch of toUnsub) subscribedChannels.delete(ch);
+            } catch {
+              // non-fatal — channel will be cleaned up on next disconnect
+            }
+          }
+        }
+      }
+    });
 
     // ── CLAIM_WIN ─────────────────────────────────────────────────────────────
     socket.on(

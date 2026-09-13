@@ -311,28 +311,24 @@ type DepositState =
   | { step: 'awaiting_amount' }
   | { step: 'awaiting_receipt'; amount: number; telebirrNumber: string; receiverName: string | null };
 
-const depositSessions = new Map<bigint, DepositState>();
+const depositSessions = new Map<bigint, DepositState & { lastActivity: number }>();
 
 type WithdrawState =
   | { step: 'awaiting_amount' }
   | { step: 'awaiting_phone'; amount: number };
 
-const withdrawSessions = new Map<bigint, WithdrawState>();
+const withdrawSessions = new Map<bigint, WithdrawState & { lastActivity: number }>();
 
-// Purge abandoned sessions every 10 minutes to prevent memory leaks
+// Purge abandoned sessions older than 30 minutes every 10 minutes
 setInterval(() => {
-  const MAX_SESSION_AGE_MS = 30 * 60_000; // 30 minutes
-  const sessionTimestamps = new Map<bigint, number>();
-  
-  // Track when sessions were last active (this is a simplified approach)
-  // In production, store { state, lastActivity: Date } instead
-  const now = Date.now();
-  
-  // Clear all sessions older than 30 min (simplified - clears all on interval)
-  // A better approach would track lastActivity per session
-  if (depositSessions.size > 100) depositSessions.clear();
-  if (withdrawSessions.size > 100) withdrawSessions.clear();
-}, 10 * 60_000);
+  const cutoff = Date.now() - 30 * 60_000;
+  for (const [id, s] of depositSessions) {
+    if (s.lastActivity < cutoff) depositSessions.delete(id);
+  }
+  for (const [id, s] of withdrawSessions) {
+    if (s.lastActivity < cutoff) withdrawSessions.delete(id);
+  }
+}, 10 * 60_000).unref();
 
 /**
  * Parses a Telebirr SMS receipt text and extracts the transaction number.
@@ -1267,7 +1263,7 @@ if (BOT_TOKEN) {
       await ctx.reply('⚠️ Please register first to use this feature. Tap Register 📝 to get started.');
       return;
     }
-    depositSessions.set(telegramId, { step: 'awaiting_amount' });
+    depositSessions.set(telegramId, { step: 'awaiting_amount', lastActivity: Date.now() });
     await ctx.reply('💰 ማስገባት የሚፈልጉትን መጠን ከ50 ብር ጀምሮ ያስጊቡ።');
   }
 
@@ -1330,7 +1326,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     }
 
     console.log('[Bot] Setting withdrawal session for user:', telegramId);
-    withdrawSessions.set(telegramId, { step: 'awaiting_amount' });
+    withdrawSessions.set(telegramId, { step: 'awaiting_amount', lastActivity: Date.now() });
     console.log('[Bot] Session set. Current sessions:', withdrawSessions.size, 'Session for user:', withdrawSessions.has(telegramId));
     
     console.log('[Bot] Sending withdrawal prompt to user:', telegramId);
@@ -1434,7 +1430,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         const { text: instructionText, telebirrNumber, receiverName } = await buildDepositInstructionText(amount);
-        depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber, receiverName });
+        depositSessions.set(telegramId, { step: 'awaiting_receipt', amount, telebirrNumber, receiverName, lastActivity: Date.now() });
         await ctx.reply(instructionText, { parse_mode: 'Markdown' });
         return;
       }
@@ -1661,7 +1657,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
         }
 
         console.log('[Bot] Balance sufficient - moving to phone step');
-        withdrawSessions.set(telegramId, { step: 'awaiting_phone', amount });
+        withdrawSessions.set(telegramId, { step: 'awaiting_phone', amount, lastActivity: Date.now() });
         console.log('[Bot] Sending phone number request to user');
         await ctx.reply('📱 እባክዎ የቴሌብር ስልክ ቁጥርዎን ያስጊቡ (ለምሳሌ: 0911111111)።\n\nብሩ ወደዚህ ቁጥር ይላካል។');
         return;

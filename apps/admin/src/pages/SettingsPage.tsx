@@ -3,9 +3,9 @@ import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest,
 import {
   getConfig, updateConfig, getAdmins, createAdmin, updateAdmin,
   getDepositAccounts, createDepositAccount, updateDepositAccount, deleteDepositAccount,
-  triggerBackup,
+  triggerBackup, previewCleanup, runCleanup,
 } from '../lib/api';
-import type { DepositAccount } from '../lib/api';
+import type { DepositAccount, CleanupPreview, CleanupResult } from '../lib/api';
 import {
   Btn, Badge, Card, CardHeader, Table, Th, Td,
   TrEmpty, Alert, Field, PageHeader, inputCss, selectCss,
@@ -1074,6 +1074,214 @@ function BackupSection() {
 }
 
 
+// ─── Database Cleanup ─────────────────────────────────────────────────────────
+
+const CLEANUP_LABELS: Record<string, string> = {
+  expired_reservations: 'Expired cartela reservations',
+  promotion_logs: 'Promotion logs',
+  deposit_attempts: 'Deposit attempts',
+  gregmorn_transactions: 'Gregmorn transactions',
+  gregmorn_sessions: 'Gregmorn sessions',
+  slot_spins: 'Slot spins',
+  plinko_bets: 'Plinko bets',
+  royal_drop_bets: 'Royal Drop bets',
+  crash_bets: 'Crash bets',
+  crash_rounds: 'Crash rounds',
+  keno_bets: 'Keno bets',
+  keno_rounds: 'Keno rounds',
+  round_entries: 'Bingo round entries',
+  called_numbers: 'Called numbers',
+  round_winners: 'Round winners',
+  bingo_rounds: 'Bingo rounds',
+};
+
+function CleanupSection() {
+  const [days, setDays] = useState(30);
+  const [preview, setPreview] = useState<CleanupPreview | null>(null);
+  const [result, setResult] = useState<CleanupResult | null>(null);
+  const [phase, setPhase] = useState<'idle' | 'previewing' | 'confirming' | 'running' | 'done'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handlePreview() {
+    setPhase('previewing'); setError(null); setResult(null); setPreview(null);
+    try {
+      const data = await previewCleanup(days);
+      setPreview(data);
+      setPhase('confirming');
+    } catch (e: unknown) {
+      setError((e as Error).message ?? 'Preview failed');
+      setPhase('idle');
+    }
+  }
+
+  async function handleRun() {
+    setPhase('running'); setError(null);
+    try {
+      const data = await runCleanup(days);
+      setResult(data);
+      setPhase('done');
+    } catch (e: unknown) {
+      setError((e as Error).message ?? 'Cleanup failed');
+      setPhase('confirming');
+    }
+  }
+
+  const totalPreview = preview ? Object.values(preview.counts).reduce((a, b) => a + b, 0) : 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
+        Safely delete old game history and logs to free up database storage. Financial records (wallets, transactions, players) are never touched.
+      </p>
+
+      {/* Warning */}
+      <div style={{
+        padding: 14, borderRadius: 12,
+        background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.3)',
+        fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.7, display: 'flex', gap: 10,
+      }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+        <div>
+          <strong style={{ color: '#fbbf24' }}>Irreversible.</strong> Take a backup before running cleanup. Deleted records cannot be recovered.
+        </div>
+      </div>
+
+      {/* Days selector */}
+      <div style={{
+        background: 'var(--c-bg-secondary)', borderRadius: 12,
+        padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--c-muted)', letterSpacing: '0.08em' }}>Keep data from last</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input
+              type="number" min={7} max={365} value={days}
+              onChange={e => { setDays(Math.max(7, parseInt(e.target.value) || 30)); setPhase('idle'); setPreview(null); setResult(null); }}
+              style={{ ...inputCss, width: 80, fontWeight: 800, fontSize: 18, textAlign: 'center' }}
+            />
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text)' }}>days</span>
+          </div>
+        </div>
+        {[7, 14, 30, 60, 90].map(d => (
+          <button key={d} onClick={() => { setDays(d); setPhase('idle'); setPreview(null); setResult(null); }}
+            style={{
+              padding: '6px 14px', borderRadius: 8, border: `1px solid ${days === d ? '#6366f1' : 'var(--c-border)'}`,
+              background: days === d ? 'rgba(99,102,241,0.15)' : 'transparent',
+              color: days === d ? '#818cf8' : 'var(--c-muted)', fontWeight: 600, fontSize: 12,
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}>{d}d</button>
+        ))}
+      </div>
+
+      {error && <Alert type="error">{error}</Alert>}
+
+      {/* Preview results */}
+      {preview && phase !== 'done' && (
+        <div style={{
+          background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
+          borderRadius: 14, overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '14px 20px', borderBottom: '1px solid var(--c-border)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>
+              Preview — records to be deleted
+            </span>
+            <span style={{
+              fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+              background: totalPreview > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(74,222,128,0.1)',
+              color: totalPreview > 0 ? '#f87171' : '#4ade80',
+              border: `1px solid ${totalPreview > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(74,222,128,0.3)'}`,
+            }}>
+              {totalPreview.toLocaleString()} total rows
+            </span>
+          </div>
+          <div style={{ padding: '12px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 8 }}>
+            {Object.entries(preview.counts).map(([key, count]) => (
+              <div key={key} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '6px 10px', borderRadius: 8,
+                background: count > 0 ? 'rgba(239,68,68,0.05)' : 'rgba(74,222,128,0.04)',
+                border: `1px solid ${count > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(74,222,128,0.1)'}`,
+              }}>
+                <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>{CLEANUP_LABELS[key] ?? key}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: count > 0 ? '#f87171' : '#4ade80' }}>
+                  {count.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--c-border)', fontSize: 12, color: 'var(--c-muted)' }}>
+            Cutoff date: {new Date(preview.cutoff).toLocaleString()}
+          </div>
+        </div>
+      )}
+
+      {/* Done results */}
+      {result && phase === 'done' && (
+        <div style={{
+          padding: 20, borderRadius: 14,
+          background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.25)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 24 }}>✅</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: '#4ade80' }}>
+                Cleanup complete — {result.totalDeleted.toLocaleString()} rows deleted
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
+                Kept data from the last {result.daysToKeep} days
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
+            {Object.entries(result.deleted).filter(([,v]) => v > 0).map(([key, count]) => (
+              <div key={key} style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '5px 10px', borderRadius: 8,
+                background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.15)',
+              }}>
+                <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>{CLEANUP_LABELS[key] ?? key}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>–{count.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {(phase === 'idle' || phase === 'previewing') && (
+          <Btn onClick={handlePreview} disabled={phase === 'previewing'}>
+            {phase === 'previewing' ? '⏳ Scanning…' : '🔍 Preview Cleanup'}
+          </Btn>
+        )}
+        {phase === 'confirming' && (
+          <>
+            <Btn variant="danger" onClick={handleRun}>
+              🗑️ Delete {totalPreview.toLocaleString()} rows
+            </Btn>
+            <Btn onClick={() => { setPhase('idle'); setPreview(null); }}>
+              Cancel
+            </Btn>
+          </>
+        )}
+        {phase === 'running' && (
+          <Btn disabled>⏳ Deleting…</Btn>
+        )}
+        {phase === 'done' && (
+          <Btn onClick={() => { setPhase('idle'); setPreview(null); setResult(null); }}>
+            Run Again
+          </Btn>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Settings Page — tabbed layout ───────────────────────────────────────────
 
 const TABS = [
@@ -1086,6 +1294,7 @@ const TABS = [
   { key: 'config',        label: 'Raw Config',        icon: '⚙️' },
   { key: 'admins',        label: 'Admin Accounts',    icon: '👤' },
   { key: 'backup',        label: 'Backup',            icon: '💾' },
+  { key: 'cleanup',       label: 'DB Cleanup',        icon: '🧹' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -1193,6 +1402,7 @@ export function SettingsPage() {
           {activeTab === 'config'     && <ConfigSection />}
           {activeTab === 'admins'     && <AdminAccountsSection />}
           {activeTab === 'backup'     && <BackupSection />}
+          {activeTab === 'cleanup'    && <CleanupSection />}
         </div>
       </div>
     </div>

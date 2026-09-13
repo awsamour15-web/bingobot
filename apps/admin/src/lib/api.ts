@@ -664,6 +664,32 @@ export function getBonusDistributions(promotionId: string): Promise<BonusDistrib
 }
 
 // ---------------------------------------------------------------------------
+// Database Cleanup
+// ---------------------------------------------------------------------------
+
+export interface CleanupPreview {
+  cutoff: string;
+  daysToKeep: number;
+  counts: Record<string, number>;
+}
+
+export interface CleanupResult {
+  success: boolean;
+  totalDeleted: number;
+  deleted: Record<string, number>;
+  cutoff: string;
+  daysToKeep: number;
+}
+
+export function previewCleanup(daysToKeep: number): Promise<CleanupPreview> {
+  return adminApiRequest('POST', '/api/admin/cleanup/preview', { daysToKeep });
+}
+
+export function runCleanup(daysToKeep: number): Promise<CleanupResult> {
+  return adminApiRequest('POST', '/api/admin/cleanup/run', { daysToKeep });
+}
+
+// ---------------------------------------------------------------------------
 // Backup
 // ---------------------------------------------------------------------------
 

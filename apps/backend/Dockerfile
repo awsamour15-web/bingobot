@@ -46,4 +46,9 @@ COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 ENV NODE_ENV=production
 WORKDIR /app/apps/backend
 
+# Cap V8 heap at 400MB — leaves headroom for OS + native modules on a 512MB instance.
+# If the heap exceeds this Node will GC aggressively and throw OOM before Render kills the process,
+# giving a clear error in logs rather than a silent OOM kill.
+ENV NODE_OPTIONS="--max-old-space-size=400"
+
 CMD ["sh", "-c", "prisma migrate deploy || echo 'Migrate failed, continuing...' && node dist/index.js"]

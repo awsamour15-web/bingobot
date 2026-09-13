@@ -27,6 +27,37 @@ interface MockPlayerRow {
   username: string;
 }
 
+interface ProcessedCartela {
+  cartela_number: number;
+  grid: number[];
+}
+
+// ─── Cartela definition cache ─────────────────────────────────────────────────
+// Cartela definitions are immutable after creation, so we cache them in memory
+// keyed by poolSize to avoid a full DB load on every pending round.
+
+const cartelaDefsCache = new Map<number, { defs: ProcessedCartela[]; loadedAt: number }>();
+const CARTELA_CACHE_TTL_MS = 5 * 60_000; // 5 minutes
+
+async function getProcessedCartelas(poolSize: number): Promise<ProcessedCartela[]> {
+  const cached = cartelaDefsCache.get(poolSize);
+  if (cached && Date.now() - cached.loadedAt < CARTELA_CACHE_TTL_MS) {
+    return cached.defs;
+  }
+  const rows = await prisma.cartelaDefinition.findMany({
+    where: { cartela_number: { lte: poolSize } },
+    select: { cartela_number: true, grid: true },
+  });
+  // Pre-process: replace free space (index 12) with 0 once, not on every simulation tick
+  const defs: ProcessedCartela[] = rows.map((c) => {
+    const g = (c.grid as number[]).slice();
+    g[12] = 0;
+    return { cartela_number: c.cartela_number, grid: g };
+  });
+  cartelaDefsCache.set(poolSize, { defs, loadedAt: Date.now() });
+  return defs;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function isEnabled(): Promise<boolean> {
@@ -84,13 +115,9 @@ async function preSimulateRound(
   poolSize: number,
   winningPattern: string,
 ): Promise<SimulationResult | null> {
-  // Load all cartela definitions in the active pool
-  const cartelas = await prisma.cartelaDefinition.findMany({
-    where: { cartela_number: { lte: poolSize } },
-    select: { cartela_number: true, grid: true },
-  });
-
-  if (!cartelas.length) return null;
+  // Load cartela definitions from cache (avoids a full DB scan every 40s per stake)
+  const processedCartelas = await getProcessedCartelas(poolSize);
+  if (!processedCartelas.length) return null;
 
   // Generate the sequence we'll use for this round
   const sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
@@ -113,9 +140,8 @@ async function preSimulateRound(
   for (let i = 0; i < sequence.length; i++) {
     calledSet.add(sequence[i]!);
 
-    for (const cartela of cartelas) {
-      const grid = (cartela.grid as number[]).map((v, idx) => (idx === 12 ? 0 : v));
-      const { won } = checkWin(grid, calledSet, patterns);
+    for (const cartela of processedCartelas) {
+      const { won } = checkWin(cartela.grid, calledSet, patterns);
       if (won) {
         return {
           sequence,
