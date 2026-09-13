@@ -2,46 +2,44 @@ name: Database Backup
 
 on:
   schedule:
-    # Run every day at 2 AM UTC (adjust timezone as needed)
+    # Run every day at 2 AM UTC
     - cron: '0 2 * * *'
-  workflow_dispatch:  # Allow manual trigger from GitHub UI
+  workflow_dispatch: # Allow manual trigger from GitHub UI
 
 jobs:
   backup:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      
+        uses: actions/checkout@v5
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-      
-      - name: Create backup directory
-        run: mkdir -p backups
-      
+
       - name: Create database backup
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Must use the DIRECT (unpooled) connection — pg_dump doesn't work over pooled connections
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-          BACKUP_FILE="backups/fidelbingo_backup_${TIMESTAMP}.sql"
+          BACKUP_FILE="fidelbingo_backup_${TIMESTAMP}.sql"
           echo "Creating backup: $BACKUP_FILE"
-          pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
-          gzip "$BACKUP_FILE"
-          echo "Backup created: ${BACKUP_FILE}.gz"
-      
+          pg_dump -Fc -v -d "$DIRECT_URL" -f "$BACKUP_FILE"
+          echo "BACKUP_FILE=$BACKUP_FILE" >> $GITHUB_ENV
+
       - name: Upload backup as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: database-backup-${{ github.run_number }}
-          path: backups/*.sql.gz
-          retention-days: 90  # Keep for 90 days (max for free GitHub)
-      
+          name: db-backup-${{ github.run_number }}-${{ github.run_attempt }}
+          path: "*.sql"
+          retention-days: 90
+
       - name: Backup summary
         run: |
-          echo "✓ Backup completed successfully"
-          echo "✓ Stored in GitHub Artifacts for 90 days"
-          echo "✓ Download from: https://github.com/${{ github.repository }}/actions"
+          SIZE=$(du -sh "$BACKUP_FILE" | cut -f1)
+          echo "✓ Backup completed: $BACKUP_FILE ($SIZE)"
+          echo "✓ Stored as GitHub Artifact for 90 days"
+          echo "✓ View at: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
