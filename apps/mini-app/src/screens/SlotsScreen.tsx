@@ -626,8 +626,8 @@ export default function SlotsScreen() {
   
   useEffect(() => { 
     getProfile().then(p => {
-      setMainBalance(p.mainWallet.balance);
-      setPlayBalance(p.playWallet.balance);
+      setMainBalance(p.mainWallet?.balance ?? 0);
+      setPlayBalance(p.playWallet?.balance ?? 0);
     }).catch(() => {});
   }, []);
 
@@ -685,8 +685,8 @@ export default function SlotsScreen() {
     if (res.balance !== undefined) {
       // Slots API returns combined balance, we need to refetch to get separate wallets
       getProfile().then(p => {
-        setMainBalance(p.mainWallet.balance);
-        setPlayBalance(p.playWallet.balance);
+        setMainBalance(p.mainWallet?.balance ?? 0);
+        setPlayBalance(p.playWallet?.balance ?? 0);
       }).catch(() => {});
     }
 
@@ -723,8 +723,8 @@ export default function SlotsScreen() {
       setGambleResult({ won: r.won, actual: r.actual, payout: r.payout });
       // Refetch to get both wallet balances
       getProfile().then(p => {
-        setMainBalance(p.mainWallet.balance);
-        setPlayBalance(p.playWallet.balance);
+        setMainBalance(p.mainWallet?.balance ?? 0);
+        setPlayBalance(p.playWallet?.balance ?? 0);
       }).catch(() => {});
       setTotalWin(r.won ? r.payout : 0);
       if (!r.won) setWins([]);

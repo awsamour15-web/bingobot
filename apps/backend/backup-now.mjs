@@ -7,12 +7,7 @@ import { config } from 'dotenv';
 
 config();
 
-// Use Render DB URL directly — this is the database that was in production
-const RENDER_DB_URL = "postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo";
-
-const prisma = new PrismaClient({
-  datasources: { db: { url: RENDER_DB_URL } },
-});
+const prisma = new PrismaClient();
 const BACKUP_DIR = './backups';
 
 async function backup() {
@@ -22,49 +17,45 @@ async function backup() {
 
   console.log('Connecting to database...');
 
-  const [
-    players, wallets, transactions,
-    gameRounds, roundEntries, roundWinners,
-    cartelaDefinitions, calledNumbers,
-    admins, config_, pendingDeposits, depositAttempts,
-    agents, agentCommissions, agentCommissionWithdrawals,
-    cartelaReservations, pendingWithdrawals, depositAccounts,
-    broadcastTargets, promotions, promotionSchedules,
-    promotionLogs, promotionBonusDistributions,
-    crashRounds, crashBets, slotSpins, kenoRounds, kenoBets,
-  ] = await Promise.all([
-    prisma.player.findMany(),
-    prisma.wallet.findMany(),
-    prisma.transaction.findMany(),
-    prisma.gameRound.findMany(),
-    prisma.roundEntry.findMany(),
-    prisma.roundWinner.findMany(),
-    prisma.cartelaDefinition.findMany(),
-    prisma.calledNumber.findMany(),
-    prisma.admin.findMany(),
-    prisma.config.findMany(),
-    prisma.pendingDeposit.findMany(),
-    prisma.depositAttempt.findMany(),
-    prisma.agent.findMany(),
-    prisma.agentCommission.findMany(),
-    prisma.agentCommissionWithdrawal.findMany(),
-    prisma.cartelaReservation.findMany(),
-    prisma.pendingWithdrawal.findMany(),
-    prisma.depositAccount.findMany(),
-    prisma.broadcastTarget.findMany(),
-    prisma.promotion.findMany(),
-    prisma.promotionSchedule.findMany(),
-    prisma.promotionLog.findMany(),
-    prisma.promotionBonusDistribution.findMany(),
-    prisma.crashRound.findMany(),
-    prisma.crashBet.findMany(),
-    prisma.slotSpin.findMany(),
-    prisma.kenoRound.findMany(),
-    prisma.kenoBet.findMany(),
-  ]);
+  const fetch = async (label, fn) => { process.stdout.write(`  fetching ${label}...`); const r = await fn(); console.log(r.length); return r; };
+
+  const players                    = await fetch('players', () => prisma.player.findMany());
+  const wallets                    = await fetch('wallets', () => prisma.wallet.findMany());
+  const transactions               = await fetch('transactions', () => prisma.transaction.findMany());
+  const gameRounds                 = await fetch('gameRounds', () => prisma.gameRound.findMany());
+  const roundEntries               = await fetch('roundEntries', () => prisma.roundEntry.findMany());
+  const roundWinners               = await fetch('roundWinners', () => prisma.roundWinner.findMany());
+  const cartelaDefinitions         = await fetch('cartelaDefinitions', () => prisma.cartelaDefinition.findMany());
+  const calledNumbers              = await fetch('calledNumbers', () => prisma.calledNumber.findMany());
+  const admins                     = await fetch('admins', () => prisma.admin.findMany());
+  const config_                    = await fetch('config', () => prisma.config.findMany());
+  const pendingDeposits            = await fetch('pendingDeposits', () => prisma.pendingDeposit.findMany());
+  const depositAttempts            = await fetch('depositAttempts', () => prisma.depositAttempt.findMany());
+  const agents                     = await fetch('agents', () => prisma.agent.findMany());
+  const agentCommissions           = await fetch('agentCommissions', () => prisma.agentCommission.findMany());
+  const agentCommissionWithdrawals = await fetch('agentCommissionWithdrawals', () => prisma.agentCommissionWithdrawal.findMany());
+  const cartelaReservations        = await fetch('cartelaReservations', () => prisma.cartelaReservation.findMany());
+  const pendingWithdrawals         = await fetch('pendingWithdrawals', () => prisma.pendingWithdrawal.findMany());
+  const depositAccounts            = await fetch('depositAccounts', () => prisma.depositAccount.findMany());
+  const broadcastTargets           = await fetch('broadcastTargets', () => prisma.broadcastTarget.findMany());
+  const promotions                 = await fetch('promotions', () => prisma.promotion.findMany());
+  const promotionSchedules         = await fetch('promotionSchedules', () => prisma.promotionSchedule.findMany());
+  const promotionLogs              = await fetch('promotionLogs', () => prisma.promotionLog.findMany());
+  const promotionBonusDistributions= await fetch('promotionBonusDistributions', () => prisma.promotionBonusDistribution.findMany());
+  const crashRounds                = await fetch('crashRounds', () => prisma.crashRound.findMany());
+  const crashBets                  = await fetch('crashBets', () => prisma.crashBet.findMany());
+  const slotSpins                  = await fetch('slotSpins', () => prisma.slotSpin.findMany());
+  const kenoRounds                 = await fetch('kenoRounds', () => prisma.kenoRound.findMany());
+  const kenoBets                   = await fetch('kenoBets', () => prisma.kenoBet.findMany());
+  const plinkoBets                 = await fetch('plinkoBets', () => prisma.plinkoBet.findMany());
+  const royalDropBets              = await fetch('royalDropBets', () => prisma.royalDropBet.findMany());
+  const cashiers                   = await fetch('cashiers', () => prisma.cashier.findMany());
+  const systemSettings             = await fetch('systemSettings', () => prisma.systemSetting.findMany());
+  const gregmornSessions           = await fetch('gregmornSessions', () => prisma.gregmornSession.findMany());
+  const gregmornTransactions       = await fetch('gregmornTransactions', () => prisma.gregmornTransaction.findMany());
 
   const data = {
-    _meta: { timestamp: new Date().toISOString(), version: '1.0' },
+    _meta: { timestamp: new Date().toISOString(), version: '2.0' },
     players, wallets, transactions,
     gameRounds, roundEntries, roundWinners,
     cartelaDefinitions, calledNumbers,
@@ -74,11 +65,12 @@ async function backup() {
     broadcastTargets, promotions, promotionSchedules,
     promotionLogs, promotionBonusDistributions,
     crashRounds, crashBets, slotSpins, kenoRounds, kenoBets,
+    plinkoBets, royalDropBets, cashiers, systemSettings,
+    gregmornSessions, gregmornTransactions,
   };
 
-  await fs.writeFile(file, JSON.stringify(data, null, 2));
+  await fs.writeFile(file, JSON.stringify(data, (_key, val) => typeof val === 'bigint' ? val.toString() : val, 2));
 
-  // Print counts
   console.log('\n✓ Backup saved:', file);
   console.log('\nRecord counts:');
   for (const [key, val] of Object.entries(data)) {

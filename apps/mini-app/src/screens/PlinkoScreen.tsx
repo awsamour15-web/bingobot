@@ -118,7 +118,7 @@ export default function PlinkoScreen() {
   const [bet, setBet]   = useState(5);
   const [rows, setRows] = useState<Rows>(16);
   const [risk, setRisk] = useState<Risk>('hard');
-  const [walletType, setWalletType] = useState<'play'|'main'>('play');
+  const [activeWallet, setActiveWallet] = useState<'play'|'main'>('play');
   const [dropping, setDropping] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [recent, setRecent]   = useState<{m:number}[]>([]);
@@ -163,7 +163,7 @@ export default function PlinkoScreen() {
     autoTmr.current = setInterval(() => { if (!droppingRef.current) handleDrop(); }, 600);
     return () => { if (autoTmr.current) clearInterval(autoTmr.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, bet, rows, risk, walletType]);
+  }, [autoPlay, bet, rows, risk]);
 
   function geom(w: number, h: number, r: number) {
     const topPad = 38, botPad = 48;
@@ -415,14 +415,18 @@ export default function PlinkoScreen() {
   }, [boardW, boardH, rows, risk]);
 
   async function handleDrop() {
-    const activeBal = walletType === 'play' ? (playBal ?? 0) : (mainBal ?? 0);
+    const play = playBal ?? 0;
+    const main = mainBal ?? 0;
+    const activeBal = play >= bet ? play : main;
     if (activeBal < bet) { setError('Insufficient balance'); return; }
     setError(null); setDropping(true);
     try {
       const apiRisk = risk==='easy' ? 'low' : risk==='medium' ? 'medium' : 'high';
-      const result = await dropPlinko(bet, toApiRows(rows), apiRisk, walletType);
+      const result = await dropPlinko(bet, toApiRows(rows), apiRisk);
       setServerBal(result.totalBalance);
-      if (walletType === 'play') setPlayBal(p => (p??0) - bet + result.payout);
+      const used = result.walletUsed ?? (play >= bet ? 'play' : 'main');
+      setActiveWallet(used);
+      if (used === 'play') setPlayBal(p => (p??0) - bet + result.payout);
       else setMainBal(p => (p??0) - bet + result.payout);
 
       const bc = risk==='hard'
@@ -451,7 +455,7 @@ export default function PlinkoScreen() {
     }
   }
 
-  const activeBal = walletType === 'play' ? (playBal??0) : (mainBal??0);
+  const activeBal = (playBal??0) >= bet ? (playBal??0) : (mainBal??0);
   const totalBal  = serverBal ?? ((mainBal??0)+(playBal??0));
   const maxMul    = Math.max(...getMults(rows, risk));
   const canDrop   = !dropping && activeBal >= bet;
@@ -506,24 +510,27 @@ export default function PlinkoScreen() {
         </div>
       )}
 
-      {/* Wallet selector */}
+      {/* Wallet display (auto-selected) */}
       <div style={{flexShrink:0,background:'rgba(8,5,16,0.97)',borderTop:'1px solid rgba(139,92,246,0.14)',padding:'6px 12px 5px'}}>
         <div style={{display:'flex',gap:6}}>
           {(['play','main'] as const).map(w => {
             const bal = w === 'play' ? (playBal??0) : (mainBal??0);
-            const active = walletType === w;
+            const active = activeWallet === w;
             const col = w === 'play' ? '#a78bfa' : '#fbbf24';
             const label = w === 'play' ? 'Play Wallet' : 'Main Wallet';
+            const isAutoSelected = w === 'play' ? (playBal??0) >= bet : (playBal??0) < bet;
             return (
-              <button key={w} onClick={()=>setWalletType(w)} style={{
-                flex:1, padding:'6px 8px', borderRadius:9, cursor:'pointer', textAlign:'left',
+              <div key={w} style={{
+                flex:1, padding:'6px 8px', borderRadius:9, textAlign:'left',
                 background: active ? `${col}18` : 'rgba(255,255,255,0.03)',
                 border: active ? `1.5px solid ${col}55` : '1px solid rgba(255,255,255,0.06)',
-                transition:'all .15s',
               }}>
-                <div style={{fontSize:7.5,color: active ? col : '#4b5563',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:1}}>{label}</div>
+                <div style={{fontSize:7.5,color: active ? col : '#4b5563',fontWeight:800,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:1,display:'flex',alignItems:'center',gap:4}}>
+                  {label}
+                  {isAutoSelected && <span style={{fontSize:6,background:`${col}22`,borderRadius:4,padding:'1px 4px',color:col}}>AUTO</span>}
+                </div>
                 <div style={{fontSize:13,fontWeight:900,color: active ? col : '#6b7280',fontFamily:'monospace'}}>{bal.toFixed(2)} <span style={{fontSize:8,fontWeight:600,color:'#6b7280'}}>ETB</span></div>
-              </button>
+              </div>
             );
           })}
         </div>

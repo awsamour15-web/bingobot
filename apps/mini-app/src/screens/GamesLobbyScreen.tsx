@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Gift, TicketPercent, Trophy } from 'lucide-react';
 import { initAuth } from '../lib/auth';
@@ -346,38 +346,58 @@ export default function GamesLobbyScreen() {
   const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
   const [slotsAllowed, setSlotsAllowed] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
+  const refreshBalance = useCallback(async () => {
+    setBalanceLoading(true);
+    try {
+      const p = await getProfile();
+      setMainBalance(p.mainWallet?.balance ?? 0);
+      setPlayBalance(p.playWallet?.balance ?? 0);
+    } catch { /* silent */ }
+    finally { setBalanceLoading(false); }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         await initAuth();
-        // Load profile first for fast balance display, then access checks in background
-        const [profile, coupons] = await Promise.all([
-          getProfile(),
-          getAvailableCoupons().catch(() => [] as AvailableCoupon[]),
-        ]);
-        if (!cancelled) {
-          setIsSuspended(profile.is_suspended);
-          setMainBalance(profile.mainWallet.balance);
-          setPlayBalance(profile.playWallet.balance);
-          setAvailableCoupons(coupons);
+      } catch { /* ignore auth errors — apiRequest handles redirect */ }
+
+      // Retry profile fetch up to 3 times so transient failures don't leave balance blank
+      let profile = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          profile = await getProfile();
+          break;
+        } catch {
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         }
-        // Access checks run after profile is shown — don't block UI
-        const [kenoAccess, plinkoAccess, royalDropAccess, slotsAccess] = await Promise.all([
-          checkKenoAccess().catch(() => ({ allowed: false })),
-          checkPlinkoAccess().catch(() => ({ allowed: false })),
-          checkRoyalDropAccess().catch(() => ({ allowed: false })),
-          checkSlotsAccess().catch(() => ({ allowed: false })),
-        ]);
-        if (!cancelled) {
-          setKenoAllowed(kenoAccess.allowed);
-          setPlinkoAllowed(plinkoAccess.allowed);
-          setRoyalDropAllowed(royalDropAccess.allowed);
-          setSlotsAllowed(slotsAccess.allowed);
-          setAccessChecked(true);
-        }
-      } catch { /* ignore */ }
+      }
+
+      if (!cancelled && profile) {
+        setIsSuspended(profile.is_suspended);
+        setMainBalance(profile.mainWallet?.balance ?? 0);
+        setPlayBalance(profile.playWallet?.balance ?? 0);
+      }
+
+      // Coupons and access checks are best-effort
+      getAvailableCoupons().then(c => { if (!cancelled) setAvailableCoupons(c); }).catch(() => {});
+
+      const [kenoAccess, plinkoAccess, royalDropAccess, slotsAccess] = await Promise.all([
+        checkKenoAccess().catch(() => ({ allowed: false })),
+        checkPlinkoAccess().catch(() => ({ allowed: false })),
+        checkRoyalDropAccess().catch(() => ({ allowed: false })),
+        checkSlotsAccess().catch(() => ({ allowed: false })),
+      ]);
+      if (!cancelled) {
+        setKenoAllowed(kenoAccess.allowed);
+        setPlinkoAllowed(plinkoAccess.allowed);
+        setRoyalDropAllowed(royalDropAccess.allowed);
+        setSlotsAllowed(slotsAccess.allowed);
+        setAccessChecked(true);
+      }
     }
     load();
     return () => { cancelled = true; };
@@ -635,7 +655,7 @@ export default function GamesLobbyScreen() {
 
       <div style={{ height: 76, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(134,165,226,0.16)', boxSizing: 'border-box', background: 'rgba(7,11,20,0.68)' }}>
         <div><div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#6ed4bd', fontWeight: 900, letterSpacing: '0.16em' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#63d4ba', animation: 'lobbyLivePulse 1.8s ease-out infinite' }} /> FIDEL PLAY</div><div style={{ marginTop: 3, fontSize: 17, fontWeight: 900, color: '#f4f7fb' }}>Choose your game</div></div>
-        <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: 'rgba(16,24,39,0.88)', border: '1px solid rgba(134,165,226,0.2)', borderRadius: 13, color: '#fff', cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}><div style={{ textAlign: 'left', lineHeight: 1.3, fontSize: 8, fontWeight: 900, color: '#95a1b4' }}><div>MAIN <span style={{ color: '#f3cf64', marginLeft: 4 }}>{mainBalance === null ? '—' : `${mainBalance.toFixed(2)} ETB`}</span></div><div>PLAY <span style={{ color: '#61d9ba', marginLeft: 5 }}>{playBalance === null ? '—' : `${playBalance.toFixed(2)} ETB`}</span></div></div><Eye size={16} color="#8e9db4" /></button>
+        <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: 'rgba(16,24,39,0.88)', border: '1px solid rgba(134,165,226,0.2)', borderRadius: 13, color: '#fff', cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}><div style={{ textAlign: 'left', lineHeight: 1.3, fontSize: 8, fontWeight: 900, color: '#95a1b4' }}><div>MAIN <span style={{ color: '#f3cf64', marginLeft: 4 }}>{balanceLoading ? '...' : mainBalance === null ? '—' : `${mainBalance.toFixed(2)} ETB`}</span></div><div>PLAY <span style={{ color: '#61d9ba', marginLeft: 5 }}>{balanceLoading ? '...' : playBalance === null ? '—' : `${playBalance.toFixed(2)} ETB`}</span></div></div><Eye size={16} color="#8e9db4" /></button>
       </div>
 
       <button onClick={() => navigate('/wallet')} style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 'calc(100% - 40px)', minHeight: 82, margin: '18px 20px 0', padding: '14px 15px', overflow: 'hidden', border: '1px solid rgba(97,213,186,0.28)', borderRadius: 18, background: 'linear-gradient(110deg,#12332f 0%,#10223a 62%,#273d69 150%)', color: '#f5f8ff', textAlign: 'left', cursor: 'pointer', boxShadow: '0 14px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
