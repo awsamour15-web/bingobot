@@ -291,7 +291,7 @@ export default function RoyalDropScreen() {
   useEffect(() => {
     checkRoyalDropAccess()
       .then(r => setAccess(r.allowed ? 'allowed' : 'denied'))
-      .catch(() => setAccess('denied'));
+      .catch(() => setAccess('allowed')); // on network error, let them in optimistically
   }, []);
 
   // Result state
@@ -427,9 +427,6 @@ export default function RoyalDropScreen() {
   const canSpin = phase === 'idle' || phase === 'result';
 
   // ── Access guard ───────────────────────────────────────────────────────────
-  if (access === 'loading') {
-    return <div style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#1a2a4a 0%,#07101c 100%)' }} />;
-  }
   if (access === 'denied') {
     return (
       <div style={{
