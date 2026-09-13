@@ -49,6 +49,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     player_count: r._count.round_entries,
     max_players: r.max_players,
     active_cartela_count: cappedCartelaCount,
+    derash: Number(r.derash),
     start_time: r.start_time.toISOString(),
     winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
   }));
