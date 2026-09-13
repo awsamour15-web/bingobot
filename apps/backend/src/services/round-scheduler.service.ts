@@ -6,6 +6,7 @@ import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { GameStatus, WinPattern } from '@fidel/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
+import { getConfigInt, getConfigFloat, setConfig } from '../lib/config-cache.js';
 
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 40_000;
@@ -31,12 +32,8 @@ export const RoundScheduler = {
 
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
-    // Reduced interval for smoother game flow
-    void prisma.config.upsert({
-      where: { key: 'call_interval_ms' },
-      update: { value: '3000' },
-      create: { key: 'call_interval_ms', value: '3000' },
-    });
+    // Reduced interval for smoother game flow — use setConfig so cache is invalidated
+    void setConfig('call_interval_ms', '3000');
     void RoundScheduler.recoverActiveRounds();
     void RoundScheduler.tick();
     RoundScheduler._timer = setInterval(() => {
@@ -83,8 +80,7 @@ export const RoundScheduler = {
   // FIX Bug 2.1: check ALL active rounds for missing NCE timer, not just stale ones.
   async recoverStaleActiveRounds(): Promise<void> {
     try {
-      const callIntervalRow = await prisma.config.findUnique({ where: { key: 'call_interval_ms' } });
-      const callIntervalMs = callIntervalRow ? parseInt(callIntervalRow.value, 10) : 4_000;
+      const callIntervalMs = await getConfigInt('call_interval_ms', 4_000);
       const staleThreshold = new Date(Date.now() - (75 * callIntervalMs + 5 * 60_000));
 
       const activeRounds = await prisma.gameRound.findMany({
@@ -239,8 +235,7 @@ export const RoundScheduler = {
         }
       }
 
-      const maxPlayersRow = await prisma.config.findUnique({ where: { key: 'auto_round_max_players' } });
-      const maxPlayers = maxPlayersRow ? parseInt(maxPlayersRow.value, 10) : DEFAULT_MAX_PLAYERS;
+      const maxPlayers = await getConfigInt('auto_round_max_players', DEFAULT_MAX_PLAYERS);
 
       const pendingStakes = new Set<number>([...byStake.keys()]);
       // Only treat a stake as blocked when a live NCE timer is active for an active round.
@@ -252,8 +247,7 @@ export const RoundScheduler = {
       );
 
       // Create missing rounds sequentially to avoid parallel inserts racing into the same stake slot
-      const commissionRow = await prisma.config.findUnique({ where: { key: 'platform_commission_pct' } });
-      const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
+      const commissionPct = await getConfigFloat('platform_commission_pct', 20);
 
       // Always use any_line — any row, column, or diagonal wins
       const winning_pattern = WinPattern.any_line;

@@ -8,6 +8,7 @@ import { Router, type Request, type Response, type Router as RouterType } from '
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
+import { getConfigOrDefault } from '../lib/config-cache.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { kenoEngine, getKenoMultiplier } from '../services/keno-engine.service.js';
 
@@ -26,10 +27,7 @@ const MAX_PICKS = 10;
 // If key is missing or empty → game is closed to everyone.
 
 async function isKenoAllowed(playerId: string): Promise<boolean> {
-  const cfg = await prisma.config.findUnique({ where: { key: 'keno_allowed_ids' } });
-  if (!cfg?.value?.trim()) return false; // not configured = closed to all
-
-  const raw = cfg.value.trim();
+  const raw = await getConfigOrDefault('keno_allowed_ids', '');
 
   // Special value "all" means open to everyone
   if (raw === 'all') return true;

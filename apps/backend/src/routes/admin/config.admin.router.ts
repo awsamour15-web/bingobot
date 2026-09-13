@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../lib/prisma.js';
 import { requireSuperAdmin } from '../../middleware/admin-auth.middleware.js';
 import { AdminRole } from '@fidel/shared';
+import { invalidateConfigCache } from '../../lib/config-cache.js';
 
 const router: RouterType = Router();
 
@@ -129,6 +130,7 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     update: { value, updated_at: new Date() },
     create: { key, value },
   });
+  invalidateConfigCache();
 
   res.json(config);
 });

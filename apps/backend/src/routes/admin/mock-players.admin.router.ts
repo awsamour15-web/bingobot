@@ -6,6 +6,7 @@ import { WalletType, TxType } from '@fidel/shared';
 import prisma from '../../lib/prisma.js';
 import { WalletService } from '../../services/wallet.service.js';
 import { GameRoundService } from '../../services/game-round.service.js';
+import { invalidateConfigCache } from '../../lib/config-cache.js';
 
 const router: RouterType = Router();
 
@@ -299,6 +300,7 @@ router.patch('/bot-config', async (req: Request, res: Response): Promise<void> =
   for (const { key, value } of updates) {
     await prisma.config.upsert({ where: { key }, update: { value }, create: { key, value } });
   }
+  invalidateConfigCache();
   res.json({ success: true });
 });
 

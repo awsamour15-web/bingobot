@@ -3,6 +3,7 @@
 import prisma from '../lib/prisma.js';
 import { bot } from '../bot/index.js';
 import { PromotionService } from './promotion.service.js';
+import { getConfigOrDefault } from '../lib/config-cache.js';
 
 type TargetType = 'channel' | 'bot_broadcast';
 
@@ -15,19 +16,18 @@ export interface SendTarget {
 
 /** Build the promotion footer from config + env */
 async function buildPromoFooter(): Promise<string> {
-  const [supportRow, channelRow] = await Promise.all([
-    prisma.config.findUnique({ where: { key: 'support_contact' } }),
-    prisma.config.findUnique({ where: { key: 'channel_link' } }),
+  const [supportContact, channelLink] = await Promise.all([
+    getConfigOrDefault('support_contact', ''),
+    getConfigOrDefault('channel_link', ''),
   ]);
 
   const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
-  const supportContact = supportRow?.value ?? `@${botUsername}_Support`;
-  const channelLink = channelRow?.value ?? '';
+  const support = supportContact || `@${botUsername}_Support`;
 
   return (
     `\n\nለመጫወት🎮 @${botUsername}` +
     (channelLink ? `\n📢 Official Channel: ${channelLink}` : '') +
-    `\n☎️ Contact to Support: ${supportContact}` +
+    `\n☎️ Contact to Support: ${support}` +
     `\n🚀 አሁኑኑ ይቀላቀሉ እና የመጀመሪያ BONUS ስጦታዎን ያግኙ!`
   );
 }

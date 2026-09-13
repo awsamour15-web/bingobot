@@ -17,6 +17,7 @@
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
+import { getConfigBool, getConfigFloat } from '../lib/config-cache.js';
 
 export type CashbackGame = 'bingo' | 'crash' | 'slots' | 'keno' | 'plinko' | 'royal_drop';
 
@@ -38,18 +39,16 @@ export const CashbackService = {
   ): Promise<void> {
     if (netLoss <= 0) return; // no loss, no cashback
 
-    const [enabledCfg, pctCfg] = await Promise.all([
-      prisma.config.findUnique({ where: { key: `cashback_${game}_enabled` } }),
-      prisma.config.findUnique({ where: { key: `cashback_${game}_pct` } }),
+    const [enabled, pct] = await Promise.all([
+      getConfigBool(`cashback_${game}_enabled`, false),
+      getConfigFloat(`cashback_${game}_pct`, 0),
     ]);
 
-    const enabled = enabledCfg?.value === 'true';
     if (!enabled) return;
+    const cappedPct = Math.min(50, Math.max(0, pct));
+    if (cappedPct <= 0) return;
 
-    const pct = Math.min(50, Math.max(0, parseFloat(pctCfg?.value ?? '0')));
-    if (pct <= 0) return;
-
-    const cashback = parseFloat(((netLoss * pct) / 100).toFixed(2));
+    const cashback = parseFloat(((netLoss * cappedPct) / 100).toFixed(2));
     if (cashback <= 0) return;
 
     await WalletService.credit(
@@ -58,7 +57,7 @@ export const CashbackService = {
       cashback,
       TxType.cashback,
       referenceId,
-      `${game} cashback ${pct}% of ${netLoss.toFixed(2)} loss`,
+      `${game} cashback ${cappedPct}% of ${netLoss.toFixed(2)} loss`,
     );
   },
 };

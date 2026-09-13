@@ -8,6 +8,7 @@ import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
+import { getConfigOrDefault, getConfigInt } from '../lib/config-cache.js';
 import { royalDrop } from '../services/royal-drop-engine.service.js';
 import { CashbackService } from '../services/cashback.service.js';
 
@@ -23,9 +24,7 @@ const MAX_BET = 15_000;
 // If key is missing or empty → game is closed to everyone.
 
 async function isRoyalDropAllowed(playerId: string): Promise<boolean> {
-  const cfg = await prisma.config.findUnique({ where: { key: 'royal_drop_allowed_usernames' } });
-  if (!cfg?.value?.trim()) return false;
-  const raw = cfg.value.trim();
+  const raw = await getConfigOrDefault('royal_drop_allowed_usernames', '');
   if (raw === 'all') return true;
   const allowed = raw.split(',').map((s) => s.trim()).filter(Boolean);
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });
@@ -83,8 +82,7 @@ router.post('/spin', royalDropAccessMiddleware, async (req: Request, res: Respon
   }
 
   // Load house edge from config (default 15%)
-  const edgeConfig = await prisma.config.findUnique({ where: { key: 'house_edge_royal_drop' } });
-  const houseEdge = Math.min(50, Math.max(5, parseInt(edgeConfig?.value ?? '15', 10)));
+  const houseEdge = Math.min(50, Math.max(5, await getConfigInt('house_edge_royal_drop', 15)));
 
   // Run the game engine
   const result = royalDrop(betAmount, houseEdge);

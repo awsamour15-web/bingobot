@@ -3,6 +3,7 @@
 
 import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
+import { getConfigInt } from '../lib/config-cache.js';
 import { shuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';
 import { parseWinPatterns } from './win-detection.service.js';
@@ -488,11 +489,7 @@ export class NumberCallingEngine {
 
   /** Read call_interval_ms from Config, falling back to 1 000 ms. Enforces a 1 000 ms floor. */
   private async readCallInterval(): Promise<number> {
-    const row = await prisma.config.findUnique({
-      where: { key: 'call_interval_ms' },
-    });
-    const parsed = row ? parseInt(row.value, 10) : 1_000;
-    const value = isNaN(parsed) ? 1_000 : parsed;
+    const value = await getConfigInt('call_interval_ms', 1_000);
     return Math.max(value, 1_000); // never faster than 1 number/second
   }
 }

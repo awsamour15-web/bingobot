@@ -12,6 +12,7 @@ import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { CashbackService } from './cashback.service.js';
+import { getConfigInt } from '../lib/config-cache.js';
 
 // ─── Payout table ─────────────────────────────────────────────────────────────
 // PAYOUT_TABLE[picked][matched] = multiplier (0 = loss)
@@ -140,8 +141,7 @@ export class KenoEngine {
     // At 35% edge (target 65%): suppressionRate = 35% of wins suppressed to 0
     // When not suppressed, the full paytable multiplier is paid out.
     const KENO_NATURAL_RTP = 100;
-    const edgeCfg = await prisma.config.findUnique({ where: { key: 'house_edge_keno' } });
-    const houseEdgePct = Math.min(50, Math.max(5, parseInt(edgeCfg?.value ?? '15', 10)));
+    const houseEdgePct = Math.min(50, Math.max(5, await getConfigInt('house_edge_keno', 15)));
     const targetRTP = 100 - houseEdgePct;
     const suppressionRate = Math.max(0, 1 - targetRTP / KENO_NATURAL_RTP);
 

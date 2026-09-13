@@ -4,6 +4,7 @@
 import { GameStatus, TxType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { CashbackService } from './cashback.service.js';
+import { getConfigInt } from '../lib/config-cache.js';
 
 type WinPattern = string;
 import { nce } from './nce.service.js';
@@ -122,10 +123,7 @@ export function checkWin(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getClaimWindowMs(): Promise<number> {
-  const row = await prisma.config.findUnique({ where: { key: 'claim_window_ms' } });
-  if (!row) return 5000;
-  const parsed = parseInt(row.value, 10);
-  return isNaN(parsed) || parsed <= 0 ? 5000 : parsed;
+  return getConfigInt('claim_window_ms', 5000);
 }
 
 // ─── distributeWinnings ───────────────────────────────────────────────────────

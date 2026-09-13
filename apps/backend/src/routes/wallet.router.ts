@@ -8,6 +8,7 @@ import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { getPaymentGateway } from '../services/payment.service.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
+import { getConfigOrDefault } from '../lib/config-cache.js';
 import { processDepositClaim, validateDepositReceipt } from '../bot/index.js';
 import type { TransactionListItem, PaginatedResponse } from '@fidel/shared';
 
@@ -155,13 +156,13 @@ router.get('/deposit/accounts', async (_req: Request, res: Response): Promise<vo
     return;
   }
 
-  const [phoneConfig, nameConfig] = await Promise.all([
-    prisma.config.findUnique({ where: { key: 'deposit_telebirr_number' } }),
-    prisma.config.findUnique({ where: { key: 'deposit_receiver_name' } }),
+  const [telebirrNumber, receiverName] = await Promise.all([
+    getConfigOrDefault('deposit_telebirr_number', ''),
+    getConfigOrDefault('deposit_receiver_name', 'Telebirr'),
   ]);
 
   res.json({
-    accounts: phoneConfig ? [{ phone: phoneConfig.value, name: nameConfig?.value ?? 'Telebirr' }] : [],
+    accounts: telebirrNumber ? [{ phone: telebirrNumber, name: receiverName }] : [],
   });
 });
 

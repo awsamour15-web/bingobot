@@ -5,6 +5,7 @@ import { GameStatus, TxType, WalletType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { nce } from './nce.service.js';
+import { getConfigInt, getConfigFloat } from '../lib/config-cache.js';
 
 // ─── Typed errors ─────────────────────────────────────────────────────────────
 
@@ -93,10 +94,7 @@ export const GameRoundService = {
     maxPlayers: number,
     winningPattern = 'any_line',
   ): Promise<string> {
-    const commissionRow = await prisma.config.findUnique({
-      where: { key: 'platform_commission_pct' },
-    });
-    const commissionPct = commissionRow ? parseFloat(commissionRow.value) : 20;
+    const commissionPct = await getConfigFloat('platform_commission_pct', 20);
 
     const round = await prisma.gameRound.create({
       data: {
@@ -447,17 +445,16 @@ export const GameRoundService = {
    * Requirements: 3.5, 3.6
    */
   async autoStartCheck(roundId: string): Promise<void> {
-    const [round, minPlayersRow] = await Promise.all([
+    const [round, minPlayers] = await Promise.all([
       prisma.gameRound.findUnique({
         where: { id: roundId },
         include: { _count: { select: { round_entries: true } } },
       }),
-      prisma.config.findUnique({ where: { key: 'min_players_to_start' } }),
+      getConfigInt('min_players_to_start', 1),
     ]);
 
     if (!round || round.status !== GameStatus.pending) return;
 
-    const minPlayers = minPlayersRow ? parseInt(minPlayersRow.value, 10) : 1;
     const playerCount = round._count.round_entries;
 
     if (playerCount >= minPlayers && round.start_time <= new Date()) {

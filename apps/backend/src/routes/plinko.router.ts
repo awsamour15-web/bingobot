@@ -8,6 +8,7 @@ import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
+import { getConfigOrDefault, getConfigInt } from '../lib/config-cache.js';
 import { CashbackService } from '../services/cashback.service.js';
 
 const router: RouterType = Router();
@@ -18,9 +19,7 @@ router.use(jwtAuthMiddleware);
 // e.g. "kanu_1921" or "kanu_1921,other_user" or "all"
 
 async function isPlinkoAllowed(playerId: string): Promise<boolean> {
-  const cfg = await prisma.config.findUnique({ where: { key: 'plinko_allowed_usernames' } });
-  if (!cfg?.value?.trim()) return false;
-  const raw = cfg.value.trim();
+  const raw = await getConfigOrDefault('plinko_allowed_usernames', '');
   if (raw === 'all') return true;
   const allowed = raw.split(',').map((s) => s.trim()).filter(Boolean);
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });
@@ -140,7 +139,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const playerId = req.player?.playerId;
   if (!playerId) { res.status(401).json({ error: 'UNAUTHORIZED' }); return; }
 
-  const { betAmount, rows, risk, walletType } = req.body as { betAmount?: unknown; rows?: unknown; risk?: unknown; walletType?: unknown };
+  const { betAmount, rows, risk } = req.body as { betAmount?: unknown; rows?: unknown; risk?: unknown; walletType?: unknown };
 
   if (typeof betAmount !== 'number' || betAmount < MIN_BET || betAmount > MAX_BET) {
     res.status(400).json({ error: `betAmount must be between ${MIN_BET} and ${MAX_BET}` });
@@ -158,11 +157,6 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
     return;
   }
 
-  const validWalletTypes: ('main' | 'play')[] = ['main', 'play'];
-  const walletToUse: WalletType = validWalletTypes.includes(walletType as 'main' | 'play') 
-    ? (walletType as 'main' | 'play') 
-    : WalletType.play;
-
   // Check suspension
   const player = await prisma.player.findUnique({ where: { id: playerId }, select: { is_suspended: true } });
   if (player?.is_suspended) {
@@ -170,9 +164,15 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
     return;
   }
 
+  // Auto-select wallet: use play wallet if it has enough balance, otherwise use main wallet
+  const wallets = await prisma.wallet.findMany({ where: { player_id: playerId } });
+  const playWallet = wallets.find((w) => w.type === 'play');
+  const playBalance = playWallet ? parseFloat(playWallet.balance.toString()) : 0;
+  const walletToUse: WalletType = playBalance >= betAmount ? WalletType.play : WalletType.main;
+
   // Debit wallet before computing result
   try {
-    await WalletService.debitDual(playerId, betAmount, TxType.game_entry, undefined, 'Plinko drop');
+    await WalletService.debit(playerId, walletToUse, betAmount, TxType.game_entry, undefined, 'Plinko drop');
   } catch (err) {
     if (err instanceof InsufficientFundsError) {
       res.status(402).json({ error: 'INSUFFICIENT_FUNDS', message: (err as Error).message });
@@ -187,8 +187,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const multiplierTable = MULTIPLIERS[numRows]![riskLevel]!;
 
   // Load house edge from DB config (default 15%)
-  const edgeCfg = await prisma.config.findUnique({ where: { key: 'house_edge_plinko' } });
-  const houseEdgePct = Math.min(50, Math.max(0, parseInt(edgeCfg?.value ?? '15', 10)));
+  const houseEdgePct = Math.min(50, Math.max(0, await getConfigInt('house_edge_plinko', 15)));
 
   // Pick slot biased by house edge, then build a matching path
   const slot = pickSlotWithHouseEdge(numRows, multiplierTable, houseEdgePct);
@@ -224,11 +223,11 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
   const { ReferralService } = await import('../services/referral.service.js');
   void ReferralService.maybeCreditInviteBonus(playerId);
 
-  const wallets = await prisma.wallet.findMany({
+  const walletsFinal = await prisma.wallet.findMany({
     where: { player_id: playerId },
     select: { balance: true },
   });
-  const totalBalance = wallets.reduce((sum, w) => sum + Number(w.balance), 0);
+  const totalBalance = walletsFinal.reduce((sum, w) => sum + Number(w.balance), 0);
 
   res.json({
     id: bet.id,
@@ -238,6 +237,7 @@ router.post('/drop', plinkoAccessMiddleware, async (req: Request, res: Response)
     payout,
     betAmount,
     totalBalance,
+    walletUsed: walletToUse,
   });
 });
 

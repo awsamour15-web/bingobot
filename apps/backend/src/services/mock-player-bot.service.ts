@@ -17,6 +17,7 @@ import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { shuffle } from '../lib/shuffle.js';
+import { getConfigBool, getConfigInt, getConfigFloat, getConfigOrDefault } from '../lib/config-cache.js';
 import { checkWin } from './win-detection.service.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -29,37 +30,31 @@ interface MockPlayerRow {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function isEnabled(): Promise<boolean> {
-  const row = await prisma.config.findUnique({ where: { key: 'mock_bot_enabled' } });
-  return row?.value === 'true';
+  return getConfigBool('mock_bot_enabled', false);
 }
 
 async function isWinEnabled(): Promise<boolean> {
-  const row = await prisma.config.findUnique({ where: { key: 'mock_bot_win_enabled' } });
-  return row?.value === 'true';
+  return getConfigBool('mock_bot_win_enabled', false);
 }
 
 async function getBotCount(): Promise<number> {
-  const row = await prisma.config.findUnique({ where: { key: 'mock_bot_count' } });
-  const n = row ? parseInt(row.value, 10) : 3;
+  const n = await getConfigInt('mock_bot_count', 3);
   return Number.isFinite(n) && n >= 1 ? n : 3;
 }
 
 async function getBotBalance(): Promise<number> {
-  const row = await prisma.config.findUnique({ where: { key: 'mock_bot_balance' } });
-  const n = row ? parseFloat(row.value) : 0;
+  const n = await getConfigFloat('mock_bot_balance', 0);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
 async function getBotStakes(): Promise<Set<number>> {
-  const row = await prisma.config.findUnique({ where: { key: 'mock_bot_stakes' } });
-  const raw = row?.value ?? '10,20,50';
+  const raw = await getConfigOrDefault('mock_bot_stakes', '10,20,50');
   const stakes = raw.split(',').map((s) => parseInt(s.trim(), 10)).filter(Boolean);
   return new Set(stakes.length ? stakes : [10, 20, 50]);
 }
 
 async function getCartelaPoolSize(): Promise<number> {
-  const row = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
-  const n = row ? parseInt(row.value, 10) : 800;
+  const n = await getConfigInt('active_cartela_count', 800);
   return Number.isFinite(n) && n >= 1 ? Math.min(n, 800) : 800;
 }
 

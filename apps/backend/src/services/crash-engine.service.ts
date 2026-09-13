@@ -6,6 +6,7 @@ import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { CashbackService } from './cashback.service.js';
+import { getConfigInt, getConfigFloat } from '../lib/config-cache.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -73,11 +74,8 @@ export class CrashEngine {
     const roundId = round.id;
 
     // 2. Generate crash point (provably fair) using DB-configured house edge
-    const edgeConfig = await prisma.config.findUnique({ where: { key: 'house_edge_crash' } });
-    const houseEdge = Math.min(0.50, Math.max(0.05, parseInt(edgeConfig?.value ?? '15', 10) / 100));
-
-    const maxMultConfig = await prisma.config.findUnique({ where: { key: 'crash_max_multiplier' } });
-    const maxMultiplier = Math.min(1000, Math.max(2, parseFloat(maxMultConfig?.value ?? String(DEFAULT_MAX_MULTIPLIER))));
+    const houseEdge = Math.min(0.50, Math.max(0.05, await getConfigInt('house_edge_crash', 15) / 100));
+    const maxMultiplier = Math.min(1000, Math.max(2, await getConfigFloat('crash_max_multiplier', DEFAULT_MAX_MULTIPLIER)));
 
     const crashPoint = this.generateCrashPoint(houseEdge, maxMultiplier);
 

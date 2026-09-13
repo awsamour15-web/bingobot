@@ -2,13 +2,13 @@
 // Manages temporary locks on cartelas during selection process
 
 import prisma from '../lib/prisma.js';
+import { getConfigInt } from '../lib/config-cache.js';
 
 const RESERVATION_DURATION_MS = 45000; // 45 seconds — outlasts the 30s lead time
 const DEFAULT_MAX_SELECT = 2;
 
 async function getMaxSelect(): Promise<number> {
-  const row = await prisma.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
-  const val = row ? parseInt(row.value, 10) : DEFAULT_MAX_SELECT;
+  const val = await getConfigInt('max_cartelas_per_player', DEFAULT_MAX_SELECT);
   return Number.isFinite(val) && val >= 1 ? val : DEFAULT_MAX_SELECT;
 }
 

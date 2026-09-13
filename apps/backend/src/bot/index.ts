@@ -8,6 +8,8 @@ import prisma from '../lib/prisma.js';
 import { AgentService } from '../services/agent.service.js';
 import { WalletService } from '../services/wallet.service.js';
 import { ReferralService } from '../services/referral.service.js';
+import { getConfigOrDefault } from '../lib/config-cache.js';
+import { verifyTransaction } from '../services/verifyEt.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -199,12 +201,12 @@ export async function buildDepositInstructionText(amount: number): Promise<{ tex
     receiverName = account.name;
   } else {
     // Legacy fallback — single config keys
-    const [phoneConfig, nameConfig] = await Promise.all([
-      prisma.config.findUnique({ where: { key: 'deposit_telebirr_number' } }),
-      prisma.config.findUnique({ where: { key: 'deposit_receiver_name' } }),
+    const [telebirrNum, receiverNm] = await Promise.all([
+      getConfigOrDefault('deposit_telebirr_number', 'N/A (contact support)'),
+      getConfigOrDefault('deposit_receiver_name', ''),
     ]);
-    telebirrNumber = phoneConfig?.value ?? 'N/A (contact support)';
-    receiverName = nameConfig?.value ?? null;
+    telebirrNumber = telebirrNum;
+    receiverName = receiverNm || null;
   }
 
   const text =
@@ -617,6 +619,28 @@ export async function processDepositClaim(
 
   const amount = Number(deposit.amount);
 
+  // ── verify.et: confirm the transaction exists on the bank side ───────────────
+  // Skipped gracefully if VERIFY_ET_API_KEY is not set or verify.et is unreachable.
+  const activeAccounts = await prisma.depositAccount.findMany({ where: { is_active: true } });
+  const settlementPhone = activeAccounts.length > 0 ? activeAccounts[0]?.phone : undefined;
+
+  const verifyResult = await verifyTransaction(
+    txNumber,
+    'telebirr',            // default to Telebirr; smart-router handles others
+    settlementPhone,       // check money came to our account
+  );
+
+  if (!verifyResult.skipped && !verifyResult.verified) {
+    void logDepositAttempt({
+      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: `VERIFY_ET_REJECTED: ${verifyResult.error ?? 'unconfirmed'}`,
+      amountExpected: amount, amountParsed: auditCtx?.amountParsed,
+      source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'NOT_FOUND' };
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // ── Deposit bonus check (runs outside the transaction to avoid extra latency) ──
   const bonusConfigs = await prisma.config.findMany({
     where: { key: { in: ['deposit_bonus_pct', 'deposit_bonus_start', 'deposit_bonus_end', 'deposit_bonus_wallet'] } },
@@ -713,8 +737,8 @@ export async function processDepositClaim(
  * Returns null if not configured — gate is disabled.
  */
 async function getRequiredChannel(): Promise<string | null> {
-  const config = await prisma.config.findUnique({ where: { key: 'required_channel' } });
-  return config?.value?.trim() || null;
+  const val = await getConfigOrDefault('required_channel', '');
+  return val.trim() || null;
 }
 
 /**
@@ -1212,12 +1236,12 @@ if (BOT_TOKEN) {
     const telegramId = BigInt(ctx.from.id);
 
     // Run both queries in parallel
-    const [player, config] = await Promise.all([
+    const [player, supportContact] = await Promise.all([
       prisma.player.findFirst({
         where: { telegram_id: telegramId, phone_verified: true },
         select: { id: true },
       }),
-      prisma.config.findUnique({ where: { key: 'support_contact' } }),
+      getConfigOrDefault('support_contact', ''),
     ]);
 
     if (!player) {
@@ -1227,8 +1251,8 @@ if (BOT_TOKEN) {
       return;
     }
 
-    if (config) {
-      await ctx.reply(formatSupportReply(config.value));
+    if (supportContact) {
+      await ctx.reply(formatSupportReply(supportContact));
     } else {
       await ctx.reply('Support contact is not configured. Please try again later.');
     }

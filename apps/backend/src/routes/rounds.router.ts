@@ -18,6 +18,7 @@ import { CartelaReservationService, CartelaAlreadyReservedError, MaxCartelaLimit
 import { InsufficientFundsError } from '../services/wallet.service.js';
 import { WalletType } from '@fidel/shared';
 import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
+import { getConfigInt } from '../lib/config-cache.js';
 
 const router: RouterType = Router();
 export const TOTAL_CARTELAS = 800;
@@ -28,19 +29,17 @@ router.use(jwtAuthMiddleware);
 // ─── GET /api/rounds ─────────────────────────────────────────────────────────
 
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
-  const [rounds, activeCartelaRow] = await Promise.all([
+  const [rounds, activeCartelaCount] = await Promise.all([
     prisma.gameRound.findMany({
       where: { status: { in: ['pending', 'active'] } },
-      include: {
-        _count: { select: { round_entries: true } },
-      },
+      include: { _count: { select: { round_entries: true } } },
       orderBy: { start_time: 'asc' },
     }),
-    prisma.config.findUnique({ where: { key: 'active_cartela_count' } }),
+    getConfigInt('active_cartela_count', TOTAL_CARTELAS),
   ]);
 
-  const activeCartelaCount = (activeCartelaRow && parseInt(activeCartelaRow.value, 10) >= 1)
-    ? Math.min(parseInt(activeCartelaRow.value, 10), TOTAL_CARTELAS)
+  const cappedCartelaCount = activeCartelaCount >= 1
+    ? Math.min(activeCartelaCount, TOTAL_CARTELAS)
     : TOTAL_CARTELAS;
 
   const items: RoundListItem[] = rounds.map((r) => ({
@@ -49,8 +48,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     status: r.status,
     player_count: r._count.round_entries,
     max_players: r.max_players,
-    active_cartela_count: activeCartelaCount,
-    derash: Number(r.derash),
+    active_cartela_count: cappedCartelaCount,
     start_time: r.start_time.toISOString(),
     winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
   }));
@@ -79,13 +77,12 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const maxCartelasRow = await prisma.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
-  const maxCartelasPerPlayer = maxCartelasRow ? parseInt(maxCartelasRow.value, 10) : 2;
+  const [maxCartelasPerPlayer, activeCartelaCountJoin] = await Promise.all([
+    getConfigInt('max_cartelas_per_player', 2),
+    getConfigInt('active_cartela_count', TOTAL_CARTELAS),
+  ]);
 
-  const activeCartelaRow = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
-  const activeCartelaCount = (activeCartelaRow && parseInt(activeCartelaRow.value, 10) >= 1)
-    ? parseInt(activeCartelaRow.value, 10)
-    : TOTAL_CARTELAS;
+  const activeCartelaCount = activeCartelaCountJoin >= 1 ? activeCartelaCountJoin : TOTAL_CARTELAS;
 
   const detail: RoundDetail = {
     id: round.id,
@@ -166,10 +163,7 @@ router.get('/:id/cartelas', async (req: Request, res: Response): Promise<void> =
 
   const { taken: takenNums, reserved: reservedNums } = await CartelaReservationService.getTakenAndReserved(id);
 
-  const activeRow = await prisma.config.findUnique({ where: { key: 'active_cartela_count' } });
-  const poolSize = (activeRow && parseInt(activeRow.value, 10) >= 1)
-    ? Math.min(parseInt(activeRow.value, 10), TOTAL_CARTELAS)
-    : TOTAL_CARTELAS;
+  const poolSize = Math.min(Math.max(1, await getConfigInt('active_cartela_count', TOTAL_CARTELAS)), TOTAL_CARTELAS);
 
   const ALL_CARTELAS = Array.from({ length: poolSize }, (_, i) => i + 1);
   const unavailable = new Set([...takenNums, ...reservedNums]);
