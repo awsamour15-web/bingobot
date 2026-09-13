@@ -23,11 +23,14 @@ jobs:
         env:
           # Must use the DIRECT (unpooled) connection — pg_dump doesn't work over pooled connections
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          PGSSLMODE: require
         run: |
           TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
           BACKUP_FILE="fidelbingo_backup_${TIMESTAMP}.sql"
+          # Strip sslmode param from URL since we pass it via PGSSLMODE env var
+          CLEAN_URL=$(echo "$DIRECT_URL" | sed 's/[?&]sslmode=[^&]*//' | sed 's/[?&]channel_binding=[^&]*//')
           echo "Creating backup: $BACKUP_FILE"
-          pg_dump -Fc -v -d "$DIRECT_URL" -f "$BACKUP_FILE"
+          pg_dump -Fc -v -d "$CLEAN_URL" -f "$BACKUP_FILE"
           echo "BACKUP_FILE=$BACKUP_FILE" >> $GITHUB_ENV
 
       - name: Upload backup as artifact
