@@ -663,6 +663,20 @@ export function getBonusDistributions(promotionId: string): Promise<BonusDistrib
   return adminApiRequest('GET', `/api/admin/promotions/${promotionId}/bonus/distributions`);
 }
 
+// ---------------------------------------------------------------------------
+// Backup
+// ---------------------------------------------------------------------------
+
+export async function triggerBackup(): Promise<Blob> {
+  const jwt = getAdminJwt();
+  const res = await fetch(`${BASE_URL}/api/admin/backup`, {
+    headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+  });
+  if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; throw new Error('Unauthorized'); }
+  if (!res.ok) { const e = await res.json().catch(() => ({ message: res.statusText })); throw new Error((e as { message?: string }).message ?? 'Backup failed'); }
+  return res.blob();
+}
+
 export function deletePromotion(id: string): Promise<{ success: boolean }> {
   return adminApiRequest('DELETE', `/api/admin/promotions/${id}`);
 }

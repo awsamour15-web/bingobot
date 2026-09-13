@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest, AdminRole } from '@fidel/shared';
 import {
   getConfig, updateConfig, getAdmins, createAdmin, updateAdmin,
   getDepositAccounts, createDepositAccount, updateDepositAccount, deleteDepositAccount,
+  triggerBackup,
 } from '../lib/api';
 import type { DepositAccount } from '../lib/api';
 import {
@@ -932,6 +933,147 @@ function CashbackSection() {
 }
 
 
+// ─── Backup ───────────────────────────────────────────────────────────────────
+
+const BACKUP_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours
+const LAST_BACKUP_KEY = 'lastAutoBackupAt';
+
+function BackupSection() {
+  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [lastBackup, setLastBackup] = useState<Date | null>(() => {
+    const v = localStorage.getItem(LAST_BACKUP_KEY);
+    return v ? new Date(v) : null;
+  });
+  const [nextIn, setNextIn] = useState<string>('');
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const doBackup = useCallback(async (auto = false) => {
+    setStatus('running');
+    setMsg(auto ? 'Auto-backup running…' : 'Creating backup…');
+    try {
+      const blob = await triggerBackup();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      a.href = url;
+      a.download = `backup_${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const now = new Date();
+      localStorage.setItem(LAST_BACKUP_KEY, now.toISOString());
+      setLastBackup(now);
+      setStatus('success');
+      setMsg(auto ? 'Auto-backup downloaded successfully.' : 'Backup downloaded.');
+      setTimeout(() => { setStatus('idle'); setMsg(null); }, 4000);
+    } catch (e: unknown) {
+      setStatus('error');
+      setMsg((e as Error).message ?? 'Backup failed');
+      setTimeout(() => { setStatus('idle'); setMsg(null); }, 5000);
+    }
+  }, []);
+
+  // Auto-backup every 5 hours
+  useEffect(() => {
+    // Schedule next backup relative to last backup time
+    const scheduleNext = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      const last = localStorage.getItem(LAST_BACKUP_KEY);
+      const delay = last
+        ? Math.max(0, BACKUP_INTERVAL_MS - (Date.now() - new Date(last).getTime()))
+        : BACKUP_INTERVAL_MS;
+
+      intervalRef.current = setInterval(() => {
+        doBackup(true);
+        scheduleNext();
+      }, delay);
+    };
+    scheduleNext();
+
+    // Countdown display
+    countdownRef.current = setInterval(() => {
+      const last = localStorage.getItem(LAST_BACKUP_KEY);
+      if (!last) { setNextIn('in 5h 0m'); return; }
+      const elapsed = Date.now() - new Date(last).getTime();
+      const remaining = Math.max(0, BACKUP_INTERVAL_MS - elapsed);
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      setNextIn(`in ${h}h ${m}m`);
+    }, 10000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [doBackup]);
+
+  // Init countdown display
+  useEffect(() => {
+    const last = localStorage.getItem(LAST_BACKUP_KEY);
+    if (!last) { setNextIn('in 5h 0m'); return; }
+    const elapsed = Date.now() - new Date(last).getTime();
+    const remaining = Math.max(0, BACKUP_INTERVAL_MS - elapsed);
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    setNextIn(`in ${h}h ${m}m`);
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
+        Downloads a full JSON snapshot of all database tables. Auto-backup runs every 5 hours while this page is open.
+      </p>
+
+      {/* Status cards */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <div style={statBox('#6366f1')}>
+          <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Auto-backup</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: '#818cf8' }}>Every 5h</span>
+        </div>
+        <div style={statBox('#4ade80')}>
+          <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Next backup</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: '#4ade80' }}>{nextIn || '—'}</span>
+        </div>
+        <div style={statBox('#f59e0b')}>
+          <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Last backup</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>
+            {lastBackup ? lastBackup.toLocaleString() : 'Never'}
+          </span>
+        </div>
+      </div>
+
+      {msg && (
+        <Alert type={status === 'error' ? 'error' : status === 'success' ? 'success' : 'info'}>
+          {msg}
+        </Alert>
+      )}
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <Btn onClick={() => doBackup(false)} disabled={status === 'running'}>
+          {status === 'running' ? '⏳ Backing up…' : '⬇️ Backup Now'}
+        </Btn>
+        {status === 'success' && (
+          <span style={{ fontSize: 13, color: '#4ade80', fontWeight: 600 }}>✓ Done</span>
+        )}
+      </div>
+
+      <div style={{
+        padding: 16, borderRadius: 12,
+        background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+        fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.7,
+      }}>
+        <strong style={{ color: 'var(--c-text)' }}>Note:</strong> The auto-backup only runs while this admin panel is open in a browser tab.
+        For off-platform backups that run regardless, use the GitHub Actions workflow at{' '}
+        <code style={{ background: 'var(--c-bg-secondary)', padding: '1px 5px', borderRadius: 4, fontSize: 12 }}>
+          .github/workflows/backup-database.yml
+        </code>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Settings Page — tabbed layout ───────────────────────────────────────────
 
 const TABS = [
@@ -943,6 +1085,7 @@ const TABS = [
   { key: 'deposits',      label: 'Deposit Accounts',  icon: '💳' },
   { key: 'config',        label: 'Raw Config',        icon: '⚙️' },
   { key: 'admins',        label: 'Admin Accounts',    icon: '👤' },
+  { key: 'backup',        label: 'Backup',            icon: '💾' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -1049,6 +1192,7 @@ export function SettingsPage() {
           {activeTab === 'deposits'   && <DepositAccountsSection />}
           {activeTab === 'config'     && <ConfigSection />}
           {activeTab === 'admins'     && <AdminAccountsSection />}
+          {activeTab === 'backup'     && <BackupSection />}
         </div>
       </div>
     </div>
