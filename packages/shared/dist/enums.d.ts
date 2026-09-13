@@ -3,7 +3,7 @@ export declare const WalletType: {
     main: WalletType;
     play: WalletType;
 };
-export type TxType = 'deposit' | 'withdrawal' | 'game_entry' | 'game_win' | 'referral_commission' | 'admin_credit' | 'admin_debit' | 'refund' | 'bonus' | 'ext_game_bet' | 'ext_game_win' | 'ext_game_rollback';
+export type TxType = 'deposit' | 'withdrawal' | 'game_entry' | 'game_win' | 'referral_commission' | 'admin_credit' | 'admin_debit' | 'refund' | 'bonus' | 'cashback' | 'ext_game_bet' | 'ext_game_win' | 'ext_game_rollback';
 export declare const TxType: {
     deposit: TxType;
     withdrawal: TxType;
@@ -14,6 +14,7 @@ export declare const TxType: {
     admin_debit: TxType;
     refund: TxType;
     bonus: TxType;
+    cashback: TxType;
     ext_game_bet: TxType;
     ext_game_win: TxType;
     ext_game_rollback: TxType;

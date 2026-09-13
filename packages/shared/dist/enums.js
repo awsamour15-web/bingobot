@@ -13,6 +13,7 @@ export const TxType = {
     admin_debit: 'admin_debit',
     refund: 'refund',
     bonus: 'bonus',
+    cashback: 'cashback',
     ext_game_bet: 'ext_game_bet',
     ext_game_win: 'ext_game_win',
     ext_game_rollback: 'ext_game_rollback',
