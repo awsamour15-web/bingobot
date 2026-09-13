@@ -13,7 +13,7 @@ import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
 
 export type { WithdrawalRequest, RevenueStats };
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
 
 export function getAdminJwt(): string | null {
   return localStorage.getItem('adminJwt');

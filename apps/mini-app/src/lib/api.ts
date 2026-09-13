@@ -71,7 +71,7 @@ export type {
   WinRejectedPayload,
 } from '@fidel/shared';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
 
 // Imported lazily to avoid circular dependency (auth.ts imports login() from here)
 async function getReAuth(): Promise<() => Promise<void>> {
@@ -705,10 +705,10 @@ export function checkPlinkoAccess(): Promise<{ allowed: boolean }> {
   return apiRequest<{ allowed: boolean }>('GET', '/api/plinko/access');
 }
 
-export function dropPlinko(betAmount: number, rows: 8 | 12 | 16, risk: 'low' | 'medium' | 'high', walletType?: 'main' | 'play'): Promise<{
-  id: string; path: number[]; slot: number; multiplier: number; payout: number; betAmount: number; totalBalance: number;
+export function dropPlinko(betAmount: number, rows: 8 | 12 | 16, risk: 'low' | 'medium' | 'high'): Promise<{
+  id: string; path: number[]; slot: number; multiplier: number; payout: number; betAmount: number; totalBalance: number; walletUsed: 'play' | 'main';
 }> {
-  return apiRequest('POST', '/api/plinko/drop', { betAmount, rows, risk, walletType });
+  return apiRequest('POST', '/api/plinko/drop', { betAmount, rows, risk });
 }
 
 export function getPlinkoHistory(): Promise<{

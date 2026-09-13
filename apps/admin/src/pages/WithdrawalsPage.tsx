@@ -105,7 +105,7 @@ export function WithdrawalsPage() {
 
       {/* Debug info */}
       <div style={{ marginBottom: 16, padding: 12, background: 'var(--c-bg-card)', borderRadius: 8, border: '1px solid var(--c-border)', fontSize: 12, fontFamily: 'monospace' }}>
-        <div><strong>API URL:</strong> {import.meta.env.VITE_API_URL ?? 'https://bingobot-vpif.onrender.com'}/api/admin/withdrawals</div>
+        <div><strong>API URL:</strong> {import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com'}/api/admin/withdrawals</div>
         <div><strong>JWT Token:</strong> {localStorage.getItem('adminJwt') ? '✓ Present' : '✗ Missing'}</div>
         <div><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</div>
         <div><strong>Withdrawals count:</strong> {withdrawals.length}</div>
