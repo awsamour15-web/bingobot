@@ -13,6 +13,7 @@
 
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
+import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { shuffle } from '../lib/shuffle.js';
@@ -317,6 +318,13 @@ export const MockPlayerBotService = {
       console.log(`[MockBot] Bulk-joined ${selected.length} mock players into round ${roundId}`);
       if (predeterminedWinnerCartelaNumber !== null) {
         console.log(`[MockBot] Predetermined winner: cartela #${predeterminedWinnerCartelaNumber} → ${selected[0]!.username}`);
+      }
+
+      // Broadcast CARTELA_TAKEN so clients update derash and player count instantly
+      if (GameRoundService._onCartelaTaken) {
+        const finalCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
+        const allCartelas = selected.map((_, i) => available[i]!);
+        await GameRoundService._onCartelaTaken(roundId, allCartelas, finalCount, undefined);
       }
     } catch (err) {
       console.error(`[MockBot] onRoundPending error for round ${roundId}:`, err);

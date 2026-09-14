@@ -5,6 +5,7 @@ import { Router, type Request, type Response, type Router as RouterType } from '
 import { WalletType, TxType } from '@fidel/shared';
 import prisma from '../../lib/prisma.js';
 import { WalletService } from '../../services/wallet.service.js';
+import { GameRoundService } from '../../services/game-round.service.js';
 import { invalidateConfigCache } from '../../lib/config-cache.js';
 
 const router: RouterType = Router();
@@ -265,6 +266,11 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
     username: p.username,
     cartelaNumber: availableFinal[i]!,
   }));
+
+  // Broadcast CARTELA_TAKEN so clients update derash and player count instantly
+  if (GameRoundService._onCartelaTaken) {
+    await GameRoundService._onCartelaTaken(roundId, availableFinal, entryCount, undefined);
+  }
 
   res.json({ joined: results, errors: [] });
 });
