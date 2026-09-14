@@ -199,43 +199,63 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   const errors: Array<{ playerId: string; error: string }> = [];
   const stake = parseFloat(round.stake.toString());
 
+  // Process in small batches to avoid DB lock contention when joining many mock players at once
+  const BATCH_SIZE = 5;
+
   for (let i = 0; i < mockPlayers.length; i++) {
     const player = mockPlayers[i]!;
     const cartelaNumber = available[i]!;
 
-    try {
-      if (balance > 0) {
-        // Credit the requested balance to the play wallet
-        await WalletService.credit(
-          player.id,
-          WalletType.play,
-          balance,
-          TxType.admin_credit,
-          `mock_auto_${Date.now()}_${i}`,
-          'Admin balance for mock round join',
-        );
-      } else {
-        // Ensure at least enough to cover the stake
-        const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
-          SELECT COALESCE(SUM(balance),0) AS total FROM wallets WHERE player_id = ${player.id}
-        `;
-        const totalBal = Number(walletRow?.total ?? 0);
-        if (totalBal < stake) {
+    let joined = false;
+    let lastErr = '';
+    // Retry up to 3 times on transient lock/timeout errors
+    for (let attempt = 0; attempt < 3 && !joined; attempt++) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+      try {
+        if (balance > 0) {
+          // Credit the requested balance to the play wallet
           await WalletService.credit(
             player.id,
             WalletType.play,
-            stake - totalBal,
+            balance,
             TxType.admin_credit,
-            `mock_stake_${Date.now()}_${i}`,
-            'Auto stake credit for mock player',
+            `mock_auto_${Date.now()}_${i}_${attempt}`,
+            'Admin balance for mock round join',
           );
+        } else {
+          // Ensure at least enough to cover the stake
+          const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
+            SELECT COALESCE(SUM(balance),0) AS total FROM wallets WHERE player_id = ${player.id}
+          `;
+          const totalBal = Number(walletRow?.total ?? 0);
+          if (totalBal < stake) {
+            await WalletService.credit(
+              player.id,
+              WalletType.play,
+              stake - totalBal,
+              TxType.admin_credit,
+              `mock_stake_${Date.now()}_${i}_${attempt}`,
+              'Auto stake credit for mock player',
+            );
+          }
         }
-      }
 
-      await GameRoundService.joinBatch(roundId, player.id, [cartelaNumber]);
-      results.push({ playerId: player.id, username: player.username, cartelaNumber });
-    } catch (err) {
-      errors.push({ playerId: player.id, error: err instanceof Error ? err.message : 'Unknown error' });
+        await GameRoundService.joinBatch(roundId, player.id, [cartelaNumber]);
+        results.push({ playerId: player.id, username: player.username, cartelaNumber });
+        joined = true;
+      } catch (err) {
+        lastErr = err instanceof Error ? err.message : 'Unknown error';
+        // Don't retry cartela-taken or round-not-pending errors
+        if (lastErr.includes('not pending') || lastErr.includes('already taken')) break;
+      }
+    }
+    if (!joined) {
+      errors.push({ playerId: player.id, error: lastErr });
+    }
+
+    // Small delay every BATCH_SIZE players to avoid overwhelming DB with concurrent lock requests
+    if ((i + 1) % BATCH_SIZE === 0 && i + 1 < mockPlayers.length) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
   }
 
