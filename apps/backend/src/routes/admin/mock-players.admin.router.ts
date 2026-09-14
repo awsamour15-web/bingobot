@@ -5,7 +5,6 @@ import { Router, type Request, type Response, type Router as RouterType } from '
 import { WalletType, TxType } from '@fidel/shared';
 import prisma from '../../lib/prisma.js';
 import { WalletService } from '../../services/wallet.service.js';
-import { GameRoundService } from '../../services/game-round.service.js';
 import { invalidateConfigCache } from '../../lib/config-cache.js';
 
 const router: RouterType = Router();
@@ -176,25 +175,6 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  // Find taken cartelas
-  const takenEntries = await prisma.roundEntry.findMany({
-    where: { round_id: roundId },
-    select: { cartela_number: true },
-  });
-  const takenSet = new Set(takenEntries.map((e) => e.cartela_number));
-
-  // Assign one cartela per mock player (first available)
-  const TOTAL_CARTELAS = 800;
-  const available: number[] = [];
-  for (let n = 1; n <= TOTAL_CARTELAS && available.length < mockPlayers.length; n++) {
-    if (!takenSet.has(n)) available.push(n);
-  }
-
-  if (available.length < mockPlayers.length) {
-    res.status(422).json({ error: 'NO_CARTELAS', message: 'Not enough available cartelas in this round' });
-    return;
-  }
-
   const stake = parseFloat(round.stake.toString());
 
   // Step 1: Credit balances for all mock players upfront (sequential to avoid wallet conflicts)
@@ -228,20 +208,44 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
     }
   }
 
-  // Step 2: Bulk insert all round_entries in one query — no per-row locking or limit checks
-  // This bypasses the joinBatch FOR UPDATE contention that caused partial joins
-  const now = new Date();
+  const TOTAL_CARTELAS = 800;
+
+  // Step 2: Remove any existing entries for these mock players in this round first
+  // so re-joining always works cleanly
+  await prisma.roundEntry.deleteMany({
+    where: {
+      round_id: roundId,
+      player_id: { in: mockPlayers.map((p) => p.id) },
+    },
+  });
+
+  // Re-fetch taken cartelas after deletion so our available list is accurate
+  const takenAfterDelete = await prisma.roundEntry.findMany({
+    where: { round_id: roundId },
+    select: { cartela_number: true },
+  });
+  const takenSetFinal = new Set(takenAfterDelete.map((e) => e.cartela_number));
+  const availableFinal: number[] = [];
+  for (let n = 1; n <= TOTAL_CARTELAS && availableFinal.length < mockPlayers.length; n++) {
+    if (!takenSetFinal.has(n)) availableFinal.push(n);
+  }
+
+  if (availableFinal.length < mockPlayers.length) {
+    res.status(422).json({ error: 'NO_CARTELAS', message: 'Not enough available cartelas in this round' });
+    return;
+  }
+
+  // Step 3: Bulk insert all round_entries in one query — no per-row locking or limit checks
   await prisma.roundEntry.createMany({
     data: mockPlayers.map((player, i) => ({
       round_id: roundId,
       player_id: player.id,
-      cartela_number: available[i]!,
+      cartela_number: availableFinal[i]!,
       is_watching: false,
     })),
-    skipDuplicates: true,
   });
 
-  // Step 3: Recalculate derash
+  // Step 4: Recalculate derash
   const entryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
   const commissionPct = (await prisma.gameRound.findUnique({ where: { id: roundId }, select: { commission_pct: true } }))?.commission_pct ?? 20;
   await prisma.gameRound.update({
@@ -249,23 +253,13 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
     data: { derash: entryCount * stake * (1 - commissionPct / 100) },
   });
 
-  // Confirm how many actually got inserted (skipDuplicates may have skipped some)
-  const insertedPlayerIds = new Set(
-    (await prisma.roundEntry.findMany({
-      where: { round_id: roundId, player_id: { in: mockPlayers.map((p) => p.id) } },
-      select: { player_id: true, cartela_number: true },
-    })).map((e) => e.player_id),
-  );
+  const results = mockPlayers.map((p, i) => ({
+    playerId: p.id,
+    username: p.username,
+    cartelaNumber: availableFinal[i]!,
+  }));
 
-  const results = mockPlayers
-    .map((p, i) => ({ playerId: p.id, username: p.username, cartelaNumber: available[i]! }))
-    .filter((r) => insertedPlayerIds.has(r.playerId));
-  const errors = mockPlayers
-    .filter((p) => !insertedPlayerIds.has(p.id))
-    .map((p) => ({ playerId: p.id, error: 'Entry not inserted (possible duplicate)' }));
-
-  void now; // suppress unused warning
-  res.json({ joined: results, errors });
+  res.json({ joined: results, errors: [] });
 });
 
 // PATCH /api/admin/mock-players/:id/rename
