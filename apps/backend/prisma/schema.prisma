@@ -336,6 +336,7 @@ model DepositAccount {
   id         String   @id @default(uuid())
   phone      String   @unique
   name       String
+  bank       String   @default("telebirr")
   is_active  Boolean  @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

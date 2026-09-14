@@ -221,6 +221,7 @@ export interface DepositAccount {
   id: string;
   phone: string;
   name: string;
+  bank: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -230,11 +231,11 @@ export function getDepositAccounts(): Promise<DepositAccount[]> {
   return adminApiRequest('GET', '/api/admin/deposit-accounts');
 }
 
-export function createDepositAccount(phone: string, name: string): Promise<DepositAccount> {
-  return adminApiRequest('POST', '/api/admin/deposit-accounts', { phone, name });
+export function createDepositAccount(phone: string, name: string, bank: string): Promise<DepositAccount> {
+  return adminApiRequest('POST', '/api/admin/deposit-accounts', { phone, name, bank });
 }
 
-export function updateDepositAccount(id: string, data: Partial<{ phone: string; name: string; is_active: boolean }>): Promise<DepositAccount> {
+export function updateDepositAccount(id: string, data: Partial<{ phone: string; name: string; bank: string; is_active: boolean }>): Promise<DepositAccount> {
   return adminApiRequest('PATCH', `/api/admin/deposit-accounts/${id}`, data);
 }
 

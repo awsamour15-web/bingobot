@@ -12,14 +12,18 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
 // POST /api/admin/deposit-accounts
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const { phone, name } = req.body as { phone?: string; name?: string };
+  const { phone, name, bank } = req.body as { phone?: string; name?: string; bank?: string };
   if (!phone?.trim() || !name?.trim()) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'phone and name are required' });
     return;
   }
+  if (!bank?.trim()) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'bank is required' });
+    return;
+  }
   try {
     const account = await prisma.depositAccount.create({
-      data: { phone: phone.trim(), name: name.trim() },
+      data: { phone: phone.trim(), name: name.trim(), bank: bank.trim() },
     });
     res.status(201).json(account);
   } catch {
@@ -30,11 +34,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 // PATCH /api/admin/deposit-accounts/:id
 router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   const id = req.params['id'] as string;
-  const { phone, name, is_active } = req.body as { phone?: string; name?: string; is_active?: boolean };
+  const { phone, name, bank, is_active } = req.body as { phone?: string; name?: string; bank?: string; is_active?: boolean };
 
   const data: Record<string, unknown> = {};
   if (phone !== undefined) data['phone'] = phone.trim();
   if (name !== undefined) data['name'] = name.trim();
+  if (bank !== undefined) data['bank'] = bank.trim();
   if (is_active !== undefined) data['is_active'] = is_active;
 
   if (!Object.keys(data).length) {

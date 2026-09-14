@@ -151,7 +151,7 @@ router.get('/deposit/accounts', async (_req: Request, res: Response): Promise<vo
 
   if (accounts.length > 0) {
     res.json({
-      accounts: accounts.map((a) => ({ phone: a.phone, name: a.name })),
+      accounts: accounts.map((a) => ({ phone: a.phone, name: a.name, bank: (a as any).bank ?? 'telebirr' })),
     });
     return;
   }

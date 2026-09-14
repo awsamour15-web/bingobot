@@ -424,6 +424,7 @@ export function getWalletTransactions(page = 1): Promise<PaginatedResponse<Trans
 export interface DepositAccountOption {
   phone: string;
   name: string;
+  bank?: string;
 }
 
 export interface ManualDepositResponse {

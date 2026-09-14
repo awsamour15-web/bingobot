@@ -55,6 +55,17 @@ const WALLET_LABEL: Record<string, string> = {
 // ── Quick amount buttons ──────────────────────────────────────────────────────
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000];
 
+const BANK_LABELS: Record<string, string> = {
+  telebirr: '📱 Telebirr',
+  cbebirr:  '📱 CBE Birr',
+  cbe:      '🏦 CBE',
+  boa:      '🏦 BOA',
+  dashen:   '🏦 Dashen',
+  awash:    '🏦 Awash',
+  mpesa:    '📱 M-Pesa',
+  other:    '🏦 Bank',
+};
+
 type Tab = 'balance' | 'deposit' | 'withdraw' | 'history';
 
 // ── Small reusable button ─────────────────────────────────────────────────────
@@ -564,6 +575,15 @@ export default function WalletScreen() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}>
                     <div>
+                      {acc.bank && (
+                        <div style={{
+                          display: 'inline-block', marginBottom: 4,
+                          padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                          background: C.amberDim, color: C.amber, border: `1px solid rgba(245,158,11,0.25)`,
+                        }}>
+                          {BANK_LABELS[acc.bank] ?? acc.bank}
+                        </div>
+                      )}
                       <div style={{ color: C.amber, fontSize: 20, fontWeight: 900, letterSpacing: 1 }}>
                         {acc.phone}
                       </div>
