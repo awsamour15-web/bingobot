@@ -13,7 +13,6 @@
 
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
-import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { TxType, WalletType } from '@fidel/shared';
 import { shuffle } from '../lib/shuffle.js';
@@ -87,10 +86,6 @@ async function getBotStakes(): Promise<Set<number>> {
 async function getCartelaPoolSize(): Promise<number> {
   const n = await getConfigInt('active_cartela_count', 800);
   return Number.isFinite(n) && n >= 1 ? Math.min(n, 800) : 800;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ─── Pre-simulation ───────────────────────────────────────────────────────────
@@ -251,58 +246,77 @@ export const MockPlayerBotService = {
         (predeterminedWinnerCartelaNumber !== null ? ` (pre-sim win: cartela #${predeterminedWinnerCartelaNumber})` : ''),
       );
 
+      // Verify round is still pending before bulk join
+      const current = await prisma.gameRound.findUnique({
+        where: { id: roundId },
+        select: { status: true, start_time: true },
+      });
+      if (!current || current.status !== 'pending') {
+        console.log(`[MockBot] Round ${roundId} no longer pending — aborting`);
+        return;
+      }
+
+      // Push start_time forward to give us a safe window for crediting + inserting
+      await prisma.gameRound.update({
+        where: { id: roundId },
+        data: { start_time: new Date(Date.now() + 2 * 60 * 1000) },
+      });
+
+      // Credit all players upfront sequentially
       for (let i = 0; i < selected.length; i++) {
         const player = selected[i]!;
-        const cartelaNumber = available[i]!;
-
-        if (i > 0) await sleep(300);
-
-        try {
-          const current = await prisma.gameRound.findUnique({
-            where: { id: roundId },
-            select: { status: true },
-          });
-          if (!current || current.status !== 'pending') {
-            console.log(`[MockBot] Round ${roundId} no longer pending — stopping at player ${i + 1}`);
-            // Clean up pre-generated sequence if round started before all bots joined
-            if (preGeneratedSequence) nce.setPreGeneratedSequence(roundId, preGeneratedSequence);
-            break;
-          }
-
-          if (botBalance > 0) {
+        if (botBalance > 0) {
+          await WalletService.credit(
+            player.id,
+            WalletType.play,
+            botBalance,
+            TxType.admin_credit,
+            `mock_bot_${roundId}_${i}`,
+            'Mock bot auto-credit',
+          );
+        } else {
+          const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
+            SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${player.id}
+          `;
+          const totalBal = Number(walletRow?.total ?? 0);
+          if (totalBal < stake) {
             await WalletService.credit(
               player.id,
               WalletType.play,
-              botBalance,
+              stake - totalBal,
               TxType.admin_credit,
-              `mock_bot_${roundId}_${i}`,
-              'Mock bot auto-credit',
+              `mock_bot_stake_${roundId}_${i}`,
+              'Mock bot auto stake cover',
             );
-          } else {
-            const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
-              SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${player.id}
-            `;
-            const totalBal = Number(walletRow?.total ?? 0);
-            if (totalBal < stake) {
-              await WalletService.credit(
-                player.id,
-                WalletType.play,
-                stake - totalBal,
-                TxType.admin_credit,
-                `mock_bot_stake_${roundId}_${i}`,
-                'Mock bot auto stake cover',
-              );
-            }
           }
-
-          await GameRoundService.joinBatch(roundId, player.id, [cartelaNumber]);
-          console.log(
-            `[MockBot] ${player.username} joined round ${roundId} with cartela #${cartelaNumber}` +
-            (i === 0 && predeterminedWinnerCartelaNumber !== null ? ' ← predetermined winner' : ''),
-          );
-        } catch (err) {
-          console.error(`[MockBot] Failed to join ${player.username} into round ${roundId}:`, err);
         }
+      }
+
+      // Bulk insert all round entries at once
+      await prisma.roundEntry.createMany({
+        data: selected.map((player, i) => ({
+          round_id: roundId,
+          player_id: player.id,
+          cartela_number: available[i]!,
+          is_watching: false,
+        })),
+        skipDuplicates: true,
+      });
+
+      // Recalculate derash
+      const entryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
+      const roundForDerash = await prisma.gameRound.findUnique({ where: { id: roundId }, select: { stake: true, commission_pct: true } });
+      if (roundForDerash) {
+        const s = parseFloat(roundForDerash.stake.toString());
+        await prisma.gameRound.update({
+          where: { id: roundId },
+          data: { derash: entryCount * s * (1 - roundForDerash.commission_pct / 100) },
+        });
+      }
+
+      console.log(`[MockBot] Bulk-joined ${selected.length} mock players into round ${roundId}`);
+      if (predeterminedWinnerCartelaNumber !== null) {
+        console.log(`[MockBot] Predetermined winner: cartela #${predeterminedWinnerCartelaNumber} → ${selected[0]!.username}`);
       }
     } catch (err) {
       console.error(`[MockBot] onRoundPending error for round ${roundId}:`, err);
