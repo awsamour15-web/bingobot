@@ -195,70 +195,76 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  const results: Array<{ playerId: string; username: string; cartelaNumber: number }> = [];
-  const errors: Array<{ playerId: string; error: string }> = [];
   const stake = parseFloat(round.stake.toString());
 
-  // Process in small batches to avoid DB lock contention when joining many mock players at once
-  const BATCH_SIZE = 5;
-
+  // Step 1: Credit balances for all mock players upfront (sequential to avoid wallet conflicts)
   for (let i = 0; i < mockPlayers.length; i++) {
     const player = mockPlayers[i]!;
-    const cartelaNumber = available[i]!;
-
-    let joined = false;
-    let lastErr = '';
-    // Retry up to 3 times on transient lock/timeout errors
-    for (let attempt = 0; attempt < 3 && !joined; attempt++) {
-      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
-      try {
-        if (balance > 0) {
-          // Credit the requested balance to the play wallet
-          await WalletService.credit(
-            player.id,
-            WalletType.play,
-            balance,
-            TxType.admin_credit,
-            `mock_auto_${Date.now()}_${i}_${attempt}`,
-            'Admin balance for mock round join',
-          );
-        } else {
-          // Ensure at least enough to cover the stake
-          const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
-            SELECT COALESCE(SUM(balance),0) AS total FROM wallets WHERE player_id = ${player.id}
-          `;
-          const totalBal = Number(walletRow?.total ?? 0);
-          if (totalBal < stake) {
-            await WalletService.credit(
-              player.id,
-              WalletType.play,
-              stake - totalBal,
-              TxType.admin_credit,
-              `mock_stake_${Date.now()}_${i}_${attempt}`,
-              'Auto stake credit for mock player',
-            );
-          }
-        }
-
-        await GameRoundService.joinBatch(roundId, player.id, [cartelaNumber]);
-        results.push({ playerId: player.id, username: player.username, cartelaNumber });
-        joined = true;
-      } catch (err) {
-        lastErr = err instanceof Error ? err.message : 'Unknown error';
-        // Don't retry cartela-taken or round-not-pending errors
-        if (lastErr.includes('not pending') || lastErr.includes('already taken')) break;
+    if (balance > 0) {
+      await WalletService.credit(
+        player.id,
+        WalletType.play,
+        balance,
+        TxType.admin_credit,
+        `mock_auto_${Date.now()}_${i}`,
+        'Admin balance for mock round join',
+      );
+    } else {
+      // Ensure at least enough to cover the stake
+      const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
+        SELECT COALESCE(SUM(balance),0) AS total FROM wallets WHERE player_id = ${player.id}
+      `;
+      const totalBal = Number(walletRow?.total ?? 0);
+      if (totalBal < stake) {
+        await WalletService.credit(
+          player.id,
+          WalletType.play,
+          stake - totalBal,
+          TxType.admin_credit,
+          `mock_stake_${Date.now()}_${i}`,
+          'Auto stake credit for mock player',
+        );
       }
-    }
-    if (!joined) {
-      errors.push({ playerId: player.id, error: lastErr });
-    }
-
-    // Small delay every BATCH_SIZE players to avoid overwhelming DB with concurrent lock requests
-    if ((i + 1) % BATCH_SIZE === 0 && i + 1 < mockPlayers.length) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
     }
   }
 
+  // Step 2: Bulk insert all round_entries in one query — no per-row locking or limit checks
+  // This bypasses the joinBatch FOR UPDATE contention that caused partial joins
+  const now = new Date();
+  await prisma.roundEntry.createMany({
+    data: mockPlayers.map((player, i) => ({
+      round_id: roundId,
+      player_id: player.id,
+      cartela_number: available[i]!,
+      is_watching: false,
+    })),
+    skipDuplicates: true,
+  });
+
+  // Step 3: Recalculate derash
+  const entryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
+  const commissionPct = (await prisma.gameRound.findUnique({ where: { id: roundId }, select: { commission_pct: true } }))?.commission_pct ?? 20;
+  await prisma.gameRound.update({
+    where: { id: roundId },
+    data: { derash: entryCount * stake * (1 - commissionPct / 100) },
+  });
+
+  // Confirm how many actually got inserted (skipDuplicates may have skipped some)
+  const insertedPlayerIds = new Set(
+    (await prisma.roundEntry.findMany({
+      where: { round_id: roundId, player_id: { in: mockPlayers.map((p) => p.id) } },
+      select: { player_id: true, cartela_number: true },
+    })).map((e) => e.player_id),
+  );
+
+  const results = mockPlayers
+    .map((p, i) => ({ playerId: p.id, username: p.username, cartelaNumber: available[i]! }))
+    .filter((r) => insertedPlayerIds.has(r.playerId));
+  const errors = mockPlayers
+    .filter((p) => !insertedPlayerIds.has(p.id))
+    .map((p) => ({ playerId: p.id, error: 'Entry not inserted (possible duplicate)' }));
+
+  void now; // suppress unused warning
   res.json({ joined: results, errors });
 });
 
