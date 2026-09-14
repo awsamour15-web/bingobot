@@ -177,6 +177,13 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
 
   const stake = parseFloat(round.stake.toString());
 
+  // Push the round's start_time 2 minutes into the future so the scheduler
+  // doesn't auto-start it while we're crediting wallets and inserting entries
+  await prisma.gameRound.update({
+    where: { id: roundId },
+    data: { start_time: new Date(Date.now() + 2 * 60 * 1000) },
+  });
+
   // Step 1: Credit balances for all mock players upfront (sequential to avoid wallet conflicts)
   for (let i = 0; i < mockPlayers.length; i++) {
     const player = mockPlayers[i]!;
