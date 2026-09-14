@@ -161,7 +161,7 @@ async function preSimulateRound(
 export const MockPlayerBotService = {
   /**
    * Called whenever a new pending round is created (from RoundScheduler or admin).
-   * Picks a random subset of mock players and staggers their join by 1s each.
+   * Picks a random subset of mock players and staggers their join by 300ms each.
    *
    * When win mode is enabled:
    *  1. Pre-simulates the full 75-number draw to find the naturally winning cartela.

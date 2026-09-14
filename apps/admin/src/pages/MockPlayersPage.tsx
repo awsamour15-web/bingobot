@@ -363,7 +363,7 @@ function BotConfigCard() {
 
   return (
     <Card style={{ marginBottom: 20 }}>
-      <CardHeader title="Auto-Join Bot" subtitle="Mock players automatically join new pending rounds with a 1s stagger" />
+      <CardHeader title="Auto-Join Bot" subtitle="Mock players automatically join new pending rounds with a 300ms stagger" />
       {msg && <Alert type={msg === 'Saved' ? 'success' : 'error'}>{msg}</Alert>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
         <div>
