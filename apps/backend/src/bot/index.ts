@@ -210,10 +210,14 @@ export async function buildDepositInstructionText(amount: number): Promise<{ tex
   }
 
   const text =
-    `1. ከታቹ ባለው የቴሌብር አካውንት ${amount} ብር ያስገቡ\n\n` +
-    `📱 Phone: \`${telebirrNumber}\`` +
+    `💳 *ዲፖዚት ማድረጊያ ባንኮች*\n\n` +
+    `ከሚከተሉት ባንኮች ወይም ዋሌቶች ${amount > 0 ? `*${amount} ብር*` : 'ገንዘብ'} ወደ ታቹ ቁጥር ይላኩ:\n\n` +
+    `📱 *Telebirr / CBE Birr* — ${telebirrNumber}` +
     (receiverName ? `\n👤 Name: ${receiverName}` : '') +
-    `\n\n2. የካፈሉትን አጭር የደሁፍ መልዕክት(message) copy በማድረግ እዚ ላይ Past አድርገው ያስጉና ይላኩት 👇👇👇`;
+    `\n\n🏦 *ሌሎች ባንኮች (CBE, BOA, Dashen)*\n` +
+    `ከሌሎች ባንኮች የሚልኩ ከሆነ የባንኩን SMS ወይም ደረሰኝ ቁጥር ከዚህ ላይ ለጥፍ ይላኩ\n\n` +
+    `2. *ደረሰኙን ቅዱ (Copy) ወደዚህ ለጥፈው (Paste) ላኩ* 👇👇👇\n` +
+    `_(Telebirr SMS · CBE/BOA/Dashen Reference Number)_`;
 
   return { text, telebirrNumber, receiverName };
 }
@@ -453,6 +457,144 @@ export function parseTelebirrReceipt(text: string): { txNumber: string; receiver
   return { txNumber, receiverPhone, receiverName, amount };
 }
 
+// ─── CBE receipt parser ───────────────────────────────────────────────────────
+// Handles SMS/notification text from Commercial Bank of Ethiopia (CBE).
+// Sample: "Transaction of ETB 500.00 from Acc No XXXXXXXX3241 to Acc XXXXXXXX7890 (Abebe Kebede) on 01/05/2026 Ref No: FT26123456789"
+export function parseCbeReceipt(text: string): { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null } | null {
+  const n = text.replace(/\s+/g, ' ').replace(/[""'']/g, '"');
+
+  // Reference number: "Ref No: FT26123456789" or "Ref: FT26123456789" or "Reference: FT26123456789"
+  let txNumber: string | null = null;
+  const refMatch = n.match(/\bRef(?:erence)?\s*(?:No)?[:\s]+([A-Z0-9]{8,20})/i);
+  if (refMatch?.[1]) txNumber = refMatch[1].toUpperCase();
+
+  // Fallback: standalone FT-prefixed reference
+  if (!txNumber) {
+    const ftMatch = n.match(/\b(FT\d{8,15})\b/i);
+    if (ftMatch?.[1]) txNumber = ftMatch[1].toUpperCase();
+  }
+
+  if (!txNumber) return null;
+
+  // Amount: "ETB 500.00" or "Birr 500.00" or "500.00 ETB"
+  let amount: number | null = null;
+  const amtBefore = n.match(/(?:ETB|Birr)\s+([\d,]+(?:\.\d+)?)/i);
+  if (amtBefore?.[1]) amount = parseFloat(amtBefore[1].replace(/,/g, ''));
+  if (!amount) {
+    const amtAfter = n.match(/([\d,]+(?:\.\d+)?)\s*(?:ETB|Birr)/i);
+    if (amtAfter?.[1]) amount = parseFloat(amtAfter[1].replace(/,/g, ''));
+  }
+
+  // Receiver name from parentheses: "to Acc XXXXXXXX7890 (Abebe Kebede)"
+  let receiverName: string | null = null;
+  const nameMatch = n.match(/\(([A-Za-z\s]{2,40})\)/);
+  if (nameMatch?.[1]) receiverName = nameMatch[1].trim();
+
+  return { txNumber, receiverPhone: null, receiverName, amount: amount && amount > 0 ? amount : null };
+}
+
+// ─── BOA receipt parser ───────────────────────────────────────────────────────
+// Handles SMS from Bank of Abyssinia (BOA).
+// Sample: "Dear Customer, ETB 200.00 has been transferred to account XXXXX6789. Ref: BOA2026XXXXXXX"
+export function parseBoaReceipt(text: string): { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null } | null {
+  const n = text.replace(/\s+/g, ' ').replace(/[""'']/g, '"');
+
+  let txNumber: string | null = null;
+  const refMatch = n.match(/\bRef(?:erence)?\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
+  if (refMatch?.[1]) txNumber = refMatch[1].toUpperCase();
+  if (!txNumber) {
+    const boaMatch = n.match(/\b(BOA[A-Z0-9]{6,16})\b/i);
+    if (boaMatch?.[1]) txNumber = boaMatch[1].toUpperCase();
+  }
+  if (!txNumber) return null;
+
+  let amount: number | null = null;
+  const amtMatch = n.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
+  if (amtMatch?.[1]) amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+  if (!amount) {
+    const amtAfter = n.match(/([\d,]+(?:\.\d+)?)\s*(?:ETB|Birr)/i);
+    if (amtAfter?.[1]) amount = parseFloat(amtAfter[1].replace(/,/g, ''));
+  }
+
+  let receiverName: string | null = null;
+  const nameMatch = n.match(/\(([A-Za-z\s]{2,40})\)/);
+  if (nameMatch?.[1]) receiverName = nameMatch[1].trim();
+
+  return { txNumber, receiverPhone: null, receiverName, amount: amount && amount > 0 ? amount : null };
+}
+
+// ─── Dashen Bank receipt parser ───────────────────────────────────────────────
+// Sample: "Dashen Bank: ETB 300.00 sent to 0911234567. Transaction Ref: DB20260112345"
+export function parseDashenReceipt(text: string): { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null } | null {
+  const n = text.replace(/\s+/g, ' ').replace(/[""'']/g, '"');
+
+  let txNumber: string | null = null;
+  const refMatch = n.match(/\bRef(?:erence)?\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
+  if (refMatch?.[1]) txNumber = refMatch[1].toUpperCase();
+  if (!txNumber) {
+    const dbMatch = n.match(/\b(DB[A-Z0-9]{6,16})\b/i);
+    if (dbMatch?.[1]) txNumber = dbMatch[1].toUpperCase();
+  }
+  if (!txNumber) return null;
+
+  let amount: number | null = null;
+  const amtMatch = n.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
+  if (amtMatch?.[1]) amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+
+  let receiverPhone: string | null = null;
+  const phoneMatch = n.match(/(?:to|sent to)\s+(\+?251\d{9}|0[79]\d{8})/i);
+  if (phoneMatch?.[1]) receiverPhone = phoneMatch[1];
+
+  return { txNumber, receiverPhone, receiverName: null, amount: amount && amount > 0 ? amount : null };
+}
+
+// ─── CBE Birr receipt parser ──────────────────────────────────────────────────
+// Sample: "You have successfully transferred ETB 150.00 to 0912345678 (Meron). Receipt No: CB20260512345"
+export function parseCbeBirrReceipt(text: string): { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null } | null {
+  const n = text.replace(/\s+/g, ' ').replace(/[""'']/g, '"');
+
+  let txNumber: string | null = null;
+  const rcpMatch = n.match(/\bReceipt\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
+  if (rcpMatch?.[1]) txNumber = rcpMatch[1].toUpperCase();
+  if (!txNumber) {
+    const refMatch = n.match(/\bRef(?:erence)?\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
+    if (refMatch?.[1]) txNumber = refMatch[1].toUpperCase();
+  }
+  if (!txNumber) {
+    const cbMatch = n.match(/\b(CB[A-Z0-9]{6,16})\b/i);
+    if (cbMatch?.[1]) txNumber = cbMatch[1].toUpperCase();
+  }
+  if (!txNumber) return null;
+
+  let amount: number | null = null;
+  const amtMatch = n.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
+  if (amtMatch?.[1]) amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+
+  // "to 0912345678 (Meron)"
+  let receiverPhone: string | null = null;
+  let receiverName: string | null = null;
+  const toMatch = n.match(/to\s+(\+?251\d{9}|0[79]\d{8})\s*(?:\(([A-Za-z\s]{2,40})\))?/i);
+  if (toMatch) {
+    receiverPhone = toMatch[1]!;
+    if (toMatch[2]) receiverName = toMatch[2].trim();
+  }
+
+  return { txNumber, receiverPhone, receiverName, amount: amount && amount > 0 ? amount : null };
+}
+
+// ─── Universal receipt parser — tries all banks ───────────────────────────────
+type ParsedReceipt = { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null };
+
+export function parseAnyReceipt(text: string): ParsedReceipt | null {
+  return (
+    parseTelebirrReceipt(text) ??
+    parseCbeReceipt(text) ??
+    parseCbeBirrReceipt(text) ??
+    parseBoaReceipt(text) ??
+    parseDashenReceipt(text)
+  );
+}
+
 export function validateDepositReceipt({
   receipt,
   expectedAmount,
@@ -464,11 +606,14 @@ export function validateDepositReceipt({
   accountPhone?: string | null;
   accountName?: string | null;
 }): { ok: true; txNumber: string; amount: number; } | { ok: false; reason: 'NO_RECEIPT' | 'PHONE_MISMATCH' | 'NAME_MISMATCH' | 'AMOUNT_MISMATCH'; txNumber?: string; amount?: number; } {
-  const parsed = parseTelebirrReceipt(receipt);
+  // Try all supported banks: Telebirr, CBE, CBE Birr, BOA, Dashen
+  const parsed = parseAnyReceipt(receipt);
   if (!parsed) {
     return { ok: false, reason: 'NO_RECEIPT' };
   }
 
+  // Phone check only applies when the receipt has a phone AND we have an account phone to check against.
+  // CBE/BOA receipts don't include receiver phones — skip the check for those.
   if (accountPhone && parsed.receiverPhone && !phoneMatches(parsed.receiverPhone, accountPhone)) {
     return { ok: false, reason: 'PHONE_MISMATCH', txNumber: parsed.txNumber };
   }
@@ -616,17 +761,22 @@ export async function processDepositClaim(
   const amount = Number(deposit.amount);
 
   // ── verify.et: confirm the transaction exists on the bank side ───────────────
-  // Skipped gracefully if VERIFY_ET_API_KEY is not set or verify.et is unreachable.
+  // Primary: verify.et API checks the bank directly.
+  // Fallback: if verify.et is down/errors, the existing SMS-parsing result is trusted.
   const activeAccounts = await prisma.depositAccount.findMany({ where: { is_active: true } });
   const settlementPhone = activeAccounts.length > 0 ? activeAccounts[0]?.phone : undefined;
 
   const verifyResult = await verifyTransaction(
     txNumber,
-    'telebirr',            // default to Telebirr; smart-router handles others
+    undefined,             // omit bank — smart-router auto-detects (Telebirr, CBE, BOA, etc.)
     settlementPhone,       // check money came to our account
   );
 
-  if (!verifyResult.skipped && !verifyResult.verified) {
+  if (verifyResult.skipped) {
+    // verify.et not configured or had a network error — fall through to SMS-based trust
+    console.info(`[DepositClaim] verify.et skipped for ${txNumber}, using SMS fallback`);
+  } else if (!verifyResult.verified) {
+    // verify.et responded and explicitly rejected the transaction — hard fail
     void logDepositAttempt({
       depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
       outcome: 'failure', failureReason: `VERIFY_ET_REJECTED: ${verifyResult.error ?? 'unconfirmed'}`,
@@ -634,6 +784,9 @@ export async function processDepositClaim(
       source: auditCtx?.source ?? 'bot',
     });
     return { success: false, reason: 'NOT_FOUND' };
+  } else {
+    // verify.et confirmed — log it
+    console.info(`[DepositClaim] verify.et confirmed ${txNumber} | amount: ${verifyResult.amount} | settlement: ${verifyResult.settlementMatched}`);
   }
   // ─────────────────────────────────────────────────────────────────────────────
 

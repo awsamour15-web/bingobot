@@ -121,9 +121,10 @@ export async function verifyTransaction(
     if (!isSuccess) out.error = json.message ?? 'Transaction not confirmed by bank';
     return out;
   } catch (err) {
-    // Network errors, timeouts, etc. — fail open so deposits aren't blocked
-    // by verify.et outages. Log for monitoring.
-    console.error('[VerifyET] API call failed, failing open:', err);
-    return { verified: true, skipped: true, error: err instanceof Error ? err.message : String(err) };
+    // Network errors, timeouts, parse errors — fail open (skipped: true) so
+    // deposits fall back to SMS-based validation instead of being blocked.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[VerifyET] API unreachable for ${txNumber}, falling back to SMS method: ${msg}`);
+    return { verified: true, skipped: true, error: msg };
   }
 }

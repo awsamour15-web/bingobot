@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { to: '/finance',   label: 'Finance',     icon: 'finance'     },
   { to: '/agents',    label: 'Agents',      icon: 'agents'      },
   { to: '/cashiers',  label: 'Cashiers',    icon: 'agents'      },
+  { to: '/deposit-accounts', label: 'Deposit Accounts', icon: 'finance' },
   { to: '/promotions',label: 'Promotions',  icon: 'promotions'  },
   { to: '/cartelas',    label: 'Cartelas',     icon: 'cartelas'    },
   { to: '/mock-players', label: 'Mock Players', icon: 'players'     },

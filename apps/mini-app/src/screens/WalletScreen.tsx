@@ -253,7 +253,7 @@ export default function WalletScreen() {
       return;
     }
     if (!depositReceipt.trim()) {
-      setDepositResult({ type: 'error', msg: 'Please paste your Telebirr SMS receipt / የTelebirr SMS ደረሰኝ ይለጥፉ' });
+      setDepositResult({ type: 'error', msg: 'Please paste your payment receipt (Telebirr, CBE, BOA, Dashen, CBE Birr) / ደረሰኙን ይለጥፉ' });
       return;
     }
     setDepositLoading(true);
@@ -528,18 +528,33 @@ export default function WalletScreen() {
       {tab === 'deposit' && (
         <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* ── Telebirr account card ──────────────────────────────────── */}
+          {/* ── Deposit accounts card ─────────────────────────────────── */}
           <div style={{
             background: C.surface, border: `1px solid ${C.border}`,
             borderRadius: 16, padding: '16px 18px',
           }}>
-            <Step n={1} label="Send to this Telebirr number / ለዚህ Telebirr ቁጥር ይላኩ" />
+            <Step n={1} label="Send money to one of these accounts / ከታቹ ወደ አንዱ ቁጥር ይላኩ" />
+
+            {/* Supported banks banner */}
+            <div style={{
+              display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12,
+            }}>
+              {['📱 Telebirr', '📱 CBE Birr', '🏦 CBE', '🏦 BOA', '🏦 Dashen'].map(b => (
+                <span key={b} style={{
+                  padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                  background: C.amberDim, color: C.amber, border: `1px solid rgba(245,158,11,0.25)`,
+                }}>
+                  {b}
+                </span>
+              ))}
+            </div>
+
             {accountsLoading ? (
               <div style={{ color: C.muted, fontSize: 14, textAlign: 'center', padding: '8px 0' }}>
                 ⏳ Loading... / በመጫን ላይ...
               </div>
             ) : depositAccounts.length === 0 ? (
-              <div style={{ color: C.muted, fontSize: 14 }}>No Telebirr number found. Contact admin. / የቴሌብር ቁጥር አልተገኘም። አስተዳዳሪን ያግኙ።</div>
+              <div style={{ color: C.muted, fontSize: 14 }}>No deposit account found. Contact admin. / የቴሌብር ቁጥር አልተገኘም። አስተዳዳሪን ያግኙ።</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {depositAccounts.map(acc => (
@@ -593,15 +608,22 @@ export default function WalletScreen() {
 
           {/* ── Receipt paste ─────────────────────────────────────────── */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 18px' }}>
-            <Step n={3} label="Paste your Telebirr SMS receipt / የTelebirr SMS ደረሰኝ ይለጥፉ" />
+            <Step n={3} label="Paste your payment receipt / ደረሰኙን ይለጥፉ" />
             <div style={{ color: C.muted, fontSize: 12, marginBottom: 10, lineHeight: 1.5 }}>
-              Copy the transfer SMS from Telebirr and paste the full receipt below / ከTelebirr የተላከ SMS ቅዱ ወይም ሙሉ ደረሰኙን ይለጥፉ
+              ✅ Telebirr SMS · CBE Ref · BOA Ref · Dashen Ref · CBE Birr SMS<br/>
+              ከዚህ ባንኮች ያስተላለፉ ከሆነ የደረሰኙን ቁጥር ወይም ሙሉ SMS ይለጥፉ
             </div>
             <textarea
               value={depositReceipt}
               onChange={e => { setDepositReceipt(e.target.value); setDepositResult(null); }}
-              placeholder="ለምሳሌ: You have sent ETB 200.00 to 0912345678 (Almaz). Transaction ID: 123456789..."
-              rows={4}
+              placeholder={
+                'Telebirr: "Your transaction number is ABC123XYZ0..."\n' +
+                'CBE: "Ref No: FT26123456789, ETB 200.00..."\n' +
+                'BOA: "Ref: BOA2026XXXXXX, ETB 200.00..."\n' +
+                'Dashen: "Ref: DB20260XXXXXX, ETB 200.00..."\n' +
+                'CBE Birr: "Receipt No: CB20260XXXXX..."'
+              }
+              rows={5}
               style={{
                 width: '100%', padding: '13px 14px', borderRadius: 12,
                 border: `1.5px solid ${C.border}`, background: C.surface2,
