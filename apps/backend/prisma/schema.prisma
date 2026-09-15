@@ -40,7 +40,6 @@ model Player {
   plinko_bets             PlinkoBet[]
   royal_drop_bets         RoyalDropBet[]
   deposit_attempts        DepositAttempt[]
-  daily_spin_logs         DailySpinLog[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -674,20 +673,4 @@ model GregmornTransaction {
   @@index([player_login])
   @@index([created_at])
   @@map("gregmorn_transactions")
-}
-
-// ─── Daily Spin Wheel ─────────────────────────────────────────────────────────
-
-model DailySpinLog {
-  id         String   @id @default(uuid())
-  player_id  String
-  prize      Decimal  @db.Decimal(14, 2)
-  prize_type String   // 'bonus' | 'no_luck'
-  spun_date  String   // YYYY-MM-DD in UTC+3 — one spin per player per day
-  created_at DateTime @default(now())
-  player     Player   @relation(fields: [player_id], references: [id])
-
-  @@unique([player_id, spun_date])
-  @@index([player_id])
-  @@map("daily_spin_logs")
 }

@@ -42,7 +42,6 @@ import royalDropRouter from './routes/royal-drop.router.js';
 import gregmornRouter from './routes/gregmorn.router.js';
 import gregmornCallbackRouter from './routes/gregmorn-callback.router.js';
 import gregmornAdminRouter from './routes/admin/gregmorn.admin.router.js';
-import spinRouter from './routes/spin.router.js';
 import cashierAuthRouter from './routes/cashier/auth.cashier.router.js';
 import cashierRouter from './routes/cashier/cashier.router.js';
 import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
@@ -147,7 +146,6 @@ app.use('/api/slots', slotsRouter);
 app.use('/api/keno', kenoRouter);
 app.use('/api/plinko', plinkoRouter);
 app.use('/api/royal-drop', royalDropRouter);
-app.use('/api/spin', spinRouter);
 app.use('/api/gregmorn', gregmornRouter);
 app.use('/api/gregmorn', gregmornCallbackRouter);
 

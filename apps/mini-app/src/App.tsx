@@ -1,8 +1,6 @@
-import React, { useEffect, Suspense, lazy, useState } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import GamesLobbyScreen from './screens/GamesLobbyScreen';
-import SpinWheelModal from './components/SpinWheelModal';
-import { getDailySpinStatus } from './lib/api';
 
 // Lazy-load screens for faster initial load
 const GameScreen = lazy(() => import('./screens/GameScreen'));
@@ -196,29 +194,10 @@ function BottomNav() {
 function AppInner() {
   const location = useLocation();
   const isSubPage = isFullscreenRoute(location.pathname);
-  const [showSpin, setShowSpin] = useState(false);
 
   // Keep socket connected globally
   useEffect(() => {
     if (!socket.connected) socket.connect();
-  }, []);
-
-  // Show daily spin popup once per session if player hasn't spun today
-  useEffect(() => {
-    const sessionKey = 'spinCheckedSession';
-    if (sessionStorage.getItem(sessionKey)) return;
-    sessionStorage.setItem(sessionKey, '1');
-
-    // Small delay so auth has time to settle
-    const t = setTimeout(async () => {
-      try {
-        const status = await getDailySpinStatus();
-        if (status.canSpin) setShowSpin(true);
-      } catch {
-        // silently ignore — not critical
-      }
-    }, 1500);
-    return () => clearTimeout(t);
   }, []);
 
   return (
@@ -244,7 +223,6 @@ function AppInner() {
         </Routes>
       </Suspense>
       <BottomNav />
-      <SpinWheelModal isOpen={showSpin} onClose={() => setShowSpin(false)} />
     </div>
   );
 }
