@@ -73,10 +73,15 @@ export function parseIncomingTelebirrSms(sms: string): {
 
 // ─── POST /api/sms-webhook ────────────────────────────────────────────────────
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  // ── Auth: shared secret ────────────────────────────────────────────────────
+  // ── Auth: shared secret OR httpSMS JWT Bearer token ───────────────────────
   const secret = process.env['SMS_WEBHOOK_SECRET'];
   if (secret) {
-    const provided = req.headers['x-sms-secret'] ?? req.query['secret'];
+    const xHeader = req.headers['x-sms-secret'];
+    const querySecret = req.query['secret'];
+    // httpSMS sends Authorization: Bearer <jwt> — accept if it contains our secret as the token
+    const bearerToken = (req.headers['authorization'] ?? '').replace(/^Bearer\s+/i, '');
+
+    const provided = xHeader ?? querySecret ?? (bearerToken || undefined);
     if (provided !== secret) {
       res.status(401).json({ error: 'UNAUTHORIZED' });
       return;
@@ -87,11 +92,27 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   const body = req.body as Record<string, unknown>;
 
-  // Accept both { sms: "..." } and { message: "..." } and { text: "..." }
-  const rawSms =
-    typeof body['sms'] === 'string' ? body['sms'] :
-    typeof body['message'] === 'string' ? body['message'] :
-    typeof body['text'] === 'string' ? body['text'] : null;
+  // ── httpSMS CloudEvents format ─────────────────────────────────────────────
+  // httpSMS sends: { type: "message.phone.received", data: { content: "...", contact: "09..." } }
+  // Only process incoming SMS events — ignore sent/delivered/heartbeat etc.
+  if (body['type'] && body['type'] !== 'message.phone.received') {
+    res.json({ status: 'ignored', reason: 'NOT_INCOMING_SMS_EVENT' });
+    return;
+  }
+
+  const httpsmsData = body['data'] as Record<string, unknown> | undefined;
+
+  // Accept httpSMS format OR simple { sms/message/text: "..." }
+  const rawSms: string | null =
+    (typeof httpsmsData?.['content'] === 'string' ? httpsmsData['content'] : null) ??
+    (typeof body['sms'] === 'string' ? body['sms'] : null) ??
+    (typeof body['message'] === 'string' ? body['message'] : null) ??
+    (typeof body['text'] === 'string' ? body['text'] : null);
+
+  // httpSMS also gives us the sender phone directly — use it as a hint if SMS parsing misses it
+  const httpsmsContact = typeof httpsmsData?.['contact'] === 'string'
+    ? httpsmsData['contact'] as string
+    : null;
 
   if (!rawSms) {
     res.status(400).json({ error: 'MISSING_SMS', message: 'Provide sms, message, or text field' });
@@ -110,7 +131,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 
   const { amount, senderPhone, txNumber } = parsed;
-  console.log(`[SMSWebhook] Parsed — amount: ${amount}, sender: ${senderPhone}, tx: ${txNumber}`);
+  // Use httpSMS contact field as fallback if SMS parsing didn't extract the phone
+  const resolvedPhone = senderPhone || httpsmsContact;
+  if (!resolvedPhone) {
+    res.json({ status: 'ignored', reason: 'NO_SENDER_PHONE' });
+    return;
+  }
+  console.log(`[SMSWebhook] Parsed — amount: ${amount}, sender: ${resolvedPhone}, tx: ${txNumber}`);
 
   // ── Find player by sender phone ────────────────────────────────────────────
   const players = await prisma.player.findMany({
@@ -119,14 +146,13 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   });
 
   const matchedPlayer = players.find(
-    (p) => p.phone && phoneMatches(senderPhone, p.phone),
+    (p) => p.phone && phoneMatches(resolvedPhone, p.phone),
   );
 
   if (!matchedPlayer) {
-    console.log(`[SMSWebhook] No player found with phone matching ${senderPhone}`);
-    // Still store the SMS for admin review
+    console.log(`[SMSWebhook] No player found with phone matching ${resolvedPhone}`);
     if (txNumber) {
-      await createUnmatchedPendingDeposit(txNumber, amount, rawSms, senderPhone);
+      await createUnmatchedPendingDeposit(txNumber, amount, rawSms, resolvedPhone);
     }
     res.json({ status: 'unmatched', reason: 'NO_PLAYER_WITH_PHONE' });
     return;
