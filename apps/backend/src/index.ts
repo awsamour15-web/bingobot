@@ -47,6 +47,7 @@ import cashierRouter from './routes/cashier/cashier.router.js';
 import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
 import adminBackupRouter from './routes/admin/backup.admin.router.js';
 import adminCleanupRouter from './routes/admin/cleanup.admin.router.js';
+import smsWebhookRouter from './routes/sms-webhook.router.js';
 import helmet from 'helmet';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
@@ -171,6 +172,7 @@ app.use('/api/cashier', cashierRouter);
 app.use('/api/admin/cashiers', jwtAdminMiddleware, adminCashiersRouter);
 app.use('/api/admin/backup', jwtAdminMiddleware, adminBackupRouter);
 app.use('/api/admin/cleanup', jwtAdminMiddleware, adminCleanupRouter);
+app.use('/api/sms-webhook', smsWebhookRouter);
 // broadcast-targets v2
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
