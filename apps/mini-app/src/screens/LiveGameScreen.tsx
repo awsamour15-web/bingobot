@@ -362,6 +362,29 @@ export default function LiveGameScreen() {
 
     socket.on('connect', onReconnect);
 
+    // Resync immediately when user switches back to the tab/app (Telegram WebView)
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!socket.connected) {
+        socket.connect();
+        return; // onReconnect will handle the resync
+      }
+      // Socket still connected — just re-fetch missed numbers
+      getCalledNumbers(roundId!).then((nums) => {
+        setGame((g) => {
+          if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled') return g;
+          if (nums.every(n => g.calledNumbers.has(n)) && g.calledNumbers.size === nums.length) return g;
+          const mergedSet = new Set([...g.calledNumbers, ...nums]);
+          const serverSet = new Set(nums);
+          const wsExtras = g.calledOrder.filter(n => !serverSet.has(n));
+          const mergedOrder = [...nums, ...wsExtras];
+          const last = mergedOrder[mergedOrder.length - 1] ?? g.lastCalled;
+          return { ...g, calledNumbers: mergedSet, calledOrder: mergedOrder, lastCalled: last ?? g.lastCalled };
+        });
+      }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     const onNumber = (p: NumberCalledPayload) => {
       setGame((g) => {
         // Ignore any stray NUMBER_CALLED events after the round is over
@@ -446,6 +469,7 @@ export default function LiveGameScreen() {
     socket.on('ROUND_CANCELLED', onCancelled);
     socket.on('WIN_REJECTED', onRejected);
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       socket.off('connect', onReconnect);
       socket.off('NUMBER_CALLED', onNumber);
       socket.off('ROUND_STARTED', onStarted);
@@ -465,7 +489,7 @@ export default function LiveGameScreen() {
   // This prevents the board from freezing if socket events are delayed or missed.
   useEffect(() => {
     if (!roundId || !['waiting', 'active'].includes(game.phase)) return;
-    // Poll at 1.5 s — lightweight: only fetch called numbers (no heavy getRound).
+    // Poll at 800 ms — lightweight: only fetch called numbers (no heavy getRound).
     // This is a safety-net for missed WS events; normal delivery is via socket.
     const iv = setInterval(async () => {
       try {
@@ -486,7 +510,7 @@ export default function LiveGameScreen() {
           return { ...g, calledNumbers: mergedSet, calledOrder: mergedOrder, lastCalled: last ?? g.lastCalled };
         });
       } catch {}
-    }, 1500);
+    }, 800);
     return () => clearInterval(iv);
   }, [game.phase, roundId]);
   useEffect(() => {
