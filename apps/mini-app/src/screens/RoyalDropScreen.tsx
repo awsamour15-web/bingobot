@@ -476,7 +476,7 @@ export default function RoyalDropScreen() {
         @media (max-width: 480px) {
           .rd-cabinet-reel { width: 92% !important; max-width: 420px !important; margin-top: 8px !important; }
           .rd-cabinet-grid { width: 100% !important; height: clamp(180px, 36dvh, 300px) !important; }
-          .rd-controls { padding-left: 8px !important; padding-right: 8px !important; }
+          .rd-controls { padding-left: 20px !important; padding-right: 20px !important; }
           .rd-bet-chip { padding-left: 6px !important; padding-right: 6px !important; }
           .rd-action-row { gap: 6px !important; }
         }
@@ -696,7 +696,7 @@ export default function RoyalDropScreen() {
           <div className="rd-controls" style={{
             background: 'rgba(10,18,35,0.97)',
             borderTop: '1px solid rgba(255,255,255,0.08)',
-            padding: '5px 10px 6px',
+            padding: '5px 20px 6px',
             paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
           }}>
             <div style={{
