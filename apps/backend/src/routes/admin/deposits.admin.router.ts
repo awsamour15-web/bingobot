@@ -109,7 +109,8 @@ router.post('/:id/approve', async (req: Request, res: Response): Promise<void> =
       CANCELLED: 'This deposit has been cancelled.',
     } as const;
     // logDepositAttempt already called inside processDepositClaim
-    res.status(409).json({ error: result.reason, message: messageMap[result.reason] });
+    const status = result.reason === 'NOT_FOUND' ? 404 : 409;
+    res.status(status).json({ error: result.reason, message: messageMap[result.reason] });
     return;
   }
 
