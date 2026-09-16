@@ -18,6 +18,7 @@ interface LoginRequest {
 interface LoginResponse {
   token: string;
   playerId: string;
+  phoneVerified: boolean;
   agentToken?: string;
   agentId?: string;
 }
@@ -115,12 +116,13 @@ router.post(
 
     let player: { id: string };
     let isNew: boolean;
+    let phoneVerified: boolean;
     try {
-    ({ player, isNew } = await prisma.$transaction(async (tx: PrismaTx) => {
+    ({ player, isNew, phoneVerified } = await prisma.$transaction(async (tx: PrismaTx) => {
       // Try to find existing player
       const existing = await tx.player.findUnique({
         where: { telegram_id: telegramId },
-        select: { id: true },
+        select: { id: true, phone_verified: true },
       });
 
       if (existing) {
@@ -137,7 +139,7 @@ router.post(
           where: { telegram_id: telegramId },
           data: { username },
         });
-        return { player: existing, isNew: false };
+        return { player: existing, isNew: false, phoneVerified: existing.phone_verified };
       }
 
       // First-time registration
@@ -173,7 +175,7 @@ router.post(
         });
       }
 
-      return { player: newPlayer, isNew: true };
+      return { player: newPlayer, isNew: true, phoneVerified: false };
     }));
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
@@ -198,7 +200,7 @@ router.post(
       select: { id: true, is_active: true },
     });
 
-    const response: LoginResponse = { token, playerId: player.id };
+    const response: LoginResponse = { token, playerId: player.id, phoneVerified };
 
     // Only issue agent token for active agents
     if (agentRecord?.is_active) {

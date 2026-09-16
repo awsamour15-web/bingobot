@@ -46,6 +46,7 @@ export function isLoggedIn(): boolean {
 export function clearSession(): void {
   localStorage.removeItem(storageKey('jwt'));
   localStorage.removeItem(storageKey('playerId'));
+  localStorage.removeItem(storageKey('phoneVerified'));
   localStorage.removeItem(storageKey('agentJwt'));
   localStorage.removeItem(storageKey('agentId'));
 }
@@ -71,6 +72,7 @@ async function doLogin(): Promise<void> {
     console.log('[Auth] Login successful', { playerId: response.playerId });
     localStorage.setItem(storageKey('jwt'), response.token);
     localStorage.setItem(storageKey('playerId'), response.playerId);
+    localStorage.setItem(storageKey('phoneVerified'), String(response.phoneVerified ?? false));
 
     // Store agent JWT if the user is also an agent
     if (response.agentToken) {
@@ -123,4 +125,8 @@ export function getAgentJwt(): string | null {
 
 export function getAgentId(): string | null {
   return localStorage.getItem(storageKey('agentId'));
+}
+
+export function isPhoneVerified(): boolean {
+  return localStorage.getItem(storageKey('phoneVerified')) === 'true';
 }

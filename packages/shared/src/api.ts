@@ -16,6 +16,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string;
   playerId: string;
+  phoneVerified: boolean;
   agentToken?: string;
   agentId?: string;
 }

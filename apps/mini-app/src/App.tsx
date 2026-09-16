@@ -1,6 +1,7 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import GamesLobbyScreen from './screens/GamesLobbyScreen';
+import RegistrationGate from './components/RegistrationGate';
 
 // Lazy-load screens for faster initial load
 const GameScreen = lazy(() => import('./screens/GameScreen'));
@@ -230,7 +231,9 @@ function AppInner() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppInner />
+      <RegistrationGate>
+        <AppInner />
+      </RegistrationGate>
     </ErrorBoundary>
   );
 }
