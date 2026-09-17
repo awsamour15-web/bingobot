@@ -322,6 +322,20 @@ export const GameRoundService = {
     const stake = Number(round.stake);
     const commissionPct = round.commission_pct;
 
+    // Mark as active immediately so the scheduler doesn't re-trigger start()
+    // on the next tick while the payment loop is still running (can take 5-15s for 40+ players).
+    // Use updateMany with status=pending guard to make this idempotent — if another
+    // process already flipped it, count=0 and we bail out safely.
+    const { count: claimCount } = await prisma.gameRound.updateMany({
+      where: { id: roundId, status: GameStatus.pending },
+      data: { status: GameStatus.active, start_time: new Date() },
+    });
+    if (claimCount === 0) {
+      // Another process already started this round — do nothing
+      console.log(`[GameRoundService] Round ${roundId} already started by another process — skipping`);
+      return;
+    }
+
     // Collect payment from each entry — remove entries that can't pay
     // Process sequentially to avoid overwhelming the DB connection pool
     const paidPlayerIds: string[] = [];
@@ -375,7 +389,7 @@ export const GameRoundService = {
     const finalEntryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
 
     if (finalEntryCount === 0) {
-      // No paying players — void the round
+      // No paying players — void the round (it was already marked active, flip it back)
       await prisma.gameRound.update({ where: { id: roundId }, data: { status: GameStatus.void, ended_at: new Date() } });
       if (GameRoundService._onRoundVoidEmpty) await GameRoundService._onRoundVoidEmpty(roundId);
       return;
@@ -383,9 +397,10 @@ export const GameRoundService = {
 
     const finalDerash = finalEntryCount * stake * (1 - commissionPct / 100);
 
+    // Update derash only — status and start_time were already set at the top
     await prisma.gameRound.update({
       where: { id: roundId },
-      data: { status: GameStatus.active, start_time: new Date(), derash: finalDerash },
+      data: { derash: finalDerash },
     });
 
     // Kick off number calling immediately (non-blocking) — don't wait for async completion
