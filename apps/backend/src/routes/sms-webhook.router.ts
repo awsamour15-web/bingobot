@@ -77,11 +77,12 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   const secret = process.env['SMS_WEBHOOK_SECRET'];
   if (secret) {
     const xHeader = req.headers['x-sms-secret'];
+    const xApiKey = req.headers['x-api-key'];
     const querySecret = req.query['secret'];
     // httpSMS sends Authorization: Bearer <jwt> — accept if it contains our secret as the token
     const bearerToken = (req.headers['authorization'] ?? '').replace(/^Bearer\s+/i, '');
 
-    const provided = xHeader ?? querySecret ?? (bearerToken || undefined);
+    const provided = xHeader ?? xApiKey ?? querySecret ?? (bearerToken || undefined);
     if (provided !== secret) {
       res.status(401).json({ error: 'UNAUTHORIZED' });
       return;

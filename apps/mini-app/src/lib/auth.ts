@@ -91,7 +91,10 @@ async function doLogin(): Promise<void> {
 }
 
 export async function initAuth(): Promise<void> {
-  if (isLoggedIn()) return;
+  // If logged in but phoneVerified is still false, force a fresh login to re-check
+  // (guards against stale localStorage after the user completes phone registration)
+  const phoneVerifiedStored = localStorage.getItem(storageKey('phoneVerified'));
+  if (isLoggedIn() && phoneVerifiedStored === 'true') return;
   if (authPromise) return authPromise;
 
   authPromise = doLogin().finally(() => {
