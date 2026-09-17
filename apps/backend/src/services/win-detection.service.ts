@@ -73,8 +73,7 @@ function getLinesForPattern(pattern: WinPattern): number[][] {
     case 'full_house':     return FULL_HOUSE;
     case 'any_line':
     default:
-      return [...ROWS, ...COLUMNS, ...DIAGONALS];
-  }
+      return [...ROWS, ...COLUMNS, ...DIAGONALS];  }
 }
 
 // ─── Parse winning pattern field (single string or JSON array) ───────────────

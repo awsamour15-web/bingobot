@@ -126,6 +126,17 @@ export const RoundScheduler = {
               data: { status: GameStatus.void, ended_at: new Date() },
             });
             console.log(`[Scheduler] Force-voided stuck round ${round.id}`);
+            // Notify connected clients so they don't stay frozen waiting for events
+            try {
+              // Re-trigger the NCE void callback (registered by WebSocket layer) so clients
+              // receive ROUND_VOID and navigate away instead of staying frozen.
+              const { GameRoundService } = await import('./game-round.service.js');
+              if (GameRoundService._onRoundVoidEmpty) {
+                await GameRoundService._onRoundVoidEmpty(round.id);
+              }
+            } catch (notifyErr) {
+              console.error(`[Scheduler] Failed to notify clients of force-void for round ${round.id}:`, notifyErr);
+            }
           } catch (voidErr) {
             console.error(`[Scheduler] Failed to force-void stuck round ${round.id}:`, voidErr);
           }

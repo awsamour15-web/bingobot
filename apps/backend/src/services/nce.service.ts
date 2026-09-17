@@ -395,8 +395,20 @@ export class NumberCallingEngine {
         await distributeWinningsDirectly(roundId, winnerMap);
       } catch (distErr) {
         console.error(`[NCE] distributeWinnings error round=${roundId}:`, distErr);
-        // Even if distribution fails, do NOT restart NCE — the round may be
-        // partially committed. Log and leave it for admin recovery.
+        // Distribution failed — check if the round was partially committed (status changed)
+        // If still active, force-void so the round doesn't stay stuck forever
+        try {
+          const check = await prisma.gameRound.findUnique({
+            where: { id: roundId },
+            select: { status: true },
+          });
+          if (check?.status === GameStatus.active) {
+            console.warn(`[NCE] Round ${roundId} still active after failed distribution — force-voiding`);
+            await this.triggerVoid(roundId);
+          }
+        } catch (voidErr) {
+          console.error(`[NCE] Failed to force-void round ${roundId} after distribution error:`, voidErr);
+        }
       }
       // Keep roundId in stoppingRounds until after distribution so recoverStaleActiveRounds
       // does not restart NCE for a round that is mid-distribution (still active in DB)
@@ -422,7 +434,7 @@ export class NumberCallingEngine {
         case WinPattern.corners:        return [[0,4,20,24]];
         case WinPattern.full_house:     return [Array.from({ length: 25 }, (_, i) => i)];
         case WinPattern.any_line:
-        default:                        return [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20], [0,4,20,24]];
+        default:                        return [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20]];
       }
     };
 

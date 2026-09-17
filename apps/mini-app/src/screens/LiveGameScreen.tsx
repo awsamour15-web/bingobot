@@ -584,7 +584,7 @@ export default function LiveGameScreen() {
       case WinPattern.diagonal_tr_bl: return [[4,8,12,16,20]];
       case WinPattern.corners:        return [[0,4,20,24]];
       case WinPattern.full_house:     return [Array.from({ length: 25 }, (_, i) => i)];
-      default:                        return [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20], [0,4,20,24]];
+      default:                        return [...ROWS, ...COLS, [0,6,12,18,24], [4,8,12,16,20]];
     }
   }
 
