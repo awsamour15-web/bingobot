@@ -94,18 +94,31 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
 
 const LOCAL_COUNTDOWN_SEC = 40; // must match LEAD_TIME_MS (40s) in round-scheduler.service.ts
 
-/** 40-second countdown that starts the moment the hook first mounts. */
-function useLocalCountdown() {
-  const [msLeft, setMsLeft] = useState(LOCAL_COUNTDOWN_SEC * 1000);
+/**
+ * Countdown that derives remaining time from the round's server-side start_time.
+ * Falls back to LOCAL_COUNTDOWN_SEC if start_time is not yet known.
+ * Survives page refreshes correctly because it anchors to the server timestamp.
+ */
+function useLocalCountdown(startTime?: string | null) {
+  const getTotalMs = () => {
+    if (startTime) {
+      const serverMs = new Date(startTime).getTime() - Date.now();
+      // Clamp: if server time already passed or is > 2× lead time, use local fallback
+      if (serverMs > 0 && serverMs <= LOCAL_COUNTDOWN_SEC * 2 * 1000) return serverMs;
+    }
+    return LOCAL_COUNTDOWN_SEC * 1000;
+  };
+
+  const [msLeft, setMsLeft] = useState(() => getTotalMs());
 
   useEffect(() => {
-    const startedAt = Date.now();
-    const totalMs = LOCAL_COUNTDOWN_SEC * 1000;
-    const tick = () => setMsLeft(Math.max(0, totalMs - (Date.now() - startedAt)));
+    // Re-anchor whenever start_time becomes available or changes
+    const deadline = startTime ? new Date(startTime).getTime() : Date.now() + LOCAL_COUNTDOWN_SEC * 1000;
+    const tick = () => setMsLeft(Math.max(0, deadline - Date.now()));
     tick();
     const id = setInterval(tick, 100);
     return () => clearInterval(id);
-  }, []); // run once on mount
+  }, [startTime]); // re-run when start_time resolves from the API
 
   const secLeft = Math.ceil(msLeft / 1000);
   return {
@@ -169,7 +182,7 @@ export default function CartelaScreen() {
   // Grids for picked cartelas — fetched on pick
   const [pickedGrids, setPickedGrids] = useState<Map<number, number[]>>(new Map());
 
-  const { msLeft, label: countdownLabel, pct } = useLocalCountdown();
+  const { msLeft, label: countdownLabel, pct } = useLocalCountdown(round?.start_time);
 
   useEffect(() => {
     if (!roundId) return;
