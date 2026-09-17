@@ -818,7 +818,6 @@ export async function processDepositClaim(
         data: { status: 'claimed', player_id: playerId, claimed_at: new Date() },
       });
       if (count === 0) throw new Error('ALREADY_CLAIMED');
-
       const wallet = await tx.wallet.findUniqueOrThrow({
         where: { player_id_type: { player_id: playerId, type: 'play' } },
       });
@@ -866,7 +865,7 @@ export async function processDepositClaim(
           await AgentService.creditCommission(tx, playerRecord.agent_id, playerId, deposit.id, deposit.amount);
         }
       }
-    });
+    }, { timeout: 15_000 });
   } catch (err) {
     if (err instanceof Error && err.message === 'ALREADY_CLAIMED') {
       return { success: false, reason: 'CLAIMED' };
@@ -2011,7 +2010,7 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             await AgentService.creditCommission(tx, playerRecord.agent_id, player.id, deposit.id, deposit.amount);
           }
         }
-      });
+      }, { timeout: 15_000 });
 
       // Fetch updated play wallet balance for the reply
       const updatedWallet = await prisma.wallet.findUnique({

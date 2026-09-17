@@ -16,6 +16,9 @@ const CHECK_INTERVAL_MS = 5_000; // Check every 5 seconds — 1s caused excessiv
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
 
+// Tracks rounds currently being started — prevents re-entry across ticks
+const startingRounds = new Set<string>();
+
 // Tracks how many consecutive ticks a round has been timer-less (stuck)
 const stuckRoundTicks = new Map<string, number>();
 const STUCK_TICK_THRESHOLD = 2; // force-void after 2 ticks (~20s) with no timer for faster recovery
@@ -188,12 +191,22 @@ export const RoundScheduler = {
             continue;
           }
 
+          // Skip if this round is already being started by a previous tick
+          if (startingRounds.has(round.id)) {
+            console.log(`[Scheduler] Skipping start of ${round.id} — already being started`);
+            startedStakes.add(stake);
+            continue;
+          }
+
           try {
+            startingRounds.add(round.id);
             await GameRoundService.start(round.id);
             startedStakes.add(stake);
             console.log(`[Scheduler] Round ${round.id} auto-started (${round._count.round_entries} players)`);
           } catch (err) {
             console.error(`[Scheduler] Failed to start round ${round.id}:`, err);
+          } finally {
+            startingRounds.delete(round.id);
           }
         } else {
           // Already started one for this stake this tick — void the duplicate
