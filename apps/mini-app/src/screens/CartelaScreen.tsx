@@ -100,31 +100,30 @@ const LOCAL_COUNTDOWN_SEC = 40; // must match LEAD_TIME_MS (40s) in round-schedu
  * Survives page refreshes correctly because it anchors to the server timestamp.
  */
 function useLocalCountdown(startTime?: string | null) {
-  const getTotalMs = () => {
-    if (startTime) {
-      const serverMs = new Date(startTime).getTime() - Date.now();
-      // Clamp: if server time already passed or is > 2× lead time, use local fallback
-      if (serverMs > 0 && serverMs <= LOCAL_COUNTDOWN_SEC * 2 * 1000) return serverMs;
-    }
-    return LOCAL_COUNTDOWN_SEC * 1000;
-  };
+  // Total duration = distance from now to start_time (captured once when start_time first resolves)
+  const totalMsRef = useRef<number>(LOCAL_COUNTDOWN_SEC * 1000);
 
-  const [msLeft, setMsLeft] = useState(() => getTotalMs());
+  const getDeadline = () =>
+    startTime ? new Date(startTime).getTime() : Date.now() + LOCAL_COUNTDOWN_SEC * 1000;
+
+  const [msLeft, setMsLeft] = useState(() => Math.max(0, getDeadline() - Date.now()));
 
   useEffect(() => {
-    // Re-anchor whenever start_time becomes available or changes
-    const deadline = startTime ? new Date(startTime).getTime() : Date.now() + LOCAL_COUNTDOWN_SEC * 1000;
+    const deadline = getDeadline();
+    // Capture total duration once when start_time is known
+    totalMsRef.current = Math.max(1, deadline - Date.now());
     const tick = () => setMsLeft(Math.max(0, deadline - Date.now()));
     tick();
     const id = setInterval(tick, 100);
     return () => clearInterval(id);
-  }, [startTime]); // re-run when start_time resolves from the API
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startTime]);
 
   const secLeft = Math.ceil(msLeft / 1000);
   return {
     msLeft,
     label: `${secLeft}s`,
-    pct: msLeft / (LOCAL_COUNTDOWN_SEC * 1000),
+    pct: msLeft / totalMsRef.current,
   };
 }
 

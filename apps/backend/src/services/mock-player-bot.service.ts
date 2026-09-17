@@ -260,7 +260,7 @@ export const MockPlayerBotService = {
       // Push start_time forward to give us a safe window for crediting + inserting
       await prisma.gameRound.update({
         where: { id: roundId },
-        data: { start_time: new Date(Date.now() + 2 * 60 * 1000) },
+        data: { start_time: new Date(Date.now() + 30 * 1000) },
       });
 
       // Credit all players upfront sequentially
