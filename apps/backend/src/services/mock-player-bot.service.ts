@@ -260,7 +260,7 @@ export const MockPlayerBotService = {
       // Push start_time forward to give us a safe window for crediting + inserting
       await prisma.gameRound.update({
         where: { id: roundId },
-        data: { start_time: new Date(Date.now() + 30 * 1000) },
+        data: { start_time: new Date(Date.now() + 45 * 1000) },
       });
 
       // Credit all players upfront sequentially
@@ -304,14 +304,18 @@ export const MockPlayerBotService = {
         skipDuplicates: true,
       });
 
-      // Recalculate derash
+      // Recalculate derash and reset start_time to now+40s so the countdown
+      // always shows ~40s from when mock players finish joining (not from round creation)
       const entryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
       const roundForDerash = await prisma.gameRound.findUnique({ where: { id: roundId }, select: { stake: true, commission_pct: true } });
       if (roundForDerash) {
         const s = parseFloat(roundForDerash.stake.toString());
         await prisma.gameRound.update({
           where: { id: roundId },
-          data: { derash: entryCount * s * (1 - roundForDerash.commission_pct / 100) },
+          data: {
+            derash: entryCount * s * (1 - roundForDerash.commission_pct / 100),
+            start_time: new Date(Date.now() + 40 * 1000),
+          },
         });
       }
 
