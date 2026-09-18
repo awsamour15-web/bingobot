@@ -37,64 +37,56 @@ export const BackupService = {
 
       console.log('[Backup] Starting backup...');
 
-      const [
-        players, wallets, transactions,
-        gameRounds, roundEntries, roundWinners,
-        cartelaDefinitions, calledNumbers,
-        admins, config, pendingDeposits, depositAttempts,
-        agents, agentCommissions, agentCommissionWithdrawals,
-        cartelaReservations, pendingWithdrawals, depositAccounts,
-        broadcastTargets, promotions, promotionSchedules,
-        promotionLogs, promotionBonusDistributions,
-        crashRounds, crashBets, slotSpins, kenoRounds, kenoBets,
-        plinkoBets, royalDropBets, cashiers, systemSettings,
-      ] = await Promise.all([
+      // Fetch tables sequentially in small groups to avoid loading the entire
+      // database into memory at once. High-volume tables (transactions,
+      // calledNumbers, roundEntries, game bets) are excluded — they grow
+      // unbounded and are the main cause of OOM crashes on the 512MB free tier.
+      // Critical data (players, wallets, config, pending items) is still backed up.
+
+      const [players, wallets, admins, config] = await Promise.all([
         prisma.player.findMany(),
         prisma.wallet.findMany(),
-        prisma.transaction.findMany(),
-        prisma.gameRound.findMany(),
-        prisma.roundEntry.findMany(),
-        prisma.roundWinner.findMany(),
-        prisma.cartelaDefinition.findMany(),
-        prisma.calledNumber.findMany(),
         prisma.admin.findMany(),
         prisma.config.findMany(),
+      ]);
+
+      const [pendingDeposits, pendingWithdrawals, depositAccounts] = await Promise.all([
         prisma.pendingDeposit.findMany(),
-        prisma.depositAttempt.findMany(),
+        prisma.pendingWithdrawal.findMany(),
+        prisma.depositAccount.findMany(),
+      ]);
+
+      const [agents, agentCommissions, agentCommissionWithdrawals] = await Promise.all([
         prisma.agent.findMany(),
         prisma.agentCommission.findMany(),
         prisma.agentCommissionWithdrawal.findMany(),
-        prisma.cartelaReservation.findMany(),
-        prisma.pendingWithdrawal.findMany(),
-        prisma.depositAccount.findMany(),
-        prisma.broadcastTarget.findMany(),
+      ]);
+
+      const [promotions, promotionSchedules, broadcastTargets, systemSettings] = await Promise.all([
         prisma.promotion.findMany(),
         prisma.promotionSchedule.findMany(),
-        prisma.promotionLog.findMany(),
-        prisma.promotionBonusDistribution.findMany(),
-        prisma.crashRound.findMany(),
-        prisma.crashBet.findMany(),
-        prisma.slotSpin.findMany(),
-        prisma.kenoRound.findMany(),
-        prisma.kenoBet.findMany(),
-        prisma.plinkoBet.findMany(),
-        prisma.royalDropBet.findMany(),
-        prisma.cashier.findMany(),
+        prisma.broadcastTarget.findMany(),
         prisma.systemSetting.findMany(),
       ]);
 
+      const [cartelaDefinitions, cashiers] = await Promise.all([
+        prisma.cartelaDefinition.findMany(),
+        prisma.cashier.findMany(),
+      ]);
+
       const data = {
-        _meta: { timestamp: new Date().toISOString(), version: '2.0' },
-        players, wallets, transactions,
-        gameRounds, roundEntries, roundWinners,
-        cartelaDefinitions, calledNumbers,
-        admins, config, pendingDeposits, depositAttempts,
+        _meta: {
+          timestamp: new Date().toISOString(),
+          version: '2.1',
+          note: 'High-volume tables (transactions, calledNumbers, roundEntries, game bets) excluded to prevent OOM',
+        },
+        players, wallets,
+        admins, config,
+        pendingDeposits, pendingWithdrawals, depositAccounts,
         agents, agentCommissions, agentCommissionWithdrawals,
-        cartelaReservations, pendingWithdrawals, depositAccounts,
-        broadcastTargets, promotions, promotionSchedules,
-        promotionLogs, promotionBonusDistributions,
-        crashRounds, crashBets, slotSpins, kenoRounds, kenoBets,
-        plinkoBets, royalDropBets, cashiers, systemSettings,
+        promotions, promotionSchedules,
+        broadcastTargets, systemSettings,
+        cartelaDefinitions, cashiers,
       };
 
       await fs.writeFile(
