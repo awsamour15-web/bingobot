@@ -7,3 +7,4 @@ apps/admin/dist/
 *.log
 .pnpm-store/
 .DS_Store
+apps/backend/backups/

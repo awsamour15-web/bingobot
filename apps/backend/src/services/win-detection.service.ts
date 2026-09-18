@@ -338,8 +338,8 @@ export const WinDetectionService = {
     const calledSet = new Set(calledRows.map((c) => c.number));
     console.log(`[WinDetection] Checking player=${playerId} round=${roundId} cartelas=${cartelaNumbers} calledCount=${calledSet.size}`);
 
-    // 5. Check win — always use any_line (any row, column, or diagonal wins)
-    const patterns: WinPattern[] = ['any_line'];
+    // 5. Check win using the round's actual winning_pattern
+    const patterns = parseWinPatterns(round.winning_pattern ?? 'any_line');
     let winningCartelaNumber: number | null = null;
     for (const cartela of cartelas) {
       const grid = (cartela.grid as unknown[]).map((v, i) =>

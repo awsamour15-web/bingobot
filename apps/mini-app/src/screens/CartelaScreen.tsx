@@ -80,14 +80,7 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
         WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
       }}
     >
-      {taken ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <span style={{ fontSize: 14 }}>🔒</span>
-          <span style={{ fontSize: 11 }}>{num}</span>
-        </div>
-      ) : (
-        num
-      )}
+      {num}
     </button>
   );
 });

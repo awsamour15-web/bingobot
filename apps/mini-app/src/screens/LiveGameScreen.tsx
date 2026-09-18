@@ -55,6 +55,8 @@ export default function LiveGameScreen() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimPending, setClaimPending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
+  const [manualMode, setManualMode] = useState(false);
+  const [manuallyMarked, setManuallyMarked] = useState<Set<number>>(new Set());
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   // Keep a ref in sync so socket handlers always read the latest value
   const soundOnRef = useRef(soundOn);
@@ -561,6 +563,35 @@ export default function LiveGameScreen() {
     setSoundOn((v) => { const n = !v; localStorage.setItem('soundOn', String(n)); return n; });
   }, []);
 
+  const toggleManualMode = useCallback(() => {
+    setManualMode((v) => {
+      if (!v) {
+        // switching to manual — reset manual marks
+        setManuallyMarked(new Set());
+        autoClaimed.current = false;
+      }
+      return !v;
+    });
+  }, []);
+
+  const handleManualMark = useCallback((val: number) => {
+    if (!manualMode || val === 0) return;
+    setManuallyMarked((prev) => {
+      const next = new Set(prev);
+      if (next.has(val)) next.delete(val);
+      else next.add(val);
+      return next;
+    });
+  }, [manualMode]);
+
+  const handleManualBingoClaim = useCallback(() => {
+    if (!roundId || claimPending || !myCartelas.length) return;
+    autoClaimed.current = true;
+    setClaimPending(true);
+    setClaimError(null);
+    socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
+  }, [roundId, claimPending, myCartelas, winningCartelaNumber]);
+
 
   const allCartelas = myCartelas;
   const marked = game.calledNumbers;
@@ -570,7 +601,9 @@ export default function LiveGameScreen() {
   function isMarkedForGrid(g: number[], i: number) {
     if (i === 12) return true; // free space
     const v = g[i];
-    return v !== undefined && v !== 0 && marked.has(v);
+    if (v === undefined || v === 0) return false;
+    if (manualMode) return manuallyMarked.has(v);
+    return marked.has(v);
   }
 
   // Returns the indices that form winning lines for the given pattern
@@ -611,12 +644,13 @@ export default function LiveGameScreen() {
   // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
   const autoClaimed = useRef(false);
   useEffect(() => {
+    if (manualMode) return; // manual mode: player must press BINGO button
     if (!playerHasBingo || game.phase !== 'active' || !roundId || !myCartelas.length || claimPending || autoClaimed.current) return;
     autoClaimed.current = true;
     setClaimPending(true);
     setClaimError(null);
     socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
-  }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending]);
+  }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending, manualMode]);
 
   if (loading) return (
     <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', flexDirection: 'column', gap: 16 }}>
@@ -770,7 +804,23 @@ export default function LiveGameScreen() {
           <div style={{ padding: '14px 12px 12px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Last Called</span>
-              <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#7a95b8', fontSize: 14, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={toggleManualMode}
+                  title={manualMode ? 'Switch to Auto mode' : 'Switch to Manual mode'}
+                  style={{
+                    background: manualMode ? 'rgba(245,197,24,0.15)' : 'rgba(255,255,255,0.07)',
+                    border: manualMode ? '1px solid rgba(245,197,24,0.5)' : '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                    color: manualMode ? '#f5c518' : '#7a95b8', fontSize: 9, fontWeight: 800,
+                    letterSpacing: 0.5, textTransform: 'uppercase', lineHeight: 1.4,
+                  }}
+                >
+                  {manualMode ? '✋ Manual' : '⚡ Auto'}
+                </button>
+                <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#7a95b8', fontSize: 14, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
+              </div>
             </div>
             {game.lastCalled != null ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -859,25 +909,56 @@ export default function LiveGameScreen() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '1px 1px 1px' }}>
                       {cGrid.map((val, idx) => {
                         const isFree = idx === 12;
-                        const isM = isFree || (val !== 0 && marked.has(val));
+                        const isM = isMarkedForGrid(cGrid, idx);
                         const isW = winCells.has(idx);
+                        const canMark = manualMode && !isFree && val !== 0 && game.calledNumbers.has(val);
                         return (
-                          <div key={idx} style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            aspectRatio: '1', borderRadius: 2,
-                            background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#234d87' : 'rgba(255,255,255,0.05)',
-                            color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
-                            fontSize: 13, fontWeight: isW ? 900 : isM ? 700 : 500,
-                            border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
-                            boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
-                            transition: 'background 0.15s',
-                          }}>
+                          <div
+                            key={idx}
+                            onClick={() => canMark ? handleManualMark(val) : undefined}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              aspectRatio: '1', borderRadius: 2,
+                              background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#234d87' : 'rgba(255,255,255,0.05)',
+                              color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
+                              fontSize: 13, fontWeight: isW ? 900 : isM ? 700 : 500,
+                              border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
+                              boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
+                              transition: 'background 0.15s',
+                              cursor: canMark ? 'pointer' : 'default',
+                              outline: manualMode && canMark && !isM ? '1px dashed rgba(245,197,24,0.3)' : 'none',
+                            }}>
                             {val ? <span style={{ fontSize: '13px' }}>{val}</span> : isFree ? <span style={{ fontSize: '16px' }}>★</span> : ''}
                             {isFree && val ? <span style={{ fontSize: '7px', opacity: 0.7 }}>●</span> : ''}
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* BINGO button — manual mode only */}
+                    {manualMode && hasBingo && game.phase === 'active' && !claimPending && (
+                      <div style={{ padding: '4px 4px' }}>
+                        <button
+                          type="button"
+                          onClick={handleManualBingoClaim}
+                          style={{
+                            width: '100%', padding: '8px 0', borderRadius: 6, border: 'none',
+                            background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
+                            color: '#0e1726', fontWeight: 900, fontSize: 14, cursor: 'pointer',
+                            letterSpacing: 1, textTransform: 'uppercase',
+                            boxShadow: '0 0 16px rgba(245,197,24,0.55)',
+                            animation: 'lastCalledPulse 0.7s ease-in-out infinite',
+                          }}
+                        >
+                          🎉 BINGO!
+                        </button>
+                      </div>
+                    )}
+                    {manualMode && claimPending && hasBingo && (
+                      <div style={{ padding: '4px 4px' }}>
+                        <div style={{ textAlign: 'center', fontSize: 10, color: '#f59e0b', fontWeight: 700, padding: '6px 0' }}>⏳ Claiming…</div>
+                      </div>
+                    )}
                   </div>
                 );
               })
