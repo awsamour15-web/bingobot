@@ -335,8 +335,12 @@ export default function WalletScreen() {
   // ── Loading / error guards ─────────────────────────────────────────────────
   if (loading) return <div style={{ minHeight: '100dvh', background: C.bg }} />;
   if (error || !profile) return (
-    <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, padding: 20, textAlign: 'center' }}>
-      {error ?? 'Failed to load / መጫን አልተሳካም'}
+    <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: C.red, padding: 20, textAlign: 'center', gap: 16 }}>
+      <div style={{ fontSize: 40 }}>⚠️</div>
+      <div>{error ?? 'Failed to load / መጫን አልተሳካም'}</div>
+      <button onClick={() => { setLoading(true); setError(null); loadProfile(); }} style={{ marginTop: 8, padding: '12px 28px', borderRadius: 12, border: 'none', background: C.amber, color: '#0a0e1a', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+        Retry / እንደገና ሞክር
+      </button>
     </div>
   );
 
@@ -432,7 +436,7 @@ export default function WalletScreen() {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <span style={{ color: C.green, fontSize: 12, fontWeight: 700 }}>Verified / ተረጋግጧል</span>
+              <span style={{ color: C.green, fontSize: 12, fontWeight: 700 }}>{profile.phone_verified ? 'Verified / ተረጋግጧል' : 'Unverified / አልተረጋገጠም'}</span>
             </div>
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>Total Balance / ጠቅላላ ቀሪ ሂሳብ</div>

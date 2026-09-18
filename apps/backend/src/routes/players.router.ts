@@ -35,8 +35,28 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const mainWallet = player.wallets.find((w) => w.type === 'main');
-  const playWallet = player.wallets.find((w) => w.type === 'play');
+  let mainWallet = player.wallets.find((w) => w.type === 'main');
+  let playWallet = player.wallets.find((w) => w.type === 'play');
+
+  // Auto-heal: create missing wallets rather than returning an error
+  if (!mainWallet || !playWallet) {
+    const created = await prisma.$transaction(async (tx) => {
+      const results: typeof player.wallets = [];
+      if (!mainWallet) {
+        const w = await tx.wallet.create({ data: { player_id: playerId, type: 'main', balance: 0 } });
+        results.push(w);
+      }
+      if (!playWallet) {
+        const w = await tx.wallet.create({ data: { player_id: playerId, type: 'play', balance: 0 } });
+        results.push(w);
+      }
+      return results;
+    });
+    for (const w of created) {
+      if (w.type === 'main') mainWallet = w;
+      if (w.type === 'play') playWallet = w;
+    }
+  }
 
   if (!mainWallet || !playWallet) {
     res.status(500).json({ error: 'WALLET_MISSING', message: 'Player wallets not found' });
