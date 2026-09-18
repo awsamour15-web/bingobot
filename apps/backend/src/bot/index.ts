@@ -29,6 +29,11 @@ if (!BOT_TOKEN) {
 
 // ─── Global message counter for debugging ────────────────────────────────────
 let messageCount = 0;
+const MAX_SAFE_COUNT = 1_000_000;
+function incrementMessageCount(): number {
+  messageCount = (messageCount % MAX_SAFE_COUNT) + 1;
+  return messageCount;
+}
 
 // ─── Main menu button labels ───────────────────────────────────────────────────
 
@@ -1532,8 +1537,8 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
   // ─── Global message logging ───────────────────────────────────────────────────
   bot.on('message', (ctx, next) => {
-    messageCount++;
-    console.log(`[Bot] Message #${messageCount} from user ${ctx.from?.id}: "${ctx.message?.text || '[non-text]'}"`);
+    const count = incrementMessageCount();
+    console.log(`[Bot] Message #${count} from user ${ctx.from?.id}: "${ctx.message?.text || '[non-text]'}"`);
     return next();
   });
 

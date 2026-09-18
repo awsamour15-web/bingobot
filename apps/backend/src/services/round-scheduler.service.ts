@@ -23,6 +23,19 @@ const startingRounds = new Set<string>();
 const stuckRoundTicks = new Map<string, number>();
 const STUCK_TICK_THRESHOLD = 2; // force-void after 2 ticks (~20s) with no timer for faster recovery
 
+// Purge stuckRoundTicks entries that are no longer in the DB as active (hourly)
+setInterval(async () => {
+  if (stuckRoundTicks.size === 0) return;
+  try {
+    const activeIds = new Set(
+      (await prisma.gameRound.findMany({ where: { status: GameStatus.active }, select: { id: true } })).map(r => r.id)
+    );
+    for (const id of stuckRoundTicks.keys()) {
+      if (!activeIds.has(id)) stuckRoundTicks.delete(id);
+    }
+  } catch { /* ignore */ }
+}, 60 * 60_000).unref();
+
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
 

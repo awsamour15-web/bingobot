@@ -38,6 +38,7 @@ interface ProcessedCartela {
 
 const cartelaDefsCache = new Map<number, { defs: ProcessedCartela[]; loadedAt: number }>();
 const CARTELA_CACHE_TTL_MS = 5 * 60_000; // 5 minutes
+const CARTELA_CACHE_MAX_ENTRIES = 3; // Only keep last 3 pool sizes to cap memory
 
 async function getProcessedCartelas(poolSize: number): Promise<ProcessedCartela[]> {
   const cached = cartelaDefsCache.get(poolSize);
@@ -54,6 +55,11 @@ async function getProcessedCartelas(poolSize: number): Promise<ProcessedCartela[
     g[12] = 0;
     return { cartela_number: c.cartela_number, grid: g };
   });
+  // Evict oldest entry if at capacity
+  if (cartelaDefsCache.size >= CARTELA_CACHE_MAX_ENTRIES) {
+    const oldestKey = cartelaDefsCache.keys().next().value;
+    if (oldestKey !== undefined) cartelaDefsCache.delete(oldestKey);
+  }
   cartelaDefsCache.set(poolSize, { defs, loadedAt: Date.now() });
   return defs;
 }
