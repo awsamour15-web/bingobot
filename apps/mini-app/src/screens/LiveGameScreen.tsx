@@ -584,15 +584,6 @@ export default function LiveGameScreen() {
     });
   }, [manualMode]);
 
-  const handleManualBingoClaim = useCallback(() => {
-    if (!roundId || claimPending || !myCartelas.length) return;
-    autoClaimed.current = true;
-    setClaimPending(true);
-    setClaimError(null);
-    socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
-  }, [roundId, claimPending, myCartelas, winningCartelaNumber]);
-
-
   const allCartelas = myCartelas;
   const marked = game.calledNumbers;
   const activeCartela = allCartelas[0];
@@ -640,6 +631,14 @@ export default function LiveGameScreen() {
   const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid as number[]));
   const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
   const isWatching = cartelasLoaded && myCartelas.length === 0;
+
+  const handleManualBingoClaim = useCallback(() => {
+    if (!roundId || claimPending || !myCartelas.length) return;
+    autoClaimed.current = true;
+    setClaimPending(true);
+    setClaimError(null);
+    socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
+  }, [roundId, claimPending, myCartelas, winningCartelaNumber]);
 
   // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
   const autoClaimed = useRef(false);
