@@ -515,7 +515,7 @@ export class NumberCallingEngine {
       entries.map(async (entry) => {
         await WalletService.credit(
           entry.player_id,
-          WalletType.main,
+          WalletType.play,
           stake,
           TxType.refund,
           roundId,
