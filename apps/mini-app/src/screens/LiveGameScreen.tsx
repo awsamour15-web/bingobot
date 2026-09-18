@@ -800,44 +800,50 @@ export default function LiveGameScreen() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0e1726' }}>
 
           {/* LAST CALLED */}
-          <div style={{ padding: '14px 12px 12px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ padding: '13px 11px 11px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Last Called</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button
-                  type="button"
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Automatic toggle */}
+                <div
                   onClick={toggleManualMode}
-                  title={manualMode ? 'Switch to Auto mode' : 'Switch to Manual mode'}
-                  style={{
-                    background: manualMode ? 'rgba(245,197,24,0.15)' : 'rgba(255,255,255,0.07)',
-                    border: manualMode ? '1px solid rgba(245,197,24,0.5)' : '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
-                    color: manualMode ? '#f5c518' : '#7a95b8', fontSize: 9, fontWeight: 800,
-                    letterSpacing: 0.5, textTransform: 'uppercase', lineHeight: 1.4,
-                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none' }}
                 >
-                  {manualMode ? '✋ Manual' : '⚡ Auto'}
-                </button>
-                <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#7a95b8', fontSize: 14, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
+                  <span style={{ fontSize: 11, color: '#c8d8ec', fontWeight: 600 }}>Automatic</span>
+                  <div style={{
+                    width: 38, height: 22, borderRadius: 11,
+                    background: !manualMode ? '#22c55e' : 'rgba(255,255,255,0.15)',
+                    position: 'relative', transition: 'background 0.2s',
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      position: 'absolute', top: 3, left: !manualMode ? 19 : 3,
+                      width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                      transition: 'left 0.2s',
+                    }} />
+                  </div>
+                </div>
+                <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#7a95b8', fontSize: 13, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
               </div>
             </div>
             {game.lastCalled != null ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <div style={{
-                  width: 32, height: 32, borderRadius: 6, flexShrink: 0,
+                  width: 29, height: 29, borderRadius: 5, flexShrink: 0,
                   background: HDR[getColIndex(game.lastCalled)],
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 900, fontSize: 14, color: '#fff',
+                  fontWeight: 900, fontSize: 13, color: '#fff',
                   animation: 'lastCalledPulse 0.6s ease-in-out infinite',
                 }}>
                   {getColLabel(game.lastCalled)}
                 </div>
-                <div style={{ fontSize: 56, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: 'lastCalledPulse 0.6s ease-in-out infinite' }}>
+                <div style={{ fontSize: 50, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: 'lastCalledPulse 0.6s ease-in-out infinite' }}>
                   {game.lastCalled}
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 14, color: '#4a6080', padding: '8px 0' }}>
+              <div style={{ fontSize: 13, color: '#4a6080', padding: '7px 0' }}>
                 {game.phase === 'waiting' ? 'Starting…' : '—'}
               </div>
             )}

@@ -133,19 +133,19 @@ export default function GameScreen() {
     <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 100% 0%, rgba(209,151,48,0.2), transparent 28%), radial-gradient(circle at 0% 28%, rgba(18,117,83,0.18), transparent 32%), linear-gradient(180deg, #10140f 0%, #080d0a 54%, #040706 100%)', color: '#f7f8f5' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: 'rgba(14,20,14,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(239,195,81,0.18)', padding: '12px 18px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)' }}>
+      <div style={{ background: 'rgba(14,20,14,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(239,195,81,0.18)', padding: '11px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
             <div style={{
-              width: 42, height: 42, borderRadius: 13,
+              width: 38, height: 38, borderRadius: 12,
               background: 'linear-gradient(145deg, #ffe072, #d99c22)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 900, fontSize: 17, color: '#0a0e1a',
+              fontWeight: 900, fontSize: 15, color: '#0a0e1a',
               boxShadow: '0 5px 18px rgba(231,176,39,0.24)',
             }}>FB</div>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: 0.2, color: '#f1f5f9' }}>Fidel Bingo</div>
-              <div style={{ fontSize: 10, color: '#d9b950', marginTop: 2, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 800 }}>Bingo night</div>
+              <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 0.2, color: '#f1f5f9' }}>Fidel Bingo</div>
+              <div style={{ fontSize: 9, color: '#d9b950', marginTop: 2, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 800 }}>Bingo night</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -153,8 +153,8 @@ export default function GameScreen() {
               onClick={() => navigate('/')}
               style={{
                 background: 'rgba(239,195,81,0.08)', border: '1px solid rgba(239,195,81,0.2)',
-                borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#f3d36c', fontSize: 18,
+                borderRadius: 9, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: '#f3d36c', fontSize: 16,
               }}
               aria-label="Home"
             >
@@ -162,7 +162,7 @@ export default function GameScreen() {
             </button>
             <div style={{
               background: 'rgba(239,195,81,0.1)', border: '1px solid rgba(239,195,81,0.25)',
-              borderRadius: 9, padding: '6px 10px', fontSize: 10, color: '#f3d36c', fontWeight: 800, letterSpacing: 0.8,
+              borderRadius: 9, padding: '5px 9px', fontSize: 9, color: '#f3d36c', fontWeight: 800, letterSpacing: 0.8,
             }}>
               LIVE
             </div>
