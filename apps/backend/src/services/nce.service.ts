@@ -45,6 +45,12 @@ export class NumberCallingEngine {
   /** Map of roundId → active NodeJS timeout handle */
   readonly activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+  /** Per-round in-memory set of called numbers — avoids re-querying DB on every tick */
+  private readonly calledSets = new Map<string, Set<number>>();
+
+  /** Per-round cached round entries — fetched once at start, cleared when round ends */
+  private readonly entriesCache = new Map<string, Array<{ player_id: string; cartela_number: number }>>();
+
   /** Rounds currently being stopped — prevents callNext re-entry during async stop */
   readonly stoppingRounds = new Set<string>();
 
@@ -69,7 +75,11 @@ export class NumberCallingEngine {
   setOnRoundStarted(cb: OnRoundStarted): void { this.onRoundStarted = cb; }
 
   /** Invalidate the grid cache for a round so next win-check re-reads from DB */
-  clearGridCache(roundId: string): void { this.gridCache.delete(roundId); }
+  clearGridCache(roundId: string): void {
+    this.gridCache.delete(roundId);
+    this.calledSets.delete(roundId);
+    this.entriesCache.delete(roundId);
+  }
 
   /**
    * Inject an override grid for a specific cartela within a round's cache.
@@ -144,6 +154,8 @@ export class NumberCallingEngine {
       const preGen = this.takePreGeneratedSequence(roundId);
       sequence = preGen ?? shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
       sequenceIndex = 0;
+      // Seed the in-memory calledSet fresh
+      this.calledSets.set(roundId, new Set<number>());
     } else {
       // Resume — reconstruct sequence from what was already called,
       // then append a fresh shuffle of the remaining numbers
@@ -154,6 +166,8 @@ export class NumberCallingEngine {
       );
       sequence = [...calledNums, ...remaining];
       sequenceIndex = existingCalled.length; // resume from next uncalled slot
+      // Seed the in-memory calledSet from what was already called
+      this.calledSets.set(roundId, calledSet);
       console.log(
         `[NCE] Resuming round ${roundId} from index ${sequenceIndex} (${75 - sequenceIndex} numbers remaining)`,
       );
@@ -197,6 +211,10 @@ export class NumberCallingEngine {
           create: { round_id: roundId, number, sequence_index: sequenceIndex },
         });
 
+        // Update in-memory calledSet so detectAndHandleWin doesn't re-query DB
+        if (!this.calledSets.has(roundId)) this.calledSets.set(roundId, new Set<number>());
+        this.calledSets.get(roundId)!.add(number);
+
         const payload: NumberCalledPayload = { number, sequenceIndex };
 
         // Fan-out to WebSocket layer
@@ -211,25 +229,22 @@ export class NumberCallingEngine {
         sequenceIndex += 1;
 
         // ── Server-side win detection — inline, no claim window delay ─────
-        const stopped = await this.detectAndHandleWin(roundId);
+        const inMemoryCalledSet = this.calledSets.get(roundId);
+        const stopped = await this.detectAndHandleWin(roundId, inMemoryCalledSet);
         if (stopped) {
           this.activeTimers.delete(roundId);
           return;
         }
 
         // Also stop if round status changed externally (admin cancel etc.)
-        const currentRound = await prisma.gameRound.findUnique({
-          where: { id: roundId },
-          select: { status: true },
-        });
-        if (!currentRound || currentRound.status !== GameStatus.active) {
-          this.activeTimers.delete(roundId);
-          return;
-        }
-
+        // Only do this check when we've just called the last number, otherwise
+        // we trust detectAndHandleWin's status fetch to have caught it.
         if (sequenceIndex >= 75) {
           // Exhausted all numbers — check for winner one last time
-          const finalRound = await prisma.gameRound.findUnique({ where: { id: roundId } });
+          const finalRound = await prisma.gameRound.findUnique({
+            where: { id: roundId },
+            select: { status: true },
+          });
           if (!finalRound || finalRound.status !== GameStatus.active) {
             // Winner was claimed during the last call
             this.activeTimers.delete(roundId);
@@ -296,6 +311,8 @@ export class NumberCallingEngine {
       this.activeTimers.delete(roundId);
     }
     this.gridCache.delete(roundId);
+    this.calledSets.delete(roundId);
+    this.entriesCache.delete(roundId);
     this.preGeneratedSequences.delete(roundId);
   }
 
@@ -304,7 +321,7 @@ export class NumberCallingEngine {
    * Checks every active entry's cartela, distributes winnings directly if found.
    * Returns true if a winner was found (NCE should stop).
    */
-  private async detectAndHandleWin(roundId: string): Promise<boolean> {
+  private async detectAndHandleWin(roundId: string, inMemoryCalledSet?: Set<number>): Promise<boolean> {
     // Re-entry guard: if we're already stopping/distributing for this round, bail out
     if (this.stoppingRounds.has(roundId)) return true;
     // Lock immediately — before any await — so concurrent callNext ticks bail out
@@ -325,16 +342,29 @@ export class NumberCallingEngine {
       // Always use any_line — any row, column, or diagonal wins
       const pattern: WinPattern[] = [WinPattern.any_line];
 
-      const calledRows = await prisma.calledNumber.findMany({
-        where: { round_id: roundId },
-        select: { number: true },
-      });
-      const calledSet = new Set(calledRows.map((r) => r.number));
+      // Prefer in-memory calledSet (updated by callNext each tick) to avoid a DB query.
+      // Fall back to DB query only for resume/recovery paths where the set isn't populated.
+      let calledSet: Set<number>;
+      if (inMemoryCalledSet && inMemoryCalledSet.size > 0) {
+        calledSet = inMemoryCalledSet;
+      } else {
+        const calledRows = await prisma.calledNumber.findMany({
+          where: { round_id: roundId },
+          select: { number: true },
+        });
+        calledSet = new Set(calledRows.map((r) => r.number));
+      }
 
-      const entries = await prisma.roundEntry.findMany({
-        where: { round_id: roundId, is_watching: false },
-        select: { player_id: true, cartela_number: true },
-      });
+      // Prefer cached entries — round entries don't change after the round starts.
+      // Re-query only if cache is missing (first call or after a stop/clear).
+      let entries = this.entriesCache.get(roundId);
+      if (!entries) {
+        entries = await prisma.roundEntry.findMany({
+          where: { round_id: roundId, is_watching: false },
+          select: { player_id: true, cartela_number: true },
+        });
+        if (entries.length > 0) this.entriesCache.set(roundId, entries);
+      }
       if (!entries.length) {
         this.stoppingRounds.delete(roundId);
         return false;
@@ -465,8 +495,10 @@ export class NumberCallingEngine {
       data: { status: GameStatus.void, ended_at: new Date() },
     });
 
-    // Clear grid cache for this round
+    // Clear all per-round caches
     this.gridCache.delete(roundId);
+    this.calledSets.delete(roundId);
+    this.entriesCache.delete(roundId);
 
     // Fetch all entries with stake
     const entries = await prisma.roundEntry.findMany({
