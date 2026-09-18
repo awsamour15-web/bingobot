@@ -174,6 +174,7 @@ export default function GamesLobbyScreen() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      setBalanceLoading(true);
       try { await initAuth(); } catch { /* ignore */ }
 
       let profile = null;
@@ -187,6 +188,7 @@ export default function GamesLobbyScreen() {
         setMainBalance(profile.mainWallet?.balance ?? 0);
         setPlayBalance(profile.playWallet?.balance ?? 0);
       }
+      if (!cancelled) setBalanceLoading(false);
 
       getAvailableCoupons().then(c => { if (!cancelled) setAvailableCoupons(c); }).catch(() => {});
 
@@ -206,6 +208,22 @@ export default function GamesLobbyScreen() {
     }
     load();
     return () => { cancelled = true; };
+  }, []);
+
+  // Refresh balance when tab becomes visible (user returns from a game)
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') {
+        getProfile()
+          .then(p => {
+            setMainBalance(p.mainWallet?.balance ?? 0);
+            setPlayBalance(p.playWallet?.balance ?? 0);
+          })
+          .catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   if (isSuspended) {
@@ -353,8 +371,8 @@ export default function GamesLobbyScreen() {
         </div>
         <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: 'rgba(16,24,39,0.88)', border: '1px solid rgba(134,165,226,0.2)', borderRadius: 13, color: '#fff', cursor: 'pointer', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
           <div style={{ textAlign: 'left', lineHeight: 1.3, fontSize: 8, fontWeight: 900, color: '#95a1b4' }}>
-            <div>MAIN <span style={{ color: '#f3cf64', marginLeft: 4 }}>{balanceLoading ? '...' : mainBalance === null ? '-' : `${mainBalance.toFixed(2)} ETB`}</span></div>
-            <div>PLAY <span style={{ color: '#61d9ba', marginLeft: 5 }}>{balanceLoading ? '...' : playBalance === null ? '-' : `${playBalance.toFixed(2)} ETB`}</span></div>
+            <div>MAIN <span style={{ color: '#f3cf64', marginLeft: 4 }}>{balanceLoading ? '...' : mainBalance === null ? '...' : `${mainBalance.toFixed(2)} ETB`}</span></div>
+            <div>PLAY <span style={{ color: '#61d9ba', marginLeft: 5 }}>{balanceLoading ? '...' : playBalance === null ? '...' : `${playBalance.toFixed(2)} ETB`}</span></div>
           </div>
           <Eye size={16} color="#8e9db4" />
         </button>
