@@ -881,7 +881,7 @@ export default function LiveGameScreen() {
           </div>
 
           {/* CARTELA CARDS — scrollable */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'none', alignItems: 'center' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: `4px 6px ${manualMode && game.phase === 'active' ? 90 : 10}px`, display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'none', alignItems: 'center' }}>
             {!isWatching && allCartelas.length > 0 ? (
               allCartelas.map((cartela, cardIdx) => {
                 const cGrid = cartela.cartelaGrid as number[];
@@ -971,7 +971,8 @@ export default function LiveGameScreen() {
       {manualMode && game.phase === 'active' && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          padding: '10px 16px 20px',
+          padding: '10px 16px',
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
           background: 'linear-gradient(to top, #070d18 60%, transparent)',
         }}>
           {playerHasBingo && !claimPending && (

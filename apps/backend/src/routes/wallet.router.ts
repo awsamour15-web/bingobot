@@ -216,95 +216,87 @@ router.post('/deposit/manual', async (req: Request, res: Response): Promise<void
     return;
   }
 
-  // ── Deposits over 50 ETB require admin approval ─────────────────────────
-  if (amount > 50) {
-    // Check if this tx_number is already registered
-    let existing = await prisma.pendingDeposit.findUnique({ where: { tx_number: validation.txNumber } });
+  // ── Ensure a PendingDeposit record exists for this tx ───────────────────
+  // Primary path: the SMS webhook (httpSMS) will auto-claim this deposit when
+  // Telebirr delivers the "you received" SMS to the settlement phone.
+  // Fallback: if the webhook never fires, admin can approve manually from the panel.
+  let existing = await prisma.pendingDeposit.findUnique({ where: { tx_number: validation.txNumber } });
 
-    if (!existing) {
-      try {
-        existing = await prisma.pendingDeposit.create({
-          data: {
-            tx_number: validation.txNumber,
-            amount,
-            status: 'pending',
-            player_id: playerId,
-          },
-        });
-      } catch {
-        // Race condition — already exists, fetch it
-        existing = await prisma.pendingDeposit.findUnique({ where: { tx_number: validation.txNumber } });
-      }
-    }
-
-    if (existing?.status === 'claimed') {
-      res.status(409).json({ error: 'CLAIMED', message: 'This transaction has already been claimed.' });
-      return;
-    }
-
-    if (existing?.status === 'cancelled') {
-      res.status(409).json({ error: 'CANCELLED', message: 'This transaction was cancelled. Please contact support.' });
-      return;
-    }
-
-    // Link this player to the pending deposit so admin can approve it
-    if (existing && !existing.player_id) {
-      await prisma.pendingDeposit.update({
-        where: { id: existing.id },
-        data: { player_id: playerId },
-      });
-    }
-
-    res.status(202).json({
-      success: true,
-      pending_approval: true,
-      amount,
-      txNumber: validation.txNumber,
-      message: `⏳ Processing your deposit of ${amount} ETB. Your balance will be updated shortly.`,
-    });
-    return;
-  }
-
-  // ── Deposits ≤ 50 ETB — auto-approve ────────────────────────────────────
-  let result = await processDepositClaim(playerId, validation.txNumber);
-
-  if (!result.success && result.reason === 'NOT_FOUND') {
+  if (!existing) {
     try {
-      await prisma.pendingDeposit.create({
+      existing = await prisma.pendingDeposit.create({
         data: {
           tx_number: validation.txNumber,
           amount,
           status: 'pending',
+          player_id: playerId,
         },
       });
     } catch {
-      // Ignore duplicate tx_number race conditions and retry claim.
+      // Race condition — already created, fetch it
+      existing = await prisma.pendingDeposit.findUnique({ where: { tx_number: validation.txNumber } });
     }
-
-    result = await processDepositClaim(playerId, validation.txNumber);
   }
 
-  if (!result.success) {
-    const messageMap = {
-      NOT_FOUND: 'This transaction was not found. Please contact support.',
-      CLAIMED: 'This transaction has already been claimed. Please contact support.',
-      CANCELLED: 'This transaction was cancelled. Please contact support.',
-    } as const;
+  if (existing?.status === 'claimed') {
+    res.status(409).json({ error: 'CLAIMED', message: 'This transaction has already been claimed.' });
+    return;
+  }
 
-    res.status(409).json({
-      error: result.reason,
-      message: messageMap[result.reason],
+  if (existing?.status === 'cancelled') {
+    res.status(409).json({ error: 'CANCELLED', message: 'This transaction was cancelled. Please contact support.' });
+    return;
+  }
+
+  // Link this player to the deposit if admin pre-created it without one
+  if (existing && !existing.player_id) {
+    await prisma.pendingDeposit.update({
+      where: { id: existing.id },
+      data: { player_id: playerId },
+    });
+  }
+
+  // ── Try to auto-claim immediately ─────────────────────────────────────────
+  // Works when the SMS webhook has already fired and credited the deposit,
+  // or for deposits where immediate auto-approval is safe (≤50 ETB).
+  // For larger deposits the webhook will pick it up asynchronously.
+  const result = await processDepositClaim(playerId, validation.txNumber, {
+    rawSms: receipt,
+    amountParsed: validation.amount,
+    source: 'bot',
+  });
+
+  if (result.success) {
+    const bonusMsg = result.bonusAmount ? ` +${result.bonusAmount} ETB deposit bonus added!` : '';
+    res.status(200).json({
+      success: true,
+      amount: result.amount,
+      bonusAmount: result.bonusAmount ?? 0,
+      txNumber: validation.txNumber,
+      message: `✅ Your deposit of ${result.amount} ETB is approved.${bonusMsg}`,
     });
     return;
   }
 
-  const bonusMsg = result.bonusAmount ? ` +${result.bonusAmount} ETB deposit bonus added!` : '';
-  res.status(200).json({
+  // CLAIMED / CANCELLED — terminal states
+  if (result.reason === 'CLAIMED') {
+    res.status(409).json({ error: 'CLAIMED', message: 'This transaction has already been claimed.' });
+    return;
+  }
+  if (result.reason === 'CANCELLED') {
+    res.status(409).json({ error: 'CANCELLED', message: 'This transaction was cancelled. Please contact support.' });
+    return;
+  }
+
+  // NOT_FOUND means the deposit is pending but processDepositClaim couldn't resolve it yet
+  // (e.g. status just became pending from a concurrent request). The SMS webhook will
+  // auto-claim it when the Telebirr SMS arrives. Admin approval is the backup.
+  res.status(202).json({
     success: true,
-    amount: result.amount,
-    bonusAmount: result.bonusAmount ?? 0,
+    pending_approval: true,
+    amount,
     txNumber: validation.txNumber,
-    message: `✅ Your deposit of ${result.amount} ETB is approved.${bonusMsg}`,
+    message: `⏳ Processing your deposit of ${amount} ETB. It will be confirmed automatically once your SMS is received. If not credited within a few minutes, admin will approve it shortly.`,
   });
 });
 

@@ -9,7 +9,6 @@ import { AgentService } from '../services/agent.service.js';
 import { WalletService } from '../services/wallet.service.js';
 import { ReferralService } from '../services/referral.service.js';
 import { getConfigOrDefault } from '../lib/config-cache.js';
-import { verifyTransaction } from '../services/verifyEt.service.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -764,39 +763,6 @@ export async function processDepositClaim(
   }
 
   const amount = Number(deposit.amount);
-
-  // ── verify.et: confirm the transaction exists on the bank side ───────────────
-  // Skip verify.et for admin-sourced approvals — admin has already verified manually.
-  // Primary: verify.et API checks the bank directly.
-  // Fallback: if verify.et is down/errors, the existing SMS-parsing result is trusted.
-  if (auditCtx?.source !== 'admin') {
-    const activeAccounts = await prisma.depositAccount.findMany({ where: { is_active: true } });
-    const settlementPhone = activeAccounts.length > 0 ? activeAccounts[0]?.phone : undefined;
-
-    const verifyResult = await verifyTransaction(
-      txNumber,
-      undefined,             // omit bank — smart-router auto-detects (Telebirr, CBE, BOA, etc.)
-      settlementPhone,       // check money came to our account
-    );
-
-    if (verifyResult.skipped) {
-      // verify.et not configured or had a network error — fall through to SMS-based trust
-      console.info(`[DepositClaim] verify.et skipped for ${txNumber}, using SMS fallback`);
-    } else if (!verifyResult.verified) {
-      // verify.et responded and explicitly rejected the transaction — hard fail
-      void logDepositAttempt({
-        depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
-        outcome: 'failure', failureReason: `VERIFY_ET_REJECTED: ${verifyResult.error ?? 'unconfirmed'}`,
-        amountExpected: amount, amountParsed: auditCtx?.amountParsed,
-        source: auditCtx?.source ?? 'bot',
-      });
-      return { success: false, reason: 'NOT_FOUND' };
-    } else {
-      // verify.et confirmed — log it
-      console.info(`[DepositClaim] verify.et confirmed ${txNumber} | amount: ${verifyResult.amount} | settlement: ${verifyResult.settlementMatched}`);
-    }
-  }
-  // ─────────────────────────────────────────────────────────────────────────────
 
   // ── Deposit bonus check (runs outside the transaction to avoid extra latency) ──
   const bonusConfigs = await prisma.config.findMany({
