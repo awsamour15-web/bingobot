@@ -798,43 +798,7 @@ export default function LiveGameScreen() {
               </button>
             </div>
 
-            {/* BINGO button — always visible when player has cartelas and game is active */}
-            {!isWatching && game.phase === 'active' && manualMode && (
-              <div style={{ padding: '0 6px 8px' }}>
-                {claimPending ? (
-                  <div style={{
-                    width: '100%', padding: '11px 0', borderRadius: 10,
-                    background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.3)',
-                    textAlign: 'center', fontSize: 14, color: '#f59e0b', fontWeight: 700,
-                  }}>
-                    ⏳ Claiming…
-                  </div>
-                ) : playerHasBingo ? (
-                  <button
-                    type="button"
-                    onClick={handleManualBingoClaim}
-                    style={{
-                      width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
-                      background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
-                      color: '#0e1726', fontWeight: 900, fontSize: 18, cursor: 'pointer',
-                      letterSpacing: 2, textTransform: 'uppercase',
-                      boxShadow: '0 0 24px rgba(245,197,24,0.55)',
-                      animation: 'lastCalledPulse 0.7s ease-in-out infinite',
-                    }}
-                  >
-                    🎉 BINGO!
-                  </button>
-                ) : (
-                  <div style={{
-                    width: '100%', padding: '11px 0', borderRadius: 10,
-                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-                    textAlign: 'center', fontSize: 14, color: '#4a6080', fontWeight: 700,
-                  }}>
-                    BINGO
-                  </div>
-                )}
-              </div>
-            )}
+
           </div>
         </div>
 
@@ -940,7 +904,7 @@ export default function LiveGameScreen() {
                   }}>
                     {/* Card label */}
                     <div style={{ padding: '2px 4px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <span style={{ fontSize: 7.5, fontWeight: 800, color: '#f5c518', letterSpacing: 0.4 }}>#{cartela.cartelaNumber}</span>
+                      <span style={{ fontSize: 7.5, fontWeight: 900, color: '#ffffff', letterSpacing: 0.4 }}>#{cartela.cartelaNumber}</span>
                       {hasBingo && <span style={{ fontSize: 7.5, fontWeight: 700, color: '#22c55e' }}>✓ BINGO</span>}
                       {game.phase === 'active' && claimPending && hasBingo && <span style={{ fontSize: 7.5, color: '#f59e0b' }}>⏳ Claiming…</span>}
                     </div>
@@ -1005,6 +969,44 @@ export default function LiveGameScreen() {
             )}
             {claimError && <div style={{ color: '#f87171', fontSize: 11, textAlign: 'center', padding: '4px 0' }}>{claimError}</div>}
           </div>
+
+          {/* ── BINGO button — bottom of right panel, manual mode only ── */}
+          {!isWatching && game.phase === 'active' && manualMode && (
+            <div style={{ flexShrink: 0, padding: '6px 8px 10px', background: '#0e1726', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              {claimPending ? (
+                <div style={{
+                  padding: '12px 0', borderRadius: 10,
+                  background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.3)',
+                  textAlign: 'center', fontSize: 14, color: '#f59e0b', fontWeight: 700,
+                }}>
+                  ⏳ Claiming…
+                </div>
+              ) : playerHasBingo ? (
+                <button
+                  type="button"
+                  onClick={handleManualBingoClaim}
+                  style={{
+                    width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
+                    color: '#0e1726', fontWeight: 900, fontSize: 18, cursor: 'pointer',
+                    letterSpacing: 2, textTransform: 'uppercase',
+                    boxShadow: '0 0 24px rgba(245,197,24,0.55)',
+                    animation: 'lastCalledPulse 0.7s ease-in-out infinite',
+                  }}
+                >
+                  🎉 BINGO!
+                </button>
+              ) : (
+                <div style={{
+                  padding: '12px 0', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                  textAlign: 'center', fontSize: 14, color: '#4a6080', fontWeight: 700,
+                }}>
+                  BINGO
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1017,7 +1019,21 @@ export default function LiveGameScreen() {
         const winGrid: number[] = winnerCartelaGrid.length > 0
           ? winnerCartelaGrid
           : (allCartelas.find(c => c.cartelaNumber === winCartelaNum)?.cartelaGrid ?? []) as number[];
-        const winCells = winCellsForGrid(winGrid);
+        // Compute win cells directly against called numbers (independent of manualMode)
+        const winCells = (() => {
+          const w = new Set<number>();
+          if (!winGrid.length) return w;
+          const lines = getLinesForPattern(game.winningPattern);
+          const isHit = (i: number) => {
+            if (i === 12) return true; // free space
+            const v = winGrid[i];
+            return v !== undefined && v !== 0 && marked.has(v);
+          };
+          for (const line of lines) {
+            if (line.every(i => isHit(i))) line.forEach(i => w.add(i));
+          }
+          return w;
+        })();
         return (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 100,
