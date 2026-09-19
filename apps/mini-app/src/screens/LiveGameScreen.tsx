@@ -564,6 +564,7 @@ export default function LiveGameScreen() {
   }, []);
 
   const toggleManualMode = useCallback(() => {
+    if (myCartelas.length > 2) return; // disabled for more than 2 cartelas
     setManualMode((v) => {
       if (!v) {
         // switching to manual — reset manual marks
@@ -572,7 +573,7 @@ export default function LiveGameScreen() {
       }
       return !v;
     });
-  }, []);
+  }, [myCartelas.length]);
 
   const handleManualMark = useCallback((val: number) => {
     if (!manualMode || val === 0) return;
@@ -806,8 +807,8 @@ export default function LiveGameScreen() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {/* Automatic toggle */}
                 <div
-                  onClick={toggleManualMode}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={myCartelas.length <= 2 ? toggleManualMode : undefined}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: myCartelas.length <= 2 ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: myCartelas.length > 2 ? 0.4 : 1 }}
                 >
                   <span style={{ fontSize: 11, color: '#c8d8ec', fontWeight: 600 }}>Automatic</span>
                   <div style={{
@@ -940,30 +941,7 @@ export default function LiveGameScreen() {
                       })}
                     </div>
 
-                    {/* BINGO button — manual mode only */}
-                    {manualMode && hasBingo && game.phase === 'active' && !claimPending && (
-                      <div style={{ padding: '4px 4px' }}>
-                        <button
-                          type="button"
-                          onClick={handleManualBingoClaim}
-                          style={{
-                            width: '100%', padding: '8px 0', borderRadius: 6, border: 'none',
-                            background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
-                            color: '#0e1726', fontWeight: 900, fontSize: 14, cursor: 'pointer',
-                            letterSpacing: 1, textTransform: 'uppercase',
-                            boxShadow: '0 0 16px rgba(245,197,24,0.55)',
-                            animation: 'lastCalledPulse 0.7s ease-in-out infinite',
-                          }}
-                        >
-                          🎉 BINGO!
-                        </button>
-                      </div>
-                    )}
-                    {manualMode && claimPending && hasBingo && (
-                      <div style={{ padding: '4px 4px' }}>
-                        <div style={{ textAlign: 'center', fontSize: 10, color: '#f59e0b', fontWeight: 700, padding: '6px 0' }}>⏳ Claiming…</div>
-                      </div>
-                    )}
+
                   </div>
                 );
               })
@@ -988,6 +966,50 @@ export default function LiveGameScreen() {
           </div>
         </div>
       </div>
+
+      {/* ── MANUAL MODE BINGO FOOTER ── */}
+      {manualMode && game.phase === 'active' && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+          padding: '10px 16px 20px',
+          background: 'linear-gradient(to top, #070d18 60%, transparent)',
+        }}>
+          {playerHasBingo && !claimPending && (
+            <button
+              type="button"
+              onClick={handleManualBingoClaim}
+              style={{
+                width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
+                background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
+                color: '#0e1726', fontWeight: 900, fontSize: 20, cursor: 'pointer',
+                letterSpacing: 2, textTransform: 'uppercase',
+                boxShadow: '0 0 32px rgba(245,197,24,0.65)',
+                animation: 'lastCalledPulse 0.7s ease-in-out infinite',
+              }}
+            >
+              🎉 BINGO!
+            </button>
+          )}
+          {claimPending && (
+            <div style={{
+              width: '100%', padding: '14px 0', borderRadius: 14,
+              background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.3)',
+              textAlign: 'center', fontSize: 15, color: '#f59e0b', fontWeight: 700,
+            }}>
+              ⏳ Claiming…
+            </div>
+          )}
+          {!playerHasBingo && !claimPending && (
+            <div style={{
+              width: '100%', padding: '14px 0', borderRadius: 14,
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+              textAlign: 'center', fontSize: 14, color: '#4a6080', fontWeight: 700,
+            }}>
+              BINGO
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── WINNER OVERLAY ── */}
       {game.phase === 'won' && game.winnerInfo && (() => {
