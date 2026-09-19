@@ -633,13 +633,21 @@ export default function LiveGameScreen() {
   const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid as number[]))?.cartelaNumber ?? null;
   const isWatching = cartelasLoaded && myCartelas.length === 0;
 
+  const [notWinAlert, setNotWinAlert] = useState(false);
+
   const handleManualBingoClaim = useCallback(() => {
     if (!roundId || claimPending || !myCartelas.length) return;
+    if (!playerHasBingo) {
+      // No winning line — show alert and let them continue
+      setNotWinAlert(true);
+      setTimeout(() => setNotWinAlert(false), 2500);
+      return;
+    }
     autoClaimed.current = true;
     setClaimPending(true);
     setClaimError(null);
     socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
-  }, [roundId, claimPending, myCartelas, winningCartelaNumber]);
+  }, [roundId, claimPending, myCartelas, playerHasBingo, winningCartelaNumber]);
 
   // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
   const autoClaimed = useRef(false);
@@ -973,6 +981,15 @@ export default function LiveGameScreen() {
           {/* ── BINGO button — bottom of right panel, manual mode only ── */}
           {!isWatching && game.phase === 'active' && manualMode && (
             <div style={{ flexShrink: 0, padding: '6px 8px 10px', background: '#0e1726', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              {notWinAlert && (
+                <div style={{
+                  marginBottom: 6, padding: '8px 10px', borderRadius: 8,
+                  background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+                  textAlign: 'center', fontSize: 12, color: '#f87171', fontWeight: 700,
+                }}>
+                  ❌ Not a winning line yet — keep playing!
+                </div>
+              )}
               {claimPending ? (
                 <div style={{
                   padding: '12px 0', borderRadius: 10,
@@ -981,29 +998,25 @@ export default function LiveGameScreen() {
                 }}>
                   ⏳ Claiming…
                 </div>
-              ) : playerHasBingo ? (
+              ) : (
                 <button
                   type="button"
                   onClick={handleManualBingoClaim}
                   style={{
                     width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
-                    background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
-                    color: '#0e1726', fontWeight: 900, fontSize: 18, cursor: 'pointer',
+                    background: playerHasBingo
+                      ? 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)'
+                      : 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
+                    color: playerHasBingo ? '#0e1726' : '#94a3b8',
+                    fontWeight: 900, fontSize: 18, cursor: 'pointer',
                     letterSpacing: 2, textTransform: 'uppercase',
-                    boxShadow: '0 0 24px rgba(245,197,24,0.55)',
-                    animation: 'lastCalledPulse 0.7s ease-in-out infinite',
+                    boxShadow: playerHasBingo ? '0 0 24px rgba(245,197,24,0.55)' : 'none',
+                    animation: playerHasBingo ? 'lastCalledPulse 0.7s ease-in-out infinite' : 'none',
+                    transition: 'background 0.3s, color 0.3s',
                   }}
                 >
-                  🎉 BINGO!
+                  {playerHasBingo ? '🎉 BINGO!' : 'BINGO'}
                 </button>
-              ) : (
-                <div style={{
-                  padding: '12px 0', borderRadius: 10,
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-                  textAlign: 'center', fontSize: 14, color: '#4a6080', fontWeight: 700,
-                }}>
-                  BINGO
-                </div>
               )}
             </div>
           )}
