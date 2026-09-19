@@ -765,35 +765,76 @@ export default function LiveGameScreen() {
             ).flat()}
           </div>
 
-          {/* ── LEAVE / REFRESH buttons ── */}
-          <div style={{ display: 'flex', gap: 6, padding: '6px 6px', flexShrink: 0, background: '#0d1a2d', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <button
-              type="button"
-              onClick={() => navigate('/', { replace: true })}
-              style={{
-                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
-                boxShadow: '0 3px 10px rgba(239,68,68,0.4)',
-              }}
-            >
-              Leave
-            </button>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              style={{
-                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
-                background: 'rgba(255,255,255,0.1)',
-                color: refreshing ? '#4a6080' : '#94a3b8', fontWeight: 700, fontSize: 13,
-                cursor: refreshing ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              }}
-            >
-              <span style={{ display: 'inline-block', fontSize: 14, transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>↻</span>
-              Refresh
-            </button>
+          {/* ── LEFT FOOTER: Leave / Refresh + BINGO button ── */}
+          <div style={{ flexShrink: 0, background: '#0d1a2d', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            {/* Leave / Refresh row */}
+            <div style={{ display: 'flex', gap: 6, padding: '6px 6px 4px' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/', { replace: true })}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                  boxShadow: '0 3px 10px rgba(239,68,68,0.4)',
+                }}
+              >
+                Leave
+              </button>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: refreshing ? '#4a6080' : '#94a3b8', fontWeight: 700, fontSize: 13,
+                  cursor: refreshing ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                }}
+              >
+                <span style={{ display: 'inline-block', fontSize: 14, transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>↻</span>
+                Refresh
+              </button>
+            </div>
+
+            {/* BINGO button — always visible when player has cartelas and game is active */}
+            {!isWatching && game.phase === 'active' && manualMode && (
+              <div style={{ padding: '0 6px 8px' }}>
+                {claimPending ? (
+                  <div style={{
+                    width: '100%', padding: '11px 0', borderRadius: 10,
+                    background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.3)',
+                    textAlign: 'center', fontSize: 14, color: '#f59e0b', fontWeight: 700,
+                  }}>
+                    ⏳ Claiming…
+                  </div>
+                ) : playerHasBingo ? (
+                  <button
+                    type="button"
+                    onClick={handleManualBingoClaim}
+                    style={{
+                      width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
+                      background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
+                      color: '#0e1726', fontWeight: 900, fontSize: 18, cursor: 'pointer',
+                      letterSpacing: 2, textTransform: 'uppercase',
+                      boxShadow: '0 0 24px rgba(245,197,24,0.55)',
+                      animation: 'lastCalledPulse 0.7s ease-in-out infinite',
+                    }}
+                  >
+                    🎉 BINGO!
+                  </button>
+                ) : (
+                  <div style={{
+                    width: '100%', padding: '11px 0', borderRadius: 10,
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+                    textAlign: 'center', fontSize: 14, color: '#4a6080', fontWeight: 700,
+                  }}>
+                    BINGO
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -881,7 +922,7 @@ export default function LiveGameScreen() {
           </div>
 
           {/* CARTELA CARDS — scrollable */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: `4px 6px ${manualMode && game.phase === 'active' ? 90 : 10}px`, display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'none', alignItems: 'center' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'none', alignItems: 'center' }}>
             {!isWatching && allCartelas.length > 0 ? (
               allCartelas.map((cartela, cardIdx) => {
                 const cGrid = cartela.cartelaGrid as number[];
@@ -967,50 +1008,7 @@ export default function LiveGameScreen() {
         </div>
       </div>
 
-      {/* ── MANUAL MODE BINGO FOOTER ── */}
-      {manualMode && game.phase === 'active' && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          padding: '10px 16px',
-          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
-          background: 'linear-gradient(to top, #070d18 60%, transparent)',
-        }}>
-          {playerHasBingo && !claimPending && (
-            <button
-              type="button"
-              onClick={handleManualBingoClaim}
-              style={{
-                width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-                background: 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)',
-                color: '#0e1726', fontWeight: 900, fontSize: 20, cursor: 'pointer',
-                letterSpacing: 2, textTransform: 'uppercase',
-                boxShadow: '0 0 32px rgba(245,197,24,0.65)',
-                animation: 'lastCalledPulse 0.7s ease-in-out infinite',
-              }}
-            >
-              🎉 BINGO!
-            </button>
-          )}
-          {claimPending && (
-            <div style={{
-              width: '100%', padding: '14px 0', borderRadius: 14,
-              background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.3)',
-              textAlign: 'center', fontSize: 15, color: '#f59e0b', fontWeight: 700,
-            }}>
-              ⏳ Claiming…
-            </div>
-          )}
-          {!playerHasBingo && !claimPending && (
-            <div style={{
-              width: '100%', padding: '14px 0', borderRadius: 14,
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-              textAlign: 'center', fontSize: 14, color: '#4a6080', fontWeight: 700,
-            }}>
-              BINGO
-            </div>
-          )}
-        </div>
-      )}
+
 
       {/* ── WINNER OVERLAY ── */}
       {game.phase === 'won' && game.winnerInfo && (() => {
