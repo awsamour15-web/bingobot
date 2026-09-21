@@ -732,7 +732,7 @@ export async function processDepositClaim(
   playerId: string,
   txNumber: string,
   auditCtx?: { rawSms?: string; amountParsed?: number | undefined; source?: 'bot' | 'admin' },
-): Promise<{ success: true; amount: number; bonusAmount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' }> {
+): Promise<{ success: true; amount: number; bonusAmount: number } | { success: false; reason: 'NOT_FOUND' | 'CLAIMED' | 'CANCELLED' | 'FRAUD_AMOUNT' | 'NOT_IN_TRUTH_STORE' }> {
   const deposit = await prisma.pendingDeposit.findUnique({ where: { tx_number: txNumber } });
 
   if (!deposit) {
@@ -743,7 +743,24 @@ export async function processDepositClaim(
     });
     return { success: false, reason: 'NOT_FOUND' };
   }
-  if (deposit.status === 'claimed') {
+
+  // ─── Truth Store Verification ──────────────────────────────────────────────────
+  // Verify the transaction against authoritative records received via webhook.
+  const truth = await prisma.receivedSms.findUnique({
+    where: { tx_number: txNumber.toUpperCase() },
+  });
+
+  if (!truth) {
+    void logDepositAttempt({
+      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: 'NOT_IN_TRUTH_STORE',
+      amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+      source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'NOT_IN_TRUTH_STORE' };
+  }
+
+  if (truth.is_used) {
     void logDepositAttempt({
       depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
       outcome: 'failure', failureReason: 'CLAIMED',
@@ -752,17 +769,41 @@ export async function processDepositClaim(
     });
     return { success: false, reason: 'CLAIMED' };
   }
+
+  const truthAmount = Number(truth.amount);
+  const pendingAmount = Number(deposit.amount);
+
+  // Strict verification: User's claim (PendingDeposit) must match the truth (ReceivedSms).
+  if (Math.abs(truthAmount - pendingAmount) > 0.01) {
+    void logDepositAttempt({
+      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: 'FRAUD_AMOUNT',
+      amountExpected: pendingAmount, amountParsed: truthAmount,
+      source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'FRAUD_AMOUNT' };
+  }
+
+  if (deposit.status === 'claimed') {
+    void logDepositAttempt({
+      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+      outcome: 'failure', failureReason: 'CLAIMED',
+      amountExpected: pendingAmount, amountParsed: auditCtx?.amountParsed,
+      source: auditCtx?.source ?? 'bot',
+    });
+    return { success: false, reason: 'CLAIMED' };
+  }
   if (deposit.status === 'cancelled') {
     void logDepositAttempt({
       depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
       outcome: 'failure', failureReason: 'CANCELLED',
-      amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+      amountExpected: pendingAmount, amountParsed: auditCtx?.amountParsed,
       source: auditCtx?.source ?? 'bot',
     });
     return { success: false, reason: 'CANCELLED' };
   }
 
-  const amount = Number(deposit.amount);
+  const amount = pendingAmount;
 
   // ── Deposit bonus check (runs outside the transaction to avoid extra latency) ──
   const bonusConfigs = await prisma.config.findMany({
@@ -789,6 +830,13 @@ export async function processDepositClaim(
         data: { status: 'claimed', player_id: playerId, claimed_at: new Date() },
       });
       if (count === 0) throw new Error('ALREADY_CLAIMED');
+
+      // Mark the truth record as used to prevent double-spending the same SMS
+      await tx.receivedSms.update({
+        where: { tx_number: txNumber.toUpperCase() },
+        data: { is_used: true },
+      });
+
       const wallet = await tx.wallet.findUniqueOrThrow({
         where: { player_id_type: { player_id: playerId, type: 'play' } },
       });

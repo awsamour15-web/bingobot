@@ -269,6 +269,31 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   const { amount, senderPhone, txNumber, bank } = parsed;
   console.log(`[SMSWebhook] Parsed — bank: ${bank}, amount: ${amount}, sender: ${senderPhone ?? 'n/a'}, tx: ${txNumber ?? 'n/a'}`);
 
+  // ─── Truth Store: Persist every valid incoming payment ────────────────────────
+  if (txNumber) {
+    try {
+      await prisma.receivedSms.upsert({
+        where: { tx_number: txNumber.toUpperCase() },
+        update: {
+          amount,
+          sender_phone: senderPhone || httpsmsContact,
+          raw_text: rawSms,
+          received_at: new Date(),
+        },
+        create: {
+          tx_number: txNumber.toUpperCase(),
+          amount,
+          sender_phone: senderPhone || httpsmsContact,
+          raw_text: rawSms,
+          received_at: new Date(),
+        },
+      });
+      console.log(`[SMSWebhook] Persisted truth for tx: ${txNumber} (${amount} ETB)`);
+    } catch (err) {
+      console.error('[SMSWebhook] Failed to persist truth record:', err);
+    }
+  }
+
   // Use httpSMS contact field as fallback sender phone (Telebirr only)
   const resolvedPhone = senderPhone || httpsmsContact;
 
