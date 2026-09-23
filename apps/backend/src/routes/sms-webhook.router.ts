@@ -197,27 +197,35 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   // or Authorization: Bearer <secret> (httpSMS default).
   // Check all sources explicitly so one wrong header doesn't shadow the right one.
   const secret = process.env['SMS_WEBHOOK_SECRET'];
-  if (secret) {
-    const xHeader = req.headers['x-sms-secret'];
-    const xApiKey = req.headers['x-api-key'];
-    const querySecret = req.query['secret'];
-    const bearerToken = typeof req.headers['authorization'] === 'string'
-      ? req.headers['authorization'].replace(/^Bearer\s+/i, '').trim()
-      : null;
+  if (!secret) {
+    // No secret configured — webhook is disabled. All deposits require manual admin approval.
+    // This is safe: without the secret the auto-credit path is simply unavailable,
+    // but admins can still approve deposits from the panel.
+    console.warn('[SMSWebhook] SMS_WEBHOOK_SECRET not set — webhook disabled. Deposits require manual admin approval.');
+    res.status(503).json({
+      error: 'WEBHOOK_DISABLED',
+      message: 'SMS webhook is not configured. Deposits require manual admin approval.',
+    });
+    return;
+  }
 
-    const provided =
-      (typeof xHeader === 'string' && xHeader) ||
-      (typeof xApiKey === 'string' && xApiKey) ||
-      (typeof querySecret === 'string' && querySecret) ||
-      bearerToken ||
-      null;
+  const xHeader = req.headers['x-sms-secret'];
+  const xApiKey = req.headers['x-api-key'];
+  const querySecret = req.query['secret'];
+  const bearerToken = typeof req.headers['authorization'] === 'string'
+    ? req.headers['authorization'].replace(/^Bearer\s+/i, '').trim()
+    : null;
 
-    if (provided !== secret) {
-      res.status(401).json({ error: 'UNAUTHORIZED' });
-      return;
-    }
-  } else {
-    console.warn('[SMSWebhook] SMS_WEBHOOK_SECRET not set — endpoint is unprotected!');
+  const provided =
+    (typeof xHeader === 'string' && xHeader) ||
+    (typeof xApiKey === 'string' && xApiKey) ||
+    (typeof querySecret === 'string' && querySecret) ||
+    bearerToken ||
+    null;
+
+  if (provided !== secret) {
+    res.status(401).json({ error: 'UNAUTHORIZED' });
+    return;
   }
 
   const body = req.body as Record<string, unknown>;

@@ -103,14 +103,16 @@ router.post('/:id/approve', async (req: Request, res: Response): Promise<void> =
   const result = await processDepositClaim(deposit.player_id, deposit.tx_number, { source: 'admin' });
 
   if (!result.success) {
-    const messageMap = {
+    const messageMap: Record<string, string> = {
       NOT_FOUND: 'Deposit record not found during claim.',
       CLAIMED: 'This deposit has already been claimed.',
       CANCELLED: 'This deposit has been cancelled.',
-    } as const;
+      NOT_IN_TRUTH_STORE: 'No verified SMS receipt exists for this transaction. The payment has not been confirmed by the bank webhook yet.',
+      FRAUD_AMOUNT: 'The amount in the verified SMS receipt does not match the deposit amount. Possible fraud.',
+    };
     // logDepositAttempt already called inside processDepositClaim
     const status = result.reason === 'NOT_FOUND' ? 404 : 409;
-    res.status(status).json({ error: result.reason, message: messageMap[result.reason] });
+    res.status(status).json({ error: result.reason, message: messageMap[result.reason] ?? result.reason });
     return;
   }
 

@@ -745,43 +745,53 @@ export async function processDepositClaim(
   }
 
   // ─── Truth Store Verification ──────────────────────────────────────────────────
-  // Verify the transaction against authoritative records received via webhook.
-  const truth = await prisma.receivedSms.findUnique({
-    where: { tx_number: txNumber.toUpperCase() },
-  });
+  // When the SMS webhook is configured, every real payment produces a ReceivedSms record
+  // before a deposit is approved. We verify against that authoritative record.
+  //
+  // When SMS_WEBHOOK_SECRET is NOT set, the auto-credit webhook is disabled and all
+  // deposits go through manual admin review instead. In that case admins visually verify
+  // the receipt themselves, so we skip the truth store check for admin-sourced approvals.
+  const webhookEnabled = !!process.env['SMS_WEBHOOK_SECRET'];
+  const isAdminManualApproval = auditCtx?.source === 'admin' && !webhookEnabled;
 
-  if (!truth) {
-    void logDepositAttempt({
-      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
-      outcome: 'failure', failureReason: 'NOT_IN_TRUTH_STORE',
-      amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
-      source: auditCtx?.source ?? 'bot',
+  if (!isAdminManualApproval) {
+    const truth = await prisma.receivedSms.findUnique({
+      where: { tx_number: txNumber.toUpperCase() },
     });
-    return { success: false, reason: 'NOT_IN_TRUTH_STORE' };
-  }
 
-  if (truth.is_used) {
-    void logDepositAttempt({
-      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
-      outcome: 'failure', failureReason: 'CLAIMED',
-      amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
-      source: auditCtx?.source ?? 'bot',
-    });
-    return { success: false, reason: 'CLAIMED' };
-  }
+    if (!truth) {
+      void logDepositAttempt({
+        depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+        outcome: 'failure', failureReason: 'NOT_IN_TRUTH_STORE',
+        amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+        source: auditCtx?.source ?? 'bot',
+      });
+      return { success: false, reason: 'NOT_IN_TRUTH_STORE' };
+    }
 
-  const truthAmount = Number(truth.amount);
-  const pendingAmount = Number(deposit.amount);
+    if (truth.is_used) {
+      void logDepositAttempt({
+        depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+        outcome: 'failure', failureReason: 'CLAIMED',
+        amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+        source: auditCtx?.source ?? 'bot',
+      });
+      return { success: false, reason: 'CLAIMED' };
+    }
 
-  // Strict verification: User's claim (PendingDeposit) must match the truth (ReceivedSms).
-  if (Math.abs(truthAmount - pendingAmount) > 0.01) {
-    void logDepositAttempt({
-      depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
-      outcome: 'failure', failureReason: 'FRAUD_AMOUNT',
-      amountExpected: pendingAmount, amountParsed: truthAmount,
-      source: auditCtx?.source ?? 'bot',
-    });
-    return { success: false, reason: 'FRAUD_AMOUNT' };
+    const truthAmount = Number(truth.amount);
+    const pendingAmount = Number(deposit.amount);
+
+    // Strict verification: User's claim (PendingDeposit) must match the truth (ReceivedSms).
+    if (Math.abs(truthAmount - pendingAmount) > 0.01) {
+      void logDepositAttempt({
+        depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
+        outcome: 'failure', failureReason: 'FRAUD_AMOUNT',
+        amountExpected: pendingAmount, amountParsed: truthAmount,
+        source: auditCtx?.source ?? 'bot',
+      });
+      return { success: false, reason: 'FRAUD_AMOUNT' };
+    }
   }
 
   if (deposit.status === 'claimed') {
@@ -831,11 +841,14 @@ export async function processDepositClaim(
       });
       if (count === 0) throw new Error('ALREADY_CLAIMED');
 
-      // Mark the truth record as used to prevent double-spending the same SMS
-      await tx.receivedSms.update({
-        where: { tx_number: txNumber.toUpperCase() },
-        data: { is_used: true },
-      });
+      // Mark the truth record as used to prevent double-spending the same SMS.
+      // Skip when webhook is disabled (manual admin approval) — no truth record exists.
+      if (!isAdminManualApproval) {
+        await tx.receivedSms.update({
+          where: { tx_number: txNumber.toUpperCase() },
+          data: { is_used: true },
+        });
+      }
 
       const wallet = await tx.wallet.findUniqueOrThrow({
         where: { player_id_type: { player_id: playerId, type: 'play' } },
