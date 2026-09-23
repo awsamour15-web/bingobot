@@ -4,6 +4,7 @@ import { Router, type Request, type Response, type Router as RouterType } from '
 import prisma from '../../lib/prisma.js';
 import { cashierAuthMiddleware } from '../../middleware/cashier-auth.middleware.js';
 import { TxType } from '@fidel/shared';
+import { processDepositClaim } from '../../bot/index.js';
 
 const router: RouterType = Router();
 
@@ -64,30 +65,22 @@ router.post('/deposits/:id/approve', async (req: Request, res: Response): Promis
     return;
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.pendingDeposit.update({
-      where: byId(id),
-      data: { status: 'claimed', claimed_at: new Date() },
-    });
-    const wallet = await tx.wallet.findUniqueOrThrow({
-      where: { player_id_type: { player_id: deposit.player_id!, type: 'play' } },
-    });
-    await tx.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: { increment: deposit.amount } },
-    });
-    await tx.transaction.create({
-      data: {
-        wallet_id: wallet.id,
-        type: TxType.deposit,
-        amount: deposit.amount,
-        reference_id: deposit.id,
-        note: `Approved by cashier`,
-      },
-    });
-  });
+  const result = await processDepositClaim(deposit.player_id, deposit.tx_number, { source: 'admin' });
 
-  res.json({ success: true, message: 'Deposit approved and player credited' });
+  if (!result.success) {
+    const messageMap: Record<string, string> = {
+      NOT_FOUND: 'Deposit record not found during claim.',
+      CLAIMED: 'This deposit has already been claimed.',
+      CANCELLED: 'This deposit has been cancelled.',
+      NOT_IN_TRUTH_STORE: 'No verified SMS receipt exists for this transaction. The payment has not been confirmed by the bank webhook yet.',
+      FRAUD_AMOUNT: 'The amount in the verified SMS receipt does not match the deposit amount. Possible fraud.',
+    };
+    const status = result.reason === 'NOT_FOUND' ? 404 : 409;
+    res.status(status).json({ error: result.reason, message: messageMap[result.reason] ?? result.reason });
+    return;
+  }
+
+  res.json({ success: true, amount: result.amount, message: 'Deposit approved and player credited' });
 });
 
 // ─── POST /api/cashier/deposits/:id/reject ────────────────────────────────────
