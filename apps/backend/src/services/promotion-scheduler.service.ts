@@ -32,6 +32,11 @@ async function buildPromoFooter(): Promise<string> {
   );
 }
 
+/** Sleep for `ms` milliseconds */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /** Send a single message to one destination (channel ID or user telegram_id) */
 async function sendToOne(
   promotion: { content_type: string; text_content: string | null; media_file_id: string | null; caption?: string | null },
@@ -130,17 +135,37 @@ export async function sendPromotion(
 ): Promise<{ sent: number; failed: number }> {
   if (!bot) return { sent: 0, failed: 0 };
   let sent = 0, failed = 0;
+  const SEND_DELAY_MS = 50;
+
   for (const channelId of schedule.channel_ids) {
     try {
       await sendToOne(promotion, channelId);
       await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'sent' });
       sent++;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[PromotionScheduler] Failed to send to ${channelId}:`, message);
-      await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'failed', error_message: message }).catch(() => {});
-      failed++;
+      const retryAfter = (err as { parameters?: { retry_after?: number } }).parameters?.retry_after;
+      if (retryAfter) {
+        console.warn(`[PromotionScheduler] Flood wait: ${retryAfter}s — pausing`);
+        await sleep((retryAfter + 1) * 1000);
+        try {
+          await sendToOne(promotion, channelId);
+          await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'sent' });
+          sent++;
+          await sleep(SEND_DELAY_MS);
+          continue;
+        } catch (retryErr) {
+          const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'failed', error_message: retryMessage }).catch(() => {});
+          failed++;
+        }
+      } else {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[PromotionScheduler] Failed to send to ${channelId}:`, message);
+        await PromotionService.logDelivery({ promotion_id: promotion.id, schedule_id: schedule.id, channel_id: channelId, status: 'failed', error_message: message }).catch(() => {});
+        failed++;
+      }
     }
+    await sleep(SEND_DELAY_MS);
   }
   return { sent, failed };
 }
@@ -161,16 +186,39 @@ export async function sendPromotionNow(
   const chatIds = await resolveTargets(targets);
   let sent = 0, failed = 0;
 
+  // Telegram allows ~30 msgs/sec. We use a 50ms gap (~20/sec) to stay safely
+  // under the limit. On a 429 flood-wait response we honor the retry_after.
+  const SEND_DELAY_MS = 50;
+
   for (const chatId of chatIds) {
     try {
       await sendToOne(promotion, chatId);
       await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'sent' });
       sent++;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'failed', error_message: message }).catch(() => {});
-      failed++;
+      // Handle Telegram flood-wait (429) — pause then retry once
+      const retryAfter = (err as { parameters?: { retry_after?: number } }).parameters?.retry_after;
+      if (retryAfter) {
+        console.warn(`[PromotionScheduler] Flood wait: ${retryAfter}s — pausing`);
+        await sleep((retryAfter + 1) * 1000);
+        try {
+          await sendToOne(promotion, chatId);
+          await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'sent' });
+          sent++;
+          await sleep(SEND_DELAY_MS);
+          continue;
+        } catch (retryErr) {
+          const retryMessage = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'failed', error_message: retryMessage }).catch(() => {});
+          failed++;
+        }
+      } else {
+        const message = err instanceof Error ? err.message : String(err);
+        await PromotionService.logDelivery({ promotion_id: promotion.id, channel_id: chatId, status: 'failed', error_message: message }).catch(() => {});
+        failed++;
+      }
     }
+    await sleep(SEND_DELAY_MS);
   }
   return { sent, failed };
 }
