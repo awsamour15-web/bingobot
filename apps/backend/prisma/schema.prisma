@@ -173,6 +173,20 @@ model Config {
   @@map("config")
 }
 
+model ReceivedSms {
+  id            String   @id @default(uuid())
+  tx_number     String   @unique
+  amount        Decimal  @db.Decimal(14, 2)
+  sender_phone  String?
+  receiver_name String?
+  received_at   DateTime @default(now())
+  raw_text      String
+  is_used       Boolean  @default(false)
+
+  @@index([tx_number])
+  @@map("received_sms")
+}
+
 model PendingDeposit {
   id         String           @id @default(uuid())
   tx_number  String           @unique

@@ -753,6 +753,7 @@ export async function processDepositClaim(
   // the receipt themselves, so we skip the truth store check for admin-sourced approvals.
   const webhookEnabled = !!process.env['SMS_WEBHOOK_SECRET'];
   const isAdminManualApproval = auditCtx?.source === 'admin' && !webhookEnabled;
+  const pendingAmount = Number(deposit.amount);
 
   if (!isAdminManualApproval) {
     const truth = await prisma.receivedSms.findUnique({
@@ -763,7 +764,7 @@ export async function processDepositClaim(
       void logDepositAttempt({
         depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
         outcome: 'failure', failureReason: 'NOT_IN_TRUTH_STORE',
-        amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+        amountExpected: pendingAmount, amountParsed: auditCtx?.amountParsed,
         source: auditCtx?.source ?? 'bot',
       });
       return { success: false, reason: 'NOT_IN_TRUTH_STORE' };
@@ -773,14 +774,13 @@ export async function processDepositClaim(
       void logDepositAttempt({
         depositId: deposit.id, playerId, txNumberParsed: txNumber, rawSms: auditCtx?.rawSms,
         outcome: 'failure', failureReason: 'CLAIMED',
-        amountExpected: Number(deposit.amount), amountParsed: auditCtx?.amountParsed,
+        amountExpected: pendingAmount, amountParsed: auditCtx?.amountParsed,
         source: auditCtx?.source ?? 'bot',
       });
       return { success: false, reason: 'CLAIMED' };
     }
 
     const truthAmount = Number(truth.amount);
-    const pendingAmount = Number(deposit.amount);
 
     // Strict verification: User's claim (PendingDeposit) must match the truth (ReceivedSms).
     if (Math.abs(truthAmount - pendingAmount) > 0.01) {
@@ -1788,12 +1788,14 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
           depositSessions.delete(telegramId);
 
           if (!result.success) {
-            const msgs = {
+            const msgs: Record<string, string> = {
               NOT_FOUND: '❌ Transaction number not found. Please contact support.',
               CLAIMED: '❌ This transaction has already been used. Please contact support.',
               CANCELLED: '❌ This transaction has been cancelled. Please contact support.',
+              NOT_IN_TRUTH_STORE: '⏳ Payment not yet confirmed by the bank. Please wait a moment and try again, or contact support.',
+              FRAUD_AMOUNT: '❌ The amount in your receipt does not match what you entered. Please check and try again.',
             };
-            await ctx.reply(msgs[result.reason]);
+            await ctx.reply(msgs[result.reason] ?? '❌ Something went wrong. Please contact support.');
             return;
           }
 
