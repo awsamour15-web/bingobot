@@ -1,16 +1,14 @@
 // Singleton Prisma client instance
 import { PrismaClient } from '@prisma/client';
 
-// Cap Prisma's internal connection pool to 3.
-// With Supabase PgBouncer (transaction mode), Prisma should use a small pool —
-// PgBouncer handles the real connection multiplexing. On Render's 512MB free tier,
-// a larger pool causes connection exhaustion under concurrent game rounds.
-// The connection_limit param must be in the URL for Prisma to respect it.
+// Cap Prisma's internal connection pool to 5 for Neon's connection pooler.
+// Neon uses pgBouncer in transaction mode — keep the pool small on Render's
+// 512MB free tier to avoid connection exhaustion under concurrent game rounds.
 function buildDatabaseUrl(): string {
   const url = process.env['DATABASE_URL'] ?? '';
   try {
     const parsed = new URL(url);
-    parsed.searchParams.set('connection_limit', '3');
+    parsed.searchParams.set('connection_limit', '5');
     parsed.searchParams.set('pool_timeout', '30');
     return parsed.toString();
   } catch {
