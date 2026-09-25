@@ -39,6 +39,46 @@ function SeedCard({ onSeeded }: { onSeeded: () => void }) {
   );
 }
 
+// ─── Reset Balances Card ──────────────────────────────────────────────────────
+
+function ResetBalancesCard({ onDone }: { onDone: () => void }) {
+  const [amount, setAmount] = useState('200');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault();
+    const n = parseFloat(amount);
+    if (isNaN(n) || n < 0) { setErr('Enter a valid amount (>= 0)'); return; }
+    setLoading(true); setErr(null); setMsg(null);
+    try {
+      const r = await adminApiRequest<{ updated: number; amount: number }>(
+        'POST', '/api/admin/mock-players/reset-balances', { amount: n },
+      );
+      setMsg(`✅ Reset ${r.updated} mock player play wallets to ${r.amount} ETB`);
+      onDone();
+    } catch (ex: unknown) {
+      setErr((ex as Error).message ?? 'Failed');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader title="Reset Play Balances" subtitle="Set all mock player play wallets to a fixed amount" />
+      {err && <Alert type="error">{err}</Alert>}
+      {msg && <Alert type="success">{msg}</Alert>}
+      <form onSubmit={handleReset} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+        <Field label="Amount (ETB)">
+          <input style={inputCss} type="number" min="0" step="any" value={amount}
+            onChange={(e) => setAmount(e.target.value)} placeholder="200" required />
+        </Field>
+        <Btn type="submit" disabled={loading}>{loading ? 'Resetting…' : '🔄 Reset All Balances'}</Btn>
+      </form>
+    </Card>
+  );
+}
+
 // ─── Credit Modal ─────────────────────────────────────────────────────────────
 
 function CreditModal({ player, onClose, onDone }: {
@@ -459,6 +499,8 @@ export function MockPlayersPage() {
       {fetchErr && <Alert type="error">{fetchErr}</Alert>}
 
       <SeedCard onSeeded={fetchPlayers} />
+
+      <ResetBalancesCard onDone={fetchPlayers} />
 
       <BotConfigCard />
 

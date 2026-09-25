@@ -275,6 +275,38 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   res.json({ joined: results, errors: [] });
 });
 
+// POST /api/admin/mock-players/reset-balances
+// Wipe all mock player play-wallet balances and set each to the given amount (default 200)
+router.post('/reset-balances', async (req: Request, res: Response): Promise<void> => {
+  const { amount = 200 } = req.body as { amount?: number };
+  if (typeof amount !== 'number' || amount < 0) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'amount must be a non-negative number' });
+    return;
+  }
+
+  // Get all mock players with their play wallets
+  const mockPlayers = await prisma.$queryRaw<Array<{ id: string; wallet_id: string }>>`
+    SELECT p.id, w.id AS wallet_id
+    FROM players p
+    JOIN wallets w ON w.player_id = p.id AND w.type = 'play'
+    WHERE p.is_mock = true
+  `;
+
+  if (!mockPlayers.length) {
+    res.json({ success: true, updated: 0 });
+    return;
+  }
+
+  // Set balance directly to the target amount
+  await prisma.$executeRaw`
+    UPDATE wallets
+    SET balance = ${amount}
+    WHERE id = ANY(${mockPlayers.map((p) => p.wallet_id)}::uuid[])
+  `;
+
+  res.json({ success: true, updated: mockPlayers.length, amount });
+});
+
 // PATCH /api/admin/mock-players/:id/rename
 // Rename a mock player's username
 router.patch('/:id/rename', async (req: Request, res: Response): Promise<void> => {
