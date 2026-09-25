@@ -19,50 +19,89 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 const BACKUP_DIR = './backups';
+const BATCH = 2000;
+
+async function fetchAll(model) {
+  const results = [];
+  let skip = 0;
+  while (true) {
+    const batch = await model.findMany({ skip, take: BATCH });
+    results.push(...batch);
+    if (batch.length < BATCH) break;
+    skip += batch.length;
+  }
+  return results;
+}
 
 async function backup() {
   await fs.mkdir(BACKUP_DIR, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   const file = path.join(BACKUP_DIR, 'backup_' + timestamp + '.json');
 
-  const [players, wallets, admins, config] = await Promise.all([
+  // Small / config tables — fetch in parallel
+  const [
+    players, wallets, admins, config,
+    pendingDeposits, pendingWithdrawals, depositAccounts,
+    agents, agentCommissions, agentCommissionWithdrawals,
+    cartelaReservations, cartelaDefinitions,
+    broadcastTargets, promotions, promotionSchedules,
+    promotionBonusDistributions, cashiers, systemSettings,
+  ] = await Promise.all([
     prisma.player.findMany(),
     prisma.wallet.findMany(),
     prisma.admin.findMany(),
     prisma.config.findMany(),
-  ]);
-  const [pendingDeposits, pendingWithdrawals, depositAccounts] = await Promise.all([
     prisma.pendingDeposit.findMany(),
     prisma.pendingWithdrawal.findMany(),
     prisma.depositAccount.findMany(),
-  ]);
-  const [agents, agentCommissions, agentCommissionWithdrawals] = await Promise.all([
     prisma.agent.findMany(),
     prisma.agentCommission.findMany(),
     prisma.agentCommissionWithdrawal.findMany(),
-  ]);
-  const [promotions, promotionSchedules, broadcastTargets, systemSettings] = await Promise.all([
+    prisma.cartelaReservation.findMany(),
+    prisma.cartelaDefinition.findMany(),
+    prisma.broadcastTarget.findMany(),
     prisma.promotion.findMany(),
     prisma.promotionSchedule.findMany(),
-    prisma.broadcastTarget.findMany(),
+    prisma.promotionBonusDistribution.findMany(),
+    prisma.cashier.findMany(),
     prisma.systemSetting.findMany(),
   ]);
-  const [cartelaDefinitions, cashiers] = await Promise.all([
-    prisma.cartelaDefinition.findMany(),
-    prisma.cashier.findMany(),
-  ]);
+
+  // Large tables — fetch in batches to avoid OOM
+  const transactions               = await fetchAll(prisma.transaction);
+  const gameRounds                 = await fetchAll(prisma.gameRound);
+  const roundEntries               = await fetchAll(prisma.roundEntry);
+  const roundWinners               = await fetchAll(prisma.roundWinner);
+  const calledNumbers              = await fetchAll(prisma.calledNumber);
+  const depositAttempts            = await fetchAll(prisma.depositAttempt);
+  const promotionLogs              = await fetchAll(prisma.promotionLog);
+  const crashRounds                = await fetchAll(prisma.crashRound);
+  const crashBets                  = await fetchAll(prisma.crashBet);
+  const slotSpins                  = await fetchAll(prisma.slotSpin);
+  const kenoRounds                 = await fetchAll(prisma.kenoRound);
+  const kenoBets                   = await fetchAll(prisma.kenoBet);
+  const plinkoBets                 = await fetchAll(prisma.plinkoBet);
+  const royalDropBets              = await fetchAll(prisma.royalDropBet);
+  const gregmornSessions           = await fetchAll(prisma.gregmornSession);
+  const gregmornTransactions       = await fetchAll(prisma.gregmornTransaction);
 
   const data = {
-    _meta: { timestamp: new Date().toISOString(), version: '2.1' },
+    _meta: { timestamp: new Date().toISOString(), version: '2.2' },
     players, wallets, admins, config,
-    pendingDeposits, pendingWithdrawals, depositAccounts,
+    pendingDeposits, depositAttempts, pendingWithdrawals, depositAccounts,
     agents, agentCommissions, agentCommissionWithdrawals,
-    promotions, promotionSchedules, broadcastTargets, systemSettings,
-    cartelaDefinitions, cashiers,
+    cartelaDefinitions, cartelaReservations,
+    transactions, gameRounds, roundEntries, roundWinners, calledNumbers,
+    broadcastTargets, promotions, promotionSchedules, promotionLogs,
+    promotionBonusDistributions,
+    crashRounds, crashBets, slotSpins,
+    kenoRounds, kenoBets, plinkoBets, royalDropBets,
+    cashiers, systemSettings,
+    gregmornSessions, gregmornTransactions,
   };
 
   await fs.writeFile(file, JSON.stringify(data, (_k, v) => typeof v === 'bigint' ? v.toString() : v, 2));
-  console.log('Backup saved:', file);
+  console.log('Backup saved:', file, '— tables:', Object.keys(data).filter(k => k !== '_meta').length);
 }
 
 backup()

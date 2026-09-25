@@ -48,6 +48,7 @@ router.get('/', async (_req, res) => {
       { key: 'gregmornSessions',    fetcher: (s, t) => prisma.gregmornSession.findMany({ skip: s, take: t }) },
       { key: 'gregmornTransactions',fetcher: (s, t) => prisma.gregmornTransaction.findMany({ skip: s, take: t }) },
       { key: 'promotionLogs',   fetcher: (s, t) => prisma.promotionLog.findMany({ skip: s, take: t }) },
+      { key: 'depositAttempts', fetcher: (s, t) => prisma.depositAttempt.findMany({ skip: s, take: t }) },
     ];
 
     // Tables that are small — fetched all at once
@@ -58,7 +59,6 @@ router.get('/', async (_req, res) => {
       { key: 'admins',                     data: prisma.admin.findMany() },
       { key: 'config',                     data: prisma.config.findMany() },
       { key: 'pendingDeposits',            data: prisma.pendingDeposit.findMany() },
-      { key: 'depositAttempts',            data: prisma.depositAttempt.findMany() },
       { key: 'agents',                     data: prisma.agent.findMany() },
       { key: 'agentCommissions',           data: prisma.agentCommission.findMany() },
       { key: 'agentCommissionWithdrawals', data: prisma.agentCommissionWithdrawal.findMany() },
