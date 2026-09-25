@@ -159,24 +159,34 @@ router.post('/:id/duplicate', async (req: Request, res: Response): Promise<void>
   }
 });
 
-// POST /:id/send-now — queue an immediate send to selected targets (async to avoid proxy timeouts)
+// POST /:id/send-now — send promotion to selected targets
 router.post('/:id/send-now', async (req: Request, res: Response): Promise<void> => {
-  const { targets } = req.body as { targets: import('../../services/promotion-scheduler.service.js').SendTarget[] };
-  if (!Array.isArray(targets) || targets.length === 0) {
-    res.status(400).json({ error: 'TARGETS_REQUIRED', message: 'Provide at least one target' });
-    return;
+  try {
+    const { targets } = req.body as { targets: import('../../services/promotion-scheduler.service.js').SendTarget[] };
+    if (!Array.isArray(targets) || targets.length === 0) {
+      res.status(400).json({ error: 'TARGETS_REQUIRED', message: 'Provide at least one target' });
+      return;
+    }
+    const promotionId = req.params['id'] as string;
+    const hasBroadcast = targets.some(t => t.type === 'bot_broadcast');
+
+    if (hasBroadcast) {
+      // bot_broadcast can take minutes for large player bases — respond immediately
+      // and run in background to avoid Render proxy timeouts.
+      res.json({ status: 'queued', message: 'Broadcast started in background. Check delivery logs for results.' });
+      sendPromotionNow(promotionId, targets).then((result) => {
+        console.log(`[send-now] ${promotionId} done — sent: ${result.sent}, failed: ${result.failed}`);
+      }).catch((err) => {
+        console.error(`[send-now] ${promotionId} failed — ${(err as Error).message}`);
+      });
+    } else {
+      // Channel sends are fast (1–few targets) — wait and return real results.
+      const result = await sendPromotionNow(promotionId, targets);
+      res.json(result);
+    }
+  } catch (err) {
+    res.status(400).json({ error: 'SEND_FAILED', message: (err as Error).message });
   }
-  const promotionId = req.params['id'] as string;
-
-  // Respond immediately so the HTTP connection isn't held open during the (potentially
-  // long-running) Telegram send loop. The actual sending happens in the background.
-  res.json({ status: 'queued', message: 'Promotion send started in background' });
-
-  sendPromotionNow(promotionId, targets).then((result) => {
-    console.log(`[send-now] ${promotionId} done — sent: ${result.sent}, failed: ${result.failed}`);
-  }).catch((err) => {
-    console.error(`[send-now] ${promotionId} failed — ${(err as Error).message}`);
-  });
 });
 
 // POST /:id/retry-failed — retry all failed deliveries

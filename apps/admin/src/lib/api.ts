@@ -573,7 +573,7 @@ export function duplicatePromotion(id: string): Promise<Promotion> {
   return adminApiRequest('POST', `/api/admin/promotions/${id}/duplicate`);
 }
 
-export function sendPromotionNow(id: string, targets: BroadcastTarget[]): Promise<{ status: string; message: string }> {
+export function sendPromotionNow(id: string, targets: BroadcastTarget[]): Promise<{ sent?: number; failed?: number; status?: string; message?: string }> {
   return adminApiRequest('POST', `/api/admin/promotions/${id}/send-now`, { targets });
 }
 
