@@ -8,6 +8,26 @@ export class InsufficientFundsError extends Error {
   }
 }
 
+const TX_HISTORY_LIMIT = 50;
+
+/** Keep only the most recent TX_HISTORY_LIMIT transactions for a wallet. */
+async function trimTransactionHistory(
+  walletId: string,
+  tx: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
+): Promise<void> {
+  const oldest = await tx.transaction.findMany({
+    where: { wallet_id: walletId },
+    orderBy: { created_at: "desc" },
+    skip: TX_HISTORY_LIMIT,
+    select: { id: true },
+  });
+  if (oldest.length > 0) {
+    await tx.transaction.deleteMany({
+      where: { id: { in: oldest.map((t) => t.id) } },
+    });
+  }
+}
+
 export const WalletService = {
   async debit(playerId: string, walletType: WalletType, amount: number, type: TxType, referenceId?: string, note?: string): Promise<void> {
     await prisma.$transaction(async (tx) => {
@@ -34,6 +54,7 @@ export const WalletService = {
           note: note ?? null,
         },
       });
+      await trimTransactionHistory(wallet.id, tx);
     });
   },
 
@@ -74,6 +95,7 @@ export const WalletService = {
             note: note ? `${note} (play)` : null,
           },
         });
+        await trimTransactionHistory(playWallet.id, tx);
         remaining -= fromPlay;
       }
 
@@ -91,6 +113,7 @@ export const WalletService = {
             note: note ? `${note} (main)` : null,
           },
         });
+        await trimTransactionHistory(mainWallet.id, tx);
       }
     });
   },
@@ -115,6 +138,7 @@ export const WalletService = {
           note: note ?? null,
         },
       });
+      await trimTransactionHistory(wallet.id, tx);
     });
   },
 
