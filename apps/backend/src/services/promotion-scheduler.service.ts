@@ -98,7 +98,9 @@ async function resolveTargets(targets: SendTarget[]): Promise<string[]> {
         
         if (players.length === 0) break;
         
-        for (const p of players) ids.push(String(p.telegram_id));
+        for (const p of players) {
+          if (p.telegram_id != null) ids.push(String(p.telegram_id));
+        }
         
         if (players.length < BATCH_SIZE) break;
         cursor = players[players.length - 1]!.id;

@@ -63,7 +63,9 @@ async function sendCouponAnnouncement(schedule: CouponSchedule): Promise<void> {
           orderBy: { id: 'asc' },
         });
         if (players.length === 0) break;
-        for (const p of players) chatIds.push(String(p.telegram_id));
+        for (const p of players) {
+          if (p.telegram_id != null) chatIds.push(String(p.telegram_id));
+        }
         if (players.length < 500) break;
         cursor = players[players.length - 1]!.id;
       }
