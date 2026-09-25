@@ -1325,19 +1325,6 @@ if (BOT_TOKEN) {
         return;
       }
 
-      // Check if channel membership is required before completing registration
-      const channelId = await getRequiredChannel();
-      if (channelId) {
-        const isMember = await isChannelMember(bot!, ctx.from.id, channelId);
-        if (!isMember) {
-          await ctx.reply(
-            `📱 Phone number received!\n\n⚠️ Before completing your registration, you must join our channel.\n\nJoin the channel and then tap Register 📝 again to complete registration.`,
-            { reply_markup: buildJoinChannelMarkup(channelId) },
-          );
-          return;
-        }
-      }
-
       // Run all DB updates atomically — use updateMany with phone_verified: false
       // to guard against race conditions (double-tap) granting the bonus twice.
       const result = await prisma.$transaction(async (tx) => {
@@ -1386,6 +1373,18 @@ if (BOT_TOKEN) {
         `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: await getMenuForUser(telegramId) },
       );
+
+      // After registration is complete, ask user to join the channel if required
+      const channelId = await getRequiredChannel();
+      if (channelId) {
+        const isMember = await isChannelMember(bot!, ctx.from.id, channelId);
+        if (!isMember) {
+          await ctx.reply(
+            `📢 One more step! Please join our channel to get updates and stay connected.`,
+            { reply_markup: buildJoinChannelMarkup(channelId) },
+          );
+        }
+      }
     } catch (err) {
       console.error('[Bot] Registration error:', err);
       await ctx.reply('Something went wrong during registration. Please try again.');
