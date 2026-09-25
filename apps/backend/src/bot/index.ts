@@ -751,8 +751,9 @@ export async function processDepositClaim(
   // When SMS_WEBHOOK_SECRET is NOT set, the auto-credit webhook is disabled and all
   // deposits go through manual admin review instead. In that case admins visually verify
   // the receipt themselves, so we skip the truth store check for admin-sourced approvals.
-  const webhookEnabled = !!process.env['SMS_WEBHOOK_SECRET'];
-  const isAdminManualApproval = auditCtx?.source === 'admin' && !webhookEnabled;
+  // Admin approvals always bypass the truth store — the admin has visually verified
+  // the receipt. The SMS webhook check only applies to bot self-serve claims.
+  const isAdminManualApproval = auditCtx?.source === 'admin';
   const pendingAmount = Number(deposit.amount);
 
   if (!isAdminManualApproval) {
