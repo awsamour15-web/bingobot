@@ -203,7 +203,7 @@ router.post('/deposit/manual', async (req: Request, res: Response): Promise<void
 
   if (!validation.ok) {
     const messageMap = {
-      NO_RECEIPT: 'We could not read a valid transaction receipt from your message. Please paste the full SMS from Telebirr, CBE, BOA, Dashen, or CBE Birr.',
+      NO_RECEIPT: 'We could not read a valid transaction receipt from your message. Please paste the full SMS from Telebirr or CBE Birr.',
       PHONE_MISMATCH: 'The receipt does not match the configured deposit account. Please paste the correct transfer SMS.',
       NAME_MISMATCH: 'The receiver name does not match the configured account. Please paste the correct transfer SMS.',
       AMOUNT_MISMATCH: `The receipt amount does not match your entered amount (${amount} ETB).`,

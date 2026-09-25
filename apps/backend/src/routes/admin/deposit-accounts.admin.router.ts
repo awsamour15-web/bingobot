@@ -4,6 +4,8 @@ import prisma from '../../lib/prisma.js';
 
 const router: RouterType = Router();
 
+const ALLOWED_BANKS = ['telebirr', 'cbebirr'] as const;
+
 // GET /api/admin/deposit-accounts
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const accounts = await prisma.depositAccount.findMany({ orderBy: { created_at: 'desc' } });
@@ -19,6 +21,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
   if (!bank?.trim()) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'bank is required' });
+    return;
+  }
+  if (!ALLOWED_BANKS.includes(bank.trim() as typeof ALLOWED_BANKS[number])) {
+    res.status(400).json({ error: 'INVALID_BANK', message: 'Only Telebirr and CBE Birr accounts are accepted.' });
     return;
   }
   try {
@@ -39,7 +45,13 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   const data: Record<string, unknown> = {};
   if (phone !== undefined) data['phone'] = phone.trim();
   if (name !== undefined) data['name'] = name.trim();
-  if (bank !== undefined) data['bank'] = bank.trim();
+  if (bank !== undefined) {
+    if (!ALLOWED_BANKS.includes(bank.trim() as typeof ALLOWED_BANKS[number])) {
+      res.status(400).json({ error: 'INVALID_BANK', message: 'Only Telebirr and CBE Birr accounts are accepted.' });
+      return;
+    }
+    data['bank'] = bank.trim();
+  }
   if (is_active !== undefined) data['is_active'] = is_active;
 
   if (!Object.keys(data).length) {

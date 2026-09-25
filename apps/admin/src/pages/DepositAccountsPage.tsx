@@ -13,14 +13,8 @@ import {
 
 // ── Supported banks list ──────────────────────────────────────────────────────
 const BANKS = [
-  { value: 'telebirr',  label: '📱 Telebirr'  },
-  { value: 'cbebirr',   label: '📱 CBE Birr'  },
-  { value: 'cbe',       label: '🏦 CBE'       },
-  { value: 'boa',       label: '🏦 BOA'       },
-  { value: 'dashen',    label: '🏦 Dashen'    },
-  { value: 'awash',     label: '🏦 Awash'     },
-  { value: 'mpesa',     label: '📱 M-Pesa'    },
-  { value: 'other',     label: '🏦 Other'     },
+  { value: 'telebirr', label: '📱 Telebirr'  },
+  { value: 'cbebirr',  label: '📱 CBE Birr'  },
 ];
 
 function bankLabel(value: string): string {
@@ -224,8 +218,8 @@ export function DepositAccountsPage() {
         borderRadius: 12, padding: '13px 16px', marginBottom: 20,
         fontSize: 13, color: 'var(--c-text-secondary)', lineHeight: 1.6,
       }}>
-        <strong style={{ color: 'var(--c-text)' }}>Supported banks:</strong>{' '}
-        {BANKS.map(b => b.label).join(' · ')}<br />
+        <strong style={{ color: 'var(--c-text)' }}>Accepted payment methods:</strong>{' '}
+        📱 Telebirr · 📱 CBE Birr<br />
         When multiple accounts are active, one is chosen at random per deposit session.
       </div>
 

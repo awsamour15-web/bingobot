@@ -214,14 +214,13 @@ export async function buildDepositInstructionText(amount: number): Promise<{ tex
   }
 
   const text =
-    `💳 *ዲፖዚት ማድረጊያ ባንኮች*\n\n` +
-    `ከሚከተሉት ባንኮች ወይም ዋሌቶች ${amount > 0 ? `*${amount} ብር*` : 'ገንዘብ'} ወደ ታቹ ቁጥር ይላኩ:\n\n` +
+    `💳 *ዲፖዚት ማድረጊያ*\n\n` +
+    `${amount > 0 ? `*${amount} ብር*` : 'ገንዘብ'} ወደ ታቹ ቁጥር ይላኩ:\n\n` +
     `📱 *Telebirr / CBE Birr* — ${telebirrNumber}` +
     (receiverName ? `\n👤 Name: ${receiverName}` : '') +
-    `\n\n🏦 *ሌሎች ባንኮች (CBE, BOA, Dashen)*\n` +
-    `ከሌሎች ባንኮች የሚልኩ ከሆነ የባንኩን SMS ወይም ደረሰኝ ቁጥር ከዚህ ላይ ለጥፍ ይላኩ\n\n` +
+    `\n\n⚠️ *ትኩረት:* ዲፖዚት የሚቀበሉት Telebirr እና CBE Birr ብቻ ናቸው።\n\n` +
     `2. *ደረሰኙን ቅዱ (Copy) ወደዚህ ለጥፈው (Paste) ላኩ* 👇👇👇\n` +
-    `_(Telebirr SMS · CBE/BOA/Dashen Reference Number)_`;
+    `_(Telebirr SMS · CBE Birr SMS)_`;
 
   return { text, telebirrNumber, receiverName };
 }
@@ -553,34 +552,93 @@ export function parseDashenReceipt(text: string): { txNumber: string; receiverPh
 }
 
 // ─── CBE Birr receipt parser ──────────────────────────────────────────────────
-// Sample: "You have successfully transferred ETB 150.00 to 0912345678 (Meron). Receipt No: CB20260512345"
+// Handles multiple CBE Birr SMS formats:
+//
+// Sent confirmation (player's proof of payment):
+//   "Dear thomas, you have sent 200.00Br. to abebe zewde on 25/09/26 19:46,Txn ID DIP61PN80QI.
+//    Your CBE Birr account balance is 4.78Br. For invoice https://cbepay1.cbe.com.et/aureceipt?TID=DIP61PN80QI&PH=..."
+//
+// Received confirmation (older format):
+//   "You have received ETB 150.00 from 0912345678 (Meron). Receipt No: CB20260512345"
+//   "You have successfully transferred ETB 150.00 to 0912345678 (Meron). Receipt No: CB20260512345"
 export function parseCbeBirrReceipt(text: string): { txNumber: string; receiverPhone: string | null; receiverName: string | null; amount: number | null } | null {
   const n = text.replace(/\s+/g, ' ').replace(/[""'']/g, '"');
 
+  // Must mention CBE Birr explicitly (to avoid matching other banks)
+  if (!/CBE\s*Birr/i.test(n) && !/cbepay.*cbe\.com\.et/i.test(n)) return null;
+
+  // ── Transaction ID ────────────────────────────────────────────────────────
   let txNumber: string | null = null;
-  const rcpMatch = n.match(/\bReceipt\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
-  if (rcpMatch?.[1]) txNumber = rcpMatch[1].toUpperCase();
+
+  // "Txn ID DIP61PN80QI" — CBE Birr sent-confirmation format
+  const txnIdMatch = n.match(/\bTxn\s+ID\s+([A-Z0-9]{6,20})/i);
+  if (txnIdMatch?.[1]) txNumber = txnIdMatch[1].toUpperCase();
+
+  // URL: "?TID=DIP61PN80QI" — from invoice link
+  if (!txNumber) {
+    const tidMatch = n.match(/[?&]TID=([A-Z0-9]{6,20})/i);
+    if (tidMatch?.[1]) txNumber = tidMatch[1].toUpperCase();
+  }
+  // "Receipt No: CB20260512345"
+  if (!txNumber) {
+    const rcpMatch = n.match(/\bReceipt\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
+    if (rcpMatch?.[1]) txNumber = rcpMatch[1].toUpperCase();
+  }
+  // "Ref: ..." fallback
   if (!txNumber) {
     const refMatch = n.match(/\bRef(?:erence)?\s*(?:No)?[:\s]+([A-Z0-9]{6,20})/i);
     if (refMatch?.[1]) txNumber = refMatch[1].toUpperCase();
   }
+  // CB-prefixed reference
   if (!txNumber) {
     const cbMatch = n.match(/\b(CB[A-Z0-9]{6,16})\b/i);
     if (cbMatch?.[1]) txNumber = cbMatch[1].toUpperCase();
   }
+
   if (!txNumber) return null;
 
+  // ── Amount ────────────────────────────────────────────────────────────────
   let amount: number | null = null;
-  const amtMatch = n.match(/(?:ETB|Birr)\s*([\d,]+(?:\.\d+)?)/i);
-  if (amtMatch?.[1]) amount = parseFloat(amtMatch[1].replace(/,/g, ''));
 
-  // "to 0912345678 (Meron)"
+  // "200.00Br." — amount followed by Br suffix (CBE Birr sent format)
+  const brSuffixMatch = n.match(/([\d,]+(?:\.\d+)?)Br\b/i);
+  if (brSuffixMatch?.[1]) {
+    const v = parseFloat(brSuffixMatch[1].replace(/,/g, ''));
+    // Skip if this is the balance line ("account balance is X.XXBr") by checking context
+    // Use the FIRST Br match which is the sent amount, not the balance
+    const allBrMatches = [...n.matchAll(/([\d,]+(?:\.\d+)?)Br\b/gi)];
+    if (allBrMatches.length > 0) {
+      const first = parseFloat(allBrMatches[0]![1]!.replace(/,/g, ''));
+      if (!isNaN(first) && first > 0) amount = first;
+    }
+  }
+  // "ETB 150.00" or "Birr 150.00" prefix format
+  if (!amount) {
+    const etbMatch = n.match(/(?:ETB|Birr)\s+([\d,]+(?:\.\d+)?)/i);
+    if (etbMatch?.[1]) amount = parseFloat(etbMatch[1].replace(/,/g, ''));
+  }
+
+  // ── Receiver (name or phone) ──────────────────────────────────────────────
   let receiverPhone: string | null = null;
   let receiverName: string | null = null;
-  const toMatch = n.match(/to\s+(\+?251\d{9}|0[79]\d{8})\s*(?:\(([A-Za-z\s]{2,40})\))?/i);
-  if (toMatch) {
-    receiverPhone = toMatch[1]!;
-    if (toMatch[2]) receiverName = toMatch[2].trim();
+
+  // "to abebe zewde on" — name-only format (no phone in CBE Birr sent SMS)
+  const toNameMatch = n.match(/\bto\s+([A-Za-z][A-Za-z\s]{2,40}?)\s+on\s+\d/i);
+  if (toNameMatch?.[1]) receiverName = toNameMatch[1].trim();
+
+  // "to 0912345678 (Meron)" — phone format
+  if (!receiverName) {
+    const toPhoneMatch = n.match(/\bto\s+(\+?251\d{9}|0[79]\d{8})\s*(?:\(([A-Za-z\s]{2,40})\))?/i);
+    if (toPhoneMatch) {
+      receiverPhone = toPhoneMatch[1]!;
+      if (toPhoneMatch[2]) receiverName = toPhoneMatch[2].trim();
+    }
+  }
+
+  // URL: "&PH=251920656419" — receiver phone embedded in invoice URL
+  if (!receiverPhone) {
+    const phMatch = n.match(/[?&]PH=(\d{12,13})/i);
+    if (phMatch?.[1]) receiverPhone = phMatch[1]!;
   }
 
   return { txNumber, receiverPhone, receiverName, amount: amount && amount > 0 ? amount : null };
@@ -591,9 +649,9 @@ type ParsedReceipt = { txNumber: string; receiverPhone: string | null; receiverN
 
 export function parseAnyReceipt(text: string): ParsedReceipt | null {
   return (
+    parseCbeBirrReceipt(text) ??
     parseTelebirrReceipt(text) ??
     parseCbeReceipt(text) ??
-    parseCbeBirrReceipt(text) ??
     parseBoaReceipt(text) ??
     parseDashenReceipt(text)
   );
