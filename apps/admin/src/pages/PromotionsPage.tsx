@@ -146,7 +146,7 @@ function SendNowModal({ promotion, targets, onClose }: { promotion: Promotion; t
   const activeTargets = targets.filter(t => t.is_active);
   const [selected, setSelected] = useState<Set<string>>(new Set(activeTargets.map(t => t.id)));
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [queued, setQueued] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function toggle(id: string) {
@@ -161,21 +161,21 @@ function SendNowModal({ promotion, targets, onClose }: { promotion: Promotion; t
     setSending(true); setError(null);
     try {
       const chosenTargets = targets.filter(t => selected.has(t.id));
-      const res = await sendPromotionNow(promotion.id, chosenTargets);
-      setResult(res);
+      await sendPromotionNow(promotion.id, chosenTargets);
+      setQueued(true);
     } catch (err) { setError((err as Error).message); }
     finally { setSending(false); }
   }
 
   return (
     <Modal title={`Send — ${promotion.title}`} onClose={onClose}>
-      {result ? (
+      {queued ? (
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <div style={{ fontSize: 40, marginBottom: 10 }}>{result.failed === 0 ? '✅' : '⚠️'}</div>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>🚀</div>
           <div style={{ fontWeight: 700, color: 'var(--c-text)', fontSize: 18, marginBottom: 6 }}>
-            {result.sent} sent{result.failed > 0 ? `, ${result.failed} failed` : ''}
+            Sending in progress
           </div>
-          {result.failed > 0 && <div style={{ color: '#ef4444', fontSize: 13 }}>Check delivery logs for details</div>}
+          <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>Check delivery logs in a moment to see results.</div>
           <div style={{ marginTop: 20 }}><Btn onClick={onClose}>Done</Btn></div>
         </div>
       ) : (
