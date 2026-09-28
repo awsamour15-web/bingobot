@@ -12,96 +12,106 @@ const BACKUP_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours
 const MAX_BACKUPS = 14;
 
 // Inline ESM backup script executed via node --input-type=module
+// Streams each table directly to disk in batches — never holds the full dataset in memory.
 const BACKUP_EVAL = `
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs/promises';
+import { createWriteStream } from 'fs';
+import { mkdir } from 'fs/promises';
 import path from 'path';
 
 const prisma = new PrismaClient();
 const BACKUP_DIR = './backups';
-const BATCH = 2000;
+const BATCH = 500;
 
-async function fetchAll(model) {
-  const results = [];
+function serialize(v) {
+  return JSON.stringify(v, (_k, val) => typeof val === 'bigint' ? val.toString() : val);
+}
+
+async function streamTable(writer, key, model, isFirst) {
+  if (!isFirst) writer.write(',\\n');
+  writer.write('  ' + JSON.stringify(key) + ': [\\n');
+
   let skip = 0;
+  let total = 0;
+  let firstRow = true;
+
   while (true) {
-    const batch = await model.findMany({ skip, take: BATCH });
-    results.push(...batch);
-    if (batch.length < BATCH) break;
-    skip += batch.length;
+    const rows = await model.findMany({ skip, take: BATCH, orderBy: { id: 'asc' } });
+    for (const row of rows) {
+      if (!firstRow) writer.write(',\\n');
+      writer.write('    ' + serialize(row));
+      firstRow = false;
+    }
+    total += rows.length;
+    skip += rows.length;
+    if (rows.length < BATCH) break;
   }
-  return results;
+
+  writer.write('\\n  ]');
+  console.log('  ' + key + ': ' + total);
+  return total;
 }
 
 async function backup() {
-  await fs.mkdir(BACKUP_DIR, { recursive: true });
+  await mkdir(BACKUP_DIR, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   const file = path.join(BACKUP_DIR, 'backup_' + timestamp + '.json');
 
-  // Small / config tables — fetch in parallel
-  const [
-    players, wallets, admins, config,
-    pendingDeposits, pendingWithdrawals, depositAccounts,
-    agents, agentCommissions, agentCommissionWithdrawals,
-    cartelaReservations, cartelaDefinitions,
-    broadcastTargets, promotions, promotionSchedules,
-    promotionBonusDistributions, cashiers, systemSettings,
-  ] = await Promise.all([
-    prisma.player.findMany(),
-    prisma.wallet.findMany(),
-    prisma.admin.findMany(),
-    prisma.config.findMany(),
-    prisma.pendingDeposit.findMany(),
-    prisma.pendingWithdrawal.findMany(),
-    prisma.depositAccount.findMany(),
-    prisma.agent.findMany(),
-    prisma.agentCommission.findMany(),
-    prisma.agentCommissionWithdrawal.findMany(),
-    prisma.cartelaReservation.findMany(),
-    prisma.cartelaDefinition.findMany(),
-    prisma.broadcastTarget.findMany(),
-    prisma.promotion.findMany(),
-    prisma.promotionSchedule.findMany(),
-    prisma.promotionBonusDistribution.findMany(),
-    prisma.cashier.findMany(),
-    prisma.systemSetting.findMany(),
-  ]);
+  const writer = createWriteStream(file, { encoding: 'utf8' });
+  await new Promise(r => writer.once('open', r));
 
-  // Large tables — fetch in batches to avoid OOM
-  const transactions               = await fetchAll(prisma.transaction);
-  const gameRounds                 = await fetchAll(prisma.gameRound);
-  const roundEntries               = await fetchAll(prisma.roundEntry);
-  const roundWinners               = await fetchAll(prisma.roundWinner);
-  const calledNumbers              = await fetchAll(prisma.calledNumber);
-  const depositAttempts            = await fetchAll(prisma.depositAttempt);
-  const promotionLogs              = await fetchAll(prisma.promotionLog);
-  const crashRounds                = await fetchAll(prisma.crashRound);
-  const crashBets                  = await fetchAll(prisma.crashBet);
-  const slotSpins                  = await fetchAll(prisma.slotSpin);
-  const kenoRounds                 = await fetchAll(prisma.kenoRound);
-  const kenoBets                   = await fetchAll(prisma.kenoBet);
-  const plinkoBets                 = await fetchAll(prisma.plinkoBet);
-  const royalDropBets              = await fetchAll(prisma.royalDropBet);
-  const gregmornSessions           = await fetchAll(prisma.gregmornSession);
-  const gregmornTransactions       = await fetchAll(prisma.gregmornTransaction);
+  writer.write('{\\n');
+  writer.write('  "_meta": ' + serialize({ timestamp: new Date().toISOString(), version: '3.0' }));
 
-  const data = {
-    _meta: { timestamp: new Date().toISOString(), version: '2.2' },
-    players, wallets, admins, config,
-    pendingDeposits, depositAttempts, pendingWithdrawals, depositAccounts,
-    agents, agentCommissions, agentCommissionWithdrawals,
-    cartelaDefinitions, cartelaReservations,
-    transactions, gameRounds, roundEntries, roundWinners, calledNumbers,
-    broadcastTargets, promotions, promotionSchedules, promotionLogs,
-    promotionBonusDistributions,
-    crashRounds, crashBets, slotSpins,
-    kenoRounds, kenoBets, plinkoBets, royalDropBets,
-    cashiers, systemSettings,
-    gregmornSessions, gregmornTransactions,
-  };
+  const tables = [
+    ['players',                     prisma.player],
+    ['wallets',                     prisma.wallet],
+    ['admins',                      prisma.admin],
+    ['config',                      prisma.config],
+    ['pendingDeposits',             prisma.pendingDeposit],
+    ['depositAttempts',             prisma.depositAttempt],
+    ['pendingWithdrawals',          prisma.pendingWithdrawal],
+    ['depositAccounts',             prisma.depositAccount],
+    ['agents',                      prisma.agent],
+    ['agentCommissions',            prisma.agentCommission],
+    ['agentCommissionWithdrawals',  prisma.agentCommissionWithdrawal],
+    ['cartelaDefinitions',          prisma.cartelaDefinition],
+    ['cartelaReservations',         prisma.cartelaReservation],
+    ['transactions',                prisma.transaction],
+    ['gameRounds',                  prisma.gameRound],
+    ['roundEntries',                prisma.roundEntry],
+    ['roundWinners',                prisma.roundWinner],
+    ['calledNumbers',               prisma.calledNumber],
+    ['broadcastTargets',            prisma.broadcastTarget],
+    ['promotions',                  prisma.promotion],
+    ['promotionSchedules',          prisma.promotionSchedule],
+    ['promotionLogs',               prisma.promotionLog],
+    ['promotionBonusDistributions', prisma.promotionBonusDistribution],
+    ['crashRounds',                 prisma.crashRound],
+    ['crashBets',                   prisma.crashBet],
+    ['slotSpins',                   prisma.slotSpin],
+    ['kenoRounds',                  prisma.kenoRound],
+    ['kenoBets',                    prisma.kenoBet],
+    ['plinkoBets',                  prisma.plinkoBet],
+    ['royalDropBets',               prisma.royalDropBet],
+    ['cashiers',                    prisma.cashier],
+    ['systemSettings',              prisma.systemSetting],
+    ['gregmornSessions',            prisma.gregmornSession],
+    ['gregmornTransactions',        prisma.gregmornTransaction],
+  ];
 
-  await fs.writeFile(file, JSON.stringify(data, (_k, v) => typeof v === 'bigint' ? v.toString() : v, 2));
-  console.log('Backup saved:', file, '— tables:', Object.keys(data).filter(k => k !== '_meta').length);
+  for (const [key, model] of tables) {
+    await streamTable(writer, key, model, false);
+  }
+
+  writer.write('\\n}\\n');
+  await new Promise((resolve, reject) => {
+    writer.end();
+    writer.once('finish', resolve);
+    writer.once('error', reject);
+  });
+
+  console.log('Backup saved:', file);
 }
 
 backup()
@@ -131,7 +141,7 @@ export const BackupService = {
     await new Promise<void>((resolve) => {
       const child = spawn(
         process.execPath,
-        ['--max-old-space-size=256', '--input-type=module'],
+        ['--max-old-space-size=192', '--input-type=module'],
         {
           detached: false,
           stdio: ['pipe', 'pipe', 'pipe'],

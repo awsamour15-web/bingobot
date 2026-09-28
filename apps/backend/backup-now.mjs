@@ -69,7 +69,9 @@ async function backup() {
     gregmornSessions, gregmornTransactions,
   };
 
-  await fs.writeFile(file, JSON.stringify(data, (_key, val) => typeof val === 'bigint' ? val.toString() : val, 2));
+  // Stream write to avoid memory issues with large JSON
+  const serialized = JSON.stringify(data, (_key, val) => typeof val === 'bigint' ? val.toString() : val, 2);
+  await fs.writeFile(file, serialized, 'utf8');
 
   console.log('\n✓ Backup saved:', file);
   console.log('\nRecord counts:');
