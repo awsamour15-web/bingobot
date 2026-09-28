@@ -5,6 +5,7 @@ import { GameStatus, TxType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { CashbackService } from './cashback.service.js';
 import { getConfigInt } from '../lib/config-cache.js';
+import { RoundBonusService } from './round-bonus.service.js';
 
 type WinPattern = string;
 import { nce } from './nce.service.js';
@@ -265,11 +266,7 @@ async function distributeWinnings(
     }).catch(() => {});
 
     // ── Round bonus — refund one random cartela's stake (non-blocking) ────────
-    import('./round-bonus.service.js').then(({ RoundBonusService }) => {
-      void RoundBonusService.awardRoundBonus(roundId);
-    }).catch((err) => {
-      console.error('[RoundBonus] failed to award bonus for round', roundId, err);
-    });
+    void RoundBonusService.awardRoundBonus(roundId);
 
     // Replenish pending rounds — wait 5s so clients can see the winner screen first
     setTimeout(() => {
