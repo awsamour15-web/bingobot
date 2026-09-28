@@ -205,6 +205,7 @@ export interface CreateRoundRequest {
   stake: number;
   startTime: string;
   maxPlayers: number;
+  winningPattern?: WinPattern;
 }
 
 // ---------------------------------------------------------------------------

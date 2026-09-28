@@ -286,8 +286,8 @@ export const RoundScheduler = {
       // Create missing rounds sequentially to avoid parallel inserts racing into the same stake slot
       const commissionPct = await getConfigFloat('platform_commission_pct', 20);
 
-      // Always use any_line — any row, column, or diagonal wins
-      const winning_pattern = WinPattern.any_line;
+      // Default: any line OR 4 corners
+      const winning_pattern = JSON.stringify([WinPattern.any_line, WinPattern.corners]);
 
       for (const stake of STAKE_LEVELS) {
         if (pendingStakes.has(stake)) continue;
@@ -296,7 +296,6 @@ export const RoundScheduler = {
           continue;
         }
         const startTime = new Date(Date.now() + LEAD_TIME_MS);
-        const winning_pattern = WinPattern.any_line;
         try {
           const round = await prisma.gameRound.create({
             data: {

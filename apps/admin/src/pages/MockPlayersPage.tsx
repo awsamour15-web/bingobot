@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminRound } from '@fidel/shared';
+import { WIN_PATTERN_LABELS, WinPattern } from '@fidel/shared';
 import {
   getMockPlayers, seedMockPlayers, creditMockPlayer,
-  joinRoundWithMockPlayers, renameMockPlayer, type MockPlayer,
+  joinRoundWithMockPlayers, renameMockPlayer, createRound, type MockPlayer,
 } from '../lib/api';
 import { adminApiRequest } from '../lib/api';
 import { getAdminRounds } from '../lib/api';
@@ -10,6 +11,82 @@ import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td,
   TrEmpty, TrLoading, Alert, Field, PageHeader, inputCss, StatCard,
 } from '../components/ui';
+
+// ─── Create Round Card ────────────────────────────────────────────────────────
+
+const WIN_PATTERNS = Object.entries(WIN_PATTERN_LABELS) as [WinPattern, string][];
+const DEFAULT_PATTERN = JSON.stringify(['any_line', 'corners']);
+
+// Combined pattern options including multi-pattern defaults
+const PATTERN_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: DEFAULT_PATTERN, label: 'Any Line + 4 Corners (default)' },
+  ...WIN_PATTERNS.map(([key, label]) => ({ value: key, label })),
+];
+
+function CreateRoundCard({ onCreated }: { onCreated: () => void }) {
+  const defaultStart = () => {
+    const d = new Date(Date.now() + 2 * 60 * 1000);
+    return d.toISOString().slice(0, 16);
+  };
+  const [stake, setStake] = useState('10');
+  const [maxPlayers, setMaxPlayers] = useState('50');
+  const [startTime, setStartTime] = useState(defaultStart);
+  const [pattern, setPattern] = useState(DEFAULT_PATTERN);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setErr(null); setMsg(null);
+    try {
+      const round = await createRound({
+        stake: parseFloat(stake),
+        maxPlayers: parseInt(maxPlayers, 10),
+        startTime: new Date(startTime).toISOString(),
+        winningPattern: pattern as WinPattern,
+      });
+      const label = PATTERN_OPTIONS.find(o => o.value === pattern)?.label ?? pattern;
+      setMsg(`✅ Round created: #${round.id.slice(-6).toUpperCase()} — ${label}`);
+      onCreated();
+    } catch (ex: unknown) {
+      setErr((ex as Error).message ?? 'Failed to create round');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader title="Create Round" subtitle="Manually create a bingo round with a specific win pattern" />
+      {err && <Alert type="error">{err}</Alert>}
+      {msg && <Alert type="success">{msg}</Alert>}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
+          <Field label="Stake (ETB)">
+            <select style={inputCss} value={stake} onChange={(e) => setStake(e.target.value)} required>
+              {[10, 20, 50].map((s) => <option key={s} value={s}>{s} ETB</option>)}
+            </select>
+          </Field>
+          <Field label="Max Players">
+            <input style={inputCss} type="number" min="2" max="10000" value={maxPlayers}
+              onChange={(e) => setMaxPlayers(e.target.value)} required />
+          </Field>
+          <Field label="Start Time">
+            <input style={inputCss} type="datetime-local" value={startTime}
+              onChange={(e) => setStartTime(e.target.value)} required />
+          </Field>
+          <Field label="Win Pattern">
+            <select style={inputCss} value={pattern} onChange={(e) => setPattern(e.target.value)}>
+              {PATTERN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <Btn type="submit" disabled={loading}>{loading ? 'Creating…' : '+ Create Round'}</Btn>
+      </form>
+    </Card>
+  );
+}
 
 // ─── Seed Card ────────────────────────────────────────────────────────────────
 
@@ -498,6 +575,7 @@ export function MockPlayersPage() {
 
       {fetchErr && <Alert type="error">{fetchErr}</Alert>}
 
+      <CreateRoundCard onCreated={fetchPlayers} />
       <SeedCard onSeeded={fetchPlayers} />
 
       <ResetBalancesCard onDone={fetchPlayers} />

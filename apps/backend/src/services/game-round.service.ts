@@ -1,7 +1,7 @@
 // Game Round Lifecycle Service
 // Requirements: 3.3, 3.5, 3.6, 13.1, 13.2, 13.3, 15.4
 
-import { GameStatus, TxType, WalletType } from '@fidel/shared';
+import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
 import { nce } from './nce.service.js';
@@ -92,7 +92,7 @@ export const GameRoundService = {
     stake: number,
     startTime: Date,
     maxPlayers: number,
-    winningPattern = 'any_line',
+    winningPattern = JSON.stringify([WinPattern.any_line, WinPattern.corners]),
   ): Promise<string> {
     const commissionPct = await getConfigFloat('platform_commission_pct', 20);
 

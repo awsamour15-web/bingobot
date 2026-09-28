@@ -59,15 +59,28 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
 // POST /api/admin/rounds — create a new round
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const { stake, startTime, maxPlayers } = req.body as {
+  const { stake, startTime, maxPlayers, winningPattern } = req.body as {
     stake?: number;
     startTime?: string;
     maxPlayers?: number;
+    winningPattern?: string;
   };
 
   if (!stake || !startTime || !maxPlayers) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'stake, startTime, and maxPlayers are required' });
     return;
+  }
+
+  const VALID_PATTERNS = ['any_line', 'row', 'column', 'diagonal_tl_br', 'diagonal_tr_bl', 'corners', 'full_house'];
+  if (winningPattern) {
+    // Accept either a single pattern string or a JSON array of patterns
+    const patternsToCheck = winningPattern.trimStart().startsWith('[')
+      ? (() => { try { return JSON.parse(winningPattern) as unknown[]; } catch { return null; } })()
+      : [winningPattern];
+    if (!patternsToCheck || !(patternsToCheck as string[]).every((p) => VALID_PATTERNS.includes(p as string))) {
+      res.status(400).json({ error: 'BAD_REQUEST', message: `winningPattern must be one of: ${VALID_PATTERNS.join(', ')} (or a JSON array of them)` });
+      return;
+    }
   }
 
   const stakeNum = Number(stake);
@@ -87,7 +100,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const roundId = await GameRoundService.create(stakeNum, startDate, maxPlayersNum);
+  const roundId = await GameRoundService.create(stakeNum, startDate, maxPlayersNum, winningPattern ?? JSON.stringify(['any_line', 'corners']));
 
   const round = await prisma.gameRound.findUniqueOrThrow({
     where: { id: roundId },
