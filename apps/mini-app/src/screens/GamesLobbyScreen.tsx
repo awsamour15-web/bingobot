@@ -62,15 +62,12 @@ const GAMES: Game[] = [
   },
 ];
 
-function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, slotsAllowed, accessChecked, totalPlayers }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean; royalDropAllowed: boolean; slotsAllowed: boolean; accessChecked: boolean; totalPlayers: number | null }) {
+function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, slotsAllowed, accessChecked }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean; royalDropAllowed: boolean; slotsAllowed: boolean; accessChecked: boolean }) {
   const navigate = useNavigate();
   const [tapped, setTapped] = React.useState(false);
   const poster = { title: game.title, emoji: game.emoji, gradient: game.gradient };
   const isRestricted = accessChecked && ((game.id === 'keno' && !kenoAllowed) || (game.id === 'plinko' && !plinkoAllowed) || (game.id === 'royal-drop' && !royalDropAllowed) || (game.id === 'slots' && !slotsAllowed));
   const isAvailable = game.available && !isRestricted;
-  const dynamicSubtitle = game.id === 'bingo' && totalPlayers !== null
-    ? `${totalPlayers.toLocaleString()} players joined`
-    : null;
 
   function handleClick() {
     if (!isAvailable || tapped) return;
@@ -137,10 +134,7 @@ function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, slotsAll
         <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? 'rgba(94,108,103,0.9)' : isRestricted ? 'rgba(124,90,36,0.95)' : 'rgba(213,65,63,0.95)', borderRadius: 6, padding: '4px 6px', letterSpacing: '0.08em', boxShadow: '0 3px 8px rgba(0,0,0,0.25)' }}>{game.category === 'coming' ? 'SOON' : isRestricted ? 'LOCKED' : 'HOT'}</div>
       </div>
       <div style={{ minHeight: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px', background: 'rgba(8,13,23,0.98)', color: game.category === 'coming' ? '#8aa49b' : '#eef4f1', fontSize: 7, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <span>{poster.title}</span>
-          {dynamicSubtitle && <span style={{ color: '#63d4ba', fontSize: 6, fontWeight: 700, textTransform: 'none', letterSpacing: '0.01em' }}>{dynamicSubtitle}</span>}
-        </div>
+        <span>{poster.title}</span>
         <span style={{ color: isAvailable ? '#63d4ba' : '#728079', fontSize: 6 }}>{isAvailable ? 'PLAY' : 'SOON'}</span>
       </div>
     </button>
@@ -375,9 +369,6 @@ export default function GamesLobbyScreen() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#6ed4bd', fontWeight: 900, letterSpacing: '0.16em' }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#63d4ba', animation: 'lobbyLivePulse 1.8s ease-out infinite' }} /> FIDEL PLAY
-            {systemStats && (
-              <span style={{ marginLeft: 4, color: '#8ae5d0', fontWeight: 700 }}>· {systemStats.totalPlayers.toLocaleString()} players</span>
-            )}
           </div>
           <div style={{ marginTop: 3, fontSize: 17, fontWeight: 900, color: '#f4f7fb' }}>Choose your game</div>
         </div>
@@ -434,7 +425,7 @@ export default function GamesLobbyScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
           {filteredGames.map((game, i) => (
             <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}>
-              <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} slotsAllowed={slotsAllowed} accessChecked={accessChecked} totalPlayers={systemStats?.totalPlayers ?? null} />
+              <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} slotsAllowed={slotsAllowed} accessChecked={accessChecked} />
             </div>
           ))}
         </div>
