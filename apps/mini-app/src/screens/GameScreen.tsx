@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { initAuth } from '../lib/auth';
+import { initAuth, getJwt } from '../lib/auth';
 import { getRounds, getSystemStats } from '../lib/api';
 import { socket } from '../lib/socket';
 import type { RoundListItem } from '@fidel/shared';
@@ -69,21 +69,40 @@ export default function GameScreen() {
     return () => { cancelled = true; };
   }, [retryCount]);
 
+  // Join all visible round rooms so we receive per-round events
+  useEffect(() => {
+    if (rounds.length === 0) return;
+    const token = getJwt() ?? '';
+    rounds.forEach(r => socket.emit('JOIN_ROUND', { roundId: r.id, token }));
+  }, [rounds.map(r => r.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Listen for live player count updates from WebSocket
   useEffect(() => {
-    function onPlayerJoined(payload: { playerCount: number }, roundId?: string) {
-      // PLAYER_JOINED fires in the round room — we listen globally and match by room
-      // but on GameScreen we don't know roundId from the payload alone, so we
-      // refresh rounds list every time a player joins any visible round
-      setRounds(prev => prev.map(r =>
-        r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
-      ));
+    function onPlayerJoined(payload: { playerCount: number; roundId?: string }) {
+      if (payload.roundId) {
+        updateCount(payload.roundId, payload.playerCount);
+        setRounds(prev => prev.map(r =>
+          r.id === payload.roundId ? { ...r, player_count: payload.playerCount } : r
+        ));
+      } else {
+        // fallback: update all pending rounds (old behaviour)
+        setRounds(prev => prev.map(r =>
+          r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
+        ));
+      }
     }
 
-    function onCartelaTaken(payload: { playerCount: number }) {
-      setRounds(prev => prev.map(r =>
-        r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
-      ));
+    function onCartelaTaken(payload: { playerCount: number; roundId?: string }) {
+      if (payload.roundId) {
+        updateCount(payload.roundId, payload.playerCount);
+        setRounds(prev => prev.map(r =>
+          r.id === payload.roundId ? { ...r, player_count: payload.playerCount } : r
+        ));
+      } else {
+        setRounds(prev => prev.map(r =>
+          r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
+        ));
+      }
     }
 
     function onRoundStarted(payload: { roundId: string; playerCount: number; derash: number }) {
@@ -109,6 +128,9 @@ export default function GameScreen() {
         const counts: Record<string, number> = {};
         filtered.forEach(r => { counts[r.id] = r.player_count; });
         setLiveCounts(counts);
+        // Re-join round rooms after reconnect
+        const token = getJwt() ?? '';
+        filtered.forEach(r => socket.emit('JOIN_ROUND', { roundId: r.id, token }));
       }).catch(() => {});
     }
 
