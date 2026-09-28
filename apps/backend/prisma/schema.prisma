@@ -32,6 +32,7 @@ model Player {
   referrals               Player[]             @relation("PlayerReferrals")
   round_entries           RoundEntry[]
   round_wins              RoundWinner[]
+  round_bonus_wins        RoundBonusWinner[]
   wallets                 Wallet[]
   bonus_distributions     PromotionBonusDistribution[]
   crash_bets              CrashBet[]
@@ -94,6 +95,7 @@ model GameRound {
   winner                Player?              @relation("RoundWinner", fields: [winner_player_id], references: [id])
   round_entries         RoundEntry[]
   round_winners         RoundWinner[]
+  round_bonus_winner    RoundBonusWinner?
 
   @@index([status])
   @@index([start_time])
@@ -130,6 +132,22 @@ model RoundWinner {
   @@unique([round_id, player_id])
   @@index([round_id])
   @@map("round_winners")
+}
+
+/// One bonus winner per round — a randomly selected registered cartela gets stake refunded
+model RoundBonusWinner {
+  id             String    @id @default(uuid())
+  round_id       String    @unique
+  player_id      String
+  cartela_number Int
+  bonus_amount   Decimal   @db.Decimal(14, 2)
+  created_at     DateTime  @default(now())
+  player         Player    @relation(fields: [player_id], references: [id])
+  round          GameRound @relation(fields: [round_id], references: [id])
+
+  @@index([player_id])
+  @@index([created_at])
+  @@map("round_bonus_winners")
 }
 
 model CartelaDefinition {

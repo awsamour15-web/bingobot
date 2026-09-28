@@ -264,6 +264,13 @@ async function distributeWinnings(
       }
     }).catch(() => {});
 
+    // ── Round bonus — refund one random cartela's stake (non-blocking) ────────
+    import('./round-bonus.service.js').then(({ RoundBonusService }) => {
+      void RoundBonusService.awardRoundBonus(roundId);
+    }).catch((err) => {
+      console.error('[RoundBonus] failed to award bonus for round', roundId, err);
+    });
+
     // Replenish pending rounds — wait 5s so clients can see the winner screen first
     setTimeout(() => {
       import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
