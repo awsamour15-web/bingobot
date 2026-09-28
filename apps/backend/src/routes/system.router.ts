@@ -22,7 +22,7 @@ export interface SystemState {
 // Public endpoint - no auth required
 router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
   const [totalPlayers, totalGames] = await Promise.all([
-    prisma.player.count({ where: { phone_verified: true } }),
+    prisma.player.count(),
     prisma.gameRound.count({ where: { status: 'completed' } }),
   ]);
 
