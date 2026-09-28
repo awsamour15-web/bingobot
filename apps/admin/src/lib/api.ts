@@ -16,7 +16,8 @@ export type { WithdrawalRequest, RevenueStats };
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
 
 export function getAdminJwt(): string | null {
-  return localStorage.getItem('adminJwt');
+  // sessionStorage (new) takes priority; fall back to localStorage for existing sessions
+  return sessionStorage.getItem('adminJwt') ?? localStorage.getItem('adminJwt');
 }
 
 function buildAdminHeaders(hasBody = false): Record<string, string> {
@@ -46,6 +47,7 @@ export async function adminApiRequest<T>(
       response = await fetch(`${BASE_URL}${path}`, {
         method,
         headers: buildAdminHeaders(hasBody),
+        credentials: 'include', // send HttpOnly cookie on every request
         ...(hasBody ? { body: JSON.stringify(body) } : {}),
       });
     } catch (networkErr) {
@@ -64,7 +66,8 @@ export async function adminApiRequest<T>(
     }
 
     if (response.status === 401) {
-      localStorage.clear();
+      sessionStorage.removeItem('adminJwt');
+      localStorage.removeItem('adminJwt');
       window.location.href = '/login';
       throw new Error('Unauthorized');
     }

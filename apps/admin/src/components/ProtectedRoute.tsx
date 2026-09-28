@@ -20,13 +20,15 @@ function isTokenValid(token: string): boolean {
 }
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const jwt = localStorage.getItem('adminJwt');
-  
+  // Check sessionStorage first (new secure path), fall back to localStorage (legacy)
+  const jwt = sessionStorage.getItem('adminJwt') ?? localStorage.getItem('adminJwt');
+
   if (!jwt || !isTokenValid(jwt)) {
-    // Clear invalid/expired token to avoid confusion
-    localStorage.clear();
+    // Clear any stale tokens on both storages
+    sessionStorage.removeItem('adminJwt');
+    localStorage.removeItem('adminJwt');
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 }

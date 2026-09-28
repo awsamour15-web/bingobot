@@ -12,6 +12,34 @@ type PromotionScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly' | 'int
 
 const router: RouterType = Router();
 
+// ─── File magic byte signatures for validation ────────────────────────────────
+// MIME type from the client can be spoofed — verify actual file content.
+const MAGIC_BYTES: Record<string, { bytes: number[]; mask?: number[] }[]> = {
+  'image/jpeg': [{ bytes: [0xFF, 0xD8, 0xFF] }],
+  'image/png':  [{ bytes: [0x89, 0x50, 0x4E, 0x47] }],
+  'image/webp': [{ bytes: [0x52, 0x49, 0x46, 0x46] }], // RIFF....WEBP
+  'image/gif':  [{ bytes: [0x47, 0x49, 0x46, 0x38] }], // GIF8
+  'video/mp4':  [
+    { bytes: [0x66, 0x74, 0x79, 0x70], mask: [0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF] }, // ftyp at offset 4
+  ],
+};
+
+function validateMagicBytes(buffer: Buffer, mime: string): boolean {
+  const sigs = MAGIC_BYTES[mime];
+  if (!sigs) return false;
+  for (const sig of sigs) {
+    const offset = sig.mask ? sig.mask.findIndex((b) => b === 0) : 0;
+    const slice = buffer.slice(offset, offset + sig.bytes.length);
+    if (sig.bytes.every((b, i) => slice[i] === b)) return true;
+  }
+  // mp4 special case: ftyp box appears at offset 4
+  if (mime === 'video/mp4' && buffer.length >= 8) {
+    const ftyp = buffer.slice(4, 8);
+    if (ftyp.toString('ascii') === 'ftyp') return true;
+  }
+  return false;
+}
+
 // Multer — memory storage, 10 MB limit, images/video/gif only
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -27,6 +55,13 @@ const upload = multer({
 router.post('/upload-media', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) { res.status(400).json({ error: 'NO_FILE', message: 'No file provided' }); return; }
+
+    // Validate actual file content against magic bytes (MIME type from client can be spoofed)
+    if (!validateMagicBytes(req.file.buffer, req.file.mimetype)) {
+      res.status(400).json({ error: 'INVALID_FILE', message: 'File content does not match declared type' });
+      return;
+    }
+
     if (!bot) { res.status(503).json({ error: 'BOT_UNAVAILABLE', message: 'Bot not initialized' }); return; }
 
     const chatId = process.env['MEDIA_UPLOAD_CHAT_ID'];

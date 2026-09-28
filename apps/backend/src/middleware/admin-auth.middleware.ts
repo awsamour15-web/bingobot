@@ -39,14 +39,20 @@ export function jwtAdminMiddleware(
   res: Response,
   next: NextFunction,
 ): void {
-  const authHeader = req.headers['authorization'];
+  // Accept token from Authorization header OR HttpOnly cookie
+  let token: string | undefined;
 
-  if (!authHeader?.startsWith('Bearer ')) {
+  const authHeader = req.headers['authorization'];
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (req.cookies?.['adminToken']) {
+    token = req.cookies['adminToken'] as string;
+  }
+
+  if (!token) {
     res.status(401).json({ error: 'UNAUTHORIZED', message: 'Missing or malformed Authorization header' });
     return;
   }
-
-  const token = authHeader.slice(7);
   const jwtSecret = getAdminJwtSecret();
 
   if (!jwtSecret) {

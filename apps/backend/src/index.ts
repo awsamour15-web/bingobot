@@ -48,7 +48,10 @@ import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
 import adminBackupRouter from './routes/admin/backup.admin.router.js';
 import adminCleanupRouter from './routes/admin/cleanup.admin.router.js';
 import smsWebhookRouter from './routes/sms-webhook.router.js';
+import adminRoundBonusRouter from './routes/admin/round-bonus.admin.router.js';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import { jwtAdminMiddleware } from './middleware/admin-auth.middleware.js';
 import { setupWebSocket } from './websocket/index.js';
 import { bot } from './bot/index.js';
@@ -124,6 +127,16 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json());
+app.use(cookieParser());
+
+// ─── Rate limiting for sensitive admin financial operations ───────────────────
+const financialRateLimiter = rateLimit({
+  windowMs: 60 * 1000,       // 1 minute
+  max: 30,                    // 30 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_REQUESTS', message: 'Rate limit exceeded. Try again shortly.' },
+});
 
 // ─── Raw body capture for Gregmorn callback signature verification ────────────
 // Must be registered on the callback path only, before the global JSON parser
@@ -155,10 +168,10 @@ app.use('/api/gregmorn', gregmornCallbackRouter);
 app.use('/api/admin/auth', adminAuthRouter);
 app.use('/api/admin/players', jwtAdminMiddleware, adminPlayersRouter);
 app.use('/api/admin/rounds', jwtAdminMiddleware, adminRoundsRouter);
-app.use('/api/admin/deposits', jwtAdminMiddleware, adminDepositsRouter);
+app.use('/api/admin/deposits', jwtAdminMiddleware, financialRateLimiter, adminDepositsRouter);
 app.use('/api/admin/deposit-accounts', jwtAdminMiddleware, adminDepositAccountsRouter);
 app.use('/api/admin/agents', jwtAdminMiddleware, adminAgentsRouter);
-app.use('/api/admin', jwtAdminMiddleware, adminFinanceRouter);
+app.use('/api/admin', jwtAdminMiddleware, financialRateLimiter, adminFinanceRouter);
 app.use('/api/admin', jwtAdminMiddleware, adminConfigRouter);
 app.use('/api/agent', agentRouter);
 app.use('/api/admin/promotions', jwtAdminMiddleware, promotionsAdminRouter);
@@ -173,6 +186,7 @@ app.use('/api/cashier', cashierRouter);
 app.use('/api/admin/cashiers', jwtAdminMiddleware, adminCashiersRouter);
 app.use('/api/admin/backup', jwtAdminMiddleware, adminBackupRouter);
 app.use('/api/admin/cleanup', jwtAdminMiddleware, adminCleanupRouter);
+app.use('/api/admin/round-bonus', jwtAdminMiddleware, adminRoundBonusRouter);
 app.use('/api/sms-webhook', smsWebhookRouter);
 // broadcast-targets v2
 

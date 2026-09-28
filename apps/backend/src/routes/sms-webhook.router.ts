@@ -211,15 +211,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   const xHeader = req.headers['x-sms-secret'];
   const xApiKey = req.headers['x-api-key'];
-  const querySecret = req.query['secret'];
   const bearerToken = typeof req.headers['authorization'] === 'string'
     ? req.headers['authorization'].replace(/^Bearer\s+/i, '').trim()
     : null;
 
+  // NOTE: query param ?secret= is intentionally NOT accepted — query params appear
+  // in server logs and proxy access logs, which would leak the secret.
   const provided =
     (typeof xHeader === 'string' && xHeader) ||
     (typeof xApiKey === 'string' && xApiKey) ||
-    (typeof querySecret === 'string' && querySecret) ||
     bearerToken ||
     null;
 

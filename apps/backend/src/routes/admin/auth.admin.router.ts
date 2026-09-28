@@ -2,11 +2,21 @@
 // Requirements: 15.5
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
+import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../lib/prisma.js';
 
 const router: RouterType = Router();
+
+// Rate limit: max 10 login attempts per 15 minutes per IP
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_REQUESTS', message: 'Too many login attempts. Try again in 15 minutes.' },
+});
 
 /**
  * POST /api/admin/auth/login
@@ -17,7 +27,7 @@ const router: RouterType = Router();
  * 2. Verifies password with bcrypt.
  * 3. Returns a signed JWT containing { adminId, role }, expiring in 8 hours.
  */
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+router.post('/login', loginRateLimiter, async (req: Request, res: Response): Promise<void> => {
   const { username, password } = req.body as { username?: string; password?: string };
 
   if (!username || !password) {
@@ -54,7 +64,22 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     { expiresIn: '8h' },
   );
 
+  // Set token as HttpOnly cookie (prevents XSS token theft)
+  res.cookie('adminToken', token, {
+    httpOnly: true,
+    secure: process.env['NODE_ENV'] !== 'development',
+    sameSite: 'strict',
+    maxAge: 8 * 60 * 60 * 1000, // 8 hours
+    path: '/',
+  });
+
   res.status(200).json({ token, adminId: admin.id, role: admin.role });
+});
+
+// POST /api/admin/auth/logout — clear the admin session cookie
+router.post('/logout', (_req: Request, res: Response): void => {
+  res.clearCookie('adminToken', { path: '/' });
+  res.status(200).json({ ok: true });
 });
 
 export default router;

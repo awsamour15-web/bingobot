@@ -95,20 +95,33 @@ async function seedConfig(): Promise<void> {
 async function seedAdmin(): Promise<void> {
   console.log('Seeding default admin user...');
 
-  const password_hash = await bcrypt.hash('bingoadmin', 10);
+  // Use SEED_ADMIN_PASSWORD env var if set, otherwise generate a random password.
+  // A hardcoded default password is a security risk — the generated password is
+  // printed once to stdout so it can be noted and then changed via the admin panel.
+  const envPassword = process.env['SEED_ADMIN_PASSWORD'];
+  const password = envPassword ?? Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2).toUpperCase() + '!9';
+  const password_hash = await bcrypt.hash(password, 12);
 
-  await prisma.admin.upsert({
-    where: { username: 'amourbingo' },
-    update: {},
-    create: {
-      username: 'amourbingo',
-      password_hash,
-      role: 'super_admin',
-      is_active: true,
-    },
-  });
+  const existing = await prisma.admin.findUnique({ where: { username: 'amourbingo' } });
 
-  console.log('  ✓ Seeded admin user: amourbingo');
+  if (!existing) {
+    await prisma.admin.create({
+      data: {
+        username: 'amourbingo',
+        password_hash,
+        role: 'super_admin',
+        is_active: true,
+      },
+    });
+    if (!envPassword) {
+      console.log(`  ✓ Created admin user: amourbingo`);
+      console.log(`  ⚠️  Generated password (change this immediately): ${password}`);
+    } else {
+      console.log('  ✓ Created admin user: amourbingo (password from SEED_ADMIN_PASSWORD)');
+    }
+  } else {
+    console.log('  ✓ Admin user already exists — skipping (password unchanged)');
+  }
 }
 
 async function main(): Promise<void> {

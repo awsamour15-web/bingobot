@@ -18,12 +18,17 @@ export function LoginPage() {
       const res = await fetch(`${BASE_URL}/api/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // receive the HttpOnly cookie
         body: JSON.stringify({ username, password }),
       });
       const data = (await res.json()) as { token?: string; error?: string };
       if (!res.ok) { setError(data.error ?? 'Login failed'); return; }
       if (data.token) {
-        localStorage.setItem('adminJwt', data.token);
+        // Store token in sessionStorage (cleared on tab close, safer than localStorage)
+        // The HttpOnly cookie is also set by the server for automatic auth.
+        sessionStorage.setItem('adminJwt', data.token);
+        // Clear any old localStorage token
+        localStorage.removeItem('adminJwt');
         navigate('/', { replace: true });
       } else { setError('No token received'); }
     } catch (err: unknown) {
