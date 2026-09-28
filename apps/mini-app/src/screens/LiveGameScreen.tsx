@@ -9,6 +9,7 @@ import type {
   NumberCalledPayload,
   RoundStartedPayload,
   RoundWonPayload,
+  RoundBonusPayload,
   RoundVoidPayload,
   RoundCancelledPayload,
   PlayerJoinedPayload,
@@ -35,6 +36,7 @@ interface GameState {
   playerCount: number;
   derash: number;
   winnerInfo: RoundWonPayload | null;
+  bonusInfo: RoundBonusPayload | null;
   endMessage: string | null;
   winningPattern: WinPattern;
 }
@@ -123,6 +125,7 @@ export default function LiveGameScreen() {
     playerCount: 0,
     derash: 0,
     winnerInfo: null,
+    bonusInfo: null,
     endMessage: null,
     winningPattern: WinPattern.any_line,
   });
@@ -463,10 +466,15 @@ export default function LiveGameScreen() {
       setClaimPending(false);
     };
 
+    const onBonus = (p: RoundBonusPayload) => {
+      setGame((g) => ({ ...g, bonusInfo: p }));
+    };
+
     socket.on('NUMBER_CALLED', onNumber);
     socket.on('ROUND_STARTED', onStarted);
     socket.on('PLAYER_JOINED', onJoined);
     socket.on('ROUND_WON', onWon);
+    socket.on('ROUND_BONUS', onBonus);
     socket.on('ROUND_VOID', onVoid);
     socket.on('ROUND_CANCELLED', onCancelled);
     socket.on('WIN_REJECTED', onRejected);
@@ -477,6 +485,7 @@ export default function LiveGameScreen() {
       socket.off('ROUND_STARTED', onStarted);
       socket.off('PLAYER_JOINED', onJoined);
       socket.off('ROUND_WON', onWon);
+      socket.off('ROUND_BONUS', onBonus);
       socket.off('ROUND_VOID', onVoid);
       socket.off('ROUND_CANCELLED', onCancelled);
       socket.off('WIN_REJECTED', onRejected);
@@ -1162,6 +1171,38 @@ export default function LiveGameScreen() {
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>Birr</span>
                 </div>
               )}
+
+              {/* ── BONUS CARTELA WINNER ── */}
+              {game.bonusInfo && (() => {
+                const b = game.bonusInfo;
+                return (
+                  <div style={{
+                    width: '100%', padding: '7px 10px', borderRadius: 8,
+                    background: 'linear-gradient(135deg, rgba(168,85,247,0.22), rgba(139,92,246,0.12))',
+                    border: '1.5px solid rgba(168,85,247,0.55)',
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
+                      🎁 Bonus Cartela Winner
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'linear-gradient(135deg, #a855f7, #7c3aed)', fontWeight: 900, fontSize: 13, color: '#fff',
+                        }}>{(b.username ?? '?')[0]?.toUpperCase()}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#f3f4f6', lineHeight: 1.1 }}>{b.username}</div>
+                          <div style={{ fontSize: 9, color: '#c4b5fd' }}>Cartela #{b.cartelaNumber}</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: '#a78bfa', lineHeight: 1 }}>+{b.bonusAmount}</div>
+                        <div style={{ fontSize: 9, color: '#c4b5fd', fontWeight: 600 }}>Birr added</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {nextCountdown !== null && (
                 <div style={{

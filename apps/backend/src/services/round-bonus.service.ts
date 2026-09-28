@@ -5,7 +5,17 @@
 import { TxType } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 
+type OnRoundBonusCb = (
+  roundId: string,
+  payload: { playerId: string; username: string; cartelaNumber: number; bonusAmount: number },
+) => void | Promise<void>;
+
+let onRoundBonusCb: OnRoundBonusCb | undefined;
+
 export const RoundBonusService = {
+  setOnRoundBonus(cb: OnRoundBonusCb): void {
+    onRoundBonusCb = cb;
+  },
   /**
    * Award a bonus to a randomly selected cartela holder in the completed round.
    * The bonus amount equals the round stake (1 cartela price returned).
@@ -86,5 +96,19 @@ export const RoundBonusService = {
     console.log(
       `[RoundBonus] Round ${roundId}: bonus of ${stake} ETB awarded to player ${winnerEntry.player_id} (cartela #${winnerEntry.cartela_number})`,
     );
+
+    // Broadcast bonus winner via WebSocket callback (non-blocking)
+    if (onRoundBonusCb) {
+      const player = await prisma.player.findUnique({
+        where: { id: winnerEntry.player_id },
+        select: { username: true },
+      });
+      void onRoundBonusCb(roundId, {
+        playerId: winnerEntry.player_id,
+        username: player?.username ?? 'Unknown',
+        cartelaNumber: winnerEntry.cartela_number,
+        bonusAmount: stake,
+      });
+    }
   },
 };

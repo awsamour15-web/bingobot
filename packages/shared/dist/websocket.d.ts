@@ -22,6 +22,12 @@ export interface RoundWonPayload {
     /** Complete ordered list of called numbers at the time the round ended */
     calledNumbers?: number[];
 }
+export interface RoundBonusPayload {
+    playerId: string;
+    username: string;
+    cartelaNumber: number;
+    bonusAmount: number;
+}
 export interface RoundVoidPayload {
     roundId: string;
     refundAmount: number;
@@ -105,6 +111,7 @@ export interface ServerToClientEvents {
     NUMBER_CALLED: (payload: NumberCalledPayload) => void;
     ROUND_STARTED: (payload: RoundStartedPayload) => void;
     ROUND_WON: (payload: RoundWonPayload) => void;
+    ROUND_BONUS: (payload: RoundBonusPayload) => void;
     ROUND_VOID: (payload: RoundVoidPayload) => void;
     ROUND_CANCELLED: (payload: RoundCancelledPayload) => void;
     PLAYER_JOINED: (payload: PlayerJoinedPayload) => void;

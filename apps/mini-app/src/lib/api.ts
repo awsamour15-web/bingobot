@@ -65,6 +65,7 @@ export type {
   NumberCalledPayload,
   RoundStartedPayload,
   RoundWonPayload,
+  RoundBonusPayload,
   RoundVoidPayload,
   RoundCancelledPayload,
   PlayerJoinedPayload,

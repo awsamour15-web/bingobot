@@ -11,6 +11,7 @@ import { nce } from '../services/nce.service.js';
 import { GameRoundService } from '../services/game-round.service.js';
 import { RoundScheduler } from '../services/round-scheduler.service.js';
 import { MockPlayerBotService } from '../services/mock-player-bot.service.js';
+import { RoundBonusService } from '../services/round-bonus.service.js';
 import { GameStatus } from '@fidel/shared';
 import { crashEngine } from '../services/crash-engine.service.js';
 import { kenoEngine } from '../services/keno-engine.service.js';
@@ -279,6 +280,11 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   // ── Wire WinDetectionService ROUND_WON callback ────────────────────────────
   WinDetectionService.setOnRoundWon((roundId, payload) => {
     io.to(`round:${roundId}`).emit('ROUND_WON', payload);
+  });
+
+  // ── Wire RoundBonusService ROUND_BONUS callback ────────────────────────────
+  RoundBonusService.setOnRoundBonus((roundId, payload) => {
+    io.to(`round:${roundId}`).emit('ROUND_BONUS', payload);
   });
 
   // ── Wire Crash Engine callbacks ────────────────────────────────────────────
