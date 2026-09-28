@@ -331,7 +331,7 @@ export class NumberCallingEngine {
       // Fast pre-check: skip all detection work if the round is no longer active
       const roundStatus = await prisma.gameRound.findUnique({
         where: { id: roundId },
-        select: { status: true },
+        select: { status: true, winning_pattern: true },
       });
       if (!roundStatus || roundStatus.status !== 'active') {
         console.log(`[NCE] detectAndHandleWin skipped — round ${roundId} status=${roundStatus?.status}`);
@@ -339,8 +339,8 @@ export class NumberCallingEngine {
         return roundStatus?.status !== 'active';
       }
 
-      // Always use any_line — any row, column, or diagonal wins
-      const pattern: WinPattern[] = [WinPattern.any_line];
+      // Use the round's actual winning_pattern instead of hardcoding any_line
+      const pattern: WinPattern[] = parseWinPatterns(roundStatus.winning_pattern ?? 'any_line') as WinPattern[];
 
       // Prefer in-memory calledSet (updated by callNext each tick) to avoid a DB query.
       // Fall back to DB query only for resume/recovery paths where the set isn't populated.

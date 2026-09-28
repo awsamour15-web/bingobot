@@ -603,7 +603,9 @@ export default function LiveGameScreen() {
     if (i === 12) return true; // free space
     const v = g[i];
     if (v === undefined || v === 0) return false;
-    if (manualMode) return manuallyMarked.has(v);
+    // In manual mode a cell only counts if the player tapped it AND the number was actually called.
+    // Marking an uncalled number must not produce a winning line.
+    if (manualMode) return manuallyMarked.has(v) && marked.has(v);
     return marked.has(v);
   }
 
