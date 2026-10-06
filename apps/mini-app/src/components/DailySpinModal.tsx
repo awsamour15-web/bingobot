@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import { getDailySpinStatus, claimDailySpin, type SpinPrize } from '../lib/api';
 import { initAuth } from '../lib/auth';
 
@@ -12,13 +12,16 @@ const C = {
   muted:   '#64748b',
 };
 
-// Decorative segments — just colors, no prize labels on slices
 const SLICE_COLORS = [
   '#f59e0b', '#10b981', '#3b82f6', '#ef4444',
   '#8b5cf6', '#06b6d4', '#f97316', '#ec4899',
 ];
 const SEGMENT_COUNT = 8;
 const SPIN_DURATION = 3500;
+
+// Bonus amounts shown on each slice — multiples around the base prize
+// These are decorative; the actual prize comes from the server.
+const SLICE_AMOUNTS = [5, 10, 3, 20, 7, 15, 2, 25];
 
 function drawWheel(canvas: HTMLCanvasElement, angle: number, prize: SpinPrize | null) {
   const ctx = canvas.getContext('2d');
@@ -34,45 +37,66 @@ function drawWheel(canvas: HTMLCanvasElement, angle: number, prize: SpinPrize | 
   for (let i = 0; i < SEGMENT_COUNT; i++) {
     const start = angle + i * sliceAngle;
     const end = start + sliceAngle;
+    const mid = start + sliceAngle / 2;
 
+    // Slice fill
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, r, start, end);
     ctx.closePath();
     ctx.fillStyle = SLICE_COLORS[i % SLICE_COLORS.length] as string;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Star decoration on each slice
+    // Number label on slice
+    const labelR = r * 0.64;
+    const lx = cx + Math.cos(mid) * labelR;
+    const ly = cy + Math.sin(mid) * labelR;
+
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(start + sliceAngle / 2);
-    ctx.font = `${size < 280 ? 12 : 14}px serif`;
-    ctx.textAlign = 'right';
-    ctx.fillText('★', r - 12, 5);
+    ctx.translate(lx, ly);
+    ctx.rotate(mid + Math.PI / 2);
+
+    const fontSize = size < 280 ? 11 : 13;
+    ctx.font = `900 ${fontSize}px DM Sans, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // White shadow for readability
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillText(`${SLICE_AMOUNTS[i]}`, 1, 1);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`${SLICE_AMOUNTS[i]}`, 0, 0);
+
+    // Small "ETB" sub-label
+    ctx.font = `700 ${fontSize - 3}px DM Sans, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText('ETB', 0, fontSize);
+
     ctx.restore();
   }
 
   // Center circle
   ctx.beginPath();
-  ctx.arc(cx, cy, 30, 0, 2 * Math.PI);
+  ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
   ctx.fillStyle = '#0a0e1a';
   ctx.fill();
   ctx.strokeStyle = C.amber;
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // Prize label in center (shown after result)
+  // Center content
   if (prize) {
+    // Show won amount after spin
     ctx.fillStyle = C.amber;
-    ctx.font = `bold ${size < 280 ? 9 : 11}px DM Sans, sans-serif`;
+    ctx.font = `900 ${size < 280 ? 9 : 10}px DM Sans, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(prize.label, cx, cy);
   } else {
-    ctx.font = '20px serif';
+    ctx.font = `${size < 280 ? 16 : 18}px serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('🎯', cx, cy);
@@ -90,7 +114,6 @@ export default function DailySpinModal({ onClose }: Props) {
   const animRef = useRef<number>(0);
   const angleRef = useRef<number>(0);
 
-  const [prize, setPrize] = useState<SpinPrize | null>(null);
   const [phase, setPhase] = useState<'loading' | 'idle' | 'spinning' | 'result' | 'error'>('loading');
   const [result, setResult] = useState<SpinPrize | null>(null);
   const [error, setError] = useState('');
@@ -108,7 +131,6 @@ export default function DailySpinModal({ onClose }: Props) {
       .then(() => getDailySpinStatus())
       .then(status => {
         if (!status.canSpin) { onClose(); return; }
-        setPrize(status.prize);
         setPhase('idle');
       })
       .catch((err: unknown) => {
@@ -121,12 +143,8 @@ export default function DailySpinModal({ onClose }: Props) {
 
   useEffect(() => { loadSpin(); }, [loadSpin]);
 
-  // Draw wheel on first mount so canvas is never blank
-  useLayoutEffect(() => {
-    redraw(angleRef.current);
-  }, [redraw]);
+  useLayoutEffect(() => { redraw(angleRef.current); }, [redraw]);
 
-  // Draw wheel whenever phase changes to a visible state, or on mount
   useEffect(() => {
     if (phase !== 'loading') redraw(angleRef.current);
   }, [phase, redraw]);
@@ -139,15 +157,14 @@ export default function DailySpinModal({ onClose }: Props) {
     try {
       const res = await claimDailySpin();
       claimed = res.prize;
-    } catch (err: any) {
-      const msg: string = err?.message ?? 'Spin failed';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Spin failed';
       setError(msg.toLowerCase().includes('already') ? 'You already spun today. Come back tomorrow! 🌅' : msg);
       setPhase('error');
       return;
     }
 
     const from = angleRef.current;
-    // Spin 5+ full rotations and stop at a consistent position
     const target = from + 5 * 2 * Math.PI + Math.PI * 1.5;
     const start = performance.now();
 
@@ -172,15 +189,13 @@ export default function DailySpinModal({ onClose }: Props) {
   const size = Math.min(window.innerWidth - 48, 300);
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: C.bg, backdropFilter: 'blur(6px)',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '24px 20px',
-      }}
-    >
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: C.bg, backdropFilter: 'blur(6px)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '24px 20px',
+    }}>
       <div style={{
         width: '100%', maxWidth: 360,
         background: C.surface, borderRadius: 24,
@@ -195,13 +210,8 @@ export default function DailySpinModal({ onClose }: Props) {
           <div style={{ color: C.amber, fontWeight: 900, fontSize: 22, fontFamily: 'Space Grotesk, sans-serif' }}>
             Daily Lucky Spin
           </div>
-          {prize && phase === 'idle' && (
-            <div style={{ color: C.green, fontSize: 14, fontWeight: 700, marginTop: 6 }}>
-              Today's prize: {prize.label} bonus credits!
-            </div>
-          )}
           {phase === 'idle' && (
-            <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
+            <div style={{ color: C.muted, fontSize: 12, marginTop: 4 }}>
               Spin once per day for free bonus credits
             </div>
           )}
@@ -209,7 +219,6 @@ export default function DailySpinModal({ onClose }: Props) {
 
         {/* Wheel */}
         <div style={{ position: 'relative', width: size, height: size }}>
-          {/* Top pointer */}
           <div style={{
             position: 'absolute', top: -10, left: '50%',
             transform: 'translateX(-50%)',
