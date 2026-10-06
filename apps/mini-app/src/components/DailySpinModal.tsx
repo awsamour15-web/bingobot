@@ -101,7 +101,9 @@ export default function DailySpinModal({ onClose }: Props) {
     drawWheel(canvas, angle, showPrize);
   }, []);
 
-  useEffect(() => {
+  const loadSpin = useCallback(() => {
+    setPhase('loading');
+    setError('');
     initAuth()
       .then(() => getDailySpinStatus())
       .then(status => {
@@ -109,8 +111,15 @@ export default function DailySpinModal({ onClose }: Props) {
         setPrize(status.prize);
         setPhase('idle');
       })
-      .catch(() => { setError('Could not load spin. Try again later.'); setPhase('error'); });
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[DailySpin] load failed:', msg, err);
+        setError(msg || 'Could not load spin. Try again later.');
+        setPhase('error');
+      });
   }, [onClose]);
+
+  useEffect(() => { loadSpin(); }, [loadSpin]);
 
   // Draw wheel on first mount so canvas is never blank
   useLayoutEffect(() => {
@@ -270,11 +279,21 @@ export default function DailySpinModal({ onClose }: Props) {
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <div style={{ color: '#f87171', textAlign: 'center', fontSize: 14 }}>{error}</div>
             <button
+              onClick={loadSpin}
+              style={{
+                width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
+                background: `linear-gradient(135deg, ${C.amber}, #d97706)`,
+                color: '#0a0e1a', fontWeight: 800, fontSize: 15, cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+            <button
               onClick={onClose}
               style={{
-                width: '100%', padding: '14px 0', borderRadius: 14,
+                width: '100%', padding: '12px 0', borderRadius: 14,
                 border: `1px solid ${C.border}`, background: C.surface,
-                color: C.muted, fontWeight: 700, fontSize: 15, cursor: 'pointer',
+                color: C.muted, fontWeight: 700, fontSize: 14, cursor: 'pointer',
               }}
             >
               Close
