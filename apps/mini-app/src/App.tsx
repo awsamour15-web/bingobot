@@ -230,6 +230,7 @@ function AppInner() {
       const t = setTimeout(() => setShowSpin(true), 1500);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, []);
 
   function handleSpinClose() {
