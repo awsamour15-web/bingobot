@@ -43,23 +43,6 @@ const GAMES: Game[] = [
     bonusNoteColor: '#22c55e',
     category: 'live',
   },
-  {
-    id: 'slots',
-    title: 'Multi Hot 5',
-    subtitle: 'Slots - 5 paylines - Multiplier reel',
-    emoji: '🎰',
-    posterSrc: '/posters/Multi-Hot-5-6924003_s.jpg',
-    gradient: 'linear-gradient(135deg,#3b1f00 0%,#1e1100 55%,#0d0800 100%)',
-    glowColor: 'rgba(245,158,11,0.3)',
-    route: '/slots',
-    rtp: '96% RTP',
-    tag: 'NEW',
-    tagColor: '#10b981',
-    available: true,
-    bonusNote: '💳 Deposit required',
-    bonusNoteColor: '#f59e0b',
-    category: 'slots',
-  },
 ];
 
 function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, slotsAllowed, accessChecked }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean; royalDropAllowed: boolean; slotsAllowed: boolean; accessChecked: boolean }) {

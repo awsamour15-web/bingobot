@@ -1,6 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import GamesLobbyScreen from './screens/GamesLobbyScreen';
 import RegistrationGate from './components/RegistrationGate';
 
 // Lazy-load screens for faster initial load
@@ -205,7 +204,7 @@ function AppInner() {
     <div className="app-surface" style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', minHeight: '100dvh' }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          <Route path="/" element={<GamesLobbyScreen />} />
+          <Route path="/" element={<GameScreen />} />
           <Route path="/bingo" element={<GameScreen />} />
           <Route path="/history" element={<HistoryScreen />} />
           <Route path="/history/:roundId" element={<HistoryDetailScreen />} />

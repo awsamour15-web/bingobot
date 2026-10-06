@@ -5,12 +5,21 @@ import { getRounds, getSystemStats } from '../lib/api';
 import { socket } from '../lib/socket';
 import type { RoundListItem } from '@fidel/shared';
 
-const ALLOWED_STAKES = [10, 20, 50];
+const ALLOWED_STAKES = [10, 20, 50, 100, 500];
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+// Accent color per stake level
+function stakeAccent(stake: number): string {
+  if (stake >= 500) return '#ef4444';
+  if (stake >= 100) return '#f59e0b';
+  if (stake >= 50)  return '#a78bfa';
+  if (stake >= 20)  return '#34d399';
+  return '#60a5fa';
 }
 
 export default function GameScreen() {
@@ -20,8 +29,6 @@ export default function GameScreen() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [stats, setStats] = useState<{ totalPlayers: number; totalGames: number } | null>(null);
-
-  // Live player counts per round (updated by WebSocket)
   const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
 
   const updateCount = useCallback((roundId: string, count: number) => {
@@ -33,9 +40,7 @@ export default function GameScreen() {
     async function load() {
       setLoading(true); setError(null);
       try {
-        // Wait for auth to complete BEFORE making API calls
         await initAuth();
-        
         const [data, statsData] = await Promise.all([
           getRounds(),
           getSystemStats().catch(() => null),
@@ -45,7 +50,6 @@ export default function GameScreen() {
             .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))
             .sort((a, b) => Number(a.stake) - Number(b.stake));
           setRounds(filtered);
-          // Seed live counts from initial API data
           const initial: Record<string, number> = {};
           filtered.forEach(r => { initial[r.id] = r.player_count; });
           setLiveCounts(initial);
@@ -53,12 +57,11 @@ export default function GameScreen() {
         if (!cancelled && statsData) setStats(statsData);
       } catch (err: unknown) {
         if (!cancelled) {
-          const errorMessage = err instanceof Error ? err.message : 'Failed to load';
-          // Check if this is an auth error when running outside Telegram
-          if (errorMessage.includes('Unauthorized') || errorMessage.includes('INVALID_TELEGRAM_AUTH')) {
+          const msg = err instanceof Error ? err.message : 'Failed to load';
+          if (msg.includes('Unauthorized') || msg.includes('INVALID_TELEGRAM_AUTH')) {
             setError('This app must be opened from Telegram. Please use the @FidelBingoBot to access the game.');
           } else {
-            setError(errorMessage);
+            setError(msg);
           }
         }
       } finally {
@@ -69,56 +72,38 @@ export default function GameScreen() {
     return () => { cancelled = true; };
   }, [retryCount]);
 
-  // Join all visible round rooms so we receive per-round events
   useEffect(() => {
     if (rounds.length === 0) return;
     const token = getJwt() ?? '';
     rounds.forEach(r => socket.emit('JOIN_ROUND', { roundId: r.id, token }));
   }, [rounds.map(r => r.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for live player count updates from WebSocket
   useEffect(() => {
     function onPlayerJoined(payload: { playerCount: number; roundId?: string }) {
       if (payload.roundId) {
         updateCount(payload.roundId, payload.playerCount);
-        setRounds(prev => prev.map(r =>
-          r.id === payload.roundId ? { ...r, player_count: payload.playerCount } : r
-        ));
+        setRounds(prev => prev.map(r => r.id === payload.roundId ? { ...r, player_count: payload.playerCount } : r));
       } else {
-        // fallback: update all pending rounds (old behaviour)
-        setRounds(prev => prev.map(r =>
-          r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
-        ));
+        setRounds(prev => prev.map(r => r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r));
       }
     }
-
     function onCartelaTaken(payload: { playerCount: number; roundId?: string }) {
       if (payload.roundId) {
         updateCount(payload.roundId, payload.playerCount);
-        setRounds(prev => prev.map(r =>
-          r.id === payload.roundId ? { ...r, player_count: payload.playerCount } : r
-        ));
+        setRounds(prev => prev.map(r => r.id === payload.roundId ? { ...r, player_count: payload.playerCount } : r));
       } else {
-        setRounds(prev => prev.map(r =>
-          r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r
-        ));
+        setRounds(prev => prev.map(r => r.status === 'pending' ? { ...r, player_count: payload.playerCount } : r));
       }
     }
-
     function onRoundStarted(payload: { roundId: string; playerCount: number; derash: number }) {
       setRounds(prev => prev.map(r =>
-        r.id === payload.roundId
-          ? { ...r, status: 'active', player_count: payload.playerCount, derash: payload.derash }
-          : r
+        r.id === payload.roundId ? { ...r, status: 'active', player_count: payload.playerCount, derash: payload.derash } : r
       ));
       updateCount(payload.roundId, payload.playerCount);
     }
-
     function onRoundVoidOrCancelled(payload: { roundId: string }) {
       setRounds(prev => prev.filter(r => r.id !== payload.roundId));
     }
-
-    // Re-fetch rounds on socket reconnect so the lobby stays in sync
     function onReconnect() {
       getRounds().then(data => {
         const filtered = data
@@ -128,19 +113,16 @@ export default function GameScreen() {
         const counts: Record<string, number> = {};
         filtered.forEach(r => { counts[r.id] = r.player_count; });
         setLiveCounts(counts);
-        // Re-join round rooms after reconnect
         const token = getJwt() ?? '';
         filtered.forEach(r => socket.emit('JOIN_ROUND', { roundId: r.id, token }));
       }).catch(() => {});
     }
-
     socket.on('connect', onReconnect);
     socket.on('PLAYER_JOINED', onPlayerJoined);
     socket.on('CARTELA_TAKEN', onCartelaTaken);
     socket.on('ROUND_STARTED', onRoundStarted);
     socket.on('ROUND_VOID', onRoundVoidOrCancelled);
     socket.on('ROUND_CANCELLED', onRoundVoidOrCancelled);
-
     return () => {
       socket.off('connect', onReconnect);
       socket.off('PLAYER_JOINED', onPlayerJoined);
@@ -152,76 +134,51 @@ export default function GameScreen() {
   }, [updateCount]);
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 100% 0%, rgba(209,151,48,0.2), transparent 28%), radial-gradient(circle at 0% 28%, rgba(18,117,83,0.18), transparent 32%), linear-gradient(180deg, #10140f 0%, #080d0a 54%, #040706 100%)', color: '#f7f8f5' }}>
+    <div style={{
+      minHeight: '100dvh',
+      background: 'linear-gradient(180deg, #0d2818 0%, #0a1f12 50%, #071510 100%)',
+      color: '#f7f8f5',
+      maxWidth: 480,
+      margin: '0 auto',
+      paddingBottom: 80,
+    }}>
+      <style>{`
+        @keyframes gsPulse { 0%,100%{opacity:.7;transform:scale(1)} 50%{opacity:1;transform:scale(1.18)} }
+        @keyframes gsShimmer { from{transform:translateX(-120%) skewX(-15deg)} to{transform:translateX(220%) skewX(-15deg)} }
+        .gs-btn:active { transform: scale(0.97); }
+      `}</style>
 
-      {/* ── Header ── */}
-      <div style={{ background: 'rgba(14,20,14,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(239,195,81,0.18)', padding: '11px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.22)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 12,
-              background: 'linear-gradient(145deg, #ffe072, #d99c22)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 900, fontSize: 15, color: '#0a0e1a',
-              boxShadow: '0 5px 18px rgba(231,176,39,0.24)',
-            }}>FB</div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 0.2, color: '#f1f5f9' }}>Fidel Bingo</div>
-              <div style={{ fontSize: 9, color: '#d9b950', marginTop: 2, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 800 }}>Bingo night</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={() => navigate('/')}
-              style={{
-                background: 'rgba(239,195,81,0.08)', border: '1px solid rgba(239,195,81,0.2)',
-                borderRadius: 9, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: '#f3d36c', fontSize: 16,
-              }}
-              aria-label="Home"
-            >
-              🏠
-            </button>
-            <div style={{
-              background: 'rgba(239,195,81,0.1)', border: '1px solid rgba(239,195,81,0.25)',
-              borderRadius: 9, padding: '5px 9px', fontSize: 9, color: '#f3d36c', fontWeight: 800, letterSpacing: 0.8,
-            }}>
-              LIVE
-            </div>
-          </div>
+      {/* Header */}
+      <div style={{
+        padding: '14px 18px 12px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(10,26,16,0.95)',
+        backdropFilter: 'blur(12px)',
+      }}>
+        <span style={{ fontSize: 26 }}>🎱</span>
+        <div style={{ fontSize: 22, fontWeight: 900, color: '#f4f7fb', letterSpacing: -0.3 }}>
+          ጨዋታዎን ይምረጡ
         </div>
+        {stats && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(99,212,186,0.1)', border: '1px solid rgba(99,212,186,0.2)', borderRadius: 8, padding: '4px 9px', fontSize: 9, color: '#63d4ba', fontWeight: 800, letterSpacing: '0.08em' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#63d4ba', display: 'inline-block', animation: 'gsPulse 1.6s ease-in-out infinite' }} />
+            {fmt(stats.totalPlayers)} PLAYERS
+          </div>
+        )}
       </div>
 
-      {/* ── Hero ── */}
-      <div style={{ position: 'relative', overflow: 'hidden', padding: '26px 18px 24px', background: 'linear-gradient(135deg, rgba(23,57,41,0.9), rgba(31,30,15,0.94))', borderBottom: '1px solid rgba(239,195,81,0.16)' }}>
-        <div style={{ position: 'absolute', right: 20, top: 18, width: 92, height: 92, borderRadius: '50%', border: '1px solid rgba(239,195,81,0.32)', boxShadow: '0 0 32px rgba(239,195,81,0.14)' }} />
-        <div style={{ position: 'relative', zIndex: 1, fontSize: 11, color: '#71d4a8', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 9, fontWeight: 800 }}>
-          Live bingo rooms
-        </div>
-        <div style={{ position: 'relative', zIndex: 1, fontSize: 30, fontWeight: 900, lineHeight: 1.12, color: '#f8fafc' }}>
-          Choose your <span style={{ color: '#f3cf64' }}>room</span>
-        </div>
-        <div style={{ position: 'relative', zIndex: 1, fontSize: 13, color: '#c7d4c9', marginTop: 9 }}>Pick your entry and join the next draw.</div>
-        <div style={{ position: 'relative', zIndex: 1, display: 'inline-flex', marginTop: 16, padding: '6px 9px', borderRadius: 8, background: 'rgba(239,195,81,0.12)', border: '1px solid rgba(239,195,81,0.2)', color: '#f3cf64', fontSize: 10, fontWeight: 900, letterSpacing: 0.7 }}>JACKPOTS UP TO 40,000 BIRR</div>
-      </div>
-
-      {/* ── Games list ── */}
-      <div style={{ padding: '20px 16px 28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ fontSize: 11, color: '#9aa8bc', fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' }}>
-            Available rooms
-          </div>
-          <div style={{ fontSize: 10, color: '#63d4ba', fontWeight: 800 }}>LIVE UPDATES</div>
-        </div>
+      {/* Body */}
+      <div style={{ padding: '18px 14px 0' }}>
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#718096', fontSize: 14 }}>
+          <div style={{ padding: '60px 0', textAlign: 'center', color: '#4a7c59', fontSize: 13 }}>
             &nbsp;
           </div>
         )}
 
         {error && (
-          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 16, padding: 20, textAlign: 'center' }}>
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 16, padding: 20, textAlign: 'center', margin: '20px 0' }}>
             <div style={{ color: '#f87171', marginBottom: 12, fontSize: 14 }}>{error}</div>
             <button onClick={() => { setError(null); setRetryCount(c => c + 1); }}
               style={{ background: '#f59e0b', border: 'none', borderRadius: 10, padding: '10px 24px', color: '#0a0e1a', fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
@@ -231,101 +188,164 @@ export default function GameScreen() {
         )}
 
         {!loading && !error && rounds.length === 0 && (
-          <div style={{ background: 'rgba(17,27,43,0.8)', border: '1px solid rgba(134,165,226,0.14)', borderRadius: 16, padding: '40px 20px', textAlign: 'center', color: '#8491a5' }}>
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '40px 20px', textAlign: 'center', color: '#5a7a62' }}>
             No games right now — check back soon.
           </div>
         )}
 
-        {!loading && !error && rounds.map((round) => {
+        {!loading && !error && rounds.map((round, idx) => {
           const isPending = round.status === 'pending';
           const playerCount = liveCounts[round.id] ?? round.player_count;
+          const accent = stakeAccent(Number(round.stake));
+          const maxPlayers = round.active_cartela_count ?? round.max_players;
+          const fillPct = Math.min(100, (playerCount / maxPlayers) * 100);
+          const derash = Math.round(round.derash);
+
+          // Progressive jackpot banner — show above 20 and 50 birr cards
+          const showJackpot = Number(round.stake) === 20 || Number(round.stake) === 50;
 
           return (
-            <button key={round.id}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                sessionStorage.setItem('selectedStake', String(round.stake));
-                sessionStorage.setItem('stakeSelectedForRound', round.id);
-                if (isPending) {
-                  navigate(`/rounds/${round.id}/cartela`);
-                } else {
-                  sessionStorage.setItem('selectedRoundId', round.id);
-                  navigate(`/rounds/${round.id}/game`);
-                }
-              }}
-              style={{
-                display: 'block', width: '100%', marginBottom: 14,
-                background: 'linear-gradient(145deg, rgba(21,32,51,0.98) 0%, rgba(12,20,34,0.96) 100%)',
-                border: `1px solid ${isPending ? 'rgba(99,212,186,0.22)' : 'rgba(243,207,100,0.24)'}`,
-                borderRadius: 18, padding: '17px 16px 15px', cursor: 'pointer', textAlign: 'left',
-                boxShadow: '0 16px 30px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.05)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 58, padding: '8px 10px', borderRadius: 11, background: isPending ? 'rgba(99,212,186,0.12)' : 'rgba(243,207,100,0.12)', color: isPending ? '#8ae5d0' : '#f3cf64', fontSize: 25, fontWeight: 900 }}>{round.stake}</span>
-                  <span style={{ fontSize: 11, color: '#9aa8bc', fontWeight: 700 }}>BIRR / CARTELA</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: '#f3cf64' }}>{Math.round(round.derash)} Birr</div>
-                  <div style={{ fontSize: 9, color: '#8190a5', marginTop: 2, letterSpacing: 0.8, textTransform: 'uppercase' }}>PRIZE POOL</div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13 }}>◉</span>
-                  <span style={{ fontSize: 12, color: '#cbd5e1', fontWeight: 700 }}>
-                    {playerCount} / {round.active_cartela_count ?? round.max_players}
+            <div key={round.id} style={{ marginBottom: 12 }}>
+              {/* Jackpot banner */}
+              {showJackpot && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 14px',
+                  background: 'linear-gradient(90deg, #5b21b6 0%, #7c3aed 50%, #5b21b6 100%)',
+                  borderRadius: '14px 14px 0 0',
+                  marginBottom: -2,
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 60, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)', animation: 'gsShimmer 3s ease-in-out infinite', pointerEvents: 'none' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ fontSize: 16 }}>🎁</span>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: '0.1em' }}>PROGRESSIVE JACKPOT</span>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#fcd34d' }}>
+                    {fmt(derash)} ብር
                   </span>
                 </div>
-                <div style={{
-                  fontSize: 10, fontWeight: 800, letterSpacing: 0.8,
-                  color: isPending ? '#a7f3d0' : '#fcd34d',
-                  background: isPending ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
-                  border: isPending ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(245,158,11,0.28)',
-                  borderRadius: 7, padding: '5px 8px',
-                }}>
-                  {isPending ? 'WAITING' : 'LIVE'}
-                </div>
-              </div>
+              )}
 
-              <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'rgba(148,163,184,0.08)', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: 999,
-                  width: `${Math.min(100, (playerCount / (round.active_cartela_count ?? round.max_players)) * 100)}%`,
-                  background: isPending
-                    ? 'linear-gradient(90deg, #63d4ba, #2b9d9c)'
-                    : 'linear-gradient(90deg, #f3cf64, #d79a2c)',
-                  transition: 'width 0.4s ease',
-                }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 11, color: isPending ? '#78dfc7' : '#f3cf64', fontSize: 10, fontWeight: 900, letterSpacing: 0.8 }}>{isPending ? 'CHOOSE CARTELA  →' : 'JOIN LIVE ROOM  →'}</div>
-            </button>
+              {/* Stake card */}
+              <button
+                className="gs-btn"
+                onClick={() => {
+                  sessionStorage.setItem('selectedStake', String(round.stake));
+                  sessionStorage.setItem('stakeSelectedForRound', round.id);
+                  if (isPending) {
+                    navigate(`/rounds/${round.id}/cartela`);
+                  } else {
+                    sessionStorage.setItem('selectedRoundId', round.id);
+                    navigate(`/rounds/${round.id}/game`);
+                  }
+                }}
+                style={{
+                  display: 'block', width: '100%', padding: 0,
+                  background: 'rgba(10,30,18,0.95)',
+                  border: `1px solid rgba(255,255,255,0.09)`,
+                  borderRadius: showJackpot ? '0 0 14px 14px' : 14,
+                  cursor: 'pointer', textAlign: 'left', overflow: 'hidden',
+                  boxShadow: `0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)`,
+                  transition: 'transform 0.15s ease',
+                  animationDelay: `${idx * 0.05}s`,
+                }}
+              >
+                {/* Left accent bar */}
+                <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                  <div style={{ width: 4, background: accent, borderRadius: '0 0 0 14px', flexShrink: 0 }} />
+
+                  <div style={{ flex: 1, padding: '14px 14px 14px 12px' }}>
+                    {/* Row 1: stake + status badge + derash + action button */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {/* Stake amount */}
+                      <div style={{ minWidth: 70 }}>
+                        <div style={{ fontSize: 9, color: '#6b8f72', fontWeight: 700, letterSpacing: '0.08em', marginBottom: 2 }}>ባለ</div>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: '#f1f5f9', lineHeight: 1 }}>
+                          {round.stake} <span style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>ብር</span>
+                        </div>
+                        <div style={{ fontSize: 9, color: '#4a7c59', marginTop: 3 }}>{playerCount} ተጫዋቾች</div>
+                      </div>
+
+                      {/* Status badge */}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '4px 9px', borderRadius: 999,
+                        background: isPending ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                        border: `1px solid ${isPending ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                      }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: isPending ? '#34d399' : '#f59e0b', display: 'inline-block', animation: 'gsPulse 1.5s ease-in-out infinite' }} />
+                        <span style={{ fontSize: 8, fontWeight: 900, color: isPending ? '#34d399' : '#f59e0b', letterSpacing: '0.06em' }}>
+                          {isPending ? 'በሚጠባ ላይ' : 'በመጠበቅ ላይ'}
+                        </span>
+                      </div>
+
+                      {/* Spacer */}
+                      <div style={{ flex: 1 }} />
+
+                      {/* Derash + button */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 9, color: '#6b8f72', fontWeight: 700, letterSpacing: '0.06em' }}>ደራሽ</div>
+                          <div style={{ fontSize: 19, fontWeight: 900, color: '#fcd34d', lineHeight: 1 }}>{fmt(derash)} <span style={{ fontSize: 11, color: '#a08030' }}>ብር</span></div>
+                        </div>
+
+                        {/* Action button */}
+                        <div style={{
+                          minWidth: 64, height: 38,
+                          background: isPending
+                            ? 'linear-gradient(135deg, #1d4ed8, #2563eb)'
+                            : 'linear-gradient(135deg, #d97706, #f59e0b)',
+                          borderRadius: 999,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 900,
+                          color: '#fff',
+                          boxShadow: isPending ? '0 4px 14px rgba(37,99,235,0.4)' : '0 4px 14px rgba(245,158,11,0.4)',
+                          letterSpacing: '0.04em',
+                          position: 'relative', overflow: 'hidden',
+                        }}>
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)', animation: 'gsShimmer 2.5s ease-in-out infinite', pointerEvents: 'none' }} />
+                          {isPending ? 'ይጠብቁ' : '▶ ይጫወቱ'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fill bar */}
+                    <div style={{ marginTop: 12, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 999,
+                        width: `${fillPct}%`,
+                        background: `linear-gradient(90deg, ${accent}, ${accent}aa)`,
+                        transition: 'width 0.5s ease',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
           );
         })}
       </div>
 
-      {/* ── Stats strip — real data ── */}
-      <div style={{ margin: '0 16px 24px', background: 'linear-gradient(145deg, rgba(21,32,51,0.9), rgba(10,17,29,0.94))', border: '1px solid rgba(134,165,226,0.14)', borderRadius: 18, padding: '16px 10px', display: 'flex', justifyContent: 'space-around', textAlign: 'center', boxShadow: '0 12px 26px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#f3cf64' }}>
-            {stats ? fmt(stats.totalPlayers) : '…'}
+      {/* Bottom stats strip */}
+      {stats && (
+        <div style={{ margin: '20px 14px 0', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '14px 10px', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#fcd34d' }}>{fmt(stats.totalPlayers)}</div>
+            <div style={{ fontSize: 9, color: '#5a7a62', marginTop: 2, letterSpacing: '0.06em' }}>PLAYERS</div>
           </div>
-          <div style={{ fontSize: 10, color: '#8795aa', marginTop: 3 }}>Players</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#63d4ba' }}>
-            {stats ? fmt(stats.totalGames) : '…'}
+          <div style={{ width: 1, background: 'rgba(255,255,255,0.07)' }} />
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#63d4ba' }}>{fmt(stats.totalGames)}</div>
+            <div style={{ fontSize: 9, color: '#5a7a62', marginTop: 2, letterSpacing: '0.06em' }}>GAMES</div>
           </div>
-          <div style={{ fontSize: 10, color: '#8795aa', marginTop: 3 }}>Games Played</div>
+          <div style={{ width: 1, background: 'rgba(255,255,255,0.07)' }} />
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#a78bfa' }}>24/7</div>
+            <div style={{ fontSize: 9, color: '#5a7a62', marginTop: 2, letterSpacing: '0.06em' }}>LIVE</div>
+          </div>
         </div>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#8aa9e7' }}>24/7</div>
-          <div style={{ fontSize: 10, color: '#8795aa', marginTop: 3 }}>Always Live</div>
-        </div>
-      </div>
+      )}
 
     </div>
   );
