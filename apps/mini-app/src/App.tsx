@@ -1,6 +1,7 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import RegistrationGate from './components/RegistrationGate';
+import DailySpinModal from './components/DailySpinModal';
 
 // Lazy-load screens for faster initial load
 const GameScreen = lazy(() => import('./screens/GameScreen'));
@@ -189,16 +190,53 @@ function BottomNav() {
   );
 }
 
+// ─── Daily spin helpers ───────────────────────────────────────────────────────
+
+const SPIN_STORAGE_KEY = 'daily_spin_shown';
+
+function getTodayUtc3(): string {
+  return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function shouldShowSpin(): boolean {
+  try {
+    return localStorage.getItem(SPIN_STORAGE_KEY) !== getTodayUtc3();
+  } catch {
+    return false;
+  }
+}
+
+function markSpinShown(): void {
+  try {
+    localStorage.setItem(SPIN_STORAGE_KEY, getTodayUtc3());
+  } catch { /* ignore */ }
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 function AppInner() {
   const location = useLocation();
   const isSubPage = isFullscreenRoute(location.pathname);
+  const [showSpin, setShowSpin] = useState(false);
 
   // Keep socket connected globally
   useEffect(() => {
     if (!socket.connected) socket.connect();
   }, []);
+
+  // Show daily spin once per day after a short delay
+  useEffect(() => {
+    if (shouldShowSpin()) {
+      const t = setTimeout(() => setShowSpin(true), 1500);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, []);
+
+  function handleSpinClose() {
+    markSpinShown();
+    setShowSpin(false);
+  }
 
   return (
     <div className="app-surface" style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', minHeight: '100dvh' }}>
@@ -223,6 +261,7 @@ function AppInner() {
         </Routes>
       </Suspense>
       <BottomNav />
+      {showSpin && <DailySpinModal onClose={handleSpinClose} />}
     </div>
   );
 }
