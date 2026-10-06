@@ -809,3 +809,29 @@ export function spinRoyalDrop(betAmount: number, walletType?: 'main' | 'play'): 
 export function getRoyalDropHistory(): Promise<RoyalDropHistoryEntry[]> {
   return apiRequest<RoyalDropHistoryEntry[]>('GET', '/api/royal-drop/history');
 }
+
+// ─── Daily Spin ───────────────────────────────────────────────────────────────
+
+export interface SpinPrize {
+  label: string;
+  amount: number;
+}
+
+export interface DailySpinStatus {
+  canSpin: boolean;
+  lastSpinDate: string | null;
+  prize: SpinPrize;
+}
+
+export interface DailySpinResult {
+  success: boolean;
+  prize: SpinPrize;
+}
+
+export function getDailySpinStatus(): Promise<DailySpinStatus> {
+  return apiRequest<DailySpinStatus>('GET', '/api/wallet/daily-spin/status');
+}
+
+export function claimDailySpin(): Promise<DailySpinResult> {
+  return apiRequest<DailySpinResult>('POST', '/api/wallet/daily-spin/claim');
+}

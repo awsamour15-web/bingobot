@@ -708,4 +708,89 @@ router.get('/available-coupons', async (req: Request, res: Response): Promise<vo
   }
 });
 
+// ─── Daily Spin ───────────────────────────────────────────────────────────────
+// Fixed prize for all players, amount set by admin via Config key "daily_spin_amount".
+// One spin per calendar day (UTC+3). Claims tracked in SystemSetting "daily_spin_claims".
+
+const DEFAULT_SPIN_AMOUNT = 5;
+
+async function getSpinAmount(): Promise<number> {
+  const cfg = await prisma.config.findUnique({ where: { key: 'daily_spin_amount' } });
+  const n = cfg ? parseFloat(cfg.value) : NaN;
+  return isNaN(n) || n <= 0 ? DEFAULT_SPIN_AMOUNT : n;
+}
+
+function getTodayUtc3(): string {
+  return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// GET /api/wallet/daily-spin/status — can the player spin today, and what's the prize?
+router.get('/daily-spin/status', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player!.playerId;
+  const today = getTodayUtc3();
+
+  const [setting, amount] = await Promise.all([
+    prisma.systemSetting.findUnique({ where: { key: 'daily_spin_claims' } }),
+    getSpinAmount(),
+  ]);
+
+  let claims: Record<string, string> = {};
+  try { claims = setting?.value ? JSON.parse(setting.value) : {}; } catch { /* empty */ }
+
+  res.json({
+    canSpin: claims[playerId] !== today,
+    lastSpinDate: claims[playerId] ?? null,
+    prize: { label: `${amount} ETB`, amount },
+  });
+});
+
+// POST /api/wallet/daily-spin/claim — award the fixed prize once per day
+router.post('/daily-spin/claim', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player!.playerId;
+  const today = getTodayUtc3();
+
+  const [setting, amount] = await Promise.all([
+    prisma.systemSetting.findUnique({ where: { key: 'daily_spin_claims' } }),
+    getSpinAmount(),
+  ]);
+
+  let claims: Record<string, string> = {};
+  try { claims = setting?.value ? JSON.parse(setting.value) : {}; } catch { /* empty */ }
+
+  if (claims[playerId] === today) {
+    res.status(409).json({ error: 'ALREADY_CLAIMED', message: 'You already spun today. Come back tomorrow!' });
+    return;
+  }
+
+  try {
+    await WalletService.credit(
+      playerId,
+      WalletType.play,
+      amount,
+      TxType.bonus,
+      undefined,
+      `DAILY_SPIN — ${today}`,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Credit failed';
+    res.status(500).json({ error: 'CREDIT_FAILED', message });
+    return;
+  }
+
+  // Persist claim — keep map lean (max 5000 entries)
+  claims[playerId] = today;
+  const keys = Object.keys(claims);
+  if (keys.length > 5000) {
+    for (const k of keys.slice(0, 500)) delete claims[k];
+  }
+
+  await prisma.systemSetting.upsert({
+    where:  { key: 'daily_spin_claims' },
+    update: { value: JSON.stringify(claims) },
+    create: { key: 'daily_spin_claims', value: JSON.stringify(claims) },
+  });
+
+  res.json({ success: true, prize: { label: `${amount} ETB`, amount } });
+});
+
 export default router;
