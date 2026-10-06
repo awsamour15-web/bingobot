@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import { getDailySpinStatus, claimDailySpin, type SpinPrize } from '../lib/api';
 
 const C = {
@@ -110,8 +110,14 @@ export default function DailySpinModal({ onClose }: Props) {
       .catch(() => { setError('Could not load spin. Try again later.'); setPhase('error'); });
   }, [onClose]);
 
+  // Draw wheel on first mount so canvas is never blank
+  useLayoutEffect(() => {
+    redraw(angleRef.current);
+  }, [redraw]);
+
+  // Draw wheel whenever phase changes to a visible state, or on mount
   useEffect(() => {
-    if (phase === 'idle') redraw(angleRef.current);
+    if (phase !== 'loading') redraw(angleRef.current);
   }, [phase, redraw]);
 
   const startSpin = useCallback(async () => {
