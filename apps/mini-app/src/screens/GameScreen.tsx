@@ -256,8 +256,8 @@ export default function GameScreen() {
           const fillPct = Math.min(100, (playerCount / maxPlayers) * 100);
           const derash = Math.round(round.derash);
 
-          // Progressive jackpot banner — show above 20 and 50 birr cards
-          const showJackpot = Number(round.stake) === 20 || Number(round.stake) === 50;
+          // Show jackpot banner only when admin has enabled it for this stake
+          const showJackpot = round.jackpot_enabled === true;
 
           return (
             <div key={round.id} style={{ marginBottom: 12 }}>

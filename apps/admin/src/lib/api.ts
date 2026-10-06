@@ -918,3 +918,15 @@ export function createCouponSchedule(data: { coupon_code: string; target_ids: st
 export function deleteCouponSchedule(id: string): Promise<{ success: boolean }> {
   return adminApiRequest('DELETE', `/api/admin/coupons/schedules/${id}`);
 }
+
+// ---------------------------------------------------------------------------
+// Jackpot Stakes
+// ---------------------------------------------------------------------------
+
+export function getJackpotStakes(): Promise<{ stakes: number[] }> {
+  return adminApiRequest('GET', '/api/admin/jackpot-stakes');
+}
+
+export function setJackpotStakes(stakes: number[]): Promise<{ stakes: number[] }> {
+  return adminApiRequest('PUT', '/api/admin/jackpot-stakes', { stakes });
+}

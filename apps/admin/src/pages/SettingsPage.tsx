@@ -4,6 +4,7 @@ import {
   getConfig, updateConfig, getAdmins, createAdmin, updateAdmin,
   getDepositAccounts, createDepositAccount, updateDepositAccount, deleteDepositAccount,
   triggerBackup, previewCleanup, runCleanup,
+  getJackpotStakes, setJackpotStakes,
 } from '../lib/api';
 import type { DepositAccount, CleanupPreview, CleanupResult } from '../lib/api';
 import {
@@ -1282,11 +1283,192 @@ function CleanupSection() {
 }
 
 
+// ─── Daily Spin Bonus ─────────────────────────────────────────────────────────
+
+function DailySpinSection() {
+  const [amount, setAmount] = useState('5');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fb, setFb] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    getConfig().then(data => {
+      setAmount(data.find(e => e.key === 'daily_spin_amount')?.value ?? '5');
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    const n = parseFloat(amount);
+    if (isNaN(n) || n < 1 || n > 10000) {
+      setFb({ type: 'error', msg: 'Amount must be between 1 and 10,000 ETB' });
+      return;
+    }
+    setSaving(true);
+    setFb(null);
+    try {
+      await updateConfig('daily_spin_amount', String(n));
+      setFb({ type: 'success', msg: `Daily spin bonus set to ${n} ETB` });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 420 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
+        Every player gets this fixed amount added to their play wallet when they spin once per day.
+        Changes take effect immediately on the next spin.
+      </p>
+
+      <div style={{
+        background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
+        borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 16,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{
+            fontSize: 22, width: 44, height: 44, borderRadius: 12,
+            background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>🎡</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>Spin Prize Amount</div>
+            <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
+              All players receive the same fixed prize per spin
+            </div>
+          </div>
+          <div style={{ marginLeft: 'auto', padding: '10px 16px', borderRadius: 10, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}>
+            <span style={{ fontSize: 9, display: 'block', color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Current</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b' }}>{parseFloat(amount) || 5} ETB</span>
+          </div>
+        </div>
+
+        {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="number"
+            min={1}
+            max={10000}
+            step={1}
+            value={amount}
+            onChange={e => { setAmount(e.target.value); setFb(null); }}
+            disabled={saving}
+            style={{ ...inputCss, width: 100, fontWeight: 700, textAlign: 'center' }}
+          />
+          <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>ETB</span>
+          <Btn onClick={handleSave} disabled={saving} fullWidth>
+            {saving ? 'Saving…' : 'Save'}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Jackpot Stakes ───────────────────────────────────────────────────────────
+
+const KNOWN_STAKES = [10, 20, 50, 100, 500];
+
+function JackpotSection() {
+  const [enabled, setEnabled] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fb, setFb] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    getJackpotStakes()
+      .then(r => { setEnabled(r.stakes); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  function toggle(stake: number) {
+    setEnabled(prev =>
+      prev.includes(stake) ? prev.filter(s => s !== stake) : [...prev, stake]
+    );
+    setFb(null);
+  }
+
+  async function handleSave() {
+    setSaving(true); setFb(null);
+    try {
+      await setJackpotStakes(enabled);
+      setFb({ type: 'success', msg: `Saved — jackpot enabled for: ${enabled.length ? enabled.map(s => `${s} ብር`).join(', ') : 'none'}` });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed' });
+    } finally { setSaving(false); }
+  }
+
+  if (loading) return <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 480 }}>
+      <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
+        Toggle the progressive jackpot banner for each stake level. Only enabled stakes will show the jackpot banner to players.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {KNOWN_STAKES.map(stake => {
+          const isOn = enabled.includes(stake);
+          return (
+            <div key={stake} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 18px', borderRadius: 12,
+              background: isOn ? 'rgba(124,58,237,0.1)' : 'var(--c-bg-card)',
+              border: `1px solid ${isOn ? 'rgba(124,58,237,0.4)' : 'var(--c-border)'}`,
+              transition: 'all 0.15s',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 18 }}>🎁</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>{stake} ብር stake</div>
+                  <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 1 }}>
+                    {isOn ? 'Jackpot banner visible to players' : 'No jackpot banner shown'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => toggle(stake)}
+                style={{
+                  width: 48, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer',
+                  background: isOn ? '#7c3aed' : 'rgba(148,163,184,0.2)',
+                  position: 'relative', transition: 'background 0.2s',
+                }}
+                aria-label={`Toggle jackpot for ${stake} birr`}
+              >
+                <span style={{
+                  position: 'absolute', top: 3,
+                  left: isOn ? 'calc(100% - 22px)' : 3,
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: '#fff',
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+                }} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+      <div><Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Btn></div>
+    </div>
+  );
+}
+
+
 // ─── Settings Page — tabbed layout ───────────────────────────────────────────
 
 const TABS = [
   { key: 'house_edge',    label: 'House Edge',       icon: '🎰' },
   { key: 'cashback',      label: 'Cashback',          icon: '💰' },
+  { key: 'daily_spin',    label: 'Daily Spin',        icon: '🎡' },
+  { key: 'jackpot',       label: 'Jackpot',           icon: '🎁' },
   { key: 'cartela',       label: 'Cartela',           icon: '🎴' },
   { key: 'channel',       label: 'Channel Gate',      icon: '📢' },
   { key: 'access',        label: 'Access Control',    icon: '🔒' },
@@ -1380,6 +1562,8 @@ export function SettingsPage() {
 
           {activeTab === 'house_edge' && <HouseEdgeSection />}
           {activeTab === 'cashback'   && <CashbackSection />}
+          {activeTab === 'daily_spin' && <DailySpinSection />}
+          {activeTab === 'jackpot'    && <JackpotSection />}
           {activeTab === 'cartela'    && <CartelaLimitSection />}
           {activeTab === 'channel'    && <ChannelSettingsSection />}
           {activeTab === 'access'     && (

@@ -29,14 +29,20 @@ router.use(jwtAuthMiddleware);
 // ─── GET /api/rounds ─────────────────────────────────────────────────────────
 
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
-  const [rounds, activeCartelaCount] = await Promise.all([
+  const [rounds, activeCartelaCount, jackpotSetting] = await Promise.all([
     prisma.gameRound.findMany({
       where: { status: { in: ['pending', 'active'] } },
       include: { _count: { select: { round_entries: true } } },
       orderBy: { start_time: 'asc' },
     }),
     getConfigInt('active_cartela_count', TOTAL_CARTELAS),
+    prisma.systemSetting.findUnique({ where: { key: 'jackpot_enabled_stakes' } }),
   ]);
+
+  const jackpotStakes: number[] = (() => {
+    try { return JSON.parse(jackpotSetting?.value ?? '[]') as number[]; }
+    catch { return []; }
+  })();
 
   const cappedCartelaCount = activeCartelaCount >= 1
     ? Math.min(activeCartelaCount, TOTAL_CARTELAS)
@@ -52,6 +58,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     derash: Number(r.derash),
     start_time: r.start_time.toISOString(),
     winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
+    jackpot_enabled: jackpotStakes.includes(Number(r.stake)),
   }));
 
   // Short cache — stale-while-revalidate lets the client show instantly on revisit

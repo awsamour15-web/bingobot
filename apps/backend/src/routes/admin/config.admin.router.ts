@@ -228,4 +228,27 @@ router.patch('/admins/:id', requireSuperAdmin, async (req: Request, res: Respons
   res.json(admin);
 });
 
+// GET /api/admin/jackpot-stakes — get stakes with jackpot enabled
+router.get('/jackpot-stakes', async (_req: Request, res: Response): Promise<void> => {
+  const setting = await prisma.systemSetting.findUnique({ where: { key: 'jackpot_enabled_stakes' } });
+  let stakes: number[] = [];
+  try { stakes = JSON.parse(setting?.value ?? '[]') as number[]; } catch { /* ignore */ }
+  res.json({ stakes });
+});
+
+// PUT /api/admin/jackpot-stakes — set which stakes have jackpot enabled
+router.put('/jackpot-stakes', async (req: Request, res: Response): Promise<void> => {
+  const { stakes } = req.body as { stakes?: unknown };
+  if (!Array.isArray(stakes) || !stakes.every(s => typeof s === 'number' && s > 0)) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'stakes must be an array of positive numbers' });
+    return;
+  }
+  await prisma.systemSetting.upsert({
+    where: { key: 'jackpot_enabled_stakes' },
+    update: { value: JSON.stringify(stakes) },
+    create: { key: 'jackpot_enabled_stakes', value: JSON.stringify(stakes) },
+  });
+  res.json({ stakes });
+});
+
 export default router;
