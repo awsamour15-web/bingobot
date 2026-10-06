@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initAuth, getJwt } from '../lib/auth';
-import { getRounds, getSystemStats } from '../lib/api';
+import { getRounds, getSystemStats, getProfile } from '../lib/api';
 import { socket } from '../lib/socket';
 import type { RoundListItem } from '@fidel/shared';
 
@@ -30,6 +30,8 @@ export default function GameScreen() {
   const [retryCount, setRetryCount] = useState(0);
   const [stats, setStats] = useState<{ totalPlayers: number; totalGames: number } | null>(null);
   const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
+  const [mainBalance, setMainBalance] = useState<number | null>(null);
+  const [playBalance, setPlayBalance] = useState<number | null>(null);
 
   const updateCount = useCallback((roundId: string, count: number) => {
     setLiveCounts(prev => ({ ...prev, [roundId]: count }));
@@ -41,11 +43,16 @@ export default function GameScreen() {
       setLoading(true); setError(null);
       try {
         await initAuth();
-        const [data, statsData] = await Promise.all([
+        const [data, statsData, profile] = await Promise.all([
           getRounds(),
           getSystemStats().catch(() => null),
+          getProfile().catch(() => null),
         ]);
         if (!cancelled) {
+          if (profile) {
+            setMainBalance(Number(profile.mainWallet?.balance ?? 0));
+            setPlayBalance(Number(profile.playWallet?.balance ?? 0));
+          }
           const filtered = data
             .filter(r => ALLOWED_STAKES.includes(Number(r.stake)))
             .sort((a, b) => Number(a.stake) - Number(b.stake));
@@ -148,7 +155,55 @@ export default function GameScreen() {
         .gs-btn:active { transform: scale(0.97); }
       `}</style>
 
-      {/* Header */}
+      {/* Top header — logo + balance */}
+      <div style={{
+        padding: '12px 18px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'rgba(8,22,14,0.97)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(14px)',
+      }}>
+        {/* Logo + name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 13,
+            background: 'linear-gradient(145deg, #ffe072, #d99c22)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 900, fontSize: 15, color: '#0a0e1a',
+            boxShadow: '0 4px 16px rgba(231,176,39,0.3)',
+            flexShrink: 0,
+          }}>FB</div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: '#f1f5f9', letterSpacing: 0.2 }}>Fidel Bingo</div>
+            <div style={{ fontSize: 8, color: '#d9b950', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800, marginTop: 1 }}>Live Bingo</div>
+          </div>
+        </div>
+
+        {/* Balance pill */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12, padding: '7px 12px', gap: 3,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.08em' }}>MAIN</span>
+            <span style={{ fontSize: 12, fontWeight: 900, color: '#fcd34d' }}>
+              {mainBalance === null ? '…' : `${Number(mainBalance).toFixed(2)}`}
+              <span style={{ fontSize: 9, color: '#a08030', marginLeft: 2 }}>ETB</span>
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.08em' }}>PLAY</span>
+            <span style={{ fontSize: 12, fontWeight: 900, color: '#63d4ba' }}>
+              {playBalance === null ? '…' : `${Number(playBalance).toFixed(2)}`}
+              <span style={{ fontSize: 9, color: '#2d8a72', marginLeft: 2 }}>ETB</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Section title header */}
       <div style={{
         padding: '14px 18px 12px',
         display: 'flex', alignItems: 'center', gap: 10,
