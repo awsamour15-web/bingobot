@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import { getDailySpinStatus, claimDailySpin, type SpinPrize } from '../lib/api';
+import { initAuth } from '../lib/auth';
 
 const C = {
   bg:      'rgba(0,0,0,0.88)',
@@ -101,7 +102,8 @@ export default function DailySpinModal({ onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    getDailySpinStatus()
+    initAuth()
+      .then(() => getDailySpinStatus())
       .then(status => {
         if (!status.canSpin) { onClose(); return; }
         setPrize(status.prize);
