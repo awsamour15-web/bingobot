@@ -210,31 +210,40 @@ if (process.env['RENDER_EXTERNAL_URL'] && bot) {
   const webhookPath = '/telegram-webhook';
   let botReady = false;
 
+  // Queue updates received before bot is initialized so they aren't dropped
+  const pendingUpdates: object[] = [];
+
   app.post(webhookPath, express.json(), (req, res) => {
+    // Always ack immediately — Telegram will retry if we return non-200
+    res.sendStatus(200);
     if (!botReady) {
-      res.sendStatus(503);
+      pendingUpdates.push(req.body);
       return;
     }
-    bot!.handleUpdate(req.body)
-      .then(() => res.sendStatus(200))
-      .catch((err) => {
-        console.error('[Bot] Webhook handler error:', err);
-        res.sendStatus(200);
-      });
+    bot!.handleUpdate(req.body).catch((err) => {
+      console.error('[Bot] Webhook handler error:', err);
+    });
   });
 
-  setTimeout(async () => {
+  // Initialize bot and register webhook immediately (no artificial delay)
+  void (async () => {
     try {
       await bot!.init();
       botReady = true;
       const fullUrl = `${process.env['RENDER_EXTERNAL_URL']}${webhookPath}`;
-      await bot!.api.setWebhook(fullUrl, { drop_pending_updates: true });
+      await bot!.api.setWebhook(fullUrl, { drop_pending_updates: false });
       const info = await bot!.api.getMe();
       console.log(`[Bot] 🎉 Webhook set: ${fullUrl} as @${info.username}`);
+      // Drain any updates that arrived during init
+      for (const update of pendingUpdates.splice(0)) {
+        bot!.handleUpdate(update as Parameters<typeof bot.handleUpdate>[0]).catch((err) => {
+          console.error('[Bot] Queued update handler error:', err);
+        });
+      }
     } catch (err: any) {
       console.error('[Bot] ❌ Failed to set webhook:', err?.description || err);
     }
-  }, 3_000);
+  })();
 }
 
 // ─── 404 Handler (must be after all routes) ──────────────────────────────────
@@ -427,7 +436,7 @@ if (bot && !process.env['RENDER_EXTERNAL_URL']) {
     }
   }
 
-  setTimeout(() => startPolling(), 3_000);
+  void startPolling();
 }
 
 export default app;

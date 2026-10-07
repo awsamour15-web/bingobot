@@ -46,7 +46,7 @@ export class NumberCallingEngine {
   readonly activeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   /** Per-round in-memory set of called numbers — avoids re-querying DB on every tick */
-  private readonly calledSets = new Map<string, Set<number>>();
+  readonly calledSets = new Map<string, Set<number>>();
 
   /** Per-round cached round entries — fetched once at start, cleared when round ends */
   private readonly entriesCache = new Map<string, Array<{ player_id: string; cartela_number: number }>>();

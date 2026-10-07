@@ -334,28 +334,52 @@ export const WinDetectionService = {
       return { valid: false, reason: 'CARTELA_NOT_FOUND' };
     }
 
-    // 4. Fetch called numbers
-    const calledRows = await prisma.calledNumber.findMany({
-      where: { round_id: roundId },
-      orderBy: { sequence_index: 'asc' },
-    });
-    const calledSet = new Set(calledRows.map((c) => c.number));
-    console.log(`[WinDetection] Checking player=${playerId} round=${roundId} cartelas=${cartelaNumbers} calledCount=${calledSet.size}`);
+    // 4. Fetch called numbers — prefer NCE's in-memory set to avoid a race where
+    //    the client receives a number via WebSocket and immediately claims before
+    //    the DB write for that number has been seen by a subsequent query.
+    const nceCalledSet = nce.calledSets.get(roundId);
+    let calledSet: Set<number>;
+    if (nceCalledSet && nceCalledSet.size > 0) {
+      calledSet = nceCalledSet;
+    } else {
+      const calledRows = await prisma.calledNumber.findMany({
+        where: { round_id: roundId },
+        orderBy: { sequence_index: 'asc' },
+      });
+      calledSet = new Set(calledRows.map((c) => c.number));
+    }
+    console.log(`[WinDetection] Checking player=${playerId} round=${roundId} cartelas=${cartelaNumbers} calledCount=${calledSet.size} source=${nceCalledSet ? 'nce-memory' : 'db'}`);
 
     // 5. Check win using the round's actual winning_pattern
     const patterns = parseWinPatterns(round.winning_pattern ?? 'any_line');
-    let winningCartelaNumber: number | null = null;
-    for (const cartela of cartelas) {
-      const grid = (cartela.grid as unknown[]).map((v, i) =>
-        i === 12 ? 0 : typeof v === 'number' ? v : 0,
-      );
-      const result = checkWin(grid, calledSet, patterns);
-      console.log(`[WinDetection] cartela=${cartela.cartela_number} patterns=${JSON.stringify(patterns)} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
-      if (result.won) {
-        winningCartelaNumber = cartela.cartela_number;
-        break;
+
+    const findWinningCartela = (called: Set<number>): number | null => {
+      for (const cartela of cartelas) {
+        const grid = (cartela.grid as unknown[]).map((v, i) =>
+          i === 12 ? 0 : typeof v === 'number' ? v : 0,
+        );
+        const result = checkWin(grid, called, patterns);
+        console.log(`[WinDetection] cartela=${cartela.cartela_number} patterns=${JSON.stringify(patterns)} won=${result.won} winLine=${JSON.stringify(result.winningLine)}`);
+        if (result.won) return cartela.cartela_number;
       }
+      return null;
+    };
+
+    let winningCartelaNumber = findWinningCartela(calledSet);
+
+    // Retry once with a fresh DB fetch if initial check failed and we used the in-memory set.
+    // Guards against a narrow window where NCE stopped (cleared its cache) between the
+    // claim arriving and this validation running.
+    if (!winningCartelaNumber && nceCalledSet) {
+      const calledRows = await prisma.calledNumber.findMany({
+        where: { round_id: roundId },
+        orderBy: { sequence_index: 'asc' },
+      });
+      const dbCalledSet = new Set(calledRows.map((c) => c.number));
+      console.log(`[WinDetection] Retrying with DB calledCount=${dbCalledSet.size} player=${playerId}`);
+      winningCartelaNumber = findWinningCartela(dbCalledSet);
     }
+
     if (!winningCartelaNumber) {
       return { valid: false, reason: 'NO_WINNING_LINE' };
     }
