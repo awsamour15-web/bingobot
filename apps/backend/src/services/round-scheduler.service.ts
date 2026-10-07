@@ -186,6 +186,8 @@ export const RoundScheduler = {
               data: { status: GameStatus.void, ended_at: new Date() },
             });
             console.log(`[Scheduler] Voided empty round ${round.id} (0 players, 0 reservations)`);
+            // Immediately create a replacement so the stake doesn't disappear from the lobby
+            void RoundScheduler.ensureRoundsExist();
           } catch (err) {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }

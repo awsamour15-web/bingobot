@@ -48,18 +48,37 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     ? Math.min(activeCartelaCount, TOTAL_CARTELAS)
     : TOTAL_CARTELAS;
 
-  const items: RoundListItem[] = rounds.map((r) => ({
-    id: r.id,
-    stake: Number(r.stake),
-    status: r.status,
-    player_count: r._count.round_entries,
-    max_players: r.max_players,
-    active_cartela_count: cappedCartelaCount,
-    derash: Number(r.derash),
-    start_time: r.start_time.toISOString(),
-    winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
-    jackpot_enabled: jackpotStakes.includes(Number(r.stake)),
-  }));
+  // Deduplicate: per stake, prefer the active round over pending, and the
+  // most-recently-started round if there are multiple actives (shouldn't happen
+  // normally, but guards against the brief scheduler race window).
+  const bestByStake = new Map<number, typeof rounds[number]>();
+  for (const r of rounds) {
+    const stakeNum = Number(r.stake);
+    const existing = bestByStake.get(stakeNum);
+    if (!existing) {
+      bestByStake.set(stakeNum, r);
+    } else {
+      const rankStatus = (s: string) => s === 'active' ? 1 : 0;
+      if (rankStatus(r.status) > rankStatus(existing.status)) {
+        bestByStake.set(stakeNum, r);
+      }
+    }
+  }
+
+  const items: RoundListItem[] = [...bestByStake.values()]
+    .sort((a, b) => Number(a.stake) - Number(b.stake))
+    .map((r) => ({
+      id: r.id,
+      stake: Number(r.stake),
+      status: r.status,
+      player_count: r._count.round_entries,
+      max_players: r.max_players,
+      active_cartela_count: cappedCartelaCount,
+      derash: Number(r.derash),
+      start_time: r.start_time.toISOString(),
+      winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
+      jackpot_enabled: jackpotStakes.includes(Number(r.stake)),
+    }));
 
   // Short cache — stale-while-revalidate lets the client show instantly on revisit
   res.setHeader('Cache-Control', 'public, max-age=3, stale-while-revalidate=10');
