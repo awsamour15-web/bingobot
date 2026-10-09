@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import WebApp from '@twa-dev/sdk';
 import { initAuth, getJwt } from '../lib/auth';
-import { getRounds, getSystemStats, getProfile } from '../lib/api';
+import { getRounds, getSystemStats, getProfile, getReferralLink } from '../lib/api';
 import { socket } from '../lib/socket';
-import type { RoundListItem } from '@fidel/shared';
+import type { RoundListItem, RoundWonPayload } from '@fidel/shared';
 
 const ALLOWED_STAKES = [10, 20, 50, 100, 500];
 
@@ -22,6 +23,15 @@ function stakeAccent(stake: number): string {
   return '#60a5fa';
 }
 
+interface WinnerTick {
+  id: number;
+  username: string;
+  amount: number;
+  stake: number;
+}
+
+let tickId = 0;
+
 export default function GameScreen() {
   const navigate = useNavigate();
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
@@ -32,10 +42,32 @@ export default function GameScreen() {
   const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
   const [mainBalance, setMainBalance] = useState<number | null>(null);
   const [playBalance, setPlayBalance] = useState<number | null>(null);
+  const [winnerTicks, setWinnerTicks] = useState<WinnerTick[]>([]);
+  const [referralLink, setReferralLink] = useState<string | null>(null);
+  const [copyDone, setCopyDone] = useState(false);
+  const tickerRef = useRef<HTMLDivElement>(null);
 
   const updateCount = useCallback((roundId: string, count: number) => {
     setLiveCounts(prev => ({ ...prev, [roundId]: count }));
   }, []);
+
+  // Fetch referral link once on mount
+  useEffect(() => {
+    getReferralLink().then(r => setReferralLink(r.referralLink)).catch(() => {});
+  }, []);
+
+  // Listen for ROUND_WON to power the winners ticker
+  useEffect(() => {
+    function onRoundWon(payload: RoundWonPayload) {
+      const stake = rounds.find(r => r.status === 'active')?.stake ?? 0;
+      payload.winners.slice(0, 2).forEach(w => {
+        const tick: WinnerTick = { id: ++tickId, username: w.username, amount: w.amount, stake: Number(stake) };
+        setWinnerTicks(prev => [tick, ...prev].slice(0, 6));
+      });
+    }
+    socket.on('ROUND_WON', onRoundWon);
+    return () => { socket.off('ROUND_WON', onRoundWon); };
+  }, [rounds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +184,9 @@ export default function GameScreen() {
       <style>{`
         @keyframes gsPulse { 0%,100%{opacity:.7;transform:scale(1)} 50%{opacity:1;transform:scale(1.18)} }
         @keyframes gsShimmer { from{transform:translateX(-120%) skewX(-15deg)} to{transform:translateX(220%) skewX(-15deg)} }
+        @keyframes gsTickIn { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
         .gs-btn:active { transform: scale(0.97); }
+        .gs-refer-btn:active { transform: scale(0.97); opacity: 0.85; }
       `}</style>
 
       {/* Top header — logo + balance */}
@@ -222,6 +256,79 @@ export default function GameScreen() {
           </div>
         )}
       </div>
+
+      {/* Winners ticker */}
+      {winnerTicks.length > 0 && (
+        <div ref={tickerRef} style={{
+          padding: '6px 14px',
+          background: 'rgba(6,18,10,0.9)',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          {winnerTicks.slice(0, 3).map((t, i) => (
+            <div key={t.id} style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              animation: i === 0 ? 'gsTickIn 0.35s ease' : 'none',
+              opacity: 1 - i * 0.25,
+            }}>
+              <span style={{ fontSize: 13 }}>🎉</span>
+              <span style={{ fontSize: 11, color: '#fcd34d', fontWeight: 800 }}>{t.username}</span>
+              <span style={{ fontSize: 10, color: '#6b8f72' }}>won</span>
+              <span style={{ fontSize: 11, color: '#34d399', fontWeight: 800 }}>{fmt(t.amount)} ETB</span>
+              <span style={{ fontSize: 9, color: '#4a6b52', marginLeft: 'auto' }}>{t.stake} ብር game</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Referral banner */}
+      {referralLink && (
+        <div style={{
+          margin: '12px 14px 0',
+          background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(245,158,11,0.12) 100%)',
+          border: '1px solid rgba(124,58,237,0.3)',
+          borderRadius: 14,
+          padding: '12px 14px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ fontSize: 28, flexShrink: 0 }}>🎁</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#f1f5f9', lineHeight: 1.2 }}>Invite friends, earn bonus!</div>
+            <div style={{ fontSize: 10, color: '#7c8fa3', marginTop: 3 }}>Share your link — get rewarded when they play</div>
+          </div>
+          <button
+            className="gs-refer-btn"
+            onClick={() => {
+              if (copyDone) return;
+              // Try native Telegram share first, fallback to clipboard
+              if (WebApp.openTelegramLink) {
+                const shareText = encodeURIComponent('Join me on Fidel Bingo! 🎱 Play live bingo and win real ETB.\n');
+                WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`);
+              } else {
+                navigator.clipboard.writeText(referralLink).catch(() => {});
+              }
+              setCopyDone(true);
+              setTimeout(() => setCopyDone(false), 3000);
+            }}
+            style={{
+              flexShrink: 0,
+              padding: '9px 14px',
+              borderRadius: 10,
+              border: 'none',
+              background: copyDone
+                ? 'rgba(52,211,153,0.2)'
+                : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+              color: copyDone ? '#34d399' : '#fff',
+              fontWeight: 800, fontSize: 11, cursor: 'pointer',
+              letterSpacing: '0.04em',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {copyDone ? '✓ Shared!' : '📤 Invite'}
+          </button>
+        </div>
+      )}
 
       {/* Body */}
       <div style={{ padding: '18px 14px 0' }}>

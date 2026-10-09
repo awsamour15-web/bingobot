@@ -709,50 +709,66 @@ router.get('/available-coupons', async (req: Request, res: Response): Promise<vo
 });
 
 // ─── Daily Spin ───────────────────────────────────────────────────────────────
-// Fixed prize for all players, amount set by admin via Config key "daily_spin_amount".
+// RTP-based prize wheel. Target RTP ≈ 80%.
+// 80% of spins land on 5 or 10 ETB; remaining 20% hit higher prizes.
+// Prize is determined server-side to prevent manipulation.
 // One spin per calendar day (UTC+3). Claims tracked in SystemSetting "daily_spin_claims".
 
-const DEFAULT_SPIN_AMOUNT = 5;
+// Prize table: { amount, weight }
+// Total weight = 100. Expected value = Σ(amount × weight/100) ≈ 8 ETB → RTP ~80% on a 10 ETB cost basis.
+const SPIN_PRIZE_TABLE = [
+  { amount: 5,   weight: 45 }, // 45% chance
+  { amount: 10,  weight: 35 }, // 35% chance  → combined 80% on 5+10
+  { amount: 15,  weight: 8  }, // 8%
+  { amount: 20,  weight: 6  }, // 6%
+  { amount: 30,  weight: 4  }, // 4%
+  { amount: 50,  weight: 2  }, // 2%
+] as const;
 
-async function getSpinAmount(): Promise<number> {
-  const cfg = await prisma.config.findUnique({ where: { key: 'daily_spin_amount' } });
-  const n = cfg ? parseFloat(cfg.value) : NaN;
-  return isNaN(n) || n <= 0 ? DEFAULT_SPIN_AMOUNT : n;
+// Total weight must equal 100
+const TOTAL_WEIGHT = SPIN_PRIZE_TABLE.reduce((s, p) => s + p.weight, 0); // 100
+
+function pickSpinPrize(): number {
+  const rand = Math.random() * TOTAL_WEIGHT;
+  let cumulative = 0;
+  for (const p of SPIN_PRIZE_TABLE) {
+    cumulative += p.weight;
+    if (rand < cumulative) return p.amount;
+  }
+  return SPIN_PRIZE_TABLE[0].amount; // fallback
 }
 
 function getTodayUtc3(): string {
   return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-// GET /api/wallet/daily-spin/status — can the player spin today, and what's the prize?
+// GET /api/wallet/daily-spin/status — can the player spin today?
 router.get('/daily-spin/status', async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player!.playerId;
   const today = getTodayUtc3();
 
-  const [setting, amount] = await Promise.all([
-    prisma.systemSetting.findUnique({ where: { key: 'daily_spin_claims' } }),
-    getSpinAmount(),
-  ]);
+  const setting = await prisma.systemSetting.findUnique({ where: { key: 'daily_spin_claims' } });
 
   let claims: Record<string, string> = {};
   try { claims = setting?.value ? JSON.parse(setting.value) : {}; } catch { /* empty */ }
 
+  // Return the prize table so the frontend can display all possible prizes on the wheel
+  const canSpin = claims[playerId] !== today;
   res.json({
-    canSpin: claims[playerId] !== today,
+    canSpin,
     lastSpinDate: claims[playerId] ?? null,
-    prize: { label: `${amount} ETB`, amount },
+    // Dummy prize for status — actual prize is decided at claim time
+    prize: { label: '?', amount: 0 },
+    prizeTable: SPIN_PRIZE_TABLE.map(p => ({ amount: p.amount, weight: p.weight })),
   });
 });
 
-// POST /api/wallet/daily-spin/claim — award the fixed prize once per day
+// POST /api/wallet/daily-spin/claim — pick prize via RTP, credit, and record claim
 router.post('/daily-spin/claim', async (req: Request, res: Response): Promise<void> => {
   const playerId = req.player!.playerId;
   const today = getTodayUtc3();
 
-  const [setting, amount] = await Promise.all([
-    prisma.systemSetting.findUnique({ where: { key: 'daily_spin_claims' } }),
-    getSpinAmount(),
-  ]);
+  const setting = await prisma.systemSetting.findUnique({ where: { key: 'daily_spin_claims' } });
 
   let claims: Record<string, string> = {};
   try { claims = setting?.value ? JSON.parse(setting.value) : {}; } catch { /* empty */ }
@@ -762,6 +778,9 @@ router.post('/daily-spin/claim', async (req: Request, res: Response): Promise<vo
     return;
   }
 
+  // Server-side RTP prize selection
+  const amount = pickSpinPrize();
+
   try {
     await WalletService.credit(
       playerId,
@@ -769,7 +788,7 @@ router.post('/daily-spin/claim', async (req: Request, res: Response): Promise<vo
       amount,
       TxType.bonus,
       undefined,
-      `DAILY_SPIN — ${today}`,
+      `DAILY_SPIN — ${today} — ${amount} ETB`,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Credit failed';

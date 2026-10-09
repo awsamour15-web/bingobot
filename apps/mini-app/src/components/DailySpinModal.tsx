@@ -134,6 +134,21 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
+// Compute seconds until midnight UTC+3 (next spin reset)
+function secsUntilNextSpin(): number {
+  const now = new Date();
+  const utc3 = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  const midnight = new Date(Date.UTC(utc3.getUTCFullYear(), utc3.getUTCMonth(), utc3.getUTCDate() + 1));
+  return Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
+}
+
+function formatCountdown(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 interface Props { onClose: () => void }
 
@@ -142,7 +157,8 @@ export default function DailySpinModal({ onClose }: Props) {
   const animRef   = useRef<number>(0);
   const angleRef  = useRef<number>(0);
 
-  const [phase, setPhase]   = useState<'loading' | 'idle' | 'spinning' | 'result' | 'error'>('loading');
+  const [phase, setPhase]   = useState<'loading' | 'idle' | 'spinning' | 'result' | 'cooldown' | 'error'>('loading');
+  const [countdown, setCountdown] = useState(0);
   const [result, setResult] = useState<SpinPrize | null>(null);
   const [error, setError]   = useState('');
 
@@ -157,7 +173,11 @@ export default function DailySpinModal({ onClose }: Props) {
     initAuth()
       .then(() => getDailySpinStatus())
       .then(s => {
-        if (!s.canSpin) { onClose(); return; }
+        if (!s.canSpin) {
+          setCountdown(secsUntilNextSpin());
+          setPhase('cooldown');
+          return;
+        }
         setPhase('idle');
       })
       .catch((e: unknown) => {
@@ -166,7 +186,15 @@ export default function DailySpinModal({ onClose }: Props) {
         setError(msg || 'Could not load spin. Try again later.');
         setPhase('error');
       });
-  }, [onClose]);
+  }, []);
+
+  // Tick the countdown down every second
+  useEffect(() => {
+    if (phase !== 'cooldown') return;
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [phase, countdown]);
 
   useEffect(() => { loadSpin(); }, [loadSpin]);
   useLayoutEffect(() => { redraw(angleRef.current); }, [redraw]);
@@ -339,6 +367,33 @@ export default function DailySpinModal({ onClose }: Props) {
                 boxShadow: '0 4px 16px rgba(245,158,11,0.35)',
               }}>
                 Let's play! 🎱
+              </button>
+            </div>
+          )}
+
+          {phase === 'cooldown' && (
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: '100%', borderRadius: 16, padding: '18px 20px', textAlign: 'center',
+                background: 'rgba(245,158,11,0.06)',
+                border: '1.5px solid rgba(245,158,11,0.2)',
+              }}>
+                <div style={{ fontSize: 36, lineHeight: 1 }}>⏳</div>
+                <div style={{ color: C.muted, fontSize: 12, marginTop: 8, fontWeight: 600, letterSpacing: '0.06em' }}>NEXT FREE SPIN IN</div>
+                <div style={{
+                  color: C.amber, fontWeight: 900, fontSize: 34, lineHeight: 1.1,
+                  fontFamily: '"Space Grotesk", monospace', marginTop: 6, letterSpacing: '0.04em',
+                }}>
+                  {formatCountdown(countdown)}
+                </div>
+                <div style={{ color: C.muted, fontSize: 10, marginTop: 6 }}>Resets daily at midnight (UTC+3)</div>
+              </div>
+              <button onClick={onClose} style={{
+                width: '100%', padding: '13px 0', borderRadius: 14,
+                border: `1px solid ${C.border}`, background: 'transparent',
+                color: C.muted, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              }}>
+                Close
               </button>
             </div>
           )}
