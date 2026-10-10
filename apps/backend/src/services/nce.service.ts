@@ -4,7 +4,7 @@
 import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { getConfigInt } from '../lib/config-cache.js';
-import { shuffle } from '../lib/shuffle.js';
+import { shuffle, seededShuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';
 import { parseWinPatterns } from './win-detection.service.js';
 
@@ -158,11 +158,15 @@ export class NumberCallingEngine {
       this.calledSets.set(roundId, new Set<number>());
     } else {
       // Resume — reconstruct sequence from what was already called,
-      // then append a fresh shuffle of the remaining numbers
+      // then append a deterministic seeded shuffle of the remaining numbers.
+      // Using the round ID as seed ensures every instance resuming this round
+      // generates the exact same continuation — eliminating (round_id, number)
+      // unique constraint conflicts and missed number broadcasts on rolling deploys.
       const calledNums = existingCalled.map((c) => c.number);
       const calledSet = new Set(calledNums);
-      const remaining = shuffle(
+      const remaining = seededShuffle(
         Array.from({ length: 75 }, (_, i) => i + 1).filter((n) => !calledSet.has(n)),
+        roundId,
       );
       sequence = [...calledNums, ...remaining];
       sequenceIndex = existingCalled.length; // resume from next uncalled slot
