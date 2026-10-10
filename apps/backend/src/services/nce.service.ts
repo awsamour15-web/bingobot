@@ -211,8 +211,7 @@ export class NumberCallingEngine {
         if (alreadyCalled) {
           console.log(`[NCE] Slot index=${sequenceIndex} number=${number} already in calledSet for round=${roundId} — skipping broadcast, checking win`);
           sequenceIndex += 1;
-          const inMemSet = this.calledSets.get(roundId);
-          const stopped = await this.detectAndHandleWin(roundId, inMemSet);
+          const stopped = await this.detectAndHandleWin(roundId);
           if (stopped) { this.activeTimers.delete(roundId); return; }
           const nextInterval = await this.readCallInterval();
           const handle = setTimeout(() => { void callNext(); }, nextInterval);
@@ -261,8 +260,7 @@ export class NumberCallingEngine {
         sequenceIndex += 1;
 
         // ── Server-side win detection — inline, no claim window delay ─────
-        const inMemoryCalledSet = this.calledSets.get(roundId);
-        const stopped = await this.detectAndHandleWin(roundId, inMemoryCalledSet);
+        const stopped = await this.detectAndHandleWin(roundId);
         if (stopped) {
           this.activeTimers.delete(roundId);
           return;
@@ -353,7 +351,7 @@ export class NumberCallingEngine {
    * Checks every active entry's cartela, distributes winnings directly if found.
    * Returns true if a winner was found (NCE should stop).
    */
-  private async detectAndHandleWin(roundId: string, inMemoryCalledSet?: Set<number>): Promise<boolean> {
+  private async detectAndHandleWin(roundId: string): Promise<boolean> {
     // Re-entry guard: if we're already in the process of distributing winnings, bail out.
     // NOTE: we do NOT lock here speculatively — we only add to stoppingRounds once a winner
     // is confirmed, so concurrent callNext ticks are not incorrectly halted during detection.
@@ -373,18 +371,14 @@ export class NumberCallingEngine {
       // Use the round's actual winning_pattern instead of hardcoding any_line
       const pattern: WinPattern[] = parseWinPatterns(roundStatus.winning_pattern ?? 'any_line') as WinPattern[];
 
-      // Prefer in-memory calledSet (updated by callNext each tick) to avoid a DB query.
-      // Fall back to DB query only for resume/recovery paths where the set isn't populated.
-      let calledSet: Set<number>;
-      if (inMemoryCalledSet && inMemoryCalledSet.size > 0) {
-        calledSet = inMemoryCalledSet;
-      } else {
-        const calledRows = await prisma.calledNumber.findMany({
-          where: { round_id: roundId },
-          select: { number: true },
-        });
-        calledSet = new Set(calledRows.map((r) => r.number));
-      }
+      // Always fetch called numbers from DB for win detection.
+      // The in-memory calledSet can be stale or inflated during dual-instance
+      // overlap (rolling redeployments), causing false-positive win detection.
+      const calledRows = await prisma.calledNumber.findMany({
+        where: { round_id: roundId },
+        select: { number: true },
+      });
+      const calledSet = new Set(calledRows.map((r) => r.number));
 
       // Always fetch fresh entries — players can join after the round starts,
       // and a stale cache would cause their wins to be missed entirely.
