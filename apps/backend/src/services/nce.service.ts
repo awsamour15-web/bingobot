@@ -205,11 +205,15 @@ export class NumberCallingEngine {
         }
 
         // Guard against concurrent loops calling the same slot (e.g. after resume race).
-        // If this slot is already in the DB, skip ahead without re-broadcasting.
+        // If this slot is already in the calledSet, skip the broadcast but still run
+        // win detection — the winning number may have been the one already persisted.
         const alreadyCalled = this.calledSets.get(roundId)?.has(number);
         if (alreadyCalled) {
-          console.log(`[NCE] Slot index=${sequenceIndex} number=${number} already in calledSet for round=${roundId} — skipping`);
+          console.log(`[NCE] Slot index=${sequenceIndex} number=${number} already in calledSet for round=${roundId} — skipping broadcast, checking win`);
           sequenceIndex += 1;
+          const inMemSet = this.calledSets.get(roundId);
+          const stopped = await this.detectAndHandleWin(roundId, inMemSet);
+          if (stopped) { this.activeTimers.delete(roundId); return; }
           const nextInterval = await this.readCallInterval();
           const handle = setTimeout(() => { void callNext(); }, nextInterval);
           this.activeTimers.set(roundId, handle);
@@ -382,16 +386,14 @@ export class NumberCallingEngine {
         calledSet = new Set(calledRows.map((r) => r.number));
       }
 
-      // Prefer cached entries — round entries don't change after the round starts.
-      // Re-query only if cache is missing (first call or after a stop/clear).
-      let entries = this.entriesCache.get(roundId);
-      if (!entries) {
-        entries = await prisma.roundEntry.findMany({
-          where: { round_id: roundId, is_watching: false },
-          select: { player_id: true, cartela_number: true },
-        });
-        if (entries.length > 0) this.entriesCache.set(roundId, entries);
-      }
+      // Always fetch fresh entries — players can join after the round starts,
+      // and a stale cache would cause their wins to be missed entirely.
+      const entries = await prisma.roundEntry.findMany({
+        where: { round_id: roundId, is_watching: false },
+        select: { player_id: true, cartela_number: true },
+      });
+      // Keep entriesCache in sync for any external callers that read it
+      if (entries.length > 0) this.entriesCache.set(roundId, entries);
       if (!entries.length) {
         return false;
       }
