@@ -216,11 +216,11 @@ export class NumberCallingEngine {
           return;
         }
 
-        // Persist to DB — upsert is idempotent against duplicate (round_id, sequence_index).
-        // Under concurrent load Prisma's upsert is not truly atomic (SELECT then INSERT),
-        // so a P2002 unique constraint error on either (round_id, sequence_index) or
-        // (round_id, number) means the record was already written by a concurrent caller —
-        // treat it as success and continue.
+        // Persist to DB — upsert is idempotent against (round_id, sequence_index).
+        // Under concurrent load (e.g. two instances during a rolling redeploy) Prisma's
+        // upsert is not atomic, so a P2002 means another instance already wrote AND
+        // broadcast this number. In that case skip the broadcast entirely and just advance.
+        let alreadyPersistedByConcurrentInstance = false;
         try {
           await prisma.calledNumber.upsert({
             where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
@@ -229,9 +229,9 @@ export class NumberCallingEngine {
           });
         } catch (upsertErr: any) {
           if (upsertErr?.code === 'P2002') {
-            // Concurrent call already inserted this record — not an error regardless of which
-            // unique constraint fired (sequence_index or number)
-            console.log(`[NCE] Duplicate upsert for round=${roundId} index=${sequenceIndex} number=${number} — ignoring P2002`);
+            // Another instance already inserted this — skip broadcast to avoid duplicates
+            console.log(`[NCE] Duplicate upsert for round=${roundId} index=${sequenceIndex} number=${number} — skipping broadcast`);
+            alreadyPersistedByConcurrentInstance = true;
           } else {
             throw upsertErr;
           }
@@ -241,15 +241,17 @@ export class NumberCallingEngine {
         if (!this.calledSets.has(roundId)) this.calledSets.set(roundId, new Set<number>());
         this.calledSets.get(roundId)!.add(number);
 
-        const payload: NumberCalledPayload = { number, sequenceIndex };
+        if (!alreadyPersistedByConcurrentInstance) {
+          const payload: NumberCalledPayload = { number, sequenceIndex };
 
-        // Fan-out to WebSocket layer
-        if (this.onNumberCalled) {
-          await this.onNumberCalled(roundId, payload);
+          // Fan-out to WebSocket layer
+          if (this.onNumberCalled) {
+            await this.onNumberCalled(roundId, payload);
+          }
+
+          // Guard: stop may have been triggered while awaiting onNumberCalled
+          if (!this.activeTimers.has(roundId) || this.stoppingRounds.has(roundId)) return;
         }
-
-        // Guard: stop may have been triggered while awaiting onNumberCalled
-        if (!this.activeTimers.has(roundId) || this.stoppingRounds.has(roundId)) return;
 
         consecutiveErrors = 0;
         sequenceIndex += 1;
