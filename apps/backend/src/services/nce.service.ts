@@ -204,12 +204,38 @@ export class NumberCallingEngine {
           return;
         }
 
-        // Persist to DB — upsert is idempotent against duplicate (round_id, sequence_index)
-        await prisma.calledNumber.upsert({
-          where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
-          update: {},
-          create: { round_id: roundId, number, sequence_index: sequenceIndex },
-        });
+        // Guard against concurrent loops calling the same slot (e.g. after resume race).
+        // If this slot is already in the DB, skip ahead without re-broadcasting.
+        const alreadyCalled = this.calledSets.get(roundId)?.has(number);
+        if (alreadyCalled) {
+          console.log(`[NCE] Slot index=${sequenceIndex} number=${number} already in calledSet for round=${roundId} — skipping`);
+          sequenceIndex += 1;
+          const nextInterval = await this.readCallInterval();
+          const handle = setTimeout(() => { void callNext(); }, nextInterval);
+          this.activeTimers.set(roundId, handle);
+          return;
+        }
+
+        // Persist to DB — upsert is idempotent against duplicate (round_id, sequence_index).
+        // Under concurrent load Prisma's upsert is not truly atomic (SELECT then INSERT),
+        // so a P2002 unique constraint error on either (round_id, sequence_index) or
+        // (round_id, number) means the record was already written by a concurrent caller —
+        // treat it as success and continue.
+        try {
+          await prisma.calledNumber.upsert({
+            where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
+            update: {},
+            create: { round_id: roundId, number, sequence_index: sequenceIndex },
+          });
+        } catch (upsertErr: any) {
+          if (upsertErr?.code === 'P2002') {
+            // Concurrent call already inserted this record — not an error regardless of which
+            // unique constraint fired (sequence_index or number)
+            console.log(`[NCE] Duplicate upsert for round=${roundId} index=${sequenceIndex} number=${number} — ignoring P2002`);
+          } else {
+            throw upsertErr;
+          }
+        }
 
         // Update in-memory calledSet so detectAndHandleWin doesn't re-query DB
         if (!this.calledSets.has(roundId)) this.calledSets.set(roundId, new Set<number>());
@@ -322,10 +348,10 @@ export class NumberCallingEngine {
    * Returns true if a winner was found (NCE should stop).
    */
   private async detectAndHandleWin(roundId: string, inMemoryCalledSet?: Set<number>): Promise<boolean> {
-    // Re-entry guard: if we're already stopping/distributing for this round, bail out
+    // Re-entry guard: if we're already in the process of distributing winnings, bail out.
+    // NOTE: we do NOT lock here speculatively — we only add to stoppingRounds once a winner
+    // is confirmed, so concurrent callNext ticks are not incorrectly halted during detection.
     if (this.stoppingRounds.has(roundId)) return true;
-    // Lock immediately — before any await — so concurrent callNext ticks bail out
-    this.stoppingRounds.add(roundId);
 
     try {
       // Fast pre-check: skip all detection work if the round is no longer active
@@ -335,7 +361,6 @@ export class NumberCallingEngine {
       });
       if (!roundStatus || roundStatus.status !== 'active') {
         console.log(`[NCE] detectAndHandleWin skipped — round ${roundId} status=${roundStatus?.status}`);
-        this.stoppingRounds.delete(roundId);
         return roundStatus?.status !== 'active';
       }
 
@@ -366,7 +391,6 @@ export class NumberCallingEngine {
         if (entries.length > 0) this.entriesCache.set(roundId, entries);
       }
       if (!entries.length) {
-        this.stoppingRounds.delete(roundId);
         return false;
       }
 
@@ -410,13 +434,17 @@ export class NumberCallingEngine {
       }
 
       if (winnerMap.size === 0) {
-        this.stoppingRounds.delete(roundId); // no winner — release lock
         return false;
       }
 
       console.log(`[NCE] Win detected round=${roundId} winners=${winnerMap.size} — distributing immediately`);
 
-      // stoppingRounds already set at top of function — stop the timer now
+      // Lock NOW that we have confirmed winners — prevents concurrent ticks from
+      // also entering distribution. Use a double-check in case another tick raced here.
+      if (this.stoppingRounds.has(roundId)) return true;
+      this.stoppingRounds.add(roundId);
+
+      // Stop the number-calling timer now
       this.stop(roundId);
 
       try {
@@ -446,7 +474,8 @@ export class NumberCallingEngine {
       return true;
     } catch (err) {
       console.error(`[NCE] detectAndHandleWin error round=${roundId}:`, err);
-      this.stoppingRounds.delete(roundId); // always release lock on error
+      // Only release the lock if we had set it (i.e. winners were confirmed before the error)
+      this.stoppingRounds.delete(roundId);
       return false;
     }
   }
