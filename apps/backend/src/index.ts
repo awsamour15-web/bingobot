@@ -405,8 +405,8 @@ httpServer.listen(PORT, HOST, () => {
   PromotionScheduler.start();
   // Start coupon announcement scheduler
   CouponScheduler.start();
-  // Start automatic database backup (every 5 hours)
-  BackupService.start();
+  // Automatic database backup disabled
+  // BackupService.start();
 });
 
 // ─── Telegram Bot — polling for local dev (webhook handled above for production) ───
