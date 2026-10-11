@@ -38,6 +38,7 @@ setInterval(async () => {
 
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
+  _tickRunning: false,
 
   /** Optional callback invoked after ensureRoundsExist creates new pending rounds */
   _onRoundsReplenished: undefined as (() => void) | undefined,
@@ -84,13 +85,19 @@ export const RoundScheduler = {
   _tickCount: 0,
 
   async tick(): Promise<void> {
-    RoundScheduler._tickCount++;
-    await RoundScheduler.expireEmptyRounds();
-    // Only run heavy recovery checks every 6 ticks (~30s) to reduce DB pressure
-    if (RoundScheduler._tickCount % 6 === 0) {
-      await RoundScheduler.recoverStaleActiveRounds();
+    if (RoundScheduler._tickRunning) return;
+    RoundScheduler._tickRunning = true;
+    try {
+      RoundScheduler._tickCount++;
+      await RoundScheduler.expireEmptyRounds();
+      // Only run heavy recovery checks every 6 ticks (~30s) to reduce DB pressure
+      if (RoundScheduler._tickCount % 6 === 0) {
+        await RoundScheduler.recoverStaleActiveRounds();
+      }
+      await RoundScheduler.ensureRoundsExist();
+    } finally {
+      RoundScheduler._tickRunning = false;
     }
-    await RoundScheduler.ensureRoundsExist();
   },
 
   // FIX Bug 2.1: check ALL active rounds for missing NCE timer, not just stale ones.
