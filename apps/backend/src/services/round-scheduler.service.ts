@@ -83,7 +83,7 @@ export const RoundScheduler = {
           continue;
         }
         console.log(`[Scheduler] Resuming NCE for round ${round.id} (stake=${round.stake})`);
-        void nce.start(round.id);
+        await nce.start(round.id);
       }
     } catch (err) {
       console.error('[Scheduler] recoverActiveRounds error:', err);
@@ -132,16 +132,19 @@ export const RoundScheduler = {
 
         const isStale = round.start_time <= staleThreshold;
 
-        // Attempt NCE start — it will log and no-op if already running/starting
-        try {
-          await nce.start(round.id);
-          // If activeTimers now has this round, NCE successfully kicked off
-          if (nce.activeTimers.has(round.id) || nce.startingRounds.has(round.id)) {
-            stuckRoundTicks.delete(round.id);
-            continue;
+        // Only attempt NCE restart for stale rounds (past the full 75-number window).
+        // For recently-started rounds without a timer, count stuck ticks and force-void
+        // after threshold — attempting nce.start() on a recent round risks double-starts.
+        if (isStale) {
+          try {
+            await nce.start(round.id);
+            if (nce.activeTimers.has(round.id) || nce.startingRounds.has(round.id)) {
+              stuckRoundTicks.delete(round.id);
+              continue;
+            }
+          } catch {
+            // fall through to stuck-tick counting
           }
-        } catch {
-          // fall through to stuck-tick counting
         }
 
         const ticks = (stuckRoundTicks.get(round.id) ?? 0) + 1;

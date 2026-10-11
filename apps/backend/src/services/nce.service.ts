@@ -232,19 +232,27 @@ export class NumberCallingEngine {
           return;
         }
 
-        // Persist to DB atomically — INSERT ... ON CONFLICT DO NOTHING is a single
-        // atomic operation in Postgres, eliminating the SELECT+INSERT race that caused
-        // P2002 errors with Prisma's non-atomic upsert under concurrent loops.
-        // If rows_affected = 0, another loop already wrote this slot — skip broadcast.
+        // Persist to DB atomically. ON CONFLICT DO NOTHING (no target) catches ALL
+        // unique violations on the table — both (round_id, sequence_index) and
+        // (round_id, number) — so two concurrent loops never error out.
+        // rows_affected = 0 means another loop already wrote this slot.
         let alreadyPersistedByConcurrentInstance = false;
-        const result = await prisma.$executeRaw`
-          INSERT INTO called_numbers (id, round_id, number, sequence_index, called_at)
-          VALUES (gen_random_uuid(), ${roundId}, ${number}, ${sequenceIndex}, now())
-          ON CONFLICT (round_id, sequence_index) DO NOTHING
-        `;
-        if (result === 0) {
-          // Another loop already inserted this slot — skip broadcast
-          alreadyPersistedByConcurrentInstance = true;
+        try {
+          const result = await prisma.$executeRaw`
+            INSERT INTO called_numbers (id, round_id, number, sequence_index, called_at)
+            VALUES (gen_random_uuid(), ${roundId}, ${number}, ${sequenceIndex}, now())
+            ON CONFLICT DO NOTHING
+          `;
+          if (result === 0) {
+            alreadyPersistedByConcurrentInstance = true;
+          }
+        } catch (insertErr: any) {
+          // Neon/pgBouncer can still surface 23505 as P2010 in edge cases — treat as duplicate
+          if (insertErr?.meta?.code === '23505' || insertErr?.code === 'P2002') {
+            alreadyPersistedByConcurrentInstance = true;
+          } else {
+            throw insertErr;
+          }
         }
 
         // Update in-memory calledSet so detectAndHandleWin doesn't re-query DB
