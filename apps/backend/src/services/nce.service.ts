@@ -232,25 +232,19 @@ export class NumberCallingEngine {
           return;
         }
 
-        // Persist to DB — upsert is idempotent against (round_id, sequence_index).
-        // Under concurrent load (e.g. two instances during a rolling redeploy) Prisma's
-        // upsert is not atomic, so a P2002 means another instance already wrote AND
-        // broadcast this number. In that case skip the broadcast entirely and just advance.
+        // Persist to DB atomically — INSERT ... ON CONFLICT DO NOTHING is a single
+        // atomic operation in Postgres, eliminating the SELECT+INSERT race that caused
+        // P2002 errors with Prisma's non-atomic upsert under concurrent loops.
+        // If rows_affected = 0, another loop already wrote this slot — skip broadcast.
         let alreadyPersistedByConcurrentInstance = false;
-        try {
-          await prisma.calledNumber.upsert({
-            where: { round_id_sequence_index: { round_id: roundId, sequence_index: sequenceIndex } },
-            update: {},
-            create: { round_id: roundId, number, sequence_index: sequenceIndex },
-          });
-        } catch (upsertErr: any) {
-          if (upsertErr?.code === 'P2002') {
-            // Another instance already inserted this — skip broadcast to avoid duplicates
-            console.log(`[NCE] Duplicate upsert for round=${roundId} index=${sequenceIndex} number=${number} — skipping broadcast`);
-            alreadyPersistedByConcurrentInstance = true;
-          } else {
-            throw upsertErr;
-          }
+        const result = await prisma.$executeRaw`
+          INSERT INTO called_numbers (id, round_id, number, sequence_index, called_at)
+          VALUES (gen_random_uuid(), ${roundId}, ${number}, ${sequenceIndex}, now())
+          ON CONFLICT (round_id, sequence_index) DO NOTHING
+        `;
+        if (result === 0) {
+          // Another loop already inserted this slot — skip broadcast
+          alreadyPersistedByConcurrentInstance = true;
         }
 
         // Update in-memory calledSet so detectAndHandleWin doesn't re-query DB
