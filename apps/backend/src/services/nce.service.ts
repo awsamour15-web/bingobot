@@ -111,6 +111,9 @@ export class NumberCallingEngine {
    */
   setPreGeneratedSequence(roundId: string, sequence: number[]): void {
     this.preGeneratedSequences.set(roundId, sequence);
+    // Also pre-populate activeSequences so any concurrent start() calls
+    // that miss the takePreGeneratedSequence window still use the same sequence.
+    this.activeSequences.set(roundId, sequence);
   }
 
   /** Retrieve and consume the pre-generated sequence for a round (one-time use). */
