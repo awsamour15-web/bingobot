@@ -11,7 +11,7 @@ import { getConfigInt, getConfigFloat, setConfig } from '../lib/config-cache.js'
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
-const CHECK_INTERVAL_MS = 5_000; // Check every 5 seconds — 1s caused excessive DB queries and OOM
+const CHECK_INTERVAL_MS = 5_000;
 
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
@@ -21,9 +21,9 @@ const startingRounds = new Set<string>();
 
 // Tracks how many consecutive ticks a round has been timer-less (stuck)
 const stuckRoundTicks = new Map<string, number>();
-const STUCK_TICK_THRESHOLD = 2; // force-void after 2 ticks (~20s) with no timer for faster recovery
+const STUCK_TICK_THRESHOLD = 2; // force-void after 2 ticks (~20s) with no timer
 
-// Purge stuckRoundTicks entries that are no longer in the DB as active (hourly)
+// Purge stuckRoundTicks entries for rounds that are no longer active (runs every 10 min)
 setInterval(async () => {
   if (stuckRoundTicks.size === 0) return;
   try {
@@ -34,11 +34,12 @@ setInterval(async () => {
       if (!activeIds.has(id)) stuckRoundTicks.delete(id);
     }
   } catch { /* ignore */ }
-}, 60 * 60_000).unref();
+}, 10 * 60_000).unref();
 
 export const RoundScheduler = {
   _timer: undefined as ReturnType<typeof setInterval> | undefined,
   _tickRunning: false,
+  _tickCount: 0,
 
   /** Optional callback invoked after ensureRoundsExist creates new pending rounds */
   _onRoundsReplenished: undefined as (() => void) | undefined,
@@ -49,10 +50,9 @@ export const RoundScheduler = {
 
   start(): void {
     console.log('[Scheduler] Starting round scheduler');
-    // Reduced interval for smoother game flow — use setConfig so cache is invalidated
     void setConfig('call_interval_ms', '3000');
-    // Run first tick immediately, then start recovery AFTER it completes so any
-    // rounds it starts aren't double-started by recoverActiveRounds.
+    // Run first tick immediately; start recovery after it completes so any rounds
+    // it starts aren't double-started by recoverActiveRounds.
     void RoundScheduler.tick().then(() => {
       void RoundScheduler.recoverActiveRounds();
     });
@@ -77,7 +77,6 @@ export const RoundScheduler = {
       if (activeRounds.length === 0) return;
       console.log(`[Scheduler] Recovering ${activeRounds.length} interrupted active round(s)`);
       for (const round of activeRounds) {
-        // Skip if NCE already has a timer or is currently starting this round
         if (nce.activeTimers.has(round.id) || nce.startingRounds.has(round.id) || nce.stoppingRounds.has(round.id)) {
           console.log(`[Scheduler] Skipping recovery of round ${round.id} — NCE already active/starting`);
           continue;
@@ -90,15 +89,13 @@ export const RoundScheduler = {
     }
   },
 
-  _tickCount: 0,
-
   async tick(): Promise<void> {
     if (RoundScheduler._tickRunning) return;
     RoundScheduler._tickRunning = true;
     try {
       RoundScheduler._tickCount++;
       await RoundScheduler.expireEmptyRounds();
-      // Only run heavy recovery checks every 6 ticks (~30s) to reduce DB pressure
+      // Run heavy recovery checks every 6 ticks (~30s) to reduce DB pressure
       if (RoundScheduler._tickCount % 6 === 0) {
         await RoundScheduler.recoverStaleActiveRounds();
       }
@@ -108,7 +105,6 @@ export const RoundScheduler = {
     }
   },
 
-  // FIX Bug 2.1: check ALL active rounds for missing NCE timer, not just stale ones.
   async recoverStaleActiveRounds(): Promise<void> {
     try {
       const callIntervalMs = await getConfigInt('call_interval_ms', 4_000);
@@ -121,20 +117,13 @@ export const RoundScheduler = {
 
       for (const round of activeRounds) {
         if (nce.activeTimers.has(round.id)) {
-          // Timer is running — reset stuck counter
           stuckRoundTicks.delete(round.id);
           continue;
         }
-        // Skip rounds where NCE win-distribution is in progress (round still active in DB but being finalized)
-        if (nce.stoppingRounds.has(round.id)) continue;
-        // Skip rounds that NCE is currently starting — timer handle not yet registered
-        if (nce.startingRounds.has(round.id)) continue;
+        if (nce.stoppingRounds.has(round.id) || nce.startingRounds.has(round.id)) continue;
 
         const isStale = round.start_time <= staleThreshold;
 
-        // Only attempt NCE restart for stale rounds (past the full 75-number window).
-        // For recently-started rounds without a timer, count stuck ticks and force-void
-        // after threshold — attempting nce.start() on a recent round risks double-starts.
         if (isStale) {
           try {
             await nce.start(round.id);
@@ -160,10 +149,7 @@ export const RoundScheduler = {
               data: { status: GameStatus.void, ended_at: new Date() },
             });
             console.log(`[Scheduler] Force-voided stuck round ${round.id}`);
-            // Notify connected clients so they don't stay frozen waiting for events
             try {
-              // Re-trigger the NCE void callback (registered by WebSocket layer) so clients
-              // receive ROUND_VOID and navigate away instead of staying frozen.
               const { GameRoundService } = await import('./game-round.service.js');
               if (GameRoundService._onRoundVoidEmpty) {
                 await GameRoundService._onRoundVoidEmpty(round.id);
@@ -181,8 +167,6 @@ export const RoundScheduler = {
     }
   },
 
-  // FIX Bug 2.2: void pending rounds with 0 players instead of starting them.
-  // Only start ONE round per stake level per tick to prevent double-starts.
   async expireEmptyRounds(): Promise<void> {
     try {
       const overdue = await prisma.gameRound.findMany({
@@ -193,6 +177,8 @@ export const RoundScheduler = {
 
       // Track which stakes we've already started this tick — prevent double-start
       const startedStakes = new Set<number>();
+      // Track whether any round was voided — only call ensureRoundsExist once at the end
+      let needsReplenish = false;
 
       for (const round of overdue) {
         const stake = Number(round.stake);
@@ -203,20 +189,18 @@ export const RoundScheduler = {
               where: { id: round.id },
               data: { status: GameStatus.void, ended_at: new Date() },
             });
-            console.log(`[Scheduler] Voided empty round ${round.id} (0 players, 0 reservations)`);
-            // Immediately create a replacement so the stake doesn't disappear from the lobby
-            void RoundScheduler.ensureRoundsExist();
+            console.log(`[Scheduler] Voided empty round ${round.id} (0 players)`);
+            needsReplenish = true;
           } catch (err) {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }
         } else if (!startedStakes.has(stake)) {
-          // Also skip if there's already an active round for this stake
+          // Check for an existing active round for this stake before starting
           const existingActive = await prisma.gameRound.findFirst({
             where: { status: GameStatus.active, stake },
           });
           if (existingActive) {
             console.log(`[Scheduler] Skipping start of ${round.id} — active round ${existingActive.id} already exists for stake=${stake}`);
-            // Void the duplicate pending round
             await prisma.gameRound.update({
               where: { id: round.id },
               data: { status: GameStatus.void, ended_at: new Date() },
@@ -224,7 +208,6 @@ export const RoundScheduler = {
             continue;
           }
 
-          // Skip if this round is already being started by a previous tick
           if (startingRounds.has(round.id)) {
             console.log(`[Scheduler] Skipping start of ${round.id} — already being started`);
             startedStakes.add(stake);
@@ -254,6 +237,11 @@ export const RoundScheduler = {
           }
         }
       }
+
+      // Trigger a single replenish after processing all voided empty rounds
+      if (needsReplenish) {
+        void RoundScheduler.ensureRoundsExist();
+      }
     } catch (err) {
       console.error('[Scheduler] expireEmptyRounds error:', err);
     }
@@ -282,6 +270,7 @@ export const RoundScheduler = {
         byStake.get(stakeNum)!.push(r);
       }
 
+      // Void duplicate pending rounds per stake, keeping the earliest
       for (const [, rounds] of byStake) {
         for (let i = 1; i < rounds.length; i++) {
           await prisma.gameRound.update({
@@ -292,21 +281,20 @@ export const RoundScheduler = {
         }
       }
 
-      const maxPlayers = await getConfigInt('auto_round_max_players', DEFAULT_MAX_PLAYERS);
+      // Read config values once per ensureRoundsExist call
+      const [maxPlayers, commissionPct] = await Promise.all([
+        getConfigInt('auto_round_max_players', DEFAULT_MAX_PLAYERS),
+        getConfigFloat('platform_commission_pct', 20),
+      ]);
 
       const pendingStakes = new Set<number>([...byStake.keys()]);
       // Only treat a stake as blocked when a live NCE timer is active for an active round.
-      // A DB row without a running timer is stale and must not block creation of a replacement pending round.
       const activeStakes = new Set<number>(
         activeRounds
           .filter((r) => nce.activeTimers.has(r.id) || nce.startingRounds.has(r.id))
           .map((r) => Number(r.stake)),
       );
 
-      // Create missing rounds sequentially to avoid parallel inserts racing into the same stake slot
-      const commissionPct = await getConfigFloat('platform_commission_pct', 20);
-
-      // Default: any line OR 4 corners
       const winning_pattern = JSON.stringify([WinPattern.any_line, WinPattern.corners]);
 
       for (const stake of STAKE_LEVELS) {
@@ -328,9 +316,8 @@ export const RoundScheduler = {
               winning_pattern,
             },
           });
-          console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | pattern=${winning_pattern} | starts=${startTime.toISOString()}`);
+          console.log(`[Scheduler] Created round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
           if (RoundScheduler._onRoundsReplenished) RoundScheduler._onRoundsReplenished();
-          // Trigger mock bot auto-join (non-blocking)
           void MockPlayerBotService.onRoundPending(round.id);
         } catch (err: unknown) {
           if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
