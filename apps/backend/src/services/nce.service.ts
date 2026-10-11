@@ -101,6 +101,9 @@ export class NumberCallingEngine {
   /** Per-round pre-generated number sequences set by the mock bot pre-simulation */
   private readonly preGeneratedSequences = new Map<string, number[]>();
 
+  /** Per-round active sequence — stored on first start so concurrent/recovery starts use the same order */
+  private readonly activeSequences = new Map<string, number[]>();
+
   /**
    * Store a pre-generated 1–75 sequence for a round.
    * When NCE starts this round it will use this sequence instead of generating a new one,
@@ -149,11 +152,13 @@ export class NumberCallingEngine {
     let sequenceIndex: number;
 
     if (existingCalled.length === 0) {
-      // Use pre-generated sequence from mock bot simulation if available,
-      // otherwise use a seeded shuffle based on the round ID so any concurrent
-      // or recovering instance generates the exact same sequence.
+      // Use pre-generated sequence from mock bot simulation if available.
+      // Otherwise reuse the stored sequence for this round (in case of concurrent starts),
+      // falling back to a seeded deterministic shuffle so any instance generates the same order.
       const preGen = this.takePreGeneratedSequence(roundId);
-      sequence = preGen ?? seededShuffle(Array.from({ length: 75 }, (_, i) => i + 1), roundId);
+      const existing = this.activeSequences.get(roundId);
+      sequence = preGen ?? existing ?? seededShuffle(Array.from({ length: 75 }, (_, i) => i + 1), roundId);
+      this.activeSequences.set(roundId, sequence); // store so concurrent/recovery starts reuse it
       sequenceIndex = 0;
       // Seed the in-memory calledSet fresh
       this.calledSets.set(roundId, new Set<number>());
@@ -349,6 +354,7 @@ export class NumberCallingEngine {
     this.calledSets.delete(roundId);
     this.entriesCache.delete(roundId);
     this.preGeneratedSequences.delete(roundId);
+    this.activeSequences.delete(roundId);
   }
 
   /**
@@ -531,6 +537,7 @@ export class NumberCallingEngine {
     this.gridCache.delete(roundId);
     this.calledSets.delete(roundId);
     this.entriesCache.delete(roundId);
+    this.activeSequences.delete(roundId);
 
     // Fetch all entries with stake
     const entries = await prisma.roundEntry.findMany({
