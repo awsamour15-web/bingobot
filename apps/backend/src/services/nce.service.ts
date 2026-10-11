@@ -4,7 +4,7 @@
 import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
 import prisma from '../lib/prisma.js';
 import { getConfigInt } from '../lib/config-cache.js';
-import { shuffle, seededShuffle } from '../lib/shuffle.js';
+import { seededShuffle } from '../lib/shuffle.js';
 import { WalletService } from './wallet.service.js';
 import { parseWinPatterns } from './win-detection.service.js';
 
@@ -150,9 +150,10 @@ export class NumberCallingEngine {
 
     if (existingCalled.length === 0) {
       // Use pre-generated sequence from mock bot simulation if available,
-      // otherwise generate a fresh shuffle
+      // otherwise use a seeded shuffle based on the round ID so any concurrent
+      // or recovering instance generates the exact same sequence.
       const preGen = this.takePreGeneratedSequence(roundId);
-      sequence = preGen ?? shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
+      sequence = preGen ?? seededShuffle(Array.from({ length: 75 }, (_, i) => i + 1), roundId);
       sequenceIndex = 0;
       // Seed the in-memory calledSet fresh
       this.calledSets.set(roundId, new Set<number>());
