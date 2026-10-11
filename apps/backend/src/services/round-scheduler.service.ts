@@ -51,8 +51,11 @@ export const RoundScheduler = {
     console.log('[Scheduler] Starting round scheduler');
     // Reduced interval for smoother game flow — use setConfig so cache is invalidated
     void setConfig('call_interval_ms', '3000');
-    void RoundScheduler.recoverActiveRounds();
-    void RoundScheduler.tick();
+    // Run first tick immediately, then start recovery AFTER it completes so any
+    // rounds it starts aren't double-started by recoverActiveRounds.
+    void RoundScheduler.tick().then(() => {
+      void RoundScheduler.recoverActiveRounds();
+    });
     RoundScheduler._timer = setInterval(() => {
       void RoundScheduler.tick();
     }, CHECK_INTERVAL_MS);
@@ -74,6 +77,11 @@ export const RoundScheduler = {
       if (activeRounds.length === 0) return;
       console.log(`[Scheduler] Recovering ${activeRounds.length} interrupted active round(s)`);
       for (const round of activeRounds) {
+        // Skip if NCE already has a timer or is currently starting this round
+        if (nce.activeTimers.has(round.id) || nce.startingRounds.has(round.id) || nce.stoppingRounds.has(round.id)) {
+          console.log(`[Scheduler] Skipping recovery of round ${round.id} — NCE already active/starting`);
+          continue;
+        }
         console.log(`[Scheduler] Resuming NCE for round ${round.id} (stake=${round.stake})`);
         void nce.start(round.id);
       }
