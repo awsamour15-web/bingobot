@@ -13,11 +13,6 @@ const WalletScreen = lazy(() => import('./screens/WalletScreen'));
 const ProfileScreen = lazy(() => import('./screens/ProfileScreen'));
 const AgentDashboardScreen = lazy(() => import('./screens/AgentDashboardScreen'));
 const RankScreen = lazy(() => import('./screens/RankScreen'));
-const CrashScreen = lazy(() => import('./screens/CrashScreen'));
-const SlotsScreen = lazy(() => import('./screens/SlotsScreen'));
-const KenoScreen = lazy(() => import('./screens/KenoScreen'));
-const PlinkoScreen = lazy(() => import('./screens/PlinkoScreen'));
-const RoyalDropScreen = lazy(() => import('./screens/RoyalDropScreen'));
 const CashierScreen = lazy(() => import('./screens/CashierScreen'));
 
 import { socket } from './lib/socket';
@@ -89,7 +84,7 @@ class ErrorBoundary extends React.Component<
 
 // ─── Bottom navigation ───────────────────────────────────────────────────────
 
-const FULLSCREEN_ROUTES = ['/cartela', '/game', '/crash', '/slots', '/keno', '/plinko', '/bingo', '/royal-drop', '/cashier'];
+const FULLSCREEN_ROUTES = ['/cartela', '/game', '/bingo', '/cashier'];
 
 function isFullscreenRoute(pathname: string) {
   return FULLSCREEN_ROUTES.some(r => pathname.includes(r));
@@ -249,11 +244,6 @@ function AppInner() {
           <Route path="/wallet" element={<WalletScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/rank" element={<RankScreen />} />
-          <Route path="/crash" element={<CrashScreen />} />
-          <Route path="/slots" element={<SlotsScreen />} />
-          <Route path="/keno" element={<KenoScreen />} />
-          <Route path="/plinko" element={<PlinkoScreen />} />
-          <Route path="/royal-drop" element={<RoyalDropScreen />} />
           <Route path="/agent/dashboard" element={<AgentDashboardScreen />} />
           <Route path="/cashier" element={<CashierScreen />} />
           <Route path="/rounds/:id/cartela" element={<CartelaScreen />} />

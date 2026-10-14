@@ -29,179 +29,24 @@ const statBox = (color: string): React.CSSProperties => ({
 // ─── House Edge ───────────────────────────────────────────────────────────────
 
 function HouseEdgeSection() {
-  const [crash, setCrash] = useState('15');
-  const [slots, setSlots] = useState('15');
-  const [keno, setKeno] = useState('15');
-  const [plinko, setPlinko] = useState('15');
-  const [royalDrop, setRoyalDrop] = useState('15');
-  const [crashMaxMult, setCrashMaxMult] = useState('20');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [fb, setFb] = useState<Record<string, { type: 'success' | 'error'; msg: string } | null>>({});
 
   useEffect(() => {
-    getConfig().then((data) => {
-      setCrash(data.find(e => e.key === 'house_edge_crash')?.value ?? '15');
-      setSlots(data.find(e => e.key === 'house_edge_slots')?.value ?? '15');
-      setKeno(data.find(e => e.key === 'house_edge_keno')?.value ?? '15');
-      setPlinko(data.find(e => e.key === 'house_edge_plinko')?.value ?? '15');
-      setRoyalDrop(data.find(e => e.key === 'house_edge_royal_drop')?.value ?? '15');
-      setCrashMaxMult(data.find(e => e.key === 'crash_max_multiplier')?.value ?? '40');
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setLoading(false);
   }, []);
-
-  async function save(game: string, val: string) {
-    const n = parseInt(val, 10);
-    if (isNaN(n) || n < 5 || n > 50) {
-      setFb(p => ({ ...p, [game]: { type: 'error', msg: 'Must be 5–50' } }));
-      return;
-    }
-    setSaving(p => ({ ...p, [game]: true }));
-    setFb(p => ({ ...p, [game]: null }));
-    try {
-      await updateConfig(`house_edge_${game}`, String(n));
-      setFb(p => ({ ...p, [game]: { type: 'success', msg: `Set to ${n}% — RTP ${100 - n}%` } }));
-    } catch (e: unknown) {
-      setFb(p => ({ ...p, [game]: { type: 'error', msg: (e as Error).message ?? 'Failed' } }));
-    } finally { setSaving(p => ({ ...p, [game]: false })); }
-  }
-
-  async function saveCrashMaxMult() {
-    const n = parseFloat(crashMaxMult);
-    if (isNaN(n) || n < 2 || n > 1000) {
-      setFb(p => ({ ...p, crash_max_mult: { type: 'error', msg: 'Must be 2–1000' } }));
-      return;
-    }
-    setSaving(p => ({ ...p, crash_max_mult: true }));
-    setFb(p => ({ ...p, crash_max_mult: null }));
-    try {
-      await updateConfig('crash_max_multiplier', String(n));
-      setFb(p => ({ ...p, crash_max_mult: { type: 'success', msg: `Max multiplier set to ${n}x` } }));
-    } catch (e: unknown) {
-      setFb(p => ({ ...p, crash_max_mult: { type: 'error', msg: (e as Error).message ?? 'Failed' } }));
-    } finally { setSaving(p => ({ ...p, crash_max_mult: false })); }
-  }
-
-  const games = [
-    { key: 'crash', label: 'Aviator',    icon: '✈️', color: '#ef4444', val: crash,     set: setCrash     },
-    { key: 'slots', label: 'Slots',      icon: '🎰', color: '#f59e0b', val: slots,     set: setSlots     },
-    { key: 'keno',  label: 'Keno',       icon: '🎱', color: '#3b82f6', val: keno,      set: setKeno      },
-    { key: 'plinko',label: 'Plinko',     icon: '🪃', color: '#8b5cf6', val: plinko,    set: setPlinko    },
-    { key: 'royal_drop', label: 'Royal Drop', icon: '👑', color: '#f59e0b', val: royalDrop, set: setRoyalDrop },
-  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
-        Controls the profit margin per game. Takes effect on the next round/spin.
+        Only Bingo is active. Other games have been removed.
       </p>
-
       {loading ? <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p> : (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {games.map(g => {
-              const n = parseInt(g.val, 10) || 0;
-              const rtp = 100 - n;
-              return (
-                <div key={g.key} style={{
-                  background: 'var(--c-bg-card)', border: '1px solid var(--c-border)',
-                  borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{
-                        fontSize: 20, width: 38, height: 38, borderRadius: 10,
-                        background: `${g.color}18`, border: `1px solid ${g.color}30`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>{g.icon}</span>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>{g.label}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <div style={statBox(g.color)}>
-                        <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Edge</span>
-                        <span style={{ fontSize: 18, fontWeight: 900, color: g.color }}>{n}%</span>
-                      </div>
-                      <div style={statBox('#4ade80')}>
-                        <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>RTP</span>
-                        <span style={{ fontSize: 18, fontWeight: 900, color: '#4ade80' }}>{rtp}%</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>
-                      <span>5% (player-friendly)</span><span>50% (house-max)</span>
-                    </div>
-                    <input type="range" min={5} max={50} step={1} value={g.val}
-                      onChange={e => g.set(e.target.value)}
-                      disabled={saving[g.key]}
-                      style={{ width: '100%', accentColor: g.color }} />
-                  </div>
-                  {fb[g.key] && <Alert type={fb[g.key]!.type}>{fb[g.key]!.msg}</Alert>}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="number" min={5} max={50} value={g.val}
-                      onChange={e => g.set(e.target.value)}
-                      disabled={saving[g.key]}
-                      style={{ ...inputCss, width: 72, textAlign: 'center', fontWeight: 700 }} />
-                    <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>%</span>
-                    <Btn onClick={() => save(g.key, g.val)} disabled={!!saving[g.key]} fullWidth>
-                      {saving[g.key] ? 'Saving…' : 'Save'}
-                    </Btn>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── Aviator Max Multiplier ── */}
-          <div style={{
-            background: 'var(--c-bg-card)', border: '1px solid rgba(239,68,68,0.25)',
-            borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
-            maxWidth: 420,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{
-                fontSize: 20, width: 38, height: 38, borderRadius: 10,
-                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>🚀</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)' }}>Aviator Max Multiplier</div>
-                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>
-                  Cap the highest possible crash point. Default: 20x. Range: 2–1000.
-                </div>
-              </div>
-              <div style={{ marginLeft: 'auto', ...statBox('#ef4444') }}>
-                <span style={{ fontSize: 9, color: 'var(--c-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Max</span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: '#ef4444' }}>{parseFloat(crashMaxMult) || 20}x</span>
-              </div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>
-                <span>2x (min)</span><span>1000x (max)</span>
-              </div>
-              <input type="range" min={2} max={100} step={1} value={Math.min(100, parseFloat(crashMaxMult) || 20)}
-                onChange={e => setCrashMaxMult(e.target.value)}
-                disabled={saving['crash_max_mult']}
-                style={{ width: '100%', accentColor: '#ef4444' }} />
-            </div>
-            {fb['crash_max_mult'] && <Alert type={fb['crash_max_mult']!.type}>{fb['crash_max_mult']!.msg}</Alert>}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="number" min={2} max={1000} step={0.5} value={crashMaxMult}
-                onChange={e => setCrashMaxMult(e.target.value)}
-                disabled={saving['crash_max_mult']}
-                style={{ ...inputCss, width: 88, textAlign: 'center', fontWeight: 700 }} />
-              <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>x</span>
-              <Btn onClick={saveCrashMaxMult} disabled={!!saving['crash_max_mult']} fullWidth>
-                {saving['crash_max_mult'] ? 'Saving…' : 'Save'}
-              </Btn>
-            </div>
-          </div>
-        </>
+        <p style={{ fontSize: 13, color: 'var(--c-muted)' }}>No configurable house edge for the remaining games.</p>
       )}
     </div>
   );
 }
+
 
 
 // ─── Cartela Settings ─────────────────────────────────────────────────────────
@@ -378,7 +223,7 @@ function ChannelSettingsSection() {
 }
 
 
-// ─── Access Control (shared for Keno / Plinko) ────────────────────────────────
+// ─── Access Control ───────────────────────────────────────────────────────────
 
 function AccessControlSection({
   configKey, idType, placeholder,
@@ -788,30 +633,19 @@ function CashbackSection() {
     setEnabled: (v: boolean) => void; setPct: (v: string) => void;
   };
 
-  const [bingo,     setBingo]     = useState({ enabled: false, pct: '5' });
-  const [crash,     setCrash]     = useState({ enabled: false, pct: '5' });
-  const [slots,     setSlots]     = useState({ enabled: false, pct: '5' });
-  const [keno,      setKeno]      = useState({ enabled: false, pct: '5' });
-  const [plinko,    setPlinko]    = useState({ enabled: false, pct: '5' });
-  const [royalDrop, setRoyalDrop] = useState({ enabled: false, pct: '5' });
+  const [bingo, setBingo] = useState({ enabled: false, pct: '5' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [fb, setFb] = useState<Record<string, { type: 'success' | 'error'; msg: string } | null>>({});
 
   const setters: Record<string, (v: { enabled: boolean; pct: string }) => void> = {
-    bingo: setBingo, crash: setCrash, slots: setSlots,
-    keno: setKeno, plinko: setPlinko, royal_drop: setRoyalDrop,
+    bingo: setBingo,
   };
 
   useEffect(() => {
     getConfig().then((data) => {
       const get = (key: string, fallback: string) => data.find(e => e.key === key)?.value ?? fallback;
-      setBingo({     enabled: get('cashback_bingo_enabled',      'false') === 'true', pct: get('cashback_bingo_pct',      '5') });
-      setCrash({     enabled: get('cashback_crash_enabled',      'false') === 'true', pct: get('cashback_crash_pct',      '5') });
-      setSlots({     enabled: get('cashback_slots_enabled',      'false') === 'true', pct: get('cashback_slots_pct',      '5') });
-      setKeno({      enabled: get('cashback_keno_enabled',       'false') === 'true', pct: get('cashback_keno_pct',       '5') });
-      setPlinko({    enabled: get('cashback_plinko_enabled',     'false') === 'true', pct: get('cashback_plinko_pct',     '5') });
-      setRoyalDrop({ enabled: get('cashback_royal_drop_enabled', 'false') === 'true', pct: get('cashback_royal_drop_pct', '5') });
+      setBingo({ enabled: get('cashback_bingo_enabled', 'false') === 'true', pct: get('cashback_bingo_pct', '5') });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -836,17 +670,11 @@ function CashbackSection() {
   }
 
   const states: Record<string, { enabled: boolean; pct: string }> = {
-    bingo: bingo, crash: crash, slots: slots,
-    keno: keno, plinko: plinko, royal_drop: royalDrop,
+    bingo: bingo,
   };
 
   const games: Array<{ key: string; label: string; icon: string; color: string }> = [
-    { key: 'bingo',      label: 'Bingo',      icon: '🎯', color: '#6366f1' },
-    { key: 'crash',      label: 'Aviator',    icon: '✈️', color: '#ef4444' },
-    { key: 'slots',      label: 'Slots',      icon: '🎰', color: '#f59e0b' },
-    { key: 'keno',       label: 'Keno',       icon: '🎱', color: '#3b82f6' },
-    { key: 'plinko',     label: 'Plinko',     icon: '🪃', color: '#8b5cf6' },
-    { key: 'royal_drop', label: 'Royal Drop', icon: '👑', color: '#ec4899' },
+    { key: 'bingo', label: 'Bingo', icon: '🎯', color: '#6366f1' },
   ];
 
   if (loading) return <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>;
@@ -1083,13 +911,6 @@ const CLEANUP_LABELS: Record<string, string> = {
   deposit_attempts: 'Deposit attempts',
   gregmorn_transactions: 'Gregmorn transactions',
   gregmorn_sessions: 'Gregmorn sessions',
-  slot_spins: 'Slot spins',
-  plinko_bets: 'Plinko bets',
-  royal_drop_bets: 'Royal Drop bets',
-  crash_bets: 'Crash bets',
-  crash_rounds: 'Crash rounds',
-  keno_bets: 'Keno bets',
-  keno_rounds: 'Keno rounds',
   round_entries: 'Bingo round entries',
   called_numbers: 'Called numbers',
   round_winners: 'Round winners',
@@ -1568,18 +1389,9 @@ export function SettingsPage() {
           {activeTab === 'channel'    && <ChannelSettingsSection />}
           {activeTab === 'access'     && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-              <div>
-                <p style={sectionTitle}>🎱 Keno Access</p>
-                <AccessControlSection configKey="keno_allowed_ids" idType="ids" placeholder="123456789, 987654321" />
-              </div>
-              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                <p style={sectionTitle}>🪃 Plinko Access</p>
-                <AccessControlSection configKey="plinko_allowed_usernames" idType="usernames" placeholder="kanu_1921, other_user" />
-              </div>
-              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                <p style={sectionTitle}>👑 Royal Drop Access</p>
-                <AccessControlSection configKey="royal_drop_allowed_usernames" idType="usernames" placeholder="kanu_1921, other_user" />
-              </div>
+              <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>
+                Only Bingo and Bonus Spin are active. No additional access controls required.
+              </p>
             </div>
           )}
           {activeTab === 'deposits'   && <DepositAccountsSection />}

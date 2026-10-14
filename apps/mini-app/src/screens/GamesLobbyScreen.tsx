@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Gift, TicketPercent, Trophy } from 'lucide-react';
 import { initAuth } from '../lib/auth';
-import { getProfile, checkKenoAccess, checkPlinkoAccess, checkRoyalDropAccess, checkSlotsAccess, redeemCoupon, getAvailableCoupons, getSystemStats, type AvailableCoupon } from '../lib/api';
+import { getProfile, redeemCoupon, getAvailableCoupons, getSystemStats, type AvailableCoupon } from '../lib/api';
 
 interface Game {
   id: string;
@@ -45,12 +45,11 @@ const GAMES: Game[] = [
   },
 ];
 
-function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, slotsAllowed, accessChecked }: { game: Game; kenoAllowed: boolean; plinkoAllowed: boolean; royalDropAllowed: boolean; slotsAllowed: boolean; accessChecked: boolean }) {
+function GameCard({ game }: { game: Game }) {
   const navigate = useNavigate();
   const [tapped, setTapped] = React.useState(false);
   const poster = { title: game.title, emoji: game.emoji, gradient: game.gradient };
-  const isRestricted = accessChecked && ((game.id === 'keno' && !kenoAllowed) || (game.id === 'plinko' && !plinkoAllowed) || (game.id === 'royal-drop' && !royalDropAllowed) || (game.id === 'slots' && !slotsAllowed));
-  const isAvailable = game.available && !isRestricted;
+  const isAvailable = game.available;
 
   function handleClick() {
     if (!isAvailable || tapped) return;
@@ -114,7 +113,7 @@ function GameCard({ game, kenoAllowed, plinkoAllowed, royalDropAllowed, slotsAll
             </>
           )}
         </div>
-        <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? 'rgba(94,108,103,0.9)' : isRestricted ? 'rgba(124,90,36,0.95)' : 'rgba(213,65,63,0.95)', borderRadius: 6, padding: '4px 6px', letterSpacing: '0.08em', boxShadow: '0 3px 8px rgba(0,0,0,0.25)' }}>{game.category === 'coming' ? 'SOON' : isRestricted ? 'LOCKED' : 'HOT'}</div>
+        <div style={{ position: 'absolute', top: 10, right: 10, fontSize: 8, fontWeight: 900, color: '#fff', background: game.category === 'coming' ? 'rgba(94,108,103,0.9)' : 'rgba(213,65,63,0.95)', borderRadius: 6, padding: '4px 6px', letterSpacing: '0.08em', boxShadow: '0 3px 8px rgba(0,0,0,0.25)' }}>{game.category === 'coming' ? 'SOON' : 'HOT'}</div>
       </div>
       <div style={{ minHeight: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px', background: 'rgba(8,13,23,0.98)', color: game.category === 'coming' ? '#8aa49b' : '#eef4f1', fontSize: 7, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
         <span>{poster.title}</span>
@@ -137,11 +136,6 @@ export default function GamesLobbyScreen() {
   const [showCoupons, setShowCoupons] = useState(false);
   const [claimedCoupon, setClaimedCoupon] = useState<{ amount: number; message: string } | null>(null);
   const [couponAlert, setCouponAlert] = useState<{ type: 'exhausted' | 'already' | 'requirement'; message: string } | null>(null);
-  const [kenoAllowed, setKenoAllowed] = useState(false);
-  const [plinkoAllowed, setPlinkoAllowed] = useState(false);
-  const [royalDropAllowed, setRoyalDropAllowed] = useState(false);
-  const [slotsAllowed, setSlotsAllowed] = useState(false);
-  const [accessChecked, setAccessChecked] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [systemStats, setSystemStats] = useState<{ totalPlayers: number; totalGames: number } | null>(null);
 
@@ -177,20 +171,6 @@ export default function GamesLobbyScreen() {
       getAvailableCoupons().then(c => { if (!cancelled) setAvailableCoupons(c); }).catch(() => {});
 
       getSystemStats().then(s => { if (!cancelled) setSystemStats(s); }).catch(() => {});
-
-      const [kenoAccess, plinkoAccess, royalDropAccess, slotsAccess] = await Promise.all([
-        checkKenoAccess().catch(() => ({ allowed: false })),
-        checkPlinkoAccess().catch(() => ({ allowed: false })),
-        checkRoyalDropAccess().catch(() => ({ allowed: false })),
-        checkSlotsAccess().catch(() => ({ allowed: false })),
-      ]);
-      if (!cancelled) {
-        setKenoAllowed(kenoAccess.allowed);
-        setPlinkoAllowed(plinkoAccess.allowed);
-        setRoyalDropAllowed(royalDropAccess.allowed);
-        setSlotsAllowed(slotsAccess.allowed);
-        setAccessChecked(true);
-      }
     }
     load();
     return () => { cancelled = true; };
@@ -408,7 +388,7 @@ export default function GamesLobbyScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
           {filteredGames.map((game, i) => (
             <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}>
-              <GameCard game={game} kenoAllowed={kenoAllowed} plinkoAllowed={plinkoAllowed} royalDropAllowed={royalDropAllowed} slotsAllowed={slotsAllowed} accessChecked={accessChecked} />
+              <GameCard game={game} />
             </div>
           ))}
         </div>
