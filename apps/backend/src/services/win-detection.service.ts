@@ -173,25 +173,31 @@ async function distributeWinnings(
 
       await tx.roundWinner.createMany({ data: winnerRows });
 
-      // 3. Credit each winner's main wallet (inside transaction for atomicity)
-      for (const [playerId] of winnersSnapshot.entries()) {
-        const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
-        if (amount <= 0) continue;
+      // 3. Batch-fetch all winner wallets in a single query, then credit each
+      const playerIds = [...winnersSnapshot.keys()];
+      const walletRows = await tx.$queryRaw<Array<{ id: string; player_id: string }>>`
+        SELECT DISTINCT ON (player_id) id, player_id
+        FROM wallets
+        WHERE player_id = ANY(${playerIds}::uuid[]) AND type = 'main'
+      `;
+      const walletMap = new Map(walletRows.map((w) => [w.player_id, w.id]));
 
-        const wallets = await tx.$queryRaw<Array<{ id: string }>>`
-          SELECT id FROM wallets WHERE player_id = ${playerId} AND type = 'main' LIMIT 1
-        `;
-        const walletId = wallets[0]?.id;
-        if (!walletId) continue;
+      await Promise.all(
+        [...winnersSnapshot.keys()].map(async (playerId) => {
+          const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
+          if (amount <= 0) return;
+          const walletId = walletMap.get(playerId);
+          if (!walletId) return;
 
-        await tx.wallet.update({
-          where: { id: walletId },
-          data: { balance: { increment: amount } },
-        });
-        await tx.transaction.create({
-          data: { wallet_id: walletId, type: TxType.game_win, amount, reference_id: roundId },
-        });
-      }
+          await tx.wallet.update({
+            where: { id: walletId },
+            data: { balance: { increment: amount } },
+          });
+          await tx.transaction.create({
+            data: { wallet_id: walletId, type: TxType.game_win, amount, reference_id: roundId },
+          });
+        }),
+      );
 
       // 4. Update GameRound — marks it completed so no other instance can re-enter
       const smallestWinner = winnersSnapshot.get(smallestId)!;
@@ -204,7 +210,7 @@ async function distributeWinnings(
           ended_at: new Date(),
         },
       });
-    });
+    }, { timeout: 30_000 });
 
     // ── After commit: stop number calling, emit ROUND_WON, notify ────────────
     nce.stop(roundId);
