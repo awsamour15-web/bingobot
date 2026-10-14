@@ -180,7 +180,7 @@ async function distributeWinnings(
         Prisma.sql`
           SELECT DISTINCT ON (player_id) id, player_id
           FROM wallets
-          WHERE player_id = ANY(ARRAY[${Prisma.join(playerIds.map(id => Prisma.sql`${id}::uuid`))}]) AND type = 'main'
+          WHERE player_id = ANY(${playerIds}::uuid[]) AND type = 'main'
         `
       );
       const walletMap = new Map(walletRows.map((w) => [w.player_id, w.id]));
