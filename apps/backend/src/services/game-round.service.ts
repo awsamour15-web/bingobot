@@ -123,6 +123,11 @@ export const GameRoundService = {
   ): Promise<void> {
     if (cartelaNumbers.length === 0) return;
 
+    // Read config outside the transaction — it's a static value that doesn't need locking
+    const maxCartelasRow = await prisma.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
+    const rawMax = maxCartelasRow ? parseInt(maxCartelasRow.value, 10) : 2;
+    const maxAllowed = Number.isFinite(rawMax) && rawMax >= 1 ? rawMax : 2;
+
     try {
       await prisma.$transaction(async (tx) => {
         // 1. Fetch and lock the round once
@@ -146,6 +151,7 @@ export const GameRoundService = {
         if (!player) throw new Error(`Player ${playerId} not found`);
         if (player.is_suspended) throw new PlayerSuspendedError(playerId);
 
+
         // 3. Check all cartelas are available (not taken by others)
         const existingEntries = await tx.roundEntry.findMany({
           where: { round_id: roundId, cartela_number: { in: cartelaNumbers } },
@@ -155,10 +161,7 @@ export const GameRoundService = {
           throw new CartelaTakenError(roundId, existingEntries[0]!.cartela_number);
         }
 
-        // 3b. Enforce per-player cartela limit from Config
-        const maxCartelasRow = await tx.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
-        const rawMax = maxCartelasRow ? parseInt(maxCartelasRow.value, 10) : 2;
-        const maxAllowed = Number.isFinite(rawMax) && rawMax >= 1 ? rawMax : 2;
+        // 3b. Enforce per-player cartela limit (maxAllowed read above outside TX)
         const currentCount = await tx.roundEntry.count({
           where: { round_id: roundId, player_id: playerId, is_watching: false },
         });
@@ -201,7 +204,7 @@ export const GameRoundService = {
           where: { id: roundId },
           data: { derash: newDerash },
         });
-      });
+      }, { timeout: 15000 });
     } catch (err: unknown) {
       const e = err as { code?: string };
       if (e.code === 'P2002') throw new CartelaTakenError(roundId, cartelaNumbers[0]!);
