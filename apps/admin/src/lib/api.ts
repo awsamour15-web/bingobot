@@ -821,15 +821,10 @@ export interface GameStat {
 export interface GameTx {
   id: string;
   type: string;
-  username?: string;
   totalBet: number;
   paid: number;
   profit: number;
   players: number;
-  crashPoint?: number | null;
-  multiplier?: number | null;
-  rows?: number;
-  risk?: string;
   date: string;
 }
 
@@ -837,11 +832,6 @@ export interface GamesStatsResponse {
   games: GameStat[];
   transactions: {
     bingo: GameTx[];
-    crash: GameTx[];
-    keno: GameTx[];
-    slots: GameTx[];
-    plinko: GameTx[];
-    royal_drop: GameTx[];
   };
 }
 
@@ -929,4 +919,71 @@ export function getJackpotStakes(): Promise<{ stakes: number[] }> {
 
 export function setJackpotStakes(stakes: number[]): Promise<{ stakes: number[] }> {
   return adminApiRequest('PUT', '/api/admin/jackpot-stakes', { stakes });
+}
+
+// ---------------------------------------------------------------------------
+// AS Tech API
+// ---------------------------------------------------------------------------
+
+export interface AsTechSession {
+  id:         string;
+  playerId:   string;
+  username:   string;
+  sessionId:  string;
+  gameId:     string;
+  gameTitle:  string;
+  currency:   string;
+  embeddable: boolean;
+  status:     string;
+  createdAt:  string;
+  closedAt:   string | null;
+}
+
+export interface AsTechTransaction {
+  id:             string;
+  transactionId:  string;
+  playerId:       string;
+  username:       string;
+  cmd:            string;
+  bet:            number;
+  win:            number;
+  balanceBefore:  number;
+  balanceAfter:   number;
+  gameId:         string | null;
+  roundId:        string | null;
+  createdAt:      string;
+}
+
+export interface AsTechStats {
+  period:       string;
+  totalBet:     number;
+  totalWin:     number;
+  ggr:          number;
+  roundsPlayed: number;
+  sessions:     number;
+  players:      number;
+}
+
+export function getAsTechSessions(params?: { status?: string; limit?: number; offset?: number }): Promise<AsTechSession[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set('status', params.status);
+  if (params?.limit  !== undefined) qs.set('limit',  String(params.limit));
+  if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+  const query = qs.toString() ? `?${qs}` : '';
+  return adminApiRequest<AsTechSession[]>('GET', `/api/admin/astech/sessions${query}`);
+}
+
+export function getAsTechTransactions(params?: { playerId?: string; cmd?: string; limit?: number; offset?: number }): Promise<AsTechTransaction[]> {
+  const qs = new URLSearchParams();
+  if (params?.playerId) qs.set('playerId', params.playerId);
+  if (params?.cmd)      qs.set('cmd', params.cmd);
+  if (params?.limit  !== undefined) qs.set('limit',  String(params.limit));
+  if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+  const query = qs.toString() ? `?${qs}` : '';
+  return adminApiRequest<AsTechTransaction[]>('GET', `/api/admin/astech/transactions${query}`);
+}
+
+export function getAsTechStats(period?: string): Promise<AsTechStats> {
+  const query = period ? `?period=${period}` : '';
+  return adminApiRequest<AsTechStats>('GET', `/api/admin/astech/stats${query}`);
 }

@@ -606,15 +606,10 @@ router.post('/redeem-coupon', couponRateLimit, async (req: Request, res: Respons
 
     // minGamesToday
     if (reqs.minGamesToday && reqs.minGamesToday > 0) {
-      const [bingoToday, slotsToday, crashToday, kenoToday, plinkoToday, royalToday] = await Promise.all([
-        prisma.roundEntry.count({ where: { player_id: playerId, joined_at: { gte: todayStart } } }),
-        prisma.slotSpin.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
-        prisma.crashBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
-        prisma.kenoBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
-        prisma.plinkoBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
-        prisma.royalDropBet.count({ where: { player_id: playerId, created_at: { gte: todayStart } } }),
-      ]);
-      const gamesToday = bingoToday + slotsToday + crashToday + kenoToday + plinkoToday + royalToday;
+      const bingoToday = await prisma.roundEntry.count({
+        where: { player_id: playerId, joined_at: { gte: todayStart } },
+      });
+      const gamesToday = bingoToday;
       if (gamesToday < reqs.minGamesToday) {
         res.status(403).json({
           error: 'CLAIM_REQUIREMENT_NOT_MET',

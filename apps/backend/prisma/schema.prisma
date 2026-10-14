@@ -41,6 +41,8 @@ model Player {
   plinko_bets             PlinkoBet[]
   royal_drop_bets         RoyalDropBet[]
   deposit_attempts        DepositAttempt[]
+  astech_sessions         AsTechSession[]
+  astech_transactions     AsTechTransaction[]
 
   @@index([telegram_id])
   @@index([referrer_id])
@@ -705,4 +707,48 @@ model GregmornTransaction {
   @@index([player_login])
   @@index([created_at])
   @@map("gregmorn_transactions")
+}
+
+// ─── AS Tech API Integration ──────────────────────────────────────────────────
+
+model AsTechSession {
+  id           String    @id @default(uuid())
+  player_id    String
+  session_id   String    @unique   // sessionId from AS Tech openSession
+  game_id      String
+  game_title   String    @default("")
+  currency     String    @default("USD")
+  player_login String
+  embeddable   Boolean   @default(false)
+  status       String    @default("active") // active | closed
+  created_at   DateTime  @default(now())
+  closed_at    DateTime?
+  player       Player    @relation(fields: [player_id], references: [id])
+
+  @@index([player_id])
+  @@index([status])
+  @@map("astech_sessions")
+}
+
+model AsTechTransaction {
+  id              String   @id @default(uuid())
+  transaction_id  String   @unique   // AS Tech transaction_id — idempotency key
+  session_id      String             // raw AS Tech session_id string
+  player_id       String
+  player_login    String
+  cmd             String             // 'writeBet' | 'rollback'
+  bet             Decimal  @default(0) @db.Decimal(14, 2)
+  win             Decimal  @default(0) @db.Decimal(14, 2)
+  balance_before  Decimal  @default(0) @db.Decimal(14, 2)
+  balance_after   Decimal  @default(0) @db.Decimal(14, 2)
+  game_id         String?
+  round_id        String?
+  created_at      DateTime @default(now())
+  player          Player   @relation(fields: [player_id], references: [id])
+
+  @@index([player_id])
+  @@index([session_id])
+  @@index([player_login])
+  @@index([created_at])
+  @@map("astech_transactions")
 }

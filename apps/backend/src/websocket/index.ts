@@ -13,12 +13,6 @@ import { RoundScheduler } from '../services/round-scheduler.service.js';
 import { MockPlayerBotService } from '../services/mock-player-bot.service.js';
 import { RoundBonusService } from '../services/round-bonus.service.js';
 import { GameStatus } from '@fidel/shared';
-import { crashEngine } from '../services/crash-engine.service.js';
-import { kenoEngine } from '../services/keno-engine.service.js';
-
-// ─── Module-level io reference for crash routes ───────────────────────────────
-let _crashIo: InstanceType<typeof SocketIOServer> | null = null;
-export function getCrashIo(): InstanceType<typeof SocketIOServer> | null { return _crashIo; }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -287,40 +281,6 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     io.to(`round:${roundId}`).emit('ROUND_BONUS', payload);
   });
 
-  // ── Wire Crash Engine callbacks ────────────────────────────────────────────
-  _crashIo = io;
-
-  crashEngine.onBettingOpen = (roundId, countdownMs) => {
-    io.emit('CRASH_BETTING_OPEN', { roundId, countdownMs });
-  };
-  crashEngine.onStarted = (roundId, startedAt) => {
-    io.emit('CRASH_STARTED', { roundId, startedAt });
-  };
-  crashEngine.onTick = (multiplier) => {
-    io.emit('CRASH_TICK', { multiplier });
-  };
-  crashEngine.onCashedOut = (playerId, username, multiplier, payout) => {
-    io.emit('CRASH_CASHED_OUT', { playerId, username, multiplier, payout });
-  };
-  crashEngine.onEnded = (roundId, crashPoint) => {
-    io.emit('CRASH_ENDED', { roundId, crashPoint });
-  };
-
-  crashEngine.start();
-
-  // ── Wire Keno Engine callbacks ─────────────────────────────────────────────
-  kenoEngine.onBettingOpen = (roundId, endsAt) => {
-    io.emit('KENO_BETTING_OPEN', { roundId, endsAt });
-  };
-  kenoEngine.onNumberDrawn = (roundId, number, drawnSoFar, drawIndex) => {
-    io.emit('KENO_NUMBER_DRAWN', { roundId, number, drawnSoFar, drawIndex });
-  };
-  kenoEngine.onRoundFinished = (roundId, drawnNumbers) => {
-    io.emit('KENO_ROUND_FINISHED', { roundId, drawnNumbers });
-  };
-
-  kenoEngine.start();
-
   // ── Connection handler ─────────────────────────────────────────────────────
 
   // Track which Redis channels have been subscribed to — the subscriber is
@@ -441,18 +401,6 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
         }
       },
     );
-
-    // ── CRASH_CASHOUT ─────────────────────────────────────────────────────────
-    socket.on('CRASH_CASHOUT', async (data: { roundId: string; slot?: number }, ack?: (res: object) => void) => {
-      try {
-        const { multiplier, payout } = await crashEngine.cashout(data.roundId, playerId, data.slot ?? 1);
-        socket.emit('CRASH_CASHOUT_ACK', { multiplier, payout, slot: data.slot ?? 1 });
-        if (ack) ack({ ok: true, multiplier, payout, slot: data.slot ?? 1 });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Cashout failed';
-        if (ack) ack({ ok: false, error: msg });
-      }
-    });
   });
 
   return io;

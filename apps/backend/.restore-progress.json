@@ -1,0 +1,11 @@
+{
+  "completedLabels": [
+    "players",
+    "agents",
+    "wallets",
+    "transactions",
+    "gameRounds"
+  ],
+  "currentLabel": "roundEntries",
+  "currentOffset": 175100
+}
