@@ -34,14 +34,13 @@ import broadcastTargetsRouter from './routes/admin/broadcast-targets.admin.route
 import adminMockPlayersRouter from './routes/admin/mock-players.admin.router.js';
 import adminGamesRouter from './routes/admin/games.admin.router.js';
 import adminCouponsRouter from './routes/admin/coupons.admin.router.js';
-import crashRouter from './routes/crash.router.js';
-import slotsRouter from './routes/slots.router.js';
-import kenoRouter from './routes/keno.router.js';
-import plinkoRouter from './routes/plinko.router.js';
-import royalDropRouter from './routes/royal-drop.router.js';
+
 import gregmornRouter from './routes/gregmorn.router.js';
 import gregmornCallbackRouter from './routes/gregmorn-callback.router.js';
 import gregmornAdminRouter from './routes/admin/gregmorn.admin.router.js';
+import astechRouter from './routes/astech.router.js';
+import astechCallbackRouter from './routes/astech-callback.router.js';
+import astechAdminRouter from './routes/admin/astech.admin.router.js';
 import cashierAuthRouter from './routes/cashier/auth.cashier.router.js';
 import cashierRouter from './routes/cashier/cashier.router.js';
 import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
@@ -49,6 +48,7 @@ import adminBackupRouter from './routes/admin/backup.admin.router.js';
 import adminCleanupRouter from './routes/admin/cleanup.admin.router.js';
 import smsWebhookRouter from './routes/sms-webhook.router.js';
 import adminRoundBonusRouter from './routes/admin/round-bonus.admin.router.js';
+import adminStorageRouter from './routes/admin/storage.admin.router.js';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
@@ -60,7 +60,6 @@ import { CleanupService } from './services/cleanup.service.js';
 import { PromotionScheduler } from './services/promotion-scheduler.service.js';
 import { CouponScheduler } from './services/coupon-scheduler.service.js';
 import { BackupService } from './services/backup.service.js';
-import { kenoEngine } from './services/keno-engine.service.js';
 import { errorHandler, notFoundHandler, setupGlobalErrorHandlers } from './lib/error-handler.js';
 
 // Setup global error handlers for unhandled rejections and exceptions
@@ -147,6 +146,9 @@ app.use('/api/gregmorn/callback', express.json({
   },
 }));
 
+// ─── Raw body capture for AS Tech API callback signature verification ─────────
+app.use('/api/astech/callback', express.raw({ type: '*/*' }));
+
 // ─── Player Routes ────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
 app.use('/api/players', playersRouter);
@@ -156,13 +158,11 @@ app.use('/api/wallet', walletRouter);
 app.use('/api/referral', referralRouter);
 app.use('/api/system', systemRouter);
 app.use('/api/leaderboard', leaderboardRouter);
-app.use('/api/crash', crashRouter);
-app.use('/api/slots', slotsRouter);
-app.use('/api/keno', kenoRouter);
-app.use('/api/plinko', plinkoRouter);
-app.use('/api/royal-drop', royalDropRouter);
+
 app.use('/api/gregmorn', gregmornRouter);
 app.use('/api/gregmorn', gregmornCallbackRouter);
+app.use('/api/astech', astechRouter);
+app.use('/api/astech/callback', astechCallbackRouter);
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 app.use('/api/admin/auth', adminAuthRouter);
@@ -181,12 +181,14 @@ app.use('/api/admin/mock-players', jwtAdminMiddleware, adminMockPlayersRouter);
 app.use('/api/admin/games', jwtAdminMiddleware, adminGamesRouter);
 app.use('/api/admin/coupons', jwtAdminMiddleware, adminCouponsRouter);
 app.use('/api/admin/gregmorn', jwtAdminMiddleware, gregmornAdminRouter);
+app.use('/api/admin/astech', jwtAdminMiddleware, astechAdminRouter);
 app.use('/api/cashier/auth', cashierAuthRouter);
 app.use('/api/cashier', cashierRouter);
 app.use('/api/admin/cashiers', jwtAdminMiddleware, adminCashiersRouter);
 app.use('/api/admin/backup', jwtAdminMiddleware, adminBackupRouter);
 app.use('/api/admin/cleanup', jwtAdminMiddleware, adminCleanupRouter);
 app.use('/api/admin/round-bonus', jwtAdminMiddleware, adminRoundBonusRouter);
+app.use('/api/admin/storage', jwtAdminMiddleware, adminStorageRouter);
 app.use('/api/sms-webhook', smsWebhookRouter);
 // broadcast-targets v2
 

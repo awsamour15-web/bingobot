@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// Quick JSON backup using Prisma client
+// Streaming JSON backup using Prisma client - handles large datasets
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs/promises';
+import fs from 'fs';
+import { createWriteStream } from 'fs';
+import { mkdir } from 'fs/promises';
 import path from 'path';
 import { config } from 'dotenv';
 
@@ -9,75 +11,102 @@ config();
 
 const prisma = new PrismaClient();
 const BACKUP_DIR = './backups';
+const CHUNK_SIZE = 5000;
+
+async function streamTable(writeStream, label, fn, isLast) {
+  process.stdout.write(`  fetching ${label}...`);
+  let offset = 0;
+  let total = 0;
+  let first = true;
+
+  writeStream.write(`"${label}": [`);
+
+  while (true) {
+    const rows = await fn(offset, CHUNK_SIZE);
+    if (rows.length === 0) break;
+
+    for (const row of rows) {
+      if (!first) writeStream.write(',');
+      writeStream.write(JSON.stringify(row, (_k, v) => typeof v === 'bigint' ? v.toString() : v));
+      first = false;
+    }
+
+    total += rows.length;
+    offset += CHUNK_SIZE;
+    if (rows.length < CHUNK_SIZE) break;
+  }
+
+  writeStream.write(isLast ? ']' : '],');
+  console.log(total);
+  return total;
+}
 
 async function backup() {
-  await fs.mkdir(BACKUP_DIR, { recursive: true });
+  await mkdir(BACKUP_DIR, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   const file = path.join(BACKUP_DIR, `backup_${timestamp}.json`);
 
   console.log('Connecting to database...');
 
-  const fetch = async (label, fn) => { process.stdout.write(`  fetching ${label}...`); const r = await fn(); console.log(r.length); return r; };
+  const ws = createWriteStream(file, { encoding: 'utf8' });
 
-  const players                    = await fetch('players', () => prisma.player.findMany());
-  const wallets                    = await fetch('wallets', () => prisma.wallet.findMany());
-  const transactions               = await fetch('transactions', () => prisma.transaction.findMany());
-  const gameRounds                 = await fetch('gameRounds', () => prisma.gameRound.findMany());
-  const roundEntries               = await fetch('roundEntries', () => prisma.roundEntry.findMany());
-  const roundWinners               = await fetch('roundWinners', () => prisma.roundWinner.findMany());
-  const cartelaDefinitions         = await fetch('cartelaDefinitions', () => prisma.cartelaDefinition.findMany());
-  const calledNumbers              = await fetch('calledNumbers', () => prisma.calledNumber.findMany());
-  const admins                     = await fetch('admins', () => prisma.admin.findMany());
-  const config_                    = await fetch('config', () => prisma.config.findMany());
-  const pendingDeposits            = await fetch('pendingDeposits', () => prisma.pendingDeposit.findMany());
-  const depositAttempts            = await fetch('depositAttempts', () => prisma.depositAttempt.findMany());
-  const agents                     = await fetch('agents', () => prisma.agent.findMany());
-  const agentCommissions           = await fetch('agentCommissions', () => prisma.agentCommission.findMany());
-  const agentCommissionWithdrawals = await fetch('agentCommissionWithdrawals', () => prisma.agentCommissionWithdrawal.findMany());
-  const cartelaReservations        = await fetch('cartelaReservations', () => prisma.cartelaReservation.findMany());
-  const pendingWithdrawals         = await fetch('pendingWithdrawals', () => prisma.pendingWithdrawal.findMany());
-  const depositAccounts            = await fetch('depositAccounts', () => prisma.depositAccount.findMany());
-  const broadcastTargets           = await fetch('broadcastTargets', () => prisma.broadcastTarget.findMany());
-  const promotions                 = await fetch('promotions', () => prisma.promotion.findMany());
-  const promotionSchedules         = await fetch('promotionSchedules', () => prisma.promotionSchedule.findMany());
-  const promotionLogs              = await fetch('promotionLogs', () => prisma.promotionLog.findMany());
-  const promotionBonusDistributions= await fetch('promotionBonusDistributions', () => prisma.promotionBonusDistribution.findMany());
-  const crashRounds                = await fetch('crashRounds', () => prisma.crashRound.findMany());
-  const crashBets                  = await fetch('crashBets', () => prisma.crashBet.findMany());
-  const slotSpins                  = await fetch('slotSpins', () => prisma.slotSpin.findMany());
-  const kenoRounds                 = await fetch('kenoRounds', () => prisma.kenoRound.findMany());
-  const kenoBets                   = await fetch('kenoBets', () => prisma.kenoBet.findMany());
-  const plinkoBets                 = await fetch('plinkoBets', () => prisma.plinkoBet.findMany());
-  const royalDropBets              = await fetch('royalDropBets', () => prisma.royalDropBet.findMany());
-  const cashiers                   = await fetch('cashiers', () => prisma.cashier.findMany());
-  const systemSettings             = await fetch('systemSettings', () => prisma.systemSetting.findMany());
-  const gregmornSessions           = await fetch('gregmornSessions', () => prisma.gregmornSession.findMany());
-  const gregmornTransactions       = await fetch('gregmornTransactions', () => prisma.gregmornTransaction.findMany());
+  await new Promise((resolve, reject) => {
+    ws.on('open', resolve);
+    ws.on('error', reject);
+  });
 
-  const data = {
-    _meta: { timestamp: new Date().toISOString(), version: '2.0' },
-    players, wallets, transactions,
-    gameRounds, roundEntries, roundWinners,
-    cartelaDefinitions, calledNumbers,
-    admins, config: config_, pendingDeposits, depositAttempts,
-    agents, agentCommissions, agentCommissionWithdrawals,
-    cartelaReservations, pendingWithdrawals, depositAccounts,
-    broadcastTargets, promotions, promotionSchedules,
-    promotionLogs, promotionBonusDistributions,
-    crashRounds, crashBets, slotSpins, kenoRounds, kenoBets,
-    plinkoBets, royalDropBets, cashiers, systemSettings,
-    gregmornSessions, gregmornTransactions,
-  };
+  ws.write(`{\n"_meta": ${JSON.stringify({ timestamp: new Date().toISOString(), version: '2.1' })},\n`);
 
-  // Stream write to avoid memory issues with large JSON
-  const serialized = JSON.stringify(data, (_key, val) => typeof val === 'bigint' ? val.toString() : val, 2);
-  await fs.writeFile(file, serialized, 'utf8');
+  const tables = [
+    ['players',                     (o, l) => prisma.player.findMany({ skip: o, take: l })],
+    ['wallets',                     (o, l) => prisma.wallet.findMany({ skip: o, take: l })],
+    ['transactions',                (o, l) => prisma.transaction.findMany({ skip: o, take: l })],
+    ['gameRounds',                  (o, l) => prisma.gameRound.findMany({ skip: o, take: l })],
+    ['roundEntries',                (o, l) => prisma.roundEntry.findMany({ skip: o, take: l })],
+    ['roundWinners',                (o, l) => prisma.roundWinner.findMany({ skip: o, take: l })],
+    ['cartelaDefinitions',          (o, l) => prisma.cartelaDefinition.findMany({ skip: o, take: l })],
+    ['calledNumbers',               (o, l) => prisma.calledNumber.findMany({ skip: o, take: l })],
+    ['admins',                      (o, l) => prisma.admin.findMany({ skip: o, take: l })],
+    ['config',                      (o, l) => prisma.config.findMany({ skip: o, take: l })],
+    ['pendingDeposits',             (o, l) => prisma.pendingDeposit.findMany({ skip: o, take: l })],
+    ['depositAttempts',             (o, l) => prisma.depositAttempt.findMany({ skip: o, take: l })],
+    ['agents',                      (o, l) => prisma.agent.findMany({ skip: o, take: l })],
+    ['agentCommissions',            (o, l) => prisma.agentCommission.findMany({ skip: o, take: l })],
+    ['agentCommissionWithdrawals',  (o, l) => prisma.agentCommissionWithdrawal.findMany({ skip: o, take: l })],
+    ['cartelaReservations',         (o, l) => prisma.cartelaReservation.findMany({ skip: o, take: l })],
+    ['pendingWithdrawals',          (o, l) => prisma.pendingWithdrawal.findMany({ skip: o, take: l })],
+    ['depositAccounts',             (o, l) => prisma.depositAccount.findMany({ skip: o, take: l })],
+    ['broadcastTargets',            (o, l) => prisma.broadcastTarget.findMany({ skip: o, take: l })],
+    ['promotions',                  (o, l) => prisma.promotion.findMany({ skip: o, take: l })],
+    ['promotionSchedules',          (o, l) => prisma.promotionSchedule.findMany({ skip: o, take: l })],
+    ['promotionLogs',               (o, l) => prisma.promotionLog.findMany({ skip: o, take: l })],
+    ['promotionBonusDistributions', (o, l) => prisma.promotionBonusDistribution.findMany({ skip: o, take: l })],
+    ['crashRounds',                 (o, l) => prisma.crashRound.findMany({ skip: o, take: l })],
+    ['crashBets',                   (o, l) => prisma.crashBet.findMany({ skip: o, take: l })],
+    ['slotSpins',                   (o, l) => prisma.slotSpin.findMany({ skip: o, take: l })],
+    ['kenoRounds',                  (o, l) => prisma.kenoRound.findMany({ skip: o, take: l })],
+    ['kenoBets',                    (o, l) => prisma.kenoBet.findMany({ skip: o, take: l })],
+    ['plinkoBets',                  (o, l) => prisma.plinkoBet.findMany({ skip: o, take: l })],
+    ['royalDropBets',               (o, l) => prisma.royalDropBet.findMany({ skip: o, take: l })],
+    ['cashiers',                    (o, l) => prisma.cashier.findMany({ skip: o, take: l })],
+    ['systemSettings',              (o, l) => prisma.systemSetting.findMany({ skip: o, take: l })],
+    ['gregmornSessions',            (o, l) => prisma.gregmornSession.findMany({ skip: o, take: l })],
+    ['gregmornTransactions',        (o, l) => prisma.gregmornTransaction.findMany({ skip: o, take: l })],
+  ];
+
+  for (let i = 0; i < tables.length; i++) {
+    const [label, fn] = tables[i];
+    const isLast = i === tables.length - 1;
+    await streamTable(ws, label, fn, isLast);
+  }
+
+  ws.write('\n}');
+  await new Promise((resolve, reject) => {
+    ws.end(resolve);
+    ws.on('error', reject);
+  });
 
   console.log('\n✓ Backup saved:', file);
-  console.log('\nRecord counts:');
-  for (const [key, val] of Object.entries(data)) {
-    if (Array.isArray(val)) console.log(`  ${key}: ${val.length}`);
-  }
 }
 
 backup()

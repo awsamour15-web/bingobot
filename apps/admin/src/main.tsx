@@ -17,6 +17,8 @@ import { BonusPage } from './pages/BonusPage';
 import { MockPlayersPage } from './pages/MockPlayersPage';
 import { CashiersPage } from './pages/CashiersPage';
 import { DepositAccountsPage } from './pages/DepositAccountsPage';
+import AsTechPage from './pages/AsTechPage';
+import StoragePage from './pages/StoragePage';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -31,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="players/:id" element={<PlayersPage />} />
           <Route path="bonus" element={<BonusPage />} />
           <Route path="games" element={<GamesPage />} />
+          <Route path="astech" element={<AsTechPage />} />
           <Route path="finance" element={<FinancePage />} />
           <Route path="deposits" element={<Navigate to="/finance" replace />} />
           <Route path="withdrawals" element={<Navigate to="/finance" replace />} />
@@ -41,6 +44,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="cashiers" element={<CashiersPage />} />
           <Route path="deposit-accounts" element={<DepositAccountsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="storage" element={<StoragePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -11,6 +11,7 @@ const navItems: NavItem[] = [
   { to: '/players',   label: 'Players',     icon: 'players'     },
   { to: '/bonus',     label: 'Bonus',       icon: 'bonus'       },
   { to: '/games',     label: 'Games',       icon: 'ticket'      },
+  { to: '/astech',    label: 'AS Tech API', icon: 'ticket'      },
   { to: '/finance',   label: 'Finance',     icon: 'finance'     },
   { to: '/agents',    label: 'Agents',      icon: 'agents'      },
   { to: '/cashiers',  label: 'Cashiers',    icon: 'agents'      },
@@ -18,6 +19,7 @@ const navItems: NavItem[] = [
   { to: '/promotions',label: 'Promotions',  icon: 'promotions'  },
   { to: '/cartelas',    label: 'Cartelas',     icon: 'cartelas'    },
   { to: '/mock-players', label: 'Mock Players', icon: 'players'     },
+  { to: '/storage',   label: 'Storage',     icon: 'settings'    },
   { to: '/settings',  label: 'Settings',    icon: 'settings'    },
 ];
 
