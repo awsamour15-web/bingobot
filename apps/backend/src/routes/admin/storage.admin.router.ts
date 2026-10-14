@@ -1,7 +1,7 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
 
-const router: Router = Router();
+const router: RouterType = Router();
 
 // GET /api/admin/storage
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
@@ -45,8 +45,10 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     }));
 
     res.json({ total: { size: total.total, bytes: total.bytes }, tables: sizes, counts, dateRange: { oldest: oldest?.start_time, newest: newest?.start_time }, potentialSavings: savings });
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 });
 
@@ -79,8 +81,10 @@ router.post('/cleanup', async (_req: Request, res: Response): Promise<void> => {
     const gr  = await prisma.gameRound.deleteMany({ where: { start_time: { lt: cutoffDate } } });
 
     res.json({ success: true, cutoffDate, deleted: { gameRounds: gr.count, roundEntries: re.count, calledNumbers: cn.count, roundWinners: rw.count, bonusWinners: rbw.count, cartelaReservations: cr.count } });
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 });
 
@@ -113,8 +117,10 @@ router.post('/cleanup-other', async (_req: Request, res: Response): Promise<void
     }
 
     res.json({ success: true, dryRun, cutoffDate, deleted });
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 });
 
