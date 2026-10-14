@@ -7,4 +7,16 @@ apps/admin/dist/
 *.log
 .pnpm-store/
 .DS_Store
+
+# ─── Backup data (contains player PII — never commit) ────────────────────────
 apps/backend/backups/
+backups/
+*.backup.json
+*_backup_*.json
+*_backup_*.sql
+
+# ─── Sensitive runtime / restore artifacts ───────────────────────────────────
+apps/backend/.restore-progress.json
+supabase_migration.sql
+*migration*.sql
+!apps/backend/prisma/migrations/**/*.sql
