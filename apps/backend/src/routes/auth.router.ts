@@ -156,7 +156,7 @@ router.post(
       await tx.wallet.createMany({
         data: [
           { player_id: newPlayer.id, type: 'main', balance: 0 },
-          { player_id: newPlayer.id, type: 'play', balance: 10 },
+          { player_id: newPlayer.id, type: 'play', balance: 15 },
         ],
       });
 
@@ -170,7 +170,7 @@ router.post(
           data: {
             wallet_id: playWallet.id,
             type: 'admin_credit',
-            amount: 10,
+            amount: 15,
           },
         });
       }
