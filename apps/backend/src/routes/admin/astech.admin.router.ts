@@ -16,7 +16,7 @@ router.get('/sessions', async (req: Request, res: Response): Promise<void> => {
   const status = req.query['status'] as string | undefined;
 
   const sessions = await prisma.asTechSession.findMany({
-    where:   status ? { status } : undefined,
+    where:   status ? { status } : {},
     orderBy: { created_at: 'desc' },
     take:    limit,
     skip:    offset,
@@ -28,7 +28,7 @@ router.get('/sessions', async (req: Request, res: Response): Promise<void> => {
   res.json(sessions.map((s) => ({
     id:         s.id,
     playerId:   s.player_id,
-    username:   s.player.username,
+    username:   (s as typeof s & { player: { username: string } }).player.username,
     sessionId:  s.session_id,
     gameId:     s.game_id,
     gameTitle:  s.game_title,
@@ -65,7 +65,7 @@ router.get('/transactions', async (req: Request, res: Response): Promise<void> =
     id:             t.id,
     transactionId:  t.transaction_id,
     playerId:       t.player_id,
-    username:       t.player.username,
+    username:       (t as typeof t & { player: { username: string } }).player.username,
     cmd:            t.cmd,
     bet:            Number(t.bet),
     win:            Number(t.win),

@@ -19,7 +19,10 @@ router.get('/games', async (req: Request, res: Response): Promise<void> => {
   const category = req.query['category'] as string | undefined;
 
   try {
-    const games = await getGameCatalog({ currency, provider, category });
+    const catalogArgs: { currency: string; provider?: string; category?: string } = { currency };
+    if (provider !== undefined) catalogArgs.provider = provider;
+    if (category !== undefined) catalogArgs.category = category;
+    const games = await getGameCatalog(catalogArgs);
     res.json(games);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to fetch games';

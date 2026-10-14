@@ -159,12 +159,6 @@ router.post('/bet', async (req: Request, res: Response): Promise<void> => {
   const { ReferralService } = await import('../services/referral.service.js');
   void ReferralService.maybeCreditInviteBonus(playerId);
 
-  // Notify via WebSocket
-  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { username: true } });
-  const { getCrashIo } = await import('../websocket/index.js');
-  getCrashIo()?.emit('CRASH_BET_PLACED', { playerId, betAmount, slot: slotIdx });
-  void player;
-
   const wallets = await prisma.wallet.findMany({
     where: { player_id: playerId },
     select: { balance: true },
