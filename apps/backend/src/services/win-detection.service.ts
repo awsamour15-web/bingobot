@@ -2,6 +2,7 @@
 // Requirements: 1.1–1.5, 2.1–2.4, 3.1–3.5, 4.1–4.4, 5.1–5.3, 9.1–9.4
 
 import { GameStatus, TxType } from '@fidel/shared';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { CashbackService } from './cashback.service.js';
 import { getConfigInt } from '../lib/config-cache.js';
@@ -147,9 +148,9 @@ async function distributeWinnings(
     // and return early, making this safe in multi-instance deployments.
     await prisma.$transaction(async (tx) => {
       // 1. Lock the round row — distributed mutex across all instances
-      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; derash: string }>>`
-        SELECT id, status, derash FROM game_rounds WHERE id = ${roundId} FOR UPDATE
-      `;
+      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; derash: string }>>(
+        Prisma.sql`SELECT id, status, derash FROM game_rounds WHERE id = ${roundId}::uuid FOR UPDATE`
+      );
       const round = rounds[0];
       // Guard: if another instance already completed this round, bail out
       if (!round || round.status !== GameStatus.active) return;
@@ -175,11 +176,13 @@ async function distributeWinnings(
 
       // 3. Batch-fetch all winner wallets in a single query, then credit each
       const playerIds = [...winnersSnapshot.keys()];
-      const walletRows = await tx.$queryRaw<Array<{ id: string; player_id: string }>>`
-        SELECT DISTINCT ON (player_id) id, player_id
-        FROM wallets
-        WHERE player_id = ANY(${playerIds}::uuid[]) AND type = 'main'
-      `;
+      const walletRows = await tx.$queryRaw<Array<{ id: string; player_id: string }>>(
+        Prisma.sql`
+          SELECT DISTINCT ON (player_id) id, player_id
+          FROM wallets
+          WHERE player_id = ANY(ARRAY[${Prisma.join(playerIds)}]::uuid[]) AND type = 'main'
+        `
+      );
       const walletMap = new Map(walletRows.map((w) => [w.player_id, w.id]));
 
       await Promise.all(

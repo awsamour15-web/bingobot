@@ -5,6 +5,7 @@
 // Requirements: 2.1, 3.1, 3.2, 3.3, 3.4, 3.7, 12.3
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import {
@@ -376,9 +377,9 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
 
   try {
     await prisma.$transaction(async (tx) => {
-      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; stake: string; commission_pct: number }>>`
-        SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = ${id} FOR UPDATE
-      `;
+      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; stake: string; commission_pct: number }>>(
+        Prisma.sql`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = ${id}::uuid FOR UPDATE`
+      );
       const round = rounds[0];
       if (!round) { res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' }); return; }
       if (round.status !== 'pending') { res.status(409).json({ error: 'ROUND_NOT_PENDING', message: 'Round has already started — cannot leave' }); return; }
