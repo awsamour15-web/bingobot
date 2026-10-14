@@ -174,33 +174,25 @@ async function distributeWinnings(
 
       await tx.roundWinner.createMany({ data: winnerRows });
 
-      // 3. Batch-fetch all winner wallets in a single query, then credit each
-      const playerIds = [...winnersSnapshot.keys()];
-      const walletRows = await tx.$queryRaw<Array<{ id: string; player_id: string }>>(
-        Prisma.sql`
-          SELECT DISTINCT ON (player_id) id, player_id
-          FROM wallets
-          WHERE player_id = ANY(${playerIds}::uuid[]) AND type = 'main'
-        `
-      );
-      const walletMap = new Map(walletRows.map((w) => [w.player_id, w.id]));
+      // 3. Credit each winner's main wallet
+      for (const [playerId] of winnersSnapshot.entries()) {
+        const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
+        if (amount <= 0) continue;
 
-      await Promise.all(
-        [...winnersSnapshot.keys()].map(async (playerId) => {
-          const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
-          if (amount <= 0) return;
-          const walletId = walletMap.get(playerId);
-          if (!walletId) return;
+        const wallets = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`SELECT id FROM wallets WHERE player_id = ${playerId}::uuid AND type = 'main' LIMIT 1`
+        );
+        const walletId = wallets[0]?.id;
+        if (!walletId) continue;
 
-          await tx.wallet.update({
-            where: { id: walletId },
-            data: { balance: { increment: amount } },
-          });
-          await tx.transaction.create({
-            data: { wallet_id: walletId, type: TxType.game_win, amount, reference_id: roundId },
-          });
-        }),
-      );
+        await tx.wallet.update({
+          where: { id: walletId },
+          data: { balance: { increment: amount } },
+        });
+        await tx.transaction.create({
+          data: { wallet_id: walletId, type: TxType.game_win, amount, reference_id: roundId },
+        });
+      }
 
       // 4. Update GameRound — marks it completed so no other instance can re-enter
       const smallestWinner = winnersSnapshot.get(smallestId)!;
