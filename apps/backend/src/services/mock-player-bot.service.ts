@@ -283,7 +283,7 @@ export const MockPlayerBotService = {
           );
         } else {
           const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
-            SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${player.id}::uuid
+            SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${player.id}::text::uuid
           `;
           const totalBal = Number(walletRow?.total ?? 0);
           if (totalBal < stake) {

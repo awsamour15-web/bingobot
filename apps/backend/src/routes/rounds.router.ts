@@ -378,7 +378,7 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
   try {
     await prisma.$transaction(async (tx) => {
       const rounds = await tx.$queryRaw<Array<{ id: string; status: string; stake: string; commission_pct: number }>>(
-        Prisma.sql`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = ${id}::uuid FOR UPDATE`
+        Prisma.sql`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = ${id}::text::uuid FOR UPDATE`
       );
       const round = rounds[0];
       if (!round) { res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' }); return; }

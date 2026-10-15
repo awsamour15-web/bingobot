@@ -168,7 +168,7 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   // Verify all are mock players using raw query
   const mockPlayers = await prisma.$queryRaw<Array<{ id: string; username: string }>>`
     SELECT id, username FROM players
-    WHERE id = ANY(${playerIds}::uuid[]) AND is_mock = true
+    WHERE id = ANY(${playerIds}::text[]::uuid[]) AND is_mock = true
   `;
 
   if (mockPlayers.length !== playerIds.length) {
@@ -301,7 +301,7 @@ router.post('/reset-balances', async (req: Request, res: Response): Promise<void
   await prisma.$executeRaw`
     UPDATE wallets
     SET balance = ${amount}
-    WHERE id = ANY(${mockPlayers.map((p) => p.wallet_id)}::uuid[])
+    WHERE id = ANY(${mockPlayers.map((p) => p.wallet_id)}::text[]::uuid[])
   `;
 
   res.json({ success: true, updated: mockPlayers.length, amount });
