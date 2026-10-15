@@ -167,10 +167,9 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   }
 
   // Verify all are mock players using raw query
-  const mockPlayers = await prisma.$queryRaw<Array<{ id: string; username: string }>>(Prisma.sql`
-    SELECT id, username FROM players
-    WHERE id = ANY(${Prisma.raw(`ARRAY[${playerIds.map(id => `'${id}'`).join(',')}]::uuid[]`)} ) AND is_mock = true
-  `);
+  const mockPlayers = await prisma.$queryRawUnsafe<Array<{ id: string; username: string }>>(
+    `SELECT id, username FROM players WHERE id = ANY(ARRAY[${playerIds.map(id => `'${id}'`).join(',')}]::uuid[]) AND is_mock = true`
+  );
 
   if (mockPlayers.length !== playerIds.length) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'One or more player IDs are not valid mock players' });
@@ -299,11 +298,9 @@ router.post('/reset-balances', async (req: Request, res: Response): Promise<void
   }
 
   // Set balance directly to the target amount
-  await prisma.$executeRaw(Prisma.sql`
-    UPDATE wallets
-    SET balance = ${amount}
-    WHERE id = ANY(${Prisma.raw(`ARRAY[${mockPlayers.map((p) => `'${p.wallet_id}'`).join(',')}]::uuid[]`)})
-  `);
+  await prisma.$executeRawUnsafe(
+    `UPDATE wallets SET balance = ${amount} WHERE id = ANY(ARRAY[${mockPlayers.map((p) => `'${p.wallet_id}'`).join(',')}]::uuid[])`
+  );
 
   res.json({ success: true, updated: mockPlayers.length, amount });
 });

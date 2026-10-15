@@ -148,8 +148,8 @@ async function distributeWinnings(
     // and return early, making this safe in multi-instance deployments.
     await prisma.$transaction(async (tx) => {
       // 1. Lock the round row — distributed mutex across all instances
-      const rounds = await tx.$queryRaw<Array<{ id: string; status: string; derash: string }>>(
-        Prisma.sql`SELECT id, status, derash FROM game_rounds WHERE id = ${Prisma.raw(`'${roundId}'::uuid`)} FOR UPDATE`
+      const rounds = await tx.$queryRawUnsafe<Array<{ id: string; status: string; derash: string }>>(
+        `SELECT id, status, derash FROM game_rounds WHERE id = '${roundId}'::uuid FOR UPDATE`
       );
       const round = rounds[0];
       // Guard: if another instance already completed this round, bail out
@@ -179,8 +179,8 @@ async function distributeWinnings(
         const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
         if (amount <= 0) continue;
 
-        const wallets = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`SELECT id FROM wallets WHERE player_id = ${Prisma.raw(`'${playerId}'::uuid`)} AND type = 'main' LIMIT 1`
+        const wallets = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT id FROM wallets WHERE player_id = '${playerId}'::uuid AND type = 'main' LIMIT 1`
         );
         const walletId = wallets[0]?.id;
         if (!walletId) continue;

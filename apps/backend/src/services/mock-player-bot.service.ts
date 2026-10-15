@@ -283,9 +283,9 @@ export const MockPlayerBotService = {
             'Mock bot auto-credit',
           );
         } else {
-          const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>(Prisma.sql`
-            SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${Prisma.raw(`'${player.id}'::uuid`)}
-          `);
+          const [walletRow] = await prisma.$queryRawUnsafe<Array<{ total: string }>>(
+            `SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = '${player.id}'::uuid`
+          );
           const totalBal = Number(walletRow?.total ?? 0);
           if (totalBal < stake) {
             await WalletService.credit(

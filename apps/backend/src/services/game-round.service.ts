@@ -132,14 +132,9 @@ export const GameRoundService = {
     try {
       await prisma.$transaction(async (tx) => {
         // 1. Fetch and lock the round once
-        const rounds = await tx.$queryRaw<
+        const rounds = await tx.$queryRawUnsafe<
           Array<{ id: string; status: string; stake: string; commission_pct: number }>
-        >(Prisma.sql`
-          SELECT id, status, stake, commission_pct
-          FROM game_rounds
-          WHERE id = ${Prisma.raw(`'${roundId}'::uuid`)}
-          FOR UPDATE
-        `);
+        >(`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = '${roundId}'::uuid FOR UPDATE`);
 
         const round = rounds[0];
         if (!round) throw new RoundNotFoundError(roundId);
@@ -173,10 +168,9 @@ export const GameRoundService = {
         // 4. Check player has sufficient balance (soft check — actual debit at game start)
         const stake = parseFloat(round.stake);
         const totalStake = stake * cartelaNumbers.length;
-        const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>(Prisma.sql`
-          SELECT id, type, balance FROM wallets
-          WHERE player_id = ${Prisma.raw(`'${playerId}'::uuid`)} AND type IN ('play', 'main')
-        `);
+        const allWallets = await tx.$queryRawUnsafe<Array<{ id: string; type: string; balance: string }>>(
+          `SELECT id, type, balance FROM wallets WHERE player_id = '${playerId}'::uuid AND type IN ('play', 'main')`
+        );
         const playBalance = parseFloat(allWallets.find(w => w.type === 'play')?.balance ?? '0');
         const mainBalance = parseFloat(allWallets.find(w => w.type === 'main')?.balance ?? '0');
         if (playBalance + mainBalance < totalStake) {
@@ -236,14 +230,9 @@ export const GameRoundService = {
     try {
     await prisma.$transaction(async (tx) => {
       // 1. Fetch and lock the round
-      const rounds = await tx.$queryRaw<
+      const rounds = await tx.$queryRawUnsafe<
         Array<{ id: string; status: string; stake: string; commission_pct: number }>
-      >(Prisma.sql`
-        SELECT id, status, stake, commission_pct
-        FROM game_rounds
-        WHERE id = ${Prisma.raw(`'${roundId}'::uuid`)}
-        FOR UPDATE
-      `);
+      >(`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = '${roundId}'::uuid FOR UPDATE`);
 
       const round = rounds[0];
       if (!round) throw new RoundNotFoundError(roundId);
@@ -266,10 +255,9 @@ export const GameRoundService = {
       const commissionPct = round.commission_pct;
 
       // 4. Soft balance check (actual debit happens at game start)
-      const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>(Prisma.sql`
-        SELECT id, type, balance FROM wallets
-        WHERE player_id = ${Prisma.raw(`'${playerId}'::uuid`)} AND type IN ('play', 'main')
-      `);
+      const allWallets = await tx.$queryRawUnsafe<Array<{ id: string; type: string; balance: string }>>(
+        `SELECT id, type, balance FROM wallets WHERE player_id = '${playerId}'::uuid AND type IN ('play', 'main')`
+      );
       const playBalance = parseFloat(allWallets.find(w => w.type === 'play')?.balance ?? '0');
       const mainBalance = parseFloat(allWallets.find(w => w.type === 'main')?.balance ?? '0');
       if (playBalance + mainBalance < stake) {
@@ -348,11 +336,9 @@ export const GameRoundService = {
     for (const entry of round.round_entries) {
       try {
         await prisma.$transaction(async (tx) => {
-          const allWallets = await tx.$queryRaw<Array<{ id: string; type: string; balance: string }>>(Prisma.sql`
-              SELECT id, type, balance FROM wallets
-              WHERE player_id = ${Prisma.raw(`'${entry.player_id}'::uuid`)} AND type IN ('play', 'main')
-              FOR UPDATE
-            `);
+          const allWallets = await tx.$queryRawUnsafe<Array<{ id: string; type: string; balance: string }>>(
+            `SELECT id, type, balance FROM wallets WHERE player_id = '${entry.player_id}'::uuid AND type IN ('play', 'main') FOR UPDATE`
+          );
           const playWallet = allWallets.find(w => w.type === 'play');
           const mainWallet = allWallets.find(w => w.type === 'main');
           const playBal = parseFloat(playWallet?.balance ?? '0');
