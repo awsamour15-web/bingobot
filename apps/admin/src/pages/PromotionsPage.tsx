@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   C, Btn, Badge, Card, CardHeader, Table, Th, Td, TrEmpty, TrLoading,
   Alert, Field, KpiCard, PageHeader, inputCss, selectCss,
@@ -148,6 +148,17 @@ function SendNowModal({ promotion, targets, onClose }: { promotion: Promotion; t
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ sent?: number; failed?: number; status?: string; message?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [liveStats, setLiveStats] = useState<{ sent: number; failed: number } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Capture stats snapshot before sending so we only show delta from this broadcast
+  const baselineRef = useRef<{ sent: number; failed: number }>({ sent: 0, failed: 0 });
+
+  function stopPolling() {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }
+
+  useEffect(() => () => stopPolling(), []);
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -160,11 +171,33 @@ function SendNowModal({ promotion, targets, onClose }: { promotion: Promotion; t
   async function handleSend() {
     setSending(true); setError(null);
     try {
+      // Snapshot current stats so delta shows only this send
+      const baseline = await getPromotionStats(promotion.id).catch(() => ({ total_sent: 0, total_failed: 0, unique_channels: 0, last_sent_at: null }));
+      baselineRef.current = { sent: baseline.total_sent, failed: baseline.total_failed };
+
       const chosenTargets = targets.filter(t => selected.has(t.id));
       const res = await sendPromotionNow(promotion.id, chosenTargets);
       setResult(res);
+
+      if (res.status === 'queued') {
+        // Start polling for live progress
+        setLiveStats({ sent: 0, failed: 0 });
+        pollRef.current = setInterval(async () => {
+          try {
+            const stats = await getPromotionStats(promotion.id);
+            const deltaSent = Math.max(0, stats.total_sent - baselineRef.current.sent);
+            const deltaFailed = Math.max(0, stats.total_failed - baselineRef.current.failed);
+            setLiveStats({ sent: deltaSent, failed: deltaFailed });
+          } catch { /* ignore */ }
+        }, 2000);
+      }
     } catch (err) { setError((err as Error).message); }
     finally { setSending(false); }
+  }
+
+  function handleDone() {
+    stopPolling();
+    onClose();
   }
 
   return (
@@ -174,8 +207,16 @@ function SendNowModal({ promotion, targets, onClose }: { promotion: Promotion; t
           {result.status === 'queued' ? (
             <>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🚀</div>
-              <div style={{ fontWeight: 700, color: 'var(--c-text)', fontSize: 18, marginBottom: 6 }}>Broadcast started</div>
-              <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>Sending to all players in background. Check delivery logs for results.</div>
+              <div style={{ fontWeight: 700, color: 'var(--c-text)', fontSize: 18, marginBottom: 6 }}>Broadcasting…</div>
+              {liveStats !== null ? (
+                <div style={{ color: 'var(--c-muted)', fontSize: 14, marginTop: 8 }}>
+                  <span style={{ color: '#22c55e', fontWeight: 600 }}>✓ {liveStats.sent} sent</span>
+                  {liveStats.failed > 0 && <span style={{ color: '#ef4444', marginLeft: 12, fontWeight: 600 }}>✗ {liveStats.failed} failed</span>}
+                  <div style={{ fontSize: 12, marginTop: 6, color: 'var(--c-muted)' }}>Updating every 2s…</div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>Sending to all players in background…</div>
+              )}
             </>
           ) : (
             <>
@@ -186,7 +227,7 @@ function SendNowModal({ promotion, targets, onClose }: { promotion: Promotion; t
               {(result.failed ?? 0) > 0 && <div style={{ color: '#ef4444', fontSize: 13 }}>Check delivery logs for details</div>}
             </>
           )}
-          <div style={{ marginTop: 20 }}><Btn onClick={onClose}>Done</Btn></div>
+          <div style={{ marginTop: 20 }}><Btn onClick={handleDone}>Done</Btn></div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
