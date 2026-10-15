@@ -428,30 +428,7 @@ router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response):
     return;
   }
 
-  // ── Deposit requirement checks ───────────────────────────────────────────
-  const playerWallets = await prisma.wallet.findMany({
-    where: { player_id: playerId },
-    select: { id: true },
-  });
-  const playerWalletIds = playerWallets.map((w) => w.id);
-
-  // Sum of all real deposits the player has ever made
-  const depositAgg = await prisma.transaction.aggregate({
-    where: {
-      wallet_id: { in: playerWalletIds },
-      type: TxType.deposit,
-    },
-    _sum: { amount: true },
-  });
-  const totalDeposited = Number(depositAgg._sum.amount ?? 0);
-
-  if (totalDeposited < 200) {
-    res.status(403).json({
-      error: 'DEPOSIT_REQUIRED',
-      message: `You must deposit at least ETB 200 in total before requesting a withdrawal. You have deposited ETB ${totalDeposited.toFixed(0)} so far.`,
-    });
-    return;
-  }
+  // ── Deposit requirement checks removed ──────────────────────────────────
 
   try {
     // Debit atomically at request time — prevents double-spend across concurrent requests

@@ -1539,23 +1539,6 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
 
     console.log('[Bot] Player found:', player.id, 'wallets:', player.wallets.length);
 
-    // Require at least 200 ETB total deposited before allowing withdrawal
-    const playerWalletIds = player.wallets.map((w) => w.id);
-    const depositAgg = await prisma.transaction.aggregate({
-      where: { wallet_id: { in: playerWalletIds }, type: TxType.deposit },
-      _sum: { amount: true },
-    });
-    const totalDeposited = Number(depositAgg._sum.amount ?? 0);
-    if (totalDeposited < 200) {
-      await ctx.reply(
-        `⚠️ ገንዘብ ለማውጣት ቢያንስ 200 ብር ማስገባት ያስፈልጋል።\n\n` +
-        `እስካሁን ያስገቡት፦ ${totalDeposited.toFixed(0)} ብር\n` +
-        `የሚፈለገው ጠቅላላ፦ 200 ብር\n\n` +
-        `"ገንዘብ አስገባ 💰" ብለው ይጫኑ።`
-      );
-      return;
-    }
-
     const mainWallet = player.wallets.find(w => w.type === 'main');
     console.log('[Bot] Main wallet:', mainWallet ? `${mainWallet.balance} ${mainWallet.type}` : 'not found');
     
