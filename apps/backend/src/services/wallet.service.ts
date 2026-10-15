@@ -55,7 +55,7 @@ export const WalletService = {
         },
       });
       await trimTransactionHistory(wallet.id, tx);
-    });
+    }, { timeout: 15_000 });
   },
 
   async debitDual(playerId: string, amount: number, type: TxType, referenceId?: string, note?: string): Promise<void> {
@@ -139,7 +139,7 @@ export const WalletService = {
         },
       });
       await trimTransactionHistory(wallet.id, tx);
-    });
+    }, { timeout: 15_000 });
   },
 
   assertWithdrawable(walletType: WalletType): void {
