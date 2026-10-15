@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 
 console.log('🕐 Cleanup cron job started');
 console.log('📅 Schedule: Every day at 3:00 AM');
-console.log('🗑️  Deletes game data older than 2 days\n');
+console.log('🗑️  Keeps last 24 records per game history table\n');
 
 // Run every day at 3:00 AM
 cron.schedule('0 3 * * *', async () => {

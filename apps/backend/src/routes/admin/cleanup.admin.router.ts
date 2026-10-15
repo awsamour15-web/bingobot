@@ -1,5 +1,6 @@
 import { Router, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
+import { runDatabaseCleanup } from '../../services/cleanup.service.js';
 
 const router: RouterType = Router();
 
@@ -143,6 +144,18 @@ router.post('/run', async (req, res) => {
     res.json({ success: true, totalDeleted, deleted: results, cutoff: cutoff.toISOString(), daysToKeep });
   } catch (err: any) {
     console.error('[Cleanup] Failed:', err);
+    res.status(500).json({ error: 'CLEANUP_FAILED', message: err.message });
+  }
+});
+
+// POST /api/admin/cleanup/run-now  — count-based: keep last 24 per game history table
+router.post('/run-now', async (req, res) => {
+  try {
+    const results      = await runDatabaseCleanup();
+    const totalDeleted = Object.values(results).reduce((a, b) => a + b, 0);
+    res.json({ success: true, totalDeleted, deleted: results, keepPerTable: 24 });
+  } catch (err: any) {
+    console.error('[Cleanup/run-now] Failed:', err);
     res.status(500).json({ error: 'CLEANUP_FAILED', message: err.message });
   }
 });
