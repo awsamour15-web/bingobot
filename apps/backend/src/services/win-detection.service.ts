@@ -148,14 +148,15 @@ async function distributeWinnings(
     // and return early, making this safe in multi-instance deployments.
     await prisma.$transaction(async (tx) => {
       // 1. Lock the round row — distributed mutex across all instances
-      const rounds = await tx.$queryRawUnsafe<Array<{ id: string; status: string; derash: string }>>(
-        `SELECT id, status, derash FROM game_rounds WHERE id = '${roundId}'::uuid FOR UPDATE`
-      );
+      const rounds = await tx.gameRound.findMany({
+        where: { id: roundId },
+        select: { id: true, status: true, derash: true },
+      });
       const round = rounds[0];
       // Guard: if another instance already completed this round, bail out
       if (!round || round.status !== GameStatus.active) return;
 
-      const derash = Math.round(parseFloat(round.derash)); // work in integer birr units
+      const derash = Math.round(Number(round.derash)); // work in integer birr units
       const winnerCount = winnersSnapshot.size;
       const splitAmount = Math.floor(derash / winnerCount);
       const remainder = derash - splitAmount * winnerCount;
@@ -179,10 +180,12 @@ async function distributeWinnings(
         const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
         if (amount <= 0) continue;
 
-        const wallets = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-          `SELECT id FROM wallets WHERE player_id = '${playerId}'::uuid AND type = 'main' LIMIT 1`
-        );
-        const walletId = wallets[0]?.id;
+        const walletRows = await tx.wallet.findMany({
+          where: { player_id: playerId, type: 'main' as any },
+          select: { id: true },
+          take: 1,
+        });
+        const walletId = walletRows[0]?.id;
         if (!walletId) continue;
 
         await tx.wallet.update({

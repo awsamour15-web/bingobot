@@ -377,10 +377,10 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
 
   try {
     await prisma.$transaction(async (tx) => {
-      const rounds = await tx.$queryRawUnsafe<Array<{ id: string; status: string; stake: string; commission_pct: number }>>(
-        `SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = '${id}'::uuid FOR UPDATE`
-      );
-      const round = rounds[0];
+      const round = await tx.gameRound.findUnique({
+        where: { id },
+        select: { id: true, status: true, stake: true, commission_pct: true },
+      });
       if (!round) { res.status(404).json({ error: 'NOT_FOUND', message: 'Round not found' }); return; }
       if (round.status !== 'pending') { res.status(409).json({ error: 'ROUND_NOT_PENDING', message: 'Round has already started — cannot leave' }); return; }
 
@@ -397,7 +397,7 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
       });
 
       // Recalculate derash preview
-      const stake = parseFloat(round.stake);
+      const stake = Number(round.stake);
       const entryCount = await tx.roundEntry.count({ where: { round_id: id, is_watching: false } });
       const newDerash = entryCount * stake * (1 - round.commission_pct / 100);
       await tx.gameRound.update({ where: { id }, data: { derash: newDerash } });

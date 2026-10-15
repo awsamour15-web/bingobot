@@ -131,12 +131,12 @@ export const GameRoundService = {
 
     try {
       await prisma.$transaction(async (tx) => {
-        // 1. Fetch and lock the round once
-        const rounds = await tx.$queryRawUnsafe<
-          Array<{ id: string; status: string; stake: string; commission_pct: number }>
-        >(`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = '${roundId}'::uuid FOR UPDATE`);
+        // 1. Fetch the round (transaction isolation handles concurrent access)
+        const round = await tx.gameRound.findUnique({
+          where: { id: roundId },
+          select: { id: true, status: true, stake: true, commission_pct: true },
+        });
 
-        const round = rounds[0];
         if (!round) throw new RoundNotFoundError(roundId);
         if (round.status !== GameStatus.pending) {
           throw new RoundNotPendingError(roundId, round.status);
@@ -166,13 +166,14 @@ export const GameRoundService = {
         }
 
         // 4. Check player has sufficient balance (soft check — actual debit at game start)
-        const stake = parseFloat(round.stake);
+        const stake = Number(round.stake);
         const totalStake = stake * cartelaNumbers.length;
-        const allWallets = await tx.$queryRawUnsafe<Array<{ id: string; type: string; balance: string }>>(
-          `SELECT id, type, balance FROM wallets WHERE player_id = '${playerId}'::uuid AND type IN ('play', 'main')`
-        );
-        const playBalance = parseFloat(allWallets.find(w => w.type === 'play')?.balance ?? '0');
-        const mainBalance = parseFloat(allWallets.find(w => w.type === 'main')?.balance ?? '0');
+        const allWallets = await tx.wallet.findMany({
+          where: { player_id: playerId, type: { in: ['play', 'main'] as any } },
+          select: { id: true, type: true, balance: true },
+        });
+        const playBalance = Number(allWallets.find(w => w.type === 'play')?.balance ?? 0);
+        const mainBalance = Number(allWallets.find(w => w.type === 'main')?.balance ?? 0);
         if (playBalance + mainBalance < totalStake) {
           const { InsufficientFundsError } = await import('./wallet.service.js');
           const mainWalletId = allWallets.find(w => w.type === 'main')?.id ?? '';
@@ -229,12 +230,12 @@ export const GameRoundService = {
     void walletType; // kept for API compatibility
     try {
     await prisma.$transaction(async (tx) => {
-      // 1. Fetch and lock the round
-      const rounds = await tx.$queryRawUnsafe<
-        Array<{ id: string; status: string; stake: string; commission_pct: number }>
-      >(`SELECT id, status, stake, commission_pct FROM game_rounds WHERE id = '${roundId}'::uuid FOR UPDATE`);
+      // 1. Fetch the round
+      const round = await tx.gameRound.findUnique({
+        where: { id: roundId },
+        select: { id: true, status: true, stake: true, commission_pct: true },
+      });
 
-      const round = rounds[0];
       if (!round) throw new RoundNotFoundError(roundId);
       if (round.status !== GameStatus.pending) {
         throw new RoundNotPendingError(roundId, round.status);
@@ -251,15 +252,16 @@ export const GameRoundService = {
       });
       if (existing) throw new CartelaTakenError(roundId, cartelaNumber);
 
-      const stake = parseFloat(round.stake);
+      const stake = Number(round.stake);
       const commissionPct = round.commission_pct;
 
       // 4. Soft balance check (actual debit happens at game start)
-      const allWallets = await tx.$queryRawUnsafe<Array<{ id: string; type: string; balance: string }>>(
-        `SELECT id, type, balance FROM wallets WHERE player_id = '${playerId}'::uuid AND type IN ('play', 'main')`
-      );
-      const playBalance = parseFloat(allWallets.find(w => w.type === 'play')?.balance ?? '0');
-      const mainBalance = parseFloat(allWallets.find(w => w.type === 'main')?.balance ?? '0');
+      const allWallets = await tx.wallet.findMany({
+        where: { player_id: playerId, type: { in: ['play', 'main'] as any } },
+        select: { id: true, type: true, balance: true },
+      });
+      const playBalance = Number(allWallets.find(w => w.type === 'play')?.balance ?? 0);
+      const mainBalance = Number(allWallets.find(w => w.type === 'main')?.balance ?? 0);
       if (playBalance + mainBalance < stake) {
         const { InsufficientFundsError } = await import('./wallet.service.js');
         const mainWalletId = allWallets.find(w => w.type === 'main')?.id ?? '';
@@ -336,13 +338,14 @@ export const GameRoundService = {
     for (const entry of round.round_entries) {
       try {
         await prisma.$transaction(async (tx) => {
-          const allWallets = await tx.$queryRawUnsafe<Array<{ id: string; type: string; balance: string }>>(
-            `SELECT id, type, balance FROM wallets WHERE player_id = '${entry.player_id}'::uuid AND type IN ('play', 'main') FOR UPDATE`
-          );
+          const allWallets = await tx.wallet.findMany({
+            where: { player_id: entry.player_id, type: { in: ['play', 'main'] as any } },
+            select: { id: true, type: true, balance: true },
+          });
           const playWallet = allWallets.find(w => w.type === 'play');
           const mainWallet = allWallets.find(w => w.type === 'main');
-          const playBal = parseFloat(playWallet?.balance ?? '0');
-          const mainBal = parseFloat(mainWallet?.balance ?? '0');
+          const playBal = Number(playWallet?.balance ?? 0);
+          const mainBal = Number(mainWallet?.balance ?? 0);
 
           if (playBal + mainBal < stake) {
             // Can't pay — remove entry

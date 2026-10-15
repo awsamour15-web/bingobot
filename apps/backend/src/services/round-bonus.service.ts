@@ -55,16 +55,15 @@ export const RoundBonusService = {
     // Credit bonus and record winner atomically
     await prisma.$transaction(async (tx) => {
       // Double-check no concurrent winner was inserted
-      const check = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT id FROM round_bonus_winners WHERE round_id = '${roundId}'::uuid LIMIT 1`
-      );
-      if (check.length > 0) return;
+      const existing = await tx.roundBonusWinner.findUnique({ where: { round_id: roundId } });
+      if (existing) return;
 
       // Find player's main wallet
-      const wallets = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT id FROM wallets WHERE player_id = '${winnerEntry.player_id}'::uuid AND type = 'main' LIMIT 1`
-      );
-      const walletId = wallets[0]?.id;
+      const walletRow = await tx.wallet.findFirst({
+        where: { player_id: winnerEntry.player_id, type: 'main' as any },
+        select: { id: true },
+      });
+      const walletId = walletRow?.id;
       if (!walletId) return;
 
       // Credit stake to main wallet

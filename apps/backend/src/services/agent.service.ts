@@ -334,15 +334,16 @@ export const AgentService = {
     try {
       withdrawal = await prisma.$transaction(async (tx) => {
         // Re-read agent inside the transaction with a lock to prevent concurrent overdraft
-        const agents = await tx.$queryRawUnsafe<Array<{ id: string; is_active: boolean; commission_balance: string }>>(
-          `SELECT id, is_active, commission_balance FROM agents WHERE id = '${agentId}'::uuid FOR UPDATE`
-        );
+        const agents = await tx.agent.findMany({
+          where: { id: agentId },
+          select: { id: true, is_active: true, commission_balance: true },
+        });
         const agent = agents[0];
 
         if (!agent) throw new Error('Agent not found');
         if (!agent.is_active) throw new Error('Agent account is suspended');
 
-        const balance = parseFloat(agent.commission_balance);
+        const balance = Number(agent.commission_balance);
         if (balance < amount) throw new Error('Insufficient commission balance');
 
         await tx.agent.update({
