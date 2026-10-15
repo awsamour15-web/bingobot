@@ -3,6 +3,7 @@
 
 import { randomUUID } from 'crypto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -333,9 +334,9 @@ export const AgentService = {
     try {
       withdrawal = await prisma.$transaction(async (tx) => {
         // Re-read agent inside the transaction with a lock to prevent concurrent overdraft
-        const agents = await tx.$queryRaw<Array<{ id: string; is_active: boolean; commission_balance: string }>>`
-          SELECT id, is_active, commission_balance FROM agents WHERE id = ${agentId} FOR UPDATE
-        `;
+        const agents = await tx.$queryRaw<Array<{ id: string; is_active: boolean; commission_balance: string }>>(Prisma.sql`
+          SELECT id, is_active, commission_balance FROM agents WHERE id = ${Prisma.raw(`'${agentId}'::uuid`)} FOR UPDATE
+        `);
         const agent = agents[0];
 
         if (!agent) throw new Error('Agent not found');

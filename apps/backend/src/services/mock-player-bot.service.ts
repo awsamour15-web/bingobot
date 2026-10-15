@@ -12,6 +12,7 @@
 //     No grid injection is needed — the real cartela wins naturally.
 
 import prisma from '../lib/prisma.js';
+import { Prisma } from '@prisma/client';
 import { WalletService } from './wallet.service.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
@@ -282,9 +283,9 @@ export const MockPlayerBotService = {
             'Mock bot auto-credit',
           );
         } else {
-          const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>`
-            SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${player.id}::text::uuid
-          `;
+          const [walletRow] = await prisma.$queryRaw<Array<{ total: string }>>(Prisma.sql`
+            SELECT COALESCE(SUM(balance), 0) AS total FROM wallets WHERE player_id = ${Prisma.raw(`'${player.id}'::uuid`)}
+          `);
           const totalBal = Number(walletRow?.total ?? 0);
           if (totalBal < stake) {
             await WalletService.credit(

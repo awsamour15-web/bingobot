@@ -4,6 +4,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import { WalletType, TxType } from '@fidel/shared';
 import prisma from '../../lib/prisma.js';
+import { Prisma } from '@prisma/client';
 import { WalletService } from '../../services/wallet.service.js';
 import { GameRoundService } from '../../services/game-round.service.js';
 import { invalidateConfigCache } from '../../lib/config-cache.js';
@@ -166,10 +167,10 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   }
 
   // Verify all are mock players using raw query
-  const mockPlayers = await prisma.$queryRaw<Array<{ id: string; username: string }>>`
+  const mockPlayers = await prisma.$queryRaw<Array<{ id: string; username: string }>>(Prisma.sql`
     SELECT id, username FROM players
-    WHERE id = ANY(${playerIds}::text[]::uuid[]) AND is_mock = true
-  `;
+    WHERE id = ANY(${Prisma.raw(`ARRAY[${playerIds.map(id => `'${id}'`).join(',')}]::uuid[]`)} ) AND is_mock = true
+  `);
 
   if (mockPlayers.length !== playerIds.length) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'One or more player IDs are not valid mock players' });
@@ -298,11 +299,11 @@ router.post('/reset-balances', async (req: Request, res: Response): Promise<void
   }
 
   // Set balance directly to the target amount
-  await prisma.$executeRaw`
+  await prisma.$executeRaw(Prisma.sql`
     UPDATE wallets
     SET balance = ${amount}
-    WHERE id = ANY(${mockPlayers.map((p) => p.wallet_id)}::text[]::uuid[])
-  `;
+    WHERE id = ANY(${Prisma.raw(`ARRAY[${mockPlayers.map((p) => `'${p.wallet_id}'`).join(',')}]::uuid[]`)})
+  `);
 
   res.json({ success: true, updated: mockPlayers.length, amount });
 });

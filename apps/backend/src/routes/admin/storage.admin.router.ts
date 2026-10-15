@@ -124,4 +124,58 @@ router.post('/cleanup-other', async (_req: Request, res: Response): Promise<void
   }
 });
 
+// POST /api/admin/storage/cleanup-keep-last
+// Keeps only the last N completed bingo rounds and deletes the rest
+router.post('/cleanup-keep-last', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const { keep = 24, dryRun = false } = _req.body;
+    const keepCount = Math.max(1, parseInt(keep, 10));
+
+    // Find IDs of the most recent N completed rounds to keep
+    const recentRounds = await prisma.gameRound.findMany({
+      where: { status: { in: ['completed', 'cancelled', 'void'] } },
+      orderBy: { start_time: 'desc' },
+      take: keepCount,
+      select: { id: true },
+    });
+    const keepIds = recentRounds.map(r => r.id);
+
+    const oldRounds = await prisma.gameRound.findMany({
+      where: {
+        status: { in: ['completed', 'cancelled', 'void'] },
+        ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}),
+      },
+      select: { id: true },
+    });
+    const oldIds = oldRounds.map(r => r.id);
+
+    if (dryRun) {
+      const calledNumbers = await prisma.calledNumber.count({ where: { round_id: { in: oldIds } } });
+      const roundEntries  = await prisma.roundEntry.count({ where: { round_id: { in: oldIds } } });
+      const roundWinners  = await prisma.roundWinner.count({ where: { round_id: { in: oldIds } } });
+      const bonusWinners  = await prisma.roundBonusWinner.count({ where: { round_id: { in: oldIds } } });
+      res.json({ dryRun: true, keep: keepCount, wouldDelete: { gameRounds: oldIds.length, calledNumbers, roundEntries, roundWinners, bonusWinners } });
+      return;
+    }
+
+    if (oldIds.length === 0) {
+      res.json({ success: true, keep: keepCount, deleted: { gameRounds: 0, calledNumbers: 0, roundEntries: 0, roundWinners: 0, bonusWinners: 0, cartelaReservations: 0 } });
+      return;
+    }
+
+    const cn  = await prisma.calledNumber.deleteMany({ where: { round_id: { in: oldIds } } });
+    const rbw = await prisma.roundBonusWinner.deleteMany({ where: { round_id: { in: oldIds } } });
+    const rw  = await prisma.roundWinner.deleteMany({ where: { round_id: { in: oldIds } } });
+    const re  = await prisma.roundEntry.deleteMany({ where: { round_id: { in: oldIds } } });
+    const cr  = await prisma.cartelaReservation.deleteMany({ where: { round_id: { in: oldIds } } });
+    const gr  = await prisma.gameRound.deleteMany({ where: { id: { in: oldIds } } });
+
+    res.json({ success: true, keep: keepCount, deleted: { gameRounds: gr.count, calledNumbers: cn.count, roundEntries: re.count, roundWinners: rw.count, bonusWinners: rbw.count, cartelaReservations: cr.count } });
+    return;
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+});
+
 export default router;
