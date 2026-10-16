@@ -51,6 +51,9 @@ export class NumberCallingEngine {
   /** Per-round cached round entries — fetched once at start, cleared when round ends */
   private readonly entriesCache = new Map<string, Array<{ player_id: string; cartela_number: number }>>();
 
+  /** Rounds known to be active — avoids a DB status check on every number call */
+  private readonly activeRoundIds = new Set<string>();
+
   /** Rounds currently being stopped — prevents callNext re-entry during async stop */
   readonly stoppingRounds = new Set<string>();
 
@@ -79,6 +82,7 @@ export class NumberCallingEngine {
     this.gridCache.delete(roundId);
     this.calledSets.delete(roundId);
     this.entriesCache.delete(roundId);
+    this.activeRoundIds.delete(roundId);
   }
 
   /**
@@ -298,6 +302,7 @@ export class NumberCallingEngine {
 
       // Start immediately
       this.activeTimers.set(roundId, setTimeout(() => { void callNext(); }, 0));
+      this.activeRoundIds.add(roundId);
       this.startingRounds.delete(roundId);
     } catch (err) {
       this.startingRounds.delete(roundId);
@@ -316,6 +321,7 @@ export class NumberCallingEngine {
       clearTimeout(handle);
       this.activeTimers.delete(roundId);
     }
+    this.activeRoundIds.delete(roundId);
     this.gridCache.delete(roundId);
     this.calledSets.delete(roundId);
     this.entriesCache.delete(roundId);
@@ -333,13 +339,16 @@ export class NumberCallingEngine {
     if (this.stoppingRounds.has(roundId)) return true;
 
     try {
-      // Fast pre-check — skip if round is no longer active
-      const roundStatus = await prisma.gameRound.findUnique({
-        where: { id: roundId },
-        select: { status: true },
-      });
-      if (!roundStatus || roundStatus.status !== GameStatus.active) {
-        return roundStatus?.status !== GameStatus.active;
+      // Fast in-memory check — round is active if we started it (no DB query per number)
+      if (!this.activeRoundIds.has(roundId)) {
+        // Not in our active set — do a one-time DB check to confirm
+        const roundStatus = await prisma.gameRound.findUnique({
+          where: { id: roundId },
+          select: { status: true },
+        });
+        if (!roundStatus || roundStatus.status !== GameStatus.active) return true;
+        // It's active — add to set so future ticks skip the DB check
+        this.activeRoundIds.add(roundId);
       }
 
       // Prefer in-memory calledSet for speed; fall back to DB only when empty
@@ -451,6 +460,7 @@ export class NumberCallingEngine {
     this.calledSets.delete(roundId);
     this.entriesCache.delete(roundId);
     this.activeSequences.delete(roundId);
+    this.activeRoundIds.delete(roundId);
 
     const entries = await prisma.roundEntry.findMany({
       where: { round_id: roundId, is_watching: false },

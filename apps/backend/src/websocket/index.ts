@@ -13,6 +13,7 @@ import { RoundScheduler } from '../services/round-scheduler.service.js';
 import { MockPlayerBotService } from '../services/mock-player-bot.service.js';
 import { RoundBonusService } from '../services/round-bonus.service.js';
 import { GameStatus } from '@fidel/shared';
+import { getCachedSuspension, setCachedSuspension } from '../middleware/jwt-auth.middleware.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -163,13 +164,20 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
     // Enforce suspension on WebSocket connections — a suspended player holding
     // a valid JWT must not be able to receive game events or submit claims.
+    // Reuses the same 30s suspension cache as the HTTP middleware.
     try {
-      const player = await prisma.player.findUnique({
-        where: { id: payload.playerId },
-        select: { is_suspended: true },
-      });
-      if (!player) return next(new Error('PLAYER_NOT_FOUND'));
-      if (player.is_suspended) return next(new Error('PLAYER_SUSPENDED'));
+      const cached = getCachedSuspension(payload.playerId);
+      if (cached === null) {
+        const player = await prisma.player.findUnique({
+          where: { id: payload.playerId },
+          select: { is_suspended: true },
+        });
+        if (!player) return next(new Error('PLAYER_NOT_FOUND'));
+        setCachedSuspension(payload.playerId, player.is_suspended);
+        if (player.is_suspended) return next(new Error('PLAYER_SUSPENDED'));
+      } else if (cached === true) {
+        return next(new Error('PLAYER_SUSPENDED'));
+      }
     } catch {
       return next(new Error('AUTH_ERROR'));
     }

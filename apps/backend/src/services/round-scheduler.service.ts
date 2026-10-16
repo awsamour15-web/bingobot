@@ -11,7 +11,7 @@ import { getConfigInt, getConfigFloat, setConfig } from '../lib/config-cache.js'
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
-const CHECK_INTERVAL_MS = 5_000;
+const CHECK_INTERVAL_MS = 2_000;
 
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
@@ -95,8 +95,8 @@ export const RoundScheduler = {
     try {
       RoundScheduler._tickCount++;
       await RoundScheduler.expireEmptyRounds();
-      // Run heavy recovery checks every 6 ticks (~30s) to reduce DB pressure
-      if (RoundScheduler._tickCount % 6 === 0) {
+      // Run heavy recovery checks every 15 ticks (~30s) to reduce DB pressure
+      if (RoundScheduler._tickCount % 15 === 0) {
         await RoundScheduler.recoverStaleActiveRounds();
       }
       await RoundScheduler.ensureRoundsExist();

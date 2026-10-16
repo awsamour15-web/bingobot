@@ -330,52 +330,54 @@ export const GameRoundService = {
       return;
     }
 
-    // Collect payment from each entry — remove entries that can't pay
-    // Process sequentially to avoid overwhelming the DB connection pool
+    // Collect payment from each entry in parallel — cap concurrency to avoid
+    // overwhelming the DB pool. With connection_limit=10, batches of 5 is safe.
     const paidPlayerIds: string[] = [];
     const removedCartelas: number[] = [];
+    const BATCH_SIZE = 5;
 
-    for (const entry of round.round_entries) {
-      try {
-        await prisma.$transaction(async (tx) => {
-          const allWallets = await tx.wallet.findMany({
-            where: { player_id: entry.player_id, type: { in: ['play', 'main'] as any } },
-            select: { id: true, type: true, balance: true },
-          });
-          const playWallet = allWallets.find(w => w.type === 'play');
-          const mainWallet = allWallets.find(w => w.type === 'main');
-          const playBal = Number(playWallet?.balance ?? 0);
-          const mainBal = Number(mainWallet?.balance ?? 0);
-
-          if (playBal + mainBal < stake) {
-            // Can't pay — remove entry
-            await tx.roundEntry.delete({
-              where: { round_id_cartela_number: { round_id: roundId, cartela_number: entry.cartela_number } },
+    for (let i = 0; i < round.round_entries.length; i += BATCH_SIZE) {
+      const batch = round.round_entries.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (entry) => {
+        try {
+          await prisma.$transaction(async (tx) => {
+            const allWallets = await tx.wallet.findMany({
+              where: { player_id: entry.player_id, type: { in: ['play', 'main'] as any } },
+              select: { id: true, type: true, balance: true },
             });
-            removedCartelas.push(entry.cartela_number);
-            return;
-          }
+            const playWallet = allWallets.find(w => w.type === 'play');
+            const mainWallet = allWallets.find(w => w.type === 'main');
+            const playBal = Number(playWallet?.balance ?? 0);
+            const mainBal = Number(mainWallet?.balance ?? 0);
 
-          const playDebit = Math.min(playBal, stake);
-          const mainDebit = stake - playDebit;
+            if (playBal + mainBal < stake) {
+              await tx.roundEntry.delete({
+                where: { round_id_cartela_number: { round_id: roundId, cartela_number: entry.cartela_number } },
+              });
+              removedCartelas.push(entry.cartela_number);
+              return;
+            }
 
-          if (playDebit > 0 && playWallet) {
-            await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { decrement: playDebit } } });
-            await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.game_entry, amount: playDebit, reference_id: roundId } });
-          }
-          if (mainDebit > 0 && mainWallet) {
-            await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { decrement: mainDebit } } });
-            await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
-          }
-          paidPlayerIds.push(entry.player_id);
-        });
-      } catch {
-        // On error, remove this entry to be safe
-        await prisma.roundEntry.deleteMany({
-          where: { round_id: roundId, player_id: entry.player_id, cartela_number: entry.cartela_number },
-        }).catch(() => {});
-        removedCartelas.push(entry.cartela_number);
-      }
+            const playDebit = Math.min(playBal, stake);
+            const mainDebit = stake - playDebit;
+
+            if (playDebit > 0 && playWallet) {
+              await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { decrement: playDebit } } });
+              await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.game_entry, amount: playDebit, reference_id: roundId } });
+            }
+            if (mainDebit > 0 && mainWallet) {
+              await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { decrement: mainDebit } } });
+              await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
+            }
+            paidPlayerIds.push(entry.player_id);
+          });
+        } catch {
+          await prisma.roundEntry.deleteMany({
+            where: { round_id: roundId, player_id: entry.player_id, cartela_number: entry.cartela_number },
+          }).catch(() => {});
+          removedCartelas.push(entry.cartela_number);
+        }
+      }));
     }
 
     // Recalculate derash with actual paying players
