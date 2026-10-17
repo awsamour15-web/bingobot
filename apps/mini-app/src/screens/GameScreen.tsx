@@ -59,7 +59,10 @@ export default function GameScreen() {
   // Listen for ROUND_WON to power the winners ticker
   useEffect(() => {
     function onRoundWon(payload: RoundWonPayload) {
-      const stake = rounds.find(r => r.status === 'active')?.stake ?? 0;
+      const wonRoundId = (payload as any).roundId;
+      const stake = wonRoundId
+        ? (rounds.find(r => r.id === wonRoundId)?.stake ?? rounds.find(r => r.status === 'active')?.stake ?? 0)
+        : (rounds.find(r => r.status === 'active')?.stake ?? 0);
       payload.winners.slice(0, 2).forEach(w => {
         const tick: WinnerTick = { id: ++tickId, username: w.username, amount: w.amount, stake: Number(stake) };
         setWinnerTicks(prev => [tick, ...prev].slice(0, 6));

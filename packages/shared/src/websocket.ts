@@ -20,6 +20,7 @@ export interface RoundStartedPayload {
 }
 
 export interface RoundWonPayload {
+  roundId: string;
   winners: Array<{
     playerId: string;
     username: string;

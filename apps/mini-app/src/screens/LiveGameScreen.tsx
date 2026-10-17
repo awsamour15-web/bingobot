@@ -416,6 +416,9 @@ export default function LiveGameScreen() {
     const onJoined = (p: PlayerJoinedPayload) =>
       setGame((g) => ({ ...g, playerCount: p.playerCount }));
     const onWon = (p: RoundWonPayload) => {
+      // Guard: only process ROUND_WON events for the current round
+      if ((p as any).roundId && (p as any).roundId !== roundId) return;
+
       setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.totalDerash }));
       
       // Play winning sound

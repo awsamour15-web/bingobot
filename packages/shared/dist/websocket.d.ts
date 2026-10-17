@@ -11,6 +11,7 @@ export interface RoundStartedPayload {
     winningPattern: WinPattern;
 }
 export interface RoundWonPayload {
+    roundId: string;
     winners: Array<{
         playerId: string;
         username: string;

@@ -281,7 +281,7 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
 
   // ── Wire WinDetectionService ROUND_WON callback ────────────────────────────
   WinDetectionService.setOnRoundWon((roundId, payload) => {
-    io.to(`round:${roundId}`).emit('ROUND_WON', payload);
+    io.to(`round:${roundId}`).emit('ROUND_WON', { ...payload, roundId });
   });
 
   // ── Wire RoundBonusService ROUND_BONUS callback ────────────────────────────
