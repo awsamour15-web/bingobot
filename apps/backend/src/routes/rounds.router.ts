@@ -33,7 +33,16 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
   const [rounds, activeCartelaCount, jackpotSetting] = await Promise.all([
     prisma.gameRound.findMany({
       where: { status: { in: ['pending', 'active'] } },
-      include: { _count: { select: { round_entries: true } } },
+      select: {
+        id: true,
+        stake: true,
+        status: true,
+        max_players: true,
+        start_time: true,
+        derash: true,
+        winning_pattern: true,
+        _count: { select: { round_entries: true } },
+      },
       orderBy: { start_time: 'asc' },
     }),
     getConfigInt('active_cartela_count', TOTAL_CARTELAS),

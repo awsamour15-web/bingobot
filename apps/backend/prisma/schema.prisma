@@ -103,6 +103,7 @@ model GameRound {
 
   @@index([status])
   @@index([start_time])
+  @@index([status, start_time])
   @@map("game_rounds")
 }
 
