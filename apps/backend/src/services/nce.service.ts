@@ -187,6 +187,11 @@ export class NumberCallingEngine {
             derash: Number(round.derash),
             winningPattern: (round.winning_pattern ?? 'any_line') as WinPattern,
           });
+
+          // Notify players their round is starting (non-blocking)
+          import('../bot/notifications.js').then(({ notifyRoundStarting }) => {
+            void notifyRoundStarting(roundId, Number(round.stake));
+          }).catch(() => {});
         }
       }
 

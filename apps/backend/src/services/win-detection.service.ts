@@ -263,14 +263,56 @@ async function distributeWinnings(
     }
 
     // Telegram notifications (non-blocking)
-    import('../bot/notifications.js').then(({ notifyWin }) => {
+    import('../bot/notifications.js').then(async ({ notifyWin, announceWinnerPublicly }) => {
       for (const w of winnersPayload) {
         void notifyWin(w.playerId, w.amount, winnerCount);
       }
+      // Public channel winner announcement
+      const calledCount = nce.calledSets.get(roundId)?.size
+        ?? (await prisma.calledNumber.count({ where: { round_id: roundId } }));
+      void announceWinnerPublicly(
+        winnersPayload.map(w => ({
+          username:      w.username,
+          amount:        w.amount,
+          cartelaNumber: w.cartelaNumber,
+        })),
+        round ? Number((round as any).stake) : 0,
+        totalDerash,
+        calledCount,
+      );
     }).catch(() => {});
 
     // ── Round bonus — refund one random cartela's stake (non-blocking) ────────
     void RoundBonusService.awardRoundBonus(roundId);
+
+    // Auto-rejoin prompt — notify each player of the next pending round (non-blocking)
+    setTimeout(() => {
+      import('../bot/notifications.js').then(async ({ notifyAutoRejoinPrompt }) => {
+        try {
+          const pendingRound = await prisma.gameRound.findFirst({
+            where: { status: 'pending' as any },
+            orderBy: { start_time: 'asc' },
+            select: { id: true },
+          });
+          if (!pendingRound) return;
+          for (const [playerId, { cartelaNumber }] of winnersSnapshot) {
+            void notifyAutoRejoinPrompt(playerId, cartelaNumber, pendingRound.id);
+          }
+          // Also prompt non-winners who played
+          const allEntries = await prisma.roundEntry.findMany({
+            where: { round_id: roundId, is_watching: false },
+            select: { player_id: true, cartela_number: true },
+          });
+          const alreadyNotified = new Set(winnersSnapshot.keys());
+          for (const entry of allEntries) {
+            if (!alreadyNotified.has(entry.player_id)) {
+              void notifyAutoRejoinPrompt(entry.player_id, entry.cartela_number, pendingRound.id);
+              alreadyNotified.add(entry.player_id);
+            }
+          }
+        } catch { /* non-fatal */ }
+      }).catch(() => {});
+    }, 6_000);
 
     // Replenish pending rounds — wait 5s so clients can see the winner screen first
     setTimeout(() => {

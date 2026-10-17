@@ -19,9 +19,11 @@ model Player {
   referrer_id          String?
   created_at           DateTime             @default(now())
   agent_id             String?
-  login_streak         Int                  @default(1)
-  longest_streak       Int                  @default(1)
-  last_login_date      DateTime?            @db.Date
+  login_streak            Int                  @default(1)
+  longest_streak          Int                  @default(1)
+  last_login_date         DateTime?            @db.Date
+  daily_bonus_claimed_at  DateTime?            @db.Date
+  auto_rejoin_cartela     Int?
   agent_commissions       AgentCommission[]
   cartela_reservations    CartelaReservation[]
   won_rounds              GameRound[]          @relation("RoundWinner")

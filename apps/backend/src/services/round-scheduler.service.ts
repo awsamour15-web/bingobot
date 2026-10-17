@@ -6,12 +6,16 @@ import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { GameStatus, WinPattern } from '@fidel/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
-import { getConfigInt, getConfigFloat, setConfig } from '../lib/config-cache.js';
+import { getConfigInt, getConfigFloat, getConfigOrDefault, setConfig } from '../lib/config-cache.js';
 
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
 const CHECK_INTERVAL_MS = 2_000;
+
+// Jackpot round: one daily round at a configured stake (default 100 Birr)
+// Scheduled once per day at a configured hour (UTC, default 18:00)
+let lastJackpotDate: string | null = null;
 
 // Prevents concurrent ensureRoundsExist calls from racing to create duplicate rounds
 let ensureLock = false;
@@ -247,8 +251,55 @@ export const RoundScheduler = {
     }
   },
 
-  async ensureRoundsExist(): Promise<void> {
-    if (ensureLock) return;
+  async ensureJackpotRound(maxPlayers: number, commissionPct: number): Promise<void> {
+    try {
+      const enabled = await getConfigOrDefault('jackpot_enabled', '0');
+      if (enabled !== '1') return;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (lastJackpotDate === todayStr) return; // already created today in this process
+
+      const hourUtc = await getConfigInt('jackpot_hour_utc', 18);
+      if (new Date().getUTCHours() < hourUtc) return; // not time yet
+
+      const stake = await getConfigInt('jackpot_stake', 100);
+
+      // Check if a jackpot round already exists today (any status)
+      const startOfDay = new Date(todayStr + 'T00:00:00.000Z');
+      const endOfDay   = new Date(todayStr + 'T23:59:59.999Z');
+      const existing   = await prisma.gameRound.findFirst({
+        where: { stake, start_time: { gte: startOfDay, lte: endOfDay } },
+      });
+      if (existing) { lastJackpotDate = todayStr; return; }
+
+      const startTime = new Date(Date.now() + LEAD_TIME_MS);
+      const round = await prisma.gameRound.create({
+        data: {
+          stake,
+          status: GameStatus.pending,
+          max_players: maxPlayers,
+          start_time: startTime,
+          commission_pct: commissionPct,
+          derash: 0,
+          winning_pattern: JSON.stringify([WinPattern.any_line, WinPattern.corners]),
+        },
+      });
+
+      lastJackpotDate = todayStr;
+      console.log(`[Scheduler] 🏆 Jackpot round ${round.id} | stake=${stake} Birr | starts=${startTime.toISOString()}`);
+
+      // Announce in the channel
+      import('../bot/notifications.js').then(async ({ tryBroadcastJackpot }) => {
+        if (tryBroadcastJackpot) void tryBroadcastJackpot(stake);
+      }).catch(() => {});
+
+      if (RoundScheduler._onRoundsReplenished) RoundScheduler._onRoundsReplenished();
+    } catch (err) {
+      console.error('[Scheduler] ensureJackpotRound error:', err);
+    }
+  },
+
+  async ensureRoundsExist(): Promise<void> {    if (ensureLock) return;
     ensureLock = true;
     try {
       const [pendingRounds, activeRounds] = await Promise.all([
@@ -327,6 +378,13 @@ export const RoundScheduler = {
           }
         }
       }
+
+      // ── Daily jackpot round ────────────────────────────────────────────────
+      // Creates one jackpot round per day at the configured UTC hour.
+      // jackpot_enabled      — '1' to enable (default disabled)
+      // jackpot_stake        — stake in Birr (default 100)
+      // jackpot_hour_utc     — UTC hour to schedule it (default 18)
+      await RoundScheduler.ensureJackpotRound(maxPlayers, commissionPct);
     } catch (err) {
       console.error('[Scheduler] ensureRoundsExist error:', err);
     } finally {

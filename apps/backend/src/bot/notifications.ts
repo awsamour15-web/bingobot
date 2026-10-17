@@ -2,6 +2,9 @@
 
 import { bot } from './index.js';
 import prisma from '../lib/prisma.js';
+import { getConfigOrDefault } from '../lib/config-cache.js';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Resolve a player's telegram_id from their player UUID */
 async function getPlayerTelegramId(playerId: string): Promise<bigint | null> {
@@ -12,57 +15,213 @@ async function getPlayerTelegramId(playerId: string): Promise<bigint | null> {
   return player?.telegram_id ?? null;
 }
 
-/**
- * Notify a player that their game round is about to start.
- */
-export async function notifyGameStart(_playerId: string, _roundId: string): Promise<void> {
-  // not implemented
+/** Send a message, swallowing errors silently (best-effort notifications) */
+async function trySend(chatId: string, text: string, extra?: object): Promise<void> {
+  try {
+    if (!bot) return;
+    await bot.api.sendMessage(chatId, text, { parse_mode: 'HTML', ...(extra ?? {}) });
+  } catch (err: any) {
+    // Log but never throw — notifications must never crash the game flow
+    console.error('[Notifications] sendMessage failed:', err?.message ?? err);
+  }
 }
 
-/**
- * Notify a player that they won a game round.
- */
-export async function notifyWin(_playerId: string, _derash: number, _totalWinners?: number): Promise<void> {
-  // not implemented
+/** Send to a channel by its configured ID (if set) */
+async function tryBroadcastToChannel(text: string): Promise<void> {
+  try {
+    if (!bot) return;
+    const channelId = await getConfigOrDefault('winner_announcement_channel', '');
+    if (!channelId) return;
+    await bot.api.sendMessage(channelId, text, { parse_mode: 'HTML' });
+  } catch (err: any) {
+    console.error('[Notifications] channel broadcast failed:', err?.message ?? err);
+  }
 }
 
+// ─── Round start notification ─────────────────────────────────────────────────
+
 /**
- * Notify a player about a completed deposit or withdrawal transaction.
+ * Notify all non-watching players in a round that it is starting.
+ * Sent as a non-blocking background job — never awaited by the caller.
  */
-export async function notifyTransaction(
-  _playerId: string,
-  _txType: string,
-  _amount: number,
-  _newBalance: number,
+export async function notifyRoundStarting(roundId: string, stake: number): Promise<void> {
+  try {
+    if (!bot) return;
+
+    const entries = await prisma.roundEntry.findMany({
+      where: { round_id: roundId, is_watching: false },
+      select: {
+        player: { select: { id: true, telegram_id: true, is_mock: true } },
+      },
+    });
+
+    const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
+    const miniAppUrl  = process.env['MINI_APP_URL']  ?? 'https://bingobot-mini-app.vercel.app/';
+
+    const text =
+      `🎮 <b>ጨዋታ ይጀምራል!</b>\n\n` +
+      `💰 Stake: <b>${stake} ብር</b>\n` +
+      `👥 Players: ${entries.length}\n\n` +
+      `▶️ ጨዋታውን ለማየት ወደ ታሉ ይጫኑ 👇`;
+
+    const keyboard = {
+      inline_keyboard: [[{ text: '🎮 Open Game', url: `https://t.me/${botUsername}` }]],
+    };
+
+    // Send with a small delay between messages to respect Telegram rate limits
+    let sent = 0;
+    for (const entry of entries) {
+      if (entry.player.is_mock) continue;
+      void trySend(entry.player.telegram_id.toString(), text, { reply_markup: keyboard });
+      sent++;
+      // Throttle: 30 messages/sec Telegram limit → ~35ms spacing
+      if (sent % 25 === 0) await new Promise(r => setTimeout(r, 1000));
+    }
+  } catch (err) {
+    console.error('[Notifications] notifyRoundStarting error:', err);
+  }
+}
+
+// ─── Winner notification ──────────────────────────────────────────────────────
+
+/**
+ * Notify a winning player privately.
+ */
+export async function notifyWin(
+  playerId: string,
+  amount: number,
+  totalWinners = 1,
 ): Promise<void> {
-  // not implemented
-}
-
-/**
- * Notify a player that their withdrawal was approved and paid.
- */
-export async function notifyWithdrawalApproved(playerId: string, amount: number, phone: string): Promise<void> {
   try {
     if (!bot) return;
     const telegramId = await getPlayerTelegramId(playerId);
     if (!telegramId) return;
 
-    await bot.api.sendMessage(
+    const splitNote = totalWinners > 1 ? ` (${totalWinners} winners split the prize)` : '';
+    const text =
+      `🏆 <b>አሸነፉ!</b>\n\n` +
+      `💵 ${amount} ብር ወደ ዋሌትዎ ገብቷል${splitNote}.\n\n` +
+      `እንኳን ደስ ያልዎ! 🎉`;
+
+    await trySend(telegramId.toString(), text);
+  } catch (err) {
+    console.error('[Notifications] notifyWin error:', err);
+  }
+}
+
+/**
+ * Post a public winner announcement to the configured announcement channel.
+ * Called after every completed round.
+ */
+export async function announceWinnerPublicly(
+  winners: Array<{ username: string; amount: number; cartelaNumber: number }>,
+  stake: number,
+  totalDerash: number,
+  calledCount: number,
+): Promise<void> {
+  try {
+    if (!bot) return;
+
+    const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
+
+    let winnerLines: string;
+    if (winners.length === 1) {
+      const w = winners[0]!;
+      winnerLines =
+        `🏆 <b>@${w.username}</b>\n` +
+        `   Cartela #${w.cartelaNumber} — <b>${w.amount} ብር</b>`;
+    } else {
+      winnerLines = winners
+        .map(w => `🏅 @${w.username} — #${w.cartelaNumber} — <b>${w.amount}ብር</b>`)
+        .join('\n');
+    }
+
+    const text =
+      `🎊 <b>አሸናፊ ተገኘ!</b>\n\n` +
+      winnerLines + '\n\n' +
+      `📊 ${calledCount} ቁጥሮች ጠርተው | ሽልማት: ${totalDerash} ብር | Stake: ${stake} ብር\n\n` +
+      `🎮 ለመጫወት: @${botUsername}`;
+
+    await tryBroadcastToChannel(text);
+  } catch (err) {
+    console.error('[Notifications] announceWinnerPublicly error:', err);
+  }
+}
+
+// ─── Daily bonus notification ─────────────────────────────────────────────────
+
+export async function notifyDailyBonus(
+  telegramId: bigint,
+  amount: number,
+  streak: number,
+): Promise<void> {
+  const streakEmoji = streak >= 30 ? '🔥🔥🔥' : streak >= 7 ? '🔥🔥' : streak >= 3 ? '🔥' : '⭐';
+  const streakMsg   = streak > 1 ? `\n${streakEmoji} <b>${streak} ቀን streak!</b>` : '';
+
+  await trySend(
+    telegramId.toString(),
+    `🎁 <b>Daily Bonus</b>\n\n` +
+    `${amount} ብር ወደ play wallet ገብቷል!${streakMsg}\n\n` +
+    `ነገም ተመልሰው ለተጨማሪ ቦነስ! 😊`,
+  );
+}
+
+// ─── Transaction notifications ────────────────────────────────────────────────
+
+export async function notifyTransaction(
+  playerId: string,
+  txType: string,
+  amount: number,
+  newBalance: number,
+): Promise<void> {
+  try {
+    if (!bot) return;
+    const telegramId = await getPlayerTelegramId(playerId);
+    if (!telegramId) return;
+
+    const isDeposit  = txType === 'deposit';
+    const icon  = isDeposit ? '✅' : '💸';
+    const label = isDeposit ? 'ዲፖዚት ተረጋገጠ' : 'ብር ወጥቷል';
+
+    await trySend(
       telegramId.toString(),
-      `✅ የማውጣት ጥያቄዎ ተፈቅዷል!\n\n` +
+      `${icon} <b>${label}</b>\n\n` +
+      `💵 ${amount} ብር\n` +
+      `💰 ቀሪ ሒሳብ: ${newBalance} ብር`,
+    );
+  } catch (err) {
+    console.error('[Notifications] notifyTransaction error:', err);
+  }
+}
+
+// ─── Withdrawal notifications ─────────────────────────────────────────────────
+
+export async function notifyWithdrawalApproved(
+  playerId: string,
+  amount: number,
+  phone: string,
+): Promise<void> {
+  try {
+    if (!bot) return;
+    const telegramId = await getPlayerTelegramId(playerId);
+    if (!telegramId) return;
+
+    await trySend(
+      telegramId.toString(),
+      `✅ <b>የማውጣት ጥያቄዎ ተፈቅዷል!</b>\n\n` +
       `💵 መጠን: ${amount} ብር\n` +
       `📱 ስልክ: ${phone}\n\n` +
       `ብሩ ወደ ቴሌብር ቁጥርዎ ተልኳል። ❤️`,
     );
   } catch (err) {
-    console.error('[Notifications] Failed to send withdrawal approved message:', err);
+    console.error('[Notifications] notifyWithdrawalApproved error:', err);
   }
 }
 
-/**
- * Notify a player that their withdrawal was rejected and funds refunded.
- */
-export async function notifyWithdrawalRejected(playerId: string, amount?: number): Promise<void> {
+export async function notifyWithdrawalRejected(
+  playerId: string,
+  amount?: number,
+): Promise<void> {
   try {
     if (!bot) return;
     const telegramId = await getPlayerTelegramId(playerId);
@@ -70,13 +229,69 @@ export async function notifyWithdrawalRejected(playerId: string, amount?: number
 
     const amountText = amount ? `💵 መጠን: ${amount} ብር\n\n` : '';
 
-    await bot.api.sendMessage(
+    await trySend(
       telegramId.toString(),
-      `❌ የማውጣት ጥያቄዎ ውድቅ ተደርጓል።\n\n` +
+      `❌ <b>የማውጣት ጥያቄዎ ውድቅ ተደርጓል።</b>\n\n` +
       amountText +
-      `ሂሳብዎ ወደ  ዋሌትዎ ተመልሷል። ለተጨማሪ መረጃ ድጋፍ ያግኙ።`,
+      `ሂሳብዎ ወደ ዋሌትዎ ተመልሷል። ለተጨማሪ መረጃ ድጋፍ ያግኙ።`,
     );
   } catch (err) {
-    console.error('[Notifications] Failed to send withdrawal rejected message:', err);
+    console.error('[Notifications] notifyWithdrawalRejected error:', err);
+  }
+}
+
+// ─── Jackpot announcement ─────────────────────────────────────────────────────
+
+export async function tryBroadcastJackpot(stake: number): Promise<void> {
+  try {
+    if (!bot) return;
+    const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
+    const text =
+      `🏆 <b>JACKPOT ROUND ዛሬ!</b>\n\n` +
+      `💰 Stake: <b>${stake} ብር</b>\n` +
+      `🎯 አሸናፊው ትልቅ ሽልማት ያገኛል!\n\n` +
+      `ዛሬ ምሽት ይቀላቀሉ 👇\n` +
+      `🎮 @${botUsername}`;
+
+    await tryBroadcastToChannel(text);
+  } catch (err) {
+    console.error('[Notifications] tryBroadcastJackpot error:', err);
+  }
+}
+
+// ─── Auto-rejoin prompt ───────────────────────────────────────────────────────
+
+/**
+ * After a round ends, ask the winner/participants if they want to auto-rejoin next round.
+ * Shows an inline keyboard with their last cartela as the quick-rejoin option.
+ */
+export async function notifyAutoRejoinPrompt(
+  playerId: string,
+  lastCartelaNumber: number,
+  nextRoundId: string,
+): Promise<void> {
+  try {
+    if (!bot) return;
+    const telegramId = await getPlayerTelegramId(playerId);
+    if (!telegramId) return;
+
+    const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
+    const miniAppUrl  = process.env['MINI_APP_URL']  ?? 'https://bingobot-mini-app.vercel.app/';
+
+    const keyboard = {
+      inline_keyboard: [[
+        { text: `▶️ Rejoin #${lastCartelaNumber}`, url: `https://t.me/${botUsername}` },
+        { text: '🎮 Open Game', url: miniAppUrl },
+      ]],
+    };
+
+    await trySend(
+      telegramId.toString(),
+      `🔄 ሌላ ዙር ይጀምራል!\n\n` +
+      `Cartela #${lastCartelaNumber} ዳግም ለመቀላቀል 👇`,
+      { reply_markup: keyboard },
+    );
+  } catch (err) {
+    console.error('[Notifications] notifyAutoRejoinPrompt error:', err);
   }
 }

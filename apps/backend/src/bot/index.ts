@@ -41,7 +41,7 @@ export const MENU_BUTTONS = [
   ['Check Balance 💰', 'Deposit 💰'],
   ['Contact Support 📞', 'Instruction 📖'],
   ['Withdraw 🤑', 'Invite 🔗'],
-  ['Be Partner 🤝'],
+  ['Leaderboard 🏆', 'Be Partner 🤝'],
 ] as const;
 
 // ─── Agent/Partner menu button labels ──────────────────────────────────────────
@@ -57,7 +57,7 @@ export const AGENT_MENU_BUTTONS = [
 
 // ─── Unguarded buttons (accessible without registration) ─────────────────────
 
-const UNGUARDED_BUTTONS = new Set(['Register 📝', 'Play 🎮', 'Be Partner 🤝']);
+const UNGUARDED_BUTTONS = new Set(['Register 📝', 'Play 🎮', 'Be Partner 🤝', 'Leaderboard 🏆']);
 
 /**
  * Returns true if the given button text requires the player to be registered.
@@ -1296,6 +1296,26 @@ if (BOT_TOKEN) {
         '👋 Welcome to Fidel Bingo! Choose an Option below.',
         { reply_markup: buildMainMenu() },
       );
+
+      // Daily login bonus — credit once per calendar day, non-blocking
+      {
+        const regPlayer = await prisma.player.findUnique({
+          where: { telegram_id: telegramId },
+          select: { id: true },
+        });
+        if (regPlayer) {
+          void (async () => {
+            try {
+              const { EngagementService } = await import('../services/engagement.service.js');
+              const result = await EngagementService.claimDailyBonus(regPlayer.id);
+              if (result.credited) {
+                const { notifyDailyBonus } = await import('./notifications.js');
+                void notifyDailyBonus(telegramId, result.amount, result.streak);
+              }
+            } catch { /* non-fatal */ }
+          })();
+        }
+      }
     } catch (err) {
       console.error('[Bot] /start handler error:', err);
       await ctx.reply('Something went wrong. Please try again later.').catch(() => {});
@@ -2164,7 +2184,61 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
     }
 
     const link = buildInviteLink(ctx.me.username, telegramId);
-    await ctx.reply(`🔗 Invite your friends!\n\nShare this link:\n${link}`);
+
+    // Show personal referral count
+    const player = await prisma.player.findUnique({
+      where: { telegram_id: telegramId },
+      select: { id: true, _count: { select: { referrals: true } } },
+    });
+    const myCount = player?._count?.referrals ?? 0;
+
+    // Top 5 leaderboard
+    try {
+      const { EngagementService } = await import('../services/engagement.service.js');
+      const board = await EngagementService.getReferralLeaderboard(5);
+      const lines = board.map(r => `${r.rank}. ${r.username} — ${r.referralCount} invited`).join('\n');
+      await ctx.reply(
+        `🔗 <b>Invite & Earn!</b>\n\n` +
+        `📩 Your invite link:\n${link}\n\n` +
+        `👤 You've invited: <b>${myCount}</b> player${myCount === 1 ? '' : 's'}\n` +
+        `💰 Earn <b>5 ETB</b> for every friend who joins!\n\n` +
+        `🏆 <b>Top Inviters</b>\n${lines || '—'}`,
+        { parse_mode: 'HTML' },
+      );
+    } catch {
+      await ctx.reply(`🔗 Invite your friends!\n\nShare this link:\n${link}`);
+    }
+  });
+
+  // ─── Leaderboard 🏆 handler ──────────────────────────────────────────────
+  bot.hears('Leaderboard 🏆', async (ctx) => {
+    if (!ctx.from) return;
+    if (!(await isRegistered(BigInt(ctx.from.id)))) {
+      await ctx.reply('⚠️ Please register first. Tap Register 📝 to get started.');
+      return;
+    }
+    try {
+      const { EngagementService } = await import('../services/engagement.service.js');
+      const board = await EngagementService.getReferralLeaderboard(10);
+      if (board.length === 0) {
+        await ctx.reply('🏆 Referral leaderboard is empty — be the first to invite friends!');
+        return;
+      }
+      const lines = board
+        .map(r => {
+          const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `${r.rank}.`;
+          return `${medal} ${r.username} — ${r.referralCount} invited`;
+        })
+        .join('\n');
+      await ctx.reply(
+        `🏆 <b>Top Inviters</b>\n\n${lines}\n\n` +
+        `💰 Earn <b>5 ETB</b> for every friend you invite!\nShare your link via <b>Invite 🔗</b>`,
+        { parse_mode: 'HTML' },
+      );
+    } catch (err) {
+      console.error('[Bot] Leaderboard error:', err);
+      await ctx.reply('❌ Unable to load leaderboard. Please try again later.');
+    }
   });
 
   // ─── Agent Dashboard 📊 handler ──────────────────────────────────────────
