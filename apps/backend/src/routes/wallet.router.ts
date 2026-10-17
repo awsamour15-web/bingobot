@@ -428,7 +428,23 @@ router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response):
     return;
   }
 
-  // ── Deposit requirement checks removed ──────────────────────────────────
+  // ── Require at least one real deposit before allowing withdrawal ─────────
+  const playerWallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
+    select: { id: true },
+  });
+  const walletIds = playerWallets.map((w) => w.id);
+  const firstDeposit = await prisma.transaction.findFirst({
+    where: { wallet_id: { in: walletIds }, type: TxType.deposit },
+    select: { id: true },
+  });
+  if (!firstDeposit) {
+    res.status(403).json({
+      error: 'NO_DEPOSIT',
+      message: 'ገንዘብ ለማውጣት አስቀድመው ቢያንስ አንድ ዲፖዚት ማድረግ አለብዎ። / You must make at least one deposit before withdrawing.',
+    });
+    return;
+  }
 
   try {
     // Debit atomically at request time — prevents double-spend across concurrent requests
