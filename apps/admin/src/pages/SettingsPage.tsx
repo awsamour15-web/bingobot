@@ -1283,6 +1283,84 @@ function JackpotSection() {
 }
 
 
+// ─── Maintenance Mode ─────────────────────────────────────────────────────────
+
+function MaintenanceSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [bypassId, setBypassId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fb, setFb] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  useEffect(() => {
+    getConfig().then((data) => {
+      setEnabled(data.find(e => e.key === 'maintenance_enabled')?.value === 'true');
+      setBypassId(data.find(e => e.key === 'maintenance_bypass_player_id')?.value ?? '');
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    setSaving(true); setFb(null);
+    try {
+      await updateConfig('maintenance_enabled', enabled ? 'true' : 'false');
+      await updateConfig('maintenance_bypass_player_id', bypassId.trim());
+      setFb({ type: 'success', msg: 'Maintenance settings saved' });
+    } catch (e: unknown) {
+      setFb({ type: 'error', msg: (e as Error).message ?? 'Failed to save' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Loading…</p>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
+      {fb && <Alert type={fb.type}>{fb.msg}</Alert>}
+
+      <div style={{
+        background: enabled ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+        border: `1px solid ${enabled ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
+        borderRadius: 12, padding: '16px 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+      }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>
+            Maintenance Mode
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>
+            {enabled ? '🔴 All users see the maintenance screen (except bypass user)' : '🟢 App is live for all users'}
+          </div>
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={e => setEnabled(e.target.checked)}
+            style={{ width: 18, height: 18, cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 13, color: 'var(--c-text)', fontWeight: 600 }}>
+            {enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </label>
+      </div>
+
+      <Field label="Bypass Player ID" hint="This player will still see the app during maintenance. Paste their player UUID from the Players page.">
+        <input
+          style={inputCss}
+          value={bypassId}
+          onChange={e => setBypassId(e.target.value)}
+          placeholder="e.g. a1b2c3d4-..."
+        />
+      </Field>
+
+      <div><Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn></div>
+    </div>
+  );
+}
+
+
 // ─── Settings Page — tabbed layout ───────────────────────────────────────────
 
 const TABS = [
@@ -1298,6 +1376,7 @@ const TABS = [
   { key: 'admins',        label: 'Admin Accounts',    icon: '👤' },
   { key: 'backup',        label: 'Backup',            icon: '💾' },
   { key: 'cleanup',       label: 'DB Cleanup',        icon: '🧹' },
+  { key: 'maintenance',   label: 'Maintenance',       icon: '🔧' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -1399,6 +1478,7 @@ export function SettingsPage() {
           {activeTab === 'admins'     && <AdminAccountsSection />}
           {activeTab === 'backup'     && <BackupSection />}
           {activeTab === 'cleanup'    && <CleanupSection />}
+          {activeTab === 'maintenance' && <MaintenanceSection />}
         </div>
       </div>
     </div>

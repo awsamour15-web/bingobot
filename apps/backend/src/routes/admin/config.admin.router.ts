@@ -65,6 +65,8 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'cashback_plinko_pct',
     'cashback_royal_drop_enabled',
     'cashback_royal_drop_pct',
+    'maintenance_enabled',
+    'maintenance_bypass_player_id',
   ]);
 
   if (!ALLOWED_CONFIG_KEYS.has(key)) {
@@ -112,6 +114,14 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
   if (key.startsWith('cashback_') && key.endsWith('_enabled')) {
     if (value !== 'true' && value !== 'false') {
       res.status(400).json({ error: 'VALIDATION_ERROR', message: `${key} must be "true" or "false"` });
+      return;
+    }
+  }
+
+  // Validate maintenance_enabled
+  if (key === 'maintenance_enabled') {
+    if (value !== 'true' && value !== 'false') {
+      res.status(400).json({ error: 'VALIDATION_ERROR', message: 'maintenance_enabled must be "true" or "false"' });
       return;
     }
   }

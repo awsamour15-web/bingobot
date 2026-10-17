@@ -1,6 +1,7 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import RegistrationGate from './components/RegistrationGate';
+import MaintenanceGate from './components/MaintenanceGate';
 import DailySpinModal from './components/DailySpinModal';
 
 // Lazy-load screens for faster initial load
@@ -259,9 +260,11 @@ function AppInner() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <RegistrationGate>
-        <AppInner />
-      </RegistrationGate>
+      <MaintenanceGate>
+        <RegistrationGate>
+          <AppInner />
+        </RegistrationGate>
+      </MaintenanceGate>
     </ErrorBoundary>
   );
 }

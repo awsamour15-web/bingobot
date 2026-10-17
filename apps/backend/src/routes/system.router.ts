@@ -18,6 +18,19 @@ export interface SystemState {
   stake: number | null;
 }
 
+// GET /api/system/maintenance — returns maintenance mode status + bypass player id
+// Public endpoint - no auth required
+router.get('/maintenance', async (_req: Request, res: Response): Promise<void> => {
+  const [enabledCfg, bypassCfg] = await Promise.all([
+    prisma.config.findUnique({ where: { key: 'maintenance_enabled' } }),
+    prisma.config.findUnique({ where: { key: 'maintenance_bypass_player_id' } }),
+  ]);
+  res.json({
+    enabled: enabledCfg?.value === 'true',
+    bypassPlayerId: bypassCfg?.value ?? null,
+  });
+});
+
 // GET /api/system/stats — total players registered and total completed games
 // Public endpoint - no auth required
 router.get('/stats', async (_req: Request, res: Response): Promise<void> => {
