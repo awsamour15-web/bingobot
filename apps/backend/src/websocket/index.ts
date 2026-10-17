@@ -87,9 +87,9 @@ let _broadcastIo: InstanceType<typeof SocketIOServer> | null = null;
 async function broadcastSystemState(io: InstanceType<typeof SocketIOServer>): Promise<void> {
   _broadcastIo = io;
   if (_broadcastDebounceTimer !== undefined) return; // already scheduled
-  _broadcastDebounceTimer = setTimeout(async () => {
+  _broadcastDebounceTimer = setTimeout(() => {
     _broadcastDebounceTimer = undefined;
-    await _dobroadcastSystemState(_broadcastIo!);
+    void _dobroadcastSystemState(_broadcastIo!);
   }, 200);
 }
 
@@ -233,18 +233,18 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     MockPlayerBotService.onRoundEnded(roundId);
     io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId });
     // Replenish — create a new pending round for this stake level
-    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
+    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io)).catch(() => {});
   });
 
   GameRoundService.setOnRoundVoidEmpty((roundId) => {
     io.to(`round:${roundId}`).emit('ROUND_VOID', { roundId, reason: 'No players joined' });
-    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
+    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io)).catch(() => {});
   });
 
   GameRoundService.setOnRoundCancelled((roundId) => {
     MockPlayerBotService.onRoundEnded(roundId);
     io.to(`round:${roundId}`).emit('ROUND_CANCELLED', { roundId });
-    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io));
+    void RoundScheduler.ensureRoundsExist().then(() => broadcastSystemState(io)).catch(() => {});
   });
 
   GameRoundService.setOnCartelaTaken((roundId, cartelaNumbers, playerCount, excludePlayerId) => {
