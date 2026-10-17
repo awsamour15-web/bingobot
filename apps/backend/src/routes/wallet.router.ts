@@ -686,15 +686,9 @@ router.get('/available-coupons', async (req: Request, res: Response): Promise<vo
 // Prize is determined server-side to prevent manipulation.
 // One spin per calendar day (UTC+3). Claims tracked in SystemSetting "daily_spin_claims".
 
-// Prize table: { amount, weight }
-// Total weight = 100. Expected value = Σ(amount × weight/100) ≈ 8 ETB → RTP ~80% on a 10 ETB cost basis.
+// Prize table: always 5 ETB
 const SPIN_PRIZE_TABLE = [
-  { amount: 5,   weight: 45 }, // 45% chance
-  { amount: 10,  weight: 35 }, // 35% chance  → combined 80% on 5+10
-  { amount: 15,  weight: 8  }, // 8%
-  { amount: 20,  weight: 6  }, // 6%
-  { amount: 30,  weight: 4  }, // 4%
-  { amount: 50,  weight: 2  }, // 2%
+  { amount: 5, weight: 100 }, // 100% chance
 ] as const;
 
 // Total weight must equal 100

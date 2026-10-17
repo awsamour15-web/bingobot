@@ -17,14 +17,14 @@ const C = {
 
 // ─── Wheel config ─────────────────────────────────────────────────────────────
 const SEGMENTS = [
-  { amount: 5,  color: '#1d4ed8', dim: '#1e3a6e' },
-  { amount: 10, color: '#059669', dim: '#065f46' },
-  { amount: 3,  color: '#7c3aed', dim: '#4c1d95' },
-  { amount: 20, color: '#dc2626', dim: '#7f1d1d' },
-  { amount: 7,  color: '#0891b2', dim: '#164e63' },
-  { amount: 15, color: '#d97706', dim: '#78350f' },
-  { amount: 2,  color: '#be185d', dim: '#831843' },
-  { amount: 25, color: '#15803d', dim: '#14532d' },
+  { color: '#1d4ed8', dim: '#1e3a6e' },
+  { color: '#059669', dim: '#065f46' },
+  { color: '#7c3aed', dim: '#4c1d95' },
+  { color: '#dc2626', dim: '#7f1d1d' },
+  { color: '#0891b2', dim: '#164e63' },
+  { color: '#d97706', dim: '#78350f' },
+  { color: '#be185d', dim: '#831843' },
+  { color: '#15803d', dim: '#14532d' },
 ];
 const SEG_COUNT = SEGMENTS.length;
 const SPIN_MS   = 4800; // longer = smoother feel
@@ -72,33 +72,7 @@ function drawWheel(canvas: HTMLCanvasElement, angle: number, wonPrize: SpinPrize
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Amount text
-    const tr = R * 0.65;
-    const tx = cx + Math.cos(mid) * tr;
-    const ty = cy + Math.sin(mid) * tr;
 
-    ctx.save();
-    ctx.translate(tx, ty);
-    ctx.rotate(mid + Math.PI / 2);
-
-    const fs = S < 260 ? 12 : 14;
-
-    // Drop shadow
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur  = 4;
-
-    ctx.font = `900 ${fs}px "DM Sans", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(String(seg.amount), 0, -3);
-
-    ctx.shadowBlur = 0;
-    ctx.font = `600 ${fs - 4}px "DM Sans", sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText('ETB', 0, fs - 2);
-
-    ctx.restore();
   }
 
   // Center hub
