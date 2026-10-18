@@ -446,6 +446,20 @@ router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response):
     return;
   }
 
+  // Require a minimum of 100 ETB in total deposits before allowing withdrawal
+  const totalDepositAgg = await prisma.transaction.aggregate({
+    where: { wallet_id: { in: walletIds }, type: TxType.deposit },
+    _sum: { amount: true },
+  });
+  const totalDeposited = Number(totalDepositAgg._sum.amount ?? 0);
+  if (totalDeposited < 100) {
+    res.status(403).json({
+      error: 'INSUFFICIENT_DEPOSIT',
+      message: `ገንዘብ ለማውጣት ቢያንስ 100 ብር ዲፖዚት ማድረግ አለብዎ። / You need a minimum total deposit of ETB 100 to withdraw. You have deposited ETB ${totalDeposited.toFixed(0)} so far.`,
+    });
+    return;
+  }
+
   try {
     // Debit atomically at request time — prevents double-spend across concurrent requests
     await WalletService.debit(
