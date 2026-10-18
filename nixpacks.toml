@@ -1,18 +1,15 @@
 [phases.setup]
-nixPkgs = ['nodejs_22', 'openssl']
+nixPkgs = ["nodejs_22", "nodePackages.pnpm", "openssl"]
 
 [phases.install]
-cmds = [
-  'npm install -g pnpm@9.0.0',
-  'pnpm install'
-]
+cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
 cmds = [
-  'pnpm db:generate',
-  'pnpm --filter @beteseb/backend exec prisma migrate deploy',
-  'pnpm build'
+  "pnpm --filter @fidel/shared build",
+  "pnpm --filter @fidel/backend exec prisma generate",
+  "pnpm --filter @fidel/backend exec tsc"
 ]
 
 [start]
-cmd = 'pnpm start'
+cmd = "cd apps/backend && npx prisma migrate deploy && node dist/index.js"
