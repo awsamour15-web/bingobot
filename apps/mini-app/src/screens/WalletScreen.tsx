@@ -200,6 +200,8 @@ export default function WalletScreen() {
   const [withdrawConfirm,  setWithdrawConfirm]  = useState(false);
   const [withdrawLoading,  setWithdrawLoading]  = useState(false);
   const [withdrawResult,   setWithdrawResult]   = useState<{ type: 'success' | 'error' | 'info'; msg: string } | null>(null);
+  const [totalDeposited,   setTotalDeposited]   = useState<number | null>(null);
+  const [depositCheckLoading, setDepositCheckLoading] = useState(false);
 
   // ── Load profile ───────────────────────────────────────────────────────────
   const loadProfile = useCallback(async () => {
@@ -230,6 +232,24 @@ export default function WalletScreen() {
       .catch(() => {})
       .finally(() => setAccountsLoading(false));
   }, [tab]);
+
+  // ── Check total deposits when withdraw tab opens ───────────────────────────
+  useEffect(() => {
+    if (tab !== 'withdraw') return;
+    if (totalDeposited !== null) return; // already loaded
+    setDepositCheckLoading(true);
+    getWalletTransactions(1)
+      .then(res => {
+        // Sum all deposit transactions visible in the first page (up to 100)
+        // The backend caps pageSize at 100; this is enough for the check
+        const total = res.items
+          .filter(tx => tx.type === 'deposit')
+          .reduce((sum, tx) => sum + Number(tx.amount ?? 0), 0);
+        setTotalDeposited(total);
+      })
+      .catch(() => setTotalDeposited(0))
+      .finally(() => setDepositCheckLoading(false));
+  }, [tab, totalDeposited]);
 
   // ── Load transactions when history tab opens ───────────────────────────────
   const loadTx = useCallback(async (page: number) => {
@@ -294,8 +314,8 @@ export default function WalletScreen() {
       setWithdrawResult({ type: 'error', msg: 'Please enter a valid amount / ትክክለኛ መጠን ያስገቡ' });
       return;
     }
-    if (amount < 100) {
-      setWithdrawResult({ type: 'error', msg: 'Minimum withdrawal is ETB 100 / ዝቅተኛ ወጪ ETB 100 ነው' });
+    if (amount < 200) {
+      setWithdrawResult({ type: 'error', msg: 'Minimum withdrawal is ETB 200 / ዝቅተኛ ወጪ ETB 200 ነው' });
       return;
     }
     if (!withdrawPhone.trim()) {
@@ -676,6 +696,39 @@ export default function WalletScreen() {
       {tab === 'withdraw' && (
         <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+          {/* ── Deposit requirement gate ──────────────────────────────────── */}
+          {depositCheckLoading || totalDeposited === null ? (
+            <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>⏳ Checking eligibility... / ብቁነት እየተፈተሸ ነው...</div>
+          ) : totalDeposited < 100 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{
+                background: C.redDim, border: `1px solid rgba(248,113,113,0.35)`,
+                borderRadius: 16, padding: '20px 18px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🔒</div>
+                <div style={{ color: C.red, fontWeight: 900, fontSize: 17, marginBottom: 8 }}>
+                  Withdrawal Locked / ወጪ ተቆልፏል
+                </div>
+                <div style={{ color: C.text, fontSize: 14, lineHeight: 1.7 }}>
+                  You need a minimum total deposit of <strong style={{ color: C.amber }}>ETB 100</strong> to withdraw.<br/>
+                  ለማውጣት ቢያንስ <strong style={{ color: C.amber }}>100 ብር</strong> ዲፖዚት ማድረግ አለብዎ።
+                </div>
+                <div style={{
+                  marginTop: 14, padding: '10px 16px', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+                  display: 'inline-block',
+                }}>
+                  <span style={{ color: C.muted, fontSize: 13 }}>Total deposited / ጠቅላላ ዲፖዚት: </span>
+                  <span style={{ color: C.amber, fontWeight: 900, fontSize: 16 }}>{formatMoney(totalDeposited)} ETB</span>
+                  <span style={{ color: C.muted, fontSize: 12 }}> / 100 ETB needed</span>
+                </div>
+              </div>
+              <Btn onClick={() => setTab('deposit')} color={C.green} style={{ color: '#0a0e1a' }}>
+                ⬇ Make a Deposit / ዲፖዚት ያድርጉ
+              </Btn>
+            </div>
+          ) : (
+            <>
           {/* Balance overview */}
           <div style={{
             background: C.surface, border: `1px solid ${C.border}`,
@@ -693,7 +746,8 @@ export default function WalletScreen() {
           }}>
             <div style={{ color: C.amber, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>📋 Withdrawal Rules / የወጪ ህጎች</div>
             <ul style={{ color: C.text, fontSize: 13, margin: 0, paddingLeft: 16, lineHeight: 1.7 }}>
-              <li>Minimum withdrawal: <strong>ETB 100</strong> / ዝቅተኛ ወጪ</li>
+              <li>Minimum withdrawal: <strong>ETB 200</strong> / ዝቅተኛ ወጪ</li>
+              <li>Requires total deposit of <strong>ETB 100</strong> / ቢያንስ 100 ብር ዲፖዚት ያስፈልጋል</li>
               <li>Sent to your Telebirr number / ወደ Telebirr ቁጥርዎ ይላካል</li>
             </ul>
           </div>
@@ -704,7 +758,7 @@ export default function WalletScreen() {
             <Input
               value={withdrawAmount}
               onChange={v => { setWithdrawAmount(v); setWithdrawResult(null); }}
-              placeholder="ዝቅተኛ ETB 100"
+              placeholder="ዝቅተኛ ETB 200"
               type="number"
             />
             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
@@ -769,15 +823,15 @@ export default function WalletScreen() {
 
           <Btn
             onClick={handleWithdrawReview}
-            disabled={withdrawLoading || mainBal < 100}
+            disabled={withdrawLoading || mainBal < 200}
             color={C.red}
-            style={{ color: withdrawLoading || mainBal < 100 ? C.dim : '#fff' }}
+            style={{ color: withdrawLoading || mainBal < 200 ? C.dim : '#fff' }}
           >
             📤 Review Withdrawal / ያረጋግጡ
           </Btn>
 
-          {mainBal < 100 && (
-            <Alert type="error" msg="Insufficient balance. Minimum withdrawal is ETB 100. / ዝቅተኛ ወጪ ETB 100 ነው። ቀሪ ሂሳብ በቂ አይደለም።" />
+          {mainBal < 200 && (
+            <Alert type="error" msg="Insufficient balance. Minimum withdrawal is ETB 200. / ዝቅተኛ ወጪ ETB 200 ነው። ቀሪ ሂሳብ በቂ አይደለም።" />
           )}
 
           {/* ── Confirmation overlay ──────────────────────────────────────── */}
@@ -836,6 +890,7 @@ export default function WalletScreen() {
             </div>
           )}
         </div>
+        </> // end deposit gate
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
