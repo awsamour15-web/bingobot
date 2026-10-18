@@ -198,6 +198,18 @@ export const RoundScheduler = {
           } catch (err) {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }
+        } else if (round._count.round_entries <= 3) {
+          // Not enough players — void and replenish
+          try {
+            await prisma.gameRound.update({
+              where: { id: round.id },
+              data: { status: GameStatus.void, ended_at: new Date() },
+            });
+            console.log(`[Scheduler] Voided round ${round.id} (only ${round._count.round_entries} player(s), need >3)`);
+            needsReplenish = true;
+          } catch (err) {
+            console.error(`[Scheduler] Failed to void low-player round ${round.id}:`, err);
+          }
         } else if (!startedStakes.has(stake)) {
           // Check for an existing active round for this stake before starting
           const existingActive = await prisma.gameRound.findFirst({
