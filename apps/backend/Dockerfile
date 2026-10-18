@@ -51,4 +51,4 @@ WORKDIR /app/apps/backend
 # giving a clear error in logs rather than a silent OOM kill.
 ENV NODE_OPTIONS="--max-old-space-size=400"
 
-CMD ["sh", "-c", "prisma migrate deploy || echo 'Migrate failed, continuing...' && node dist/index.js"]
+CMD ["node", "dist/index.js"]
