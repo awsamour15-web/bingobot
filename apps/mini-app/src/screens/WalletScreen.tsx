@@ -728,7 +728,7 @@ export default function WalletScreen() {
               </Btn>
             </div>
           ) : (
-            <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Balance overview */}
           <div style={{
             background: C.surface, border: `1px solid ${C.border}`,
@@ -890,7 +890,9 @@ export default function WalletScreen() {
             </div>
           )}
         </div>
-        </> // end deposit gate
+            </div> {/* end allowed content */}
+          )}
+        </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
