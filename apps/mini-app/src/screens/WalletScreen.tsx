@@ -889,7 +889,6 @@ export default function WalletScreen() {
               </div>
             </div>
           )}
-        </div>
             </div> {/* end allowed content */}
           )}
         </div>
