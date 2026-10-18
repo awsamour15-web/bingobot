@@ -402,10 +402,10 @@ router.post('/withdraw', withdrawRateLimit, async (req: Request, res: Response):
     return;
   }
 
-  if (amount < 100) {
+  if (amount < 200) {
     res.status(422).json({
       error: 'BELOW_MINIMUM',
-      message: 'Minimum withdrawal amount is ETB 100',
+      message: 'Minimum withdrawal amount is ETB 200',
     });
     return;
   }
