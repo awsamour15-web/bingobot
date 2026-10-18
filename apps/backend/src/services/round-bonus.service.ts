@@ -48,8 +48,11 @@ export const RoundBonusService = {
     const stake = Math.round(Number(round.stake)); // integer birr
     if (stake <= 0) return;
 
-    // Pick a random entry
+    // Free cartela bonus is only awarded on stake-10 rounds with more than 10 players
+    if (stake !== 10) return;
+
     const entries = round.round_entries;
+    if (entries.length <= 10) return;
     const winnerEntry = entries[Math.floor(Math.random() * entries.length)]!;
 
     // Credit bonus and record winner atomically
