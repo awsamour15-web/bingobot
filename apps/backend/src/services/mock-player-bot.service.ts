@@ -312,6 +312,34 @@ export const MockPlayerBotService = {
         skipDuplicates: true,
       });
 
+      // Deduct stake from each mock player so game_entry transactions exist
+      // This ensures derash is correctly calculated from actual payments
+      for (let i = 0; i < selected.length; i++) {
+        const player = selected[i]!;
+        try {
+          await WalletService.debit(
+            player.id,
+            WalletType.play,
+            stake,
+            TxType.game_entry,
+            roundId,
+            'Mock bot game entry',
+          );
+        } catch {
+          // If insufficient funds, try main wallet
+          try {
+            await WalletService.debit(
+              player.id,
+              WalletType.main,
+              stake,
+              TxType.game_entry,
+              roundId,
+              'Mock bot game entry',
+            );
+          } catch { /* ignore — mock player may have zero balance */ }
+        }
+      }
+
       // Recalculate derash and reset start_time to now+40s so the countdown
       // always shows ~40s from when mock players finish joining (not from round creation)
       const entryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });

@@ -371,8 +371,17 @@ export const GameRoundService = {
       return;
     }
 
+    // Derash = sum of all game_entry transactions for this round (actual money collected)
+    const entryTxAgg = await prisma.transaction.aggregate({
+      where: { type: TxType.game_entry, reference_id: roundId },
+      _sum: { amount: true },
+    });
+    const totalCollected = Math.round(Number(entryTxAgg._sum.amount ?? 0));
     const stake = Number(round.stake);
-    const finalDerash = finalEntryCount * stake * (1 - round.commission_pct / 100);
+    // Fall back to entry count * stake if no transactions found (e.g. mock-only round)
+    const finalDerash = totalCollected > 0
+      ? Math.floor(totalCollected * (1 - round.commission_pct / 100))
+      : Math.floor(finalEntryCount * stake * (1 - round.commission_pct / 100));
     await prisma.gameRound.update({ where: { id: roundId }, data: { derash: finalDerash } });
 
     // Kick off number calling immediately — no payment delay
