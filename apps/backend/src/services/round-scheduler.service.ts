@@ -173,11 +173,14 @@ export const RoundScheduler = {
 
   async expireEmptyRounds(): Promise<void> {
     try {
-      const overdue = await prisma.gameRound.findMany({
-        where: { status: GameStatus.pending, start_time: { lte: new Date() } },
-        include: { _count: { select: { round_entries: true } } },
-        orderBy: { start_time: 'asc' },
-      });
+      const [overdue, minPlayers] = await Promise.all([
+        prisma.gameRound.findMany({
+          where: { status: GameStatus.pending, start_time: { lte: new Date() } },
+          include: { _count: { select: { round_entries: true } } },
+          orderBy: { start_time: 'asc' },
+        }),
+        getConfigInt('min_players_to_start', 1),
+      ]);
 
       // Track which stakes we've already started this tick — prevent double-start
       const startedStakes = new Set<number>();
@@ -198,14 +201,14 @@ export const RoundScheduler = {
           } catch (err) {
             console.error(`[Scheduler] Failed to void empty round ${round.id}:`, err);
           }
-        } else if (round._count.round_entries <= 3) {
+        } else if (round._count.round_entries < minPlayers) {
           // Not enough players — void and replenish
           try {
             await prisma.gameRound.update({
               where: { id: round.id },
               data: { status: GameStatus.void, ended_at: new Date() },
             });
-            console.log(`[Scheduler] Voided round ${round.id} (only ${round._count.round_entries} player(s), need >3)`);
+            console.log(`[Scheduler] Voided round ${round.id} (only ${round._count.round_entries} player(s), need >=${minPlayers})`);
             needsReplenish = true;
           } catch (err) {
             console.error(`[Scheduler] Failed to void low-player round ${round.id}:`, err);
