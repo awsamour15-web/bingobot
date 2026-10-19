@@ -419,7 +419,6 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
       }
 
       // Recalculate derash preview
-      const stake = Number(round.stake);
       const entryCount = await tx.roundEntry.count({ where: { round_id: id, is_watching: false } });
       const newDerash = entryCount * stake * (1 - round.commission_pct / 100);
       await tx.gameRound.update({ where: { id }, data: { derash: newDerash } });
