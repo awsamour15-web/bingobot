@@ -693,14 +693,17 @@ export default function WalletScreen() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* WITHDRAW TAB                                                       */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {tab === 'withdraw' && (
-        <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* ── Deposit requirement gate ──────────────────────────────────── */}
-          {depositCheckLoading || totalDeposited === null ? (
-            <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>⏳ Checking eligibility... / ብቁነት እየተፈተሸ ነው...</div>
-          ) : totalDeposited < 100 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {tab === 'withdraw' && (() => {
+        if (depositCheckLoading || totalDeposited === null) {
+          return (
+            <div style={{ padding: '18px 16px' }}>
+              <div style={{ padding: 40, textAlign: 'center', color: C.muted }}>⏳ Checking eligibility... / ብቁነት እየተፈተሸ ነው...</div>
+            </div>
+          );
+        }
+        if (totalDeposited < 100) {
+          return (
+            <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{
                 background: C.redDim, border: `1px solid rgba(248,113,113,0.35)`,
                 borderRadius: 16, padding: '20px 18px', textAlign: 'center',
@@ -727,8 +730,10 @@ export default function WalletScreen() {
                 ⬇ Make a Deposit / ዲፖዚት ያድርጉ
               </Btn>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          );
+        }
+        return (
+        <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Balance overview */}
           <div style={{
             background: C.surface, border: `1px solid ${C.border}`,
@@ -776,7 +781,6 @@ export default function WalletScreen() {
                   {a}
                 </button>
               ))}
-              {/* Max button */}
               <button
                 onClick={() => { setWithdrawAmount(String(Math.floor(mainBal))); setWithdrawResult(null); }}
                 style={{
@@ -790,7 +794,6 @@ export default function WalletScreen() {
             </div>
           </div>
 
-          {/* Phone */}
           {/* Phone */}
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 18px' }}>
             <Step n={2} label="Enter your Telebirr phone number / የTelebirr ስልክ ቁጥር ያስገቡ" />
@@ -818,7 +821,6 @@ export default function WalletScreen() {
             </div>
           </div>
 
-          {/* Result & submit */}
           {withdrawResult && <Alert type={withdrawResult.type} msg={withdrawResult.msg} />}
 
           <Btn
@@ -834,7 +836,6 @@ export default function WalletScreen() {
             <Alert type="error" msg="Insufficient balance. Minimum withdrawal is ETB 200. / ዝቅተኛ ወጪ ETB 200 ነው። ቀሪ ሂሳብ በቂ አይደለም።" />
           )}
 
-          {/* ── Confirmation overlay ──────────────────────────────────────── */}
           {withdrawConfirm && (
             <div style={{
               position: 'fixed', inset: 0, zIndex: 999,
@@ -851,7 +852,6 @@ export default function WalletScreen() {
                   <div style={{ color: C.text, fontWeight: 900, fontSize: 20 }}>Confirm Withdrawal / ወጪ ያረጋግጡ</div>
                   <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>Please review before submitting / ከማስገባትዎ በፊት ያረጋግጡ</div>
                 </div>
-
                 {[
                   { label: 'Amount / መጠን',       value: `${formatMoney(parseFloat(withdrawAmount))} ETB`, color: C.red },
                   { label: 'Phone / ስልክ',         value: withdrawPhone, color: C.text },
@@ -867,9 +867,7 @@ export default function WalletScreen() {
                     <span style={{ color: row.color, fontWeight: 800, fontSize: 15 }}>{row.value}</span>
                   </div>
                 ))}
-
                 {withdrawResult && <div style={{ marginTop: 8, marginBottom: 4 }}><Alert type={withdrawResult.type} msg={withdrawResult.msg} /></div>}
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
                   <button
                     onClick={() => { setWithdrawConfirm(false); setWithdrawResult(null); }}
@@ -889,10 +887,9 @@ export default function WalletScreen() {
               </div>
             </div>
           )}
-            </div> {/* end allowed content */}
-          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* HISTORY TAB                                                        */}
