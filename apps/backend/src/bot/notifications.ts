@@ -44,45 +44,8 @@ async function tryBroadcastToChannel(text: string): Promise<void> {
  * Notify all non-watching players in a round that it is starting.
  * Sent as a non-blocking background job — never awaited by the caller.
  */
-export async function notifyRoundStarting(roundId: string, stake: number): Promise<void> {
+export async function notifyRoundStarting(_roundId: string, _stake: number): Promise<void> {
   // Notifications disabled
-  return;
-}
-  try {
-    if (!bot) return;
-
-    const entries = await prisma.roundEntry.findMany({
-      where: { round_id: roundId, is_watching: false },
-      select: {
-        player: { select: { id: true, telegram_id: true, is_mock: true } },
-      },
-    });
-
-    const botUsername = process.env['BOT_USERNAME'] ?? 'f_bingobot';
-    const miniAppUrl  = process.env['MINI_APP_URL']  ?? 'https://bingobot-mini-app.vercel.app/';
-
-    const text =
-      `🎮 <b>ጨዋታ ይጀምራል!</b>\n\n` +
-      `💰 Stake: <b>${stake} ብር</b>\n` +
-      `👥 Players: ${entries.length}\n\n` +
-      `▶️ ጨዋታውን ለማየት ወደ ታሉ ይጫኑ 👇`;
-
-    const keyboard = {
-      inline_keyboard: [[{ text: '🎮 Open Game', url: `https://t.me/${botUsername}` }]],
-    };
-
-    // Send with a small delay between messages to respect Telegram rate limits
-    let sent = 0;
-    for (const entry of entries) {
-      if (entry.player.is_mock) continue;
-      void trySend(entry.player.telegram_id.toString(), text, { reply_markup: keyboard });
-      sent++;
-      // Throttle: 30 messages/sec Telegram limit → ~35ms spacing
-      if (sent % 25 === 0) await new Promise(r => setTimeout(r, 1000));
-    }
-  } catch (err) {
-    console.error('[Notifications] notifyRoundStarting error:', err);
-  }
 }
 
 // ─── Winner notification ──────────────────────────────────────────────────────
