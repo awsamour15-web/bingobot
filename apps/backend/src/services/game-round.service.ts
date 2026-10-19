@@ -151,23 +151,31 @@ export const GameRoundService = {
         // 3. Check all cartelas are available (not taken by others)
         const existingEntries = await tx.roundEntry.findMany({
           where: { round_id: roundId, cartela_number: { in: cartelaNumbers } },
-          select: { cartela_number: true },
+          select: { cartela_number: true, player_id: true },
         });
-        if (existingEntries.length > 0) {
-          throw new CartelaTakenError(roundId, existingEntries[0]!.cartela_number);
+        // Cartelas already owned by this player — skip silently (idempotent)
+        const alreadyOwned = new Set(
+          existingEntries.filter(e => e.player_id === playerId).map(e => e.cartela_number)
+        );
+        const takenByOthers = existingEntries.filter(e => e.player_id !== playerId);
+        if (takenByOthers.length > 0) {
+          throw new CartelaTakenError(roundId, takenByOthers[0]!.cartela_number);
         }
+        // Only process cartelas not already owned
+        const newCartelaNumbers = cartelaNumbers.filter(n => !alreadyOwned.has(n));
+        if (newCartelaNumbers.length === 0) return; // all already joined, nothing to do
 
         // 3b. Enforce per-player cartela limit (maxAllowed read above outside TX)
         const currentCount = await tx.roundEntry.count({
           where: { round_id: roundId, player_id: playerId, is_watching: false },
         });
-        if (currentCount + cartelaNumbers.length > maxAllowed) {
+        if (currentCount + newCartelaNumbers.length > maxAllowed) {
           throw Object.assign(new Error(`You can only select up to ${maxAllowed} cartela(s) per round`), { code: 'MAX_CARTELA_LIMIT' });
         }
 
         // 4. Deduct payment immediately at cartela selection time
         const stake = Number(round.stake);
-        const totalStake = stake * cartelaNumbers.length;
+        const totalStake = stake * newCartelaNumbers.length;
         const allWallets = await tx.wallet.findMany({
           where: { player_id: playerId, type: { in: ['play', 'main'] as any } },
           select: { id: true, type: true, balance: true },
@@ -197,9 +205,9 @@ export const GameRoundService = {
           await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
         }
 
-        // 5. Insert all RoundEntries (payment already collected above)
+        // 5. Insert all RoundEntries
         await tx.roundEntry.createMany({
-          data: cartelaNumbers.map((cartelaNumber) => ({
+          data: newCartelaNumbers.map((cartelaNumber) => ({
             round_id: roundId,
             player_id: playerId,
             cartela_number: cartelaNumber,

@@ -175,7 +175,7 @@ async function distributeWinnings(
 
       await tx.roundWinner.createMany({ data: winnerRows });
 
-      // 3. Credit each winner's main wallet
+      // 3. Credit each winner's main wallet (wins go to main so they can be withdrawn)
       for (const [playerId] of winnersSnapshot.entries()) {
         const amount = playerId === smallestId ? splitAmount + remainder : splitAmount;
         if (amount <= 0) continue;

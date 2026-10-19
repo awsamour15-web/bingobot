@@ -64,6 +64,23 @@ const couponRateLimit = rateLimit({
   },
 });
 
+// ─── GET /api/wallet/deposit-total ───────────────────────────────────────────
+// Returns the sum of all confirmed deposits for the player.
+
+router.get('/deposit-total', async (req: Request, res: Response): Promise<void> => {
+  const playerId = req.player!.playerId;
+  const wallets = await prisma.wallet.findMany({
+    where: { player_id: playerId },
+    select: { id: true },
+  });
+  const walletIds = wallets.map((w) => w.id);
+  const agg = await prisma.transaction.aggregate({
+    where: { wallet_id: { in: walletIds }, type: TxType.deposit },
+    _sum: { amount: true },
+  });
+  res.json({ total: Number(agg._sum.amount ?? 0) });
+});
+
 // ─── GET /api/wallet/transactions ────────────────────────────────────────────
 
 router.get('/transactions', async (req: Request, res: Response): Promise<void> => {

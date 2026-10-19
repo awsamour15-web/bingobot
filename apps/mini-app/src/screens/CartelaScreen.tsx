@@ -514,7 +514,11 @@ export default function CartelaScreen() {
       window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
       if (roundId) {
         leaveRound(roundId, num)
-          .then(() => getRound(roundId).then(setRound).catch(() => {}))
+          .then((result) => {
+            // Update balances with refunded amount
+            setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
+            getRound(roundId).then(setRound).catch(() => {});
+          })
           .catch(() => {
             const restored = new Set(picksRef.current);
             restored.add(num);

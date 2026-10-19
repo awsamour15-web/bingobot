@@ -418,8 +418,12 @@ export function getHistoryDetail(roundId: string): Promise<HistoryDetail> {
 // Wallet
 // ---------------------------------------------------------------------------
 
-export function getWalletTransactions(page = 1): Promise<PaginatedResponse<TransactionListItem>> {
-  return apiRequest<PaginatedResponse<TransactionListItem>>('GET', `/api/wallet/transactions?page=${page}`);
+export function getDepositTotal(): Promise<{ total: number }> {
+  return apiRequest<{ total: number }>('GET', '/api/wallet/deposit-total');
+}
+
+export function getWalletTransactions(page = 1, pageSize = 20): Promise<PaginatedResponse<TransactionListItem>> {
+  return apiRequest<PaginatedResponse<TransactionListItem>>('GET', `/api/wallet/transactions?page=${page}&pageSize=${pageSize}`);
 }
 
 export interface DepositAccountOption {
