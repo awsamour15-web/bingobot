@@ -16,26 +16,13 @@ async function getPlayerTelegramId(playerId: string): Promise<bigint | null> {
 }
 
 /** Send a message, swallowing errors silently (best-effort notifications) */
-async function trySend(chatId: string, text: string, extra?: object): Promise<void> {
-  try {
-    if (!bot) return;
-    await bot.api.sendMessage(chatId, text, { parse_mode: 'HTML', ...(extra ?? {}) });
-  } catch (err: any) {
-    // Log but never throw — notifications must never crash the game flow
-    console.error('[Notifications] sendMessage failed:', err?.message ?? err);
-  }
+async function trySend(_chatId: string, _text: string, _extra?: object): Promise<void> {
+  // Notifications disabled
 }
 
 /** Send to a channel by its configured ID (if set) */
-async function tryBroadcastToChannel(text: string): Promise<void> {
-  try {
-    if (!bot) return;
-    const channelId = await getConfigOrDefault('winner_announcement_channel', '');
-    if (!channelId) return;
-    await bot.api.sendMessage(channelId, text, { parse_mode: 'HTML' });
-  } catch (err: any) {
-    console.error('[Notifications] channel broadcast failed:', err?.message ?? err);
-  }
+async function tryBroadcastToChannel(_text: string): Promise<void> {
+  // Notifications disabled
 }
 
 // ─── Round start notification ─────────────────────────────────────────────────
