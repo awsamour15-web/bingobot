@@ -249,6 +249,8 @@ if (process.env['RENDER_EXTERNAL_URL'] && bot) {
 }
 
 // ─── 404 Handler (must be after all routes) ──────────────────────────────────
+app.get('/', (_req, res) => { res.sendStatus(200); });
+app.head('/', (_req, res) => { res.sendStatus(200); });
 app.use(notFoundHandler);
 
 // ─── Global Error Handler (must be last) ─────────────────────────────────────
