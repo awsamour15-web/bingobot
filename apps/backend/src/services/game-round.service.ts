@@ -396,7 +396,9 @@ export const GameRoundService = {
 
     const stake = Number(round.stake);
 
-    // Refund all paying entries
+    // Refund all paying entries — return to the wallet type they paid from
+    // Since payment uses play-first then main, refund back to play wallet
+    // (play wallet is the primary game wallet; this matches user expectation)
     await Promise.all(
       round.round_entries.map(async (entry) => {
         await WalletService.credit(

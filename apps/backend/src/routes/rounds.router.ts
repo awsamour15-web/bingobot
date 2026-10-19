@@ -17,7 +17,7 @@ import {
 } from '../services/game-round.service.js';
 import { CartelaReservationService, CartelaAlreadyReservedError, MaxCartelaLimitExceededError, ReservationNotFoundError } from '../services/cartela-reservation.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
-import { WalletType } from '@fidel/shared';
+import { WalletType, TxType } from '@fidel/shared';
 import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
 import { getConfigInt } from '../lib/config-cache.js';
 
@@ -400,10 +400,23 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
         res.status(404).json({ error: 'ENTRY_NOT_FOUND', message: 'Cartela entry not found' }); return;
       }
 
-      // Remove entry — no payment was taken yet so no refund needed
+      // Remove entry and refund the stake since payment was collected at selection time
       await tx.roundEntry.delete({
         where: { round_id_cartela_number: { round_id: id, cartela_number: cartelaNumber } },
       });
+
+      // Refund the stake to play wallet
+      const stake = Number(round.stake);
+      const playWallet = await tx.wallet.findFirst({
+        where: { player_id: playerId, type: 'play' as any },
+        select: { id: true },
+      });
+      if (playWallet) {
+        await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { increment: stake } } });
+        await tx.transaction.create({
+          data: { wallet_id: playWallet.id, type: TxType.refund, amount: stake, reference_id: id, note: 'Left round before start' },
+        });
+      }
 
       // Recalculate derash preview
       const stake = Number(round.stake);
