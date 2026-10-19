@@ -45,6 +45,9 @@ async function tryBroadcastToChannel(text: string): Promise<void> {
  * Sent as a non-blocking background job — never awaited by the caller.
  */
 export async function notifyRoundStarting(roundId: string, stake: number): Promise<void> {
+  // Notifications disabled
+  return;
+}
   try {
     if (!bot) return;
 
