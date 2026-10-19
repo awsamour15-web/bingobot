@@ -1937,6 +1937,26 @@ async function handleWithdrawStart(ctx: import('grammy').Context) {
             return;
           }
 
+          // Require minimum total deposit of 100 ETB before allowing any withdrawal
+          const playerWallets = await prisma.wallet.findMany({
+            where: { player_id: player.id },
+            select: { id: true },
+          });
+          const walletIds = playerWallets.map((w) => w.id);
+          const totalDepositAgg = await prisma.transaction.aggregate({
+            where: { wallet_id: { in: walletIds }, type: TxType.deposit },
+            _sum: { amount: true },
+          });
+          const totalDeposited = Number(totalDepositAgg._sum.amount ?? 0);
+          if (totalDeposited < 100) {
+            withdrawSessions.delete(telegramId);
+            await ctx.reply(
+              `⚠️ ገንዘብ ለማውጣት ቢያንስ 100 ብር ዲፖዚት ማድረግ አለብዎ።\n\n` +
+              `እስካሁን ያስቀመጡት: ${totalDeposited.toFixed(0)} ብር`
+            );
+            return;
+          }
+
           // Debit immediately to lock the funds, then create PendingWithdrawal record
           await WalletService.debit(
             player.id,
