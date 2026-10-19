@@ -238,10 +238,9 @@ export default function WalletScreen() {
     if (tab !== 'withdraw') return;
     if (totalDeposited !== null) return; // already loaded
     setDepositCheckLoading(true);
-    getWalletTransactions(1)
+    getWalletTransactions(1, 100)
       .then(res => {
-        // Sum all deposit transactions visible in the first page (up to 100)
-        // The backend caps pageSize at 100; this is enough for the check
+        // Sum all deposit transactions visible in the first 100
         const total = res.items
           .filter(tx => tx.type === 'deposit')
           .reduce((sum, tx) => sum + Number(tx.amount ?? 0), 0);
