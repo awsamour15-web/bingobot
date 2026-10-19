@@ -10,13 +10,19 @@ export class InsufficientFundsError extends Error {
 
 const TX_HISTORY_LIMIT = 50;
 
-/** Keep only the most recent TX_HISTORY_LIMIT transactions for a wallet. */
+/** Keep only the most recent TX_HISTORY_LIMIT NON-FINANCIAL transactions for a wallet.
+ *  Financial records (deposit, withdrawal, game_win, referral_commission, admin_credit, admin_debit)
+ *  are never deleted — only game_entry and bonus transactions are trimmed.
+ */
 async function trimTransactionHistory(
   walletId: string,
   tx: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
 ): Promise<void> {
+  // Only trim non-financial transaction types — never touch deposits/withdrawals/wins
+  const trimTypes = ['game_entry', 'bonus', 'cashback', 'ext_game_bet', 'ext_game_rollback'];
+
   const oldest = await tx.transaction.findMany({
-    where: { wallet_id: walletId },
+    where: { wallet_id: walletId, type: { in: trimTypes as any } },
     orderBy: { created_at: "desc" },
     skip: TX_HISTORY_LIMIT,
     select: { id: true },
