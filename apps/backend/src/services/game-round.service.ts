@@ -113,9 +113,9 @@ export const GameRoundService = {
   },
 
   /**
-   * Join a player to a pending round with multiple cartela numbers in a single transaction.
-   * No balance deduction here — payment is collected when the game starts.
-   * Removes any existing reservations for these cartelas by this player.
+   * Join a player to a pending round with multiple cartela numbers.
+   * Only checks balance — NO deduction here.
+   * Payment is collected in bulk when the round starts via collectRoundPayments().
    */
   async joinBatch(
     roundId: string,
@@ -124,14 +124,12 @@ export const GameRoundService = {
   ): Promise<void> {
     if (cartelaNumbers.length === 0) return;
 
-    // Read config outside the transaction — it's a static value that doesn't need locking
     const maxCartelasRow = await prisma.config.findUnique({ where: { key: 'max_cartelas_per_player' } });
     const rawMax = maxCartelasRow ? parseInt(maxCartelasRow.value, 10) : 2;
     const maxAllowed = Number.isFinite(rawMax) && rawMax >= 1 ? rawMax : 2;
 
     try {
       await prisma.$transaction(async (tx) => {
-        // 1. Fetch the round (transaction isolation handles concurrent access)
         const round = await tx.gameRound.findUnique({
           where: { id: roundId },
           select: { id: true, status: true, stake: true, commission_pct: true },
@@ -142,18 +140,15 @@ export const GameRoundService = {
           throw new RoundNotPendingError(roundId, round.status);
         }
 
-        // 2. Check player suspension once
         const player = await tx.player.findUnique({ where: { id: playerId } });
         if (!player) throw new Error(`Player ${playerId} not found`);
         if (player.is_suspended) throw new PlayerSuspendedError(playerId);
 
-
-        // 3. Check all cartelas are available (not taken by others)
+        // Check cartela availability
         const existingEntries = await tx.roundEntry.findMany({
           where: { round_id: roundId, cartela_number: { in: cartelaNumbers } },
           select: { cartela_number: true, player_id: true },
         });
-        // Cartelas already owned by this player — skip silently (idempotent)
         const alreadyOwned = new Set(
           existingEntries.filter(e => e.player_id === playerId).map(e => e.cartela_number)
         );
@@ -161,11 +156,10 @@ export const GameRoundService = {
         if (takenByOthers.length > 0) {
           throw new CartelaTakenError(roundId, takenByOthers[0]!.cartela_number);
         }
-        // Only process cartelas not already owned
         const newCartelaNumbers = cartelaNumbers.filter(n => !alreadyOwned.has(n));
-        if (newCartelaNumbers.length === 0) return; // all already joined, nothing to do
+        if (newCartelaNumbers.length === 0) return;
 
-        // 3b. Enforce per-player cartela limit (maxAllowed read above outside TX)
+        // Enforce per-player cartela limit
         const currentCount = await tx.roundEntry.count({
           where: { round_id: roundId, player_id: playerId, is_watching: false },
         });
@@ -173,39 +167,20 @@ export const GameRoundService = {
           throw Object.assign(new Error(`You can only select up to ${maxAllowed} cartela(s) per round`), { code: 'MAX_CARTELA_LIMIT' });
         }
 
-        // 4. Deduct payment immediately at cartela selection time
+        // Balance check only — NO deduction
         const stake = Number(round.stake);
-        const totalStake = stake * newCartelaNumbers.length;
+        const totalNeeded = stake * (currentCount + newCartelaNumbers.length);
         const allWallets = await tx.wallet.findMany({
           where: { player_id: playerId, type: { in: ['play', 'main'] as any } },
           select: { id: true, type: true, balance: true },
         });
-        const playWallet = allWallets.find(w => w.type === 'play');
-        const mainWallet = allWallets.find(w => w.type === 'main');
-        const playBalance = Number(playWallet?.balance ?? 0);
-        const mainBalance = Number(mainWallet?.balance ?? 0);
-        if (playBalance + mainBalance < totalStake) {
+        const totalBalance = allWallets.reduce((s, w) => s + Number(w.balance), 0);
+        if (totalBalance < totalNeeded) {
           const { InsufficientFundsError } = await import('./wallet.service.js');
-          const mainWalletId = mainWallet?.id ?? '';
-          throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, totalStake);
+          throw new InsufficientFundsError('', totalBalance, totalNeeded);
         }
 
-        // Deduct from play wallet first, then main wallet
-        let remaining = totalStake;
-        const playDebit = Math.min(playBalance, remaining);
-        remaining -= playDebit;
-        const mainDebit = remaining;
-
-        if (playDebit > 0 && playWallet) {
-          await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { decrement: playDebit } } });
-          await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.game_entry, amount: playDebit, reference_id: roundId } });
-        }
-        if (mainDebit > 0 && mainWallet) {
-          await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { decrement: mainDebit } } });
-          await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
-        }
-
-        // 5. Insert all RoundEntries
+        // Insert entries
         await tx.roundEntry.createMany({
           data: newCartelaNumbers.map((cartelaNumber) => ({
             round_id: roundId,
@@ -215,16 +190,12 @@ export const GameRoundService = {
           })),
         });
 
-        // 7. Recalculate derash (preview — will be recalculated at start with actual payers)
+        // Update derash preview
         const entryCount = await tx.roundEntry.count({
           where: { round_id: roundId, is_watching: false },
         });
-        const commissionPct = round.commission_pct;
-        const newDerash = entryCount * stake * (1 - commissionPct / 100);
-        await tx.gameRound.update({
-          where: { id: roundId },
-          data: { derash: newDerash },
-        });
+        const newDerash = entryCount * stake * (1 - round.commission_pct / 100);
+        await tx.gameRound.update({ where: { id: roundId }, data: { derash: newDerash } });
       }, { timeout: 15000 });
     } catch (err: unknown) {
       const e = err as { code?: string };
@@ -232,7 +203,6 @@ export const GameRoundService = {
       throw err;
     }
 
-    // Notify websocket layer — exclude the picker so they don't receive CARTELA_TAKEN for their own pick
     if (GameRoundService._onCartelaTaken) {
       const playerCount = await prisma.roundEntry.count({
         where: { round_id: roundId, is_watching: false },
@@ -280,34 +250,18 @@ export const GameRoundService = {
       const stake = Number(round.stake);
       const commissionPct = round.commission_pct;
 
-      // 4. Deduct payment immediately at cartela selection time
+      // Balance check only — NO deduction (payment collected at round start)
       const allWallets = await tx.wallet.findMany({
         where: { player_id: playerId, type: { in: ['play', 'main'] as any } },
         select: { id: true, type: true, balance: true },
       });
-      const playWallet = allWallets.find(w => w.type === 'play');
-      const mainWallet = allWallets.find(w => w.type === 'main');
-      const playBalance = Number(playWallet?.balance ?? 0);
-      const mainBalance = Number(mainWallet?.balance ?? 0);
-      if (playBalance + mainBalance < stake) {
+      const totalBalance = allWallets.reduce((s, w) => s + Number(w.balance), 0);
+      if (totalBalance < stake) {
         const { InsufficientFundsError } = await import('./wallet.service.js');
-        const mainWalletId = mainWallet?.id ?? '';
-        throw new InsufficientFundsError(mainWalletId, playBalance + mainBalance, stake);
+        throw new InsufficientFundsError('', totalBalance, stake);
       }
 
-      const playDebit = Math.min(playBalance, stake);
-      const mainDebit = stake - playDebit;
-
-      if (playDebit > 0 && playWallet) {
-        await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { decrement: playDebit } } });
-        await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.game_entry, amount: playDebit, reference_id: roundId } });
-      }
-      if (mainDebit > 0 && mainWallet) {
-        await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { decrement: mainDebit } } });
-        await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
-      }
-
-      // 5. Insert RoundEntry (payment already collected above)
+      // Insert RoundEntry
       await tx.roundEntry.create({
         data: {
           round_id: roundId,
@@ -317,7 +271,7 @@ export const GameRoundService = {
         },
       });
 
-      // 7. Recalculate and update derash (preview)
+      // Recalculate and update derash (preview)
       const entryCount = await tx.roundEntry.count({
         where: { round_id: roundId, is_watching: false },
       });
@@ -384,10 +338,104 @@ export const GameRoundService = {
       : Math.floor(finalEntryCount * stake * (1 - round.commission_pct / 100));
     await prisma.gameRound.update({ where: { id: roundId }, data: { derash: finalDerash } });
 
-    // Kick off number calling immediately — no payment delay
-    nce.start(roundId).catch((err) => {
-      console.error(`[GameRoundService] Failed to start NCE for round ${roundId}:`, err);
+    // Collect payments from all players in the background (non-blocking)
+    // Players who can't pay are removed from the round before NCE starts
+    void GameRoundService.collectRoundPayments(roundId).then(() => {
+      // Kick off number calling after payments are collected
+      nce.start(roundId).catch((err) => {
+        console.error(`[GameRoundService] Failed to start NCE for round ${roundId}:`, err);
+      });
+    }).catch((err) => {
+      console.error(`[GameRoundService] collectRoundPayments failed for ${roundId}:`, err);
+      // Start anyway so round doesn't get stuck
+      nce.start(roundId).catch(() => {});
     });
+  },
+
+  /**
+   * Collect payments from all round entries when the round starts.
+   * Deducts stake from each player (play wallet first, then main).
+   * Players with insufficient balance are removed from the round.
+   */
+  async collectRoundPayments(roundId: string): Promise<void> {
+    const round = await prisma.gameRound.findUnique({
+      where: { id: roundId },
+      select: { stake: true, commission_pct: true },
+    });
+    if (!round) return;
+
+    const stake = Number(round.stake);
+
+    const entries = await prisma.roundEntry.findMany({
+      where: { round_id: roundId, is_watching: false },
+      select: { player_id: true, cartela_number: true },
+    });
+
+    // Group entries by player
+    const byPlayer = new Map<string, number[]>();
+    for (const e of entries) {
+      if (!byPlayer.has(e.player_id)) byPlayer.set(e.player_id, []);
+      byPlayer.get(e.player_id)!.push(e.cartela_number);
+    }
+
+    const removedPlayers: string[] = [];
+
+    for (const [playerId, cartelas] of byPlayer) {
+      // Skip mock players — their payments are handled by mock bot
+      const player = await prisma.player.findUnique({ where: { id: playerId }, select: { is_mock: true } });
+      if (player?.is_mock) continue;
+
+      const totalStake = stake * cartelas.length;
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          const wallets = await tx.wallet.findMany({
+            where: { player_id: playerId, type: { in: ['play', 'main'] as any } },
+            select: { id: true, type: true, balance: true },
+          });
+          const playWallet = wallets.find(w => w.type === 'play');
+          const mainWallet = wallets.find(w => w.type === 'main');
+          const playBalance = Number(playWallet?.balance ?? 0);
+          const mainBalance = Number(mainWallet?.balance ?? 0);
+
+          if (playBalance + mainBalance < totalStake) {
+            // Insufficient — remove all their cartelas
+            await tx.roundEntry.deleteMany({
+              where: { round_id: roundId, player_id: playerId },
+            });
+            removedPlayers.push(playerId);
+            return;
+          }
+
+          // Deduct play wallet first, then main
+          let remaining = totalStake;
+          const playDebit = Math.min(playBalance, remaining);
+          remaining -= playDebit;
+          const mainDebit = remaining;
+
+          if (playDebit > 0 && playWallet) {
+            await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { decrement: playDebit } } });
+            await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.game_entry, amount: playDebit, reference_id: roundId } });
+          }
+          if (mainDebit > 0 && mainWallet) {
+            await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { decrement: mainDebit } } });
+            await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.game_entry, amount: mainDebit, reference_id: roundId } });
+          }
+        });
+      } catch (err) {
+        console.error(`[GameRoundService] Payment failed for player ${playerId} in round ${roundId}:`, err);
+        removedPlayers.push(playerId);
+        await prisma.roundEntry.deleteMany({ where: { round_id: roundId, player_id: playerId } }).catch(() => {});
+      }
+    }
+
+    if (removedPlayers.length > 0) {
+      console.log(`[GameRoundService] Removed ${removedPlayers.length} players from round ${roundId} due to insufficient balance`);
+      // Recalculate derash after removals
+      const remaining = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
+      const newDerash = Math.floor(remaining * stake * (1 - round.commission_pct / 100));
+      await prisma.gameRound.update({ where: { id: roundId }, data: { derash: newDerash } }).catch(() => {});
+    }
   },
 
   /**

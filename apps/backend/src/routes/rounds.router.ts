@@ -400,51 +400,12 @@ router.delete('/:id/leave/:cartelaNumber', async (req: Request, res: Response): 
         res.status(404).json({ error: 'ENTRY_NOT_FOUND', message: 'Cartela entry not found' }); return;
       }
 
-      // Remove entry and refund the stake since payment was collected at selection time
+      // Remove entry — no refund needed, payment is collected at round start
       await tx.roundEntry.delete({
         where: { round_id_cartela_number: { round_id: id, cartela_number: cartelaNumber } },
       });
 
       const stake = Number(round.stake);
-
-      // Refund to the same wallets that were charged, in reverse order (main first, then play)
-      // This correctly reverses the play-first deduction strategy
-      const playerWallets = await tx.wallet.findMany({
-        where: { player_id: playerId },
-        select: { id: true, type: true, balance: true },
-      });
-      const playWallet = playerWallets.find(w => w.type === 'play');
-      const mainWallet = playerWallets.find(w => w.type === 'main');
-
-      // Find how much was deducted from each wallet for this round
-      const walletIds = playerWallets.map(w => w.id);
-      const entryTxs = await tx.transaction.findMany({
-        where: { wallet_id: { in: walletIds }, type: TxType.game_entry, reference_id: id },
-        select: { wallet_id: true, amount: true },
-      });
-
-      const paidPerWallet = new Map<string, number>();
-      for (const t of entryTxs) {
-        paidPerWallet.set(t.wallet_id, (paidPerWallet.get(t.wallet_id) ?? 0) + Number(t.amount));
-      }
-
-      // Determine refund split: proportional to what was paid, capped at stake
-      let toRefund = stake;
-      // Refund main wallet first (reverse of pay-from-play-first)
-      if (mainWallet && paidPerWallet.has(mainWallet.id)) {
-        const paidFromMain = paidPerWallet.get(mainWallet.id)!;
-        const refundFromMain = Math.min(paidFromMain, toRefund);
-        if (refundFromMain > 0) {
-          await tx.wallet.update({ where: { id: mainWallet.id }, data: { balance: { increment: refundFromMain } } });
-          await tx.transaction.create({ data: { wallet_id: mainWallet.id, type: TxType.refund, amount: refundFromMain, reference_id: id, note: `Left round — cartela #${cartelaNumber}` } });
-          toRefund -= refundFromMain;
-        }
-      }
-      // Refund play wallet for remainder
-      if (toRefund > 0 && playWallet) {
-        await tx.wallet.update({ where: { id: playWallet.id }, data: { balance: { increment: toRefund } } });
-        await tx.transaction.create({ data: { wallet_id: playWallet.id, type: TxType.refund, amount: toRefund, reference_id: id, note: `Left round — cartela #${cartelaNumber}` } });
-      }
 
       // Recalculate derash preview
       const entryCount = await tx.roundEntry.count({ where: { round_id: id, is_watching: false } });
