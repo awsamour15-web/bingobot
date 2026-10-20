@@ -11,7 +11,7 @@ import { getConfigInt, getConfigFloat, getConfigOrDefault, setConfig } from '../
 const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
-const CHECK_INTERVAL_MS = 2_000;
+const CHECK_INTERVAL_MS = 1_000;
 const POST_ROUND_COOLDOWN_MS = 15_000; // wait 15s after a round ends before creating next one
 
 // Tracks when each stake last had a round end (win/void) — enforces cooldown
