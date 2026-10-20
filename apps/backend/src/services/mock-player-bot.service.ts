@@ -80,6 +80,23 @@ async function getBotCount(): Promise<number> {
   return Number.isFinite(n) && n >= 1 ? n : 3;
 }
 
+// ─── Dynamic bot count ────────────────────────────────────────────────────────
+// Admin sets mock_bot_count as the MAXIMUM. Each round the actual count drifts
+// randomly by ±1–6 from the previous round's count, clamped to [1, max].
+// This makes the player count feel organic rather than a fixed number every round.
+
+const BOT_COUNT_DRIFT_MAX = 6; // max change per round (±1–6)
+let _lastBotCount: number | null = null; // persisted across rounds in-process
+
+function computeDynamicBotCount(max: number): number {
+  const last = _lastBotCount ?? Math.ceil(max / 2); // start near the middle
+  const drift = Math.floor(Math.random() * BOT_COUNT_DRIFT_MAX) + 1; // 1–6
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const next = Math.min(max, Math.max(1, last + direction * drift));
+  _lastBotCount = next;
+  return next;
+}
+
 async function getBotBalance(): Promise<number> {
   const n = await getConfigFloat('mock_bot_balance', 0);
   return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -101,10 +118,16 @@ async function getCartelaPoolSize(): Promise<number> {
 interface SimulationResult {
   /** The pre-generated 1–75 draw sequence */
   sequence: number[];
-  /** The cartela number that wins first under the round's winning_pattern */
+  /** The cartela number that wins at call 16–20 (the designated mock winner) */
   winningCartelaNumber: number;
   /** How many numbers are called before that cartela wins */
   numbersUntilWin: number;
+  /**
+   * Cartelas that win BEFORE call WIN_TIMING_MIN on this sequence.
+   * These must be held by mock players so real players can't accidentally
+   * claim an early win.
+   */
+  earlyWinCartelas: number[];
 }
 
 // ─── Win timing config ────────────────────────────────────────────────────────
@@ -116,13 +139,10 @@ const WIN_TIMING_MAX_ATTEMPTS = 30; // max shuffle attempts before giving up
 
 /**
  * Pre-generate a full 75-number shuffle and simulate the game against all
- * cartela definitions up to `poolSize`. Returns which cartela wins first
- * and the sequence NCE should use so the result is guaranteed.
- *
- * The winning cartela is guaranteed to win between called numbers
- * WIN_TIMING_MIN and WIN_TIMING_MAX (inclusive). If a random shuffle
- * produces a win outside that window, we reshuffle up to
- * WIN_TIMING_MAX_ATTEMPTS times before giving up.
+ * cartela definitions up to `poolSize`. Returns:
+ *   - The designated mock winner cartela (wins at call WIN_TIMING_MIN–WIN_TIMING_MAX)
+ *   - All cartelas that win BEFORE the window (must be held by mock players)
+ *   - The sequence NCE should use so the result is guaranteed
  *
  * Uses the round's `winning_pattern` for accurate win detection.
  */
@@ -130,7 +150,6 @@ async function preSimulateRound(
   poolSize: number,
   winningPattern: string,
 ): Promise<SimulationResult | null> {
-  // Load cartela definitions from cache (avoids a full DB scan every 40s per stake)
   const processedCartelas = await getProcessedCartelas(poolSize);
   if (!processedCartelas.length) return null;
 
@@ -147,14 +166,7 @@ async function preSimulateRound(
     patterns = [winningPattern || 'any_line'];
   }
 
-  /**
-   * Simulate one shuffle against a SINGLE cartela.
-   * Returns how many numbers are called before that cartela wins, or null if
-   * it never wins in 75 numbers.
-   *
-   * We check each cartela in isolation so that other cartelas winning early
-   * does NOT disqualify a sequence — real players are always allowed to win.
-   */
+  /** Returns the call-step at which this cartela wins, or null if it never wins. */
   function simulateOne(seq: number[], cartela: ProcessedCartela): number | null {
     const calledSet = new Set<number>();
     for (let i = 0; i < seq.length; i++) {
@@ -165,42 +177,59 @@ async function preSimulateRound(
     return null;
   }
 
-  // Try up to WIN_TIMING_MAX_ATTEMPTS shuffles.
-  // For each shuffle, scan every cartela and pick one that wins in [MIN, MAX].
-  // We check each cartela independently so other cartelas winning earlier is fine —
-  // real players holding those cartelas will legitimately win first.
-  for (let attempt = 0; attempt < WIN_TIMING_MAX_ATTEMPTS; attempt++) {
-    const sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
-
-    // Collect all cartelas whose win step falls in [WIN_TIMING_MIN, WIN_TIMING_MAX]
-    const candidates: Array<{ cartela: ProcessedCartela; numbersUntilWin: number }> = [];
+  /**
+   * Analyse one sequence and return:
+   *  - earlyWinCartelas: cartela numbers that win BEFORE WIN_TIMING_MIN
+   *  - windowWinCartelas: cartelas that win within [WIN_TIMING_MIN, WIN_TIMING_MAX]
+   */
+  function analyseSequence(seq: number[]): {
+    earlyWinCartelas: number[];
+    windowCandidates: Array<{ cartela: ProcessedCartela; numbersUntilWin: number }>;
+  } {
+    const earlyWinCartelas: number[] = [];
+    const windowCandidates: Array<{ cartela: ProcessedCartela; numbersUntilWin: number }> = [];
     for (const cartela of processedCartelas) {
-      const step = simulateOne(sequence, cartela);
-      if (step !== null && step >= WIN_TIMING_MIN && step <= WIN_TIMING_MAX) {
-        candidates.push({ cartela, numbersUntilWin: step });
+      const step = simulateOne(seq, cartela);
+      if (step === null) continue;
+      if (step < WIN_TIMING_MIN) {
+        earlyWinCartelas.push(cartela.cartela_number);
+      } else if (step <= WIN_TIMING_MAX) {
+        windowCandidates.push({ cartela, numbersUntilWin: step });
       }
     }
+    return { earlyWinCartelas, windowCandidates };
+  }
 
-    if (candidates.length > 0) {
+  // Try up to WIN_TIMING_MAX_ATTEMPTS shuffles looking for at least one
+  // cartela that wins in the [MIN, MAX] window.
+  for (let attempt = 0; attempt < WIN_TIMING_MAX_ATTEMPTS; attempt++) {
+    const sequence = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
+    const { earlyWinCartelas, windowCandidates } = analyseSequence(sequence);
+
+    if (windowCandidates.length > 0) {
       // Pick a random candidate from those that hit the window
-      const picked = candidates[Math.floor(Math.random() * candidates.length)]!;
+      const picked = windowCandidates[Math.floor(Math.random() * windowCandidates.length)]!;
       console.log(
         `[MockBot] Pre-sim attempt ${attempt + 1}: cartela #${picked.cartela.cartela_number} ` +
-        `wins at call ${picked.numbersUntilWin} ✓ (${candidates.length} candidates in window)`,
+        `wins at call ${picked.numbersUntilWin} ✓ ` +
+        `(${windowCandidates.length} window candidates, ${earlyWinCartelas.length} early-win cartelas to reserve)`,
       );
       return {
         sequence,
         winningCartelaNumber: picked.cartela.cartela_number,
         numbersUntilWin: picked.numbersUntilWin,
+        earlyWinCartelas,
       };
     }
 
     console.log(`[MockBot] Pre-sim attempt ${attempt + 1}: no cartela wins in [${WIN_TIMING_MIN},${WIN_TIMING_MAX}], retrying...`);
   }
 
-  // All attempts exhausted — fall back: pick whatever cartela wins first on a fresh shuffle
+  // All attempts exhausted — fall back: use the sequence with fewest early-win cartelas
   console.log(`[MockBot] Could not find win in [${WIN_TIMING_MIN},${WIN_TIMING_MAX}] after ${WIN_TIMING_MAX_ATTEMPTS} attempts — using best available`);
   const fallbackSeq = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
+  const { earlyWinCartelas: fbEarly } = analyseSequence(fallbackSeq);
+  // Find the earliest winning cartela on the fallback sequence as the winner
   let fallbackWinner: { cartelaNumber: number; numbersUntilWin: number } | null = null;
   for (const cartela of processedCartelas) {
     const step = simulateOne(fallbackSeq, cartela);
@@ -214,6 +243,7 @@ async function preSimulateRound(
     sequence: fallbackSeq,
     winningCartelaNumber: fallbackWinner.cartelaNumber,
     numbersUntilWin: fallbackWinner.numbersUntilWin,
+    earlyWinCartelas: fbEarly,
   };
 }
 
@@ -248,7 +278,7 @@ export const MockPlayerBotService = {
         return;
       }
 
-      const [botCount, botBalance, winEnabled, poolSize, allMockPlayers] = await Promise.all([
+      const [botCountMax, botBalance, winEnabled, poolSize, allMockPlayers] = await Promise.all([
         getBotCount(),
         getBotBalance(),
         isWinEnabled(),
@@ -259,6 +289,10 @@ export const MockPlayerBotService = {
       ]);
 
       if (!allMockPlayers.length) return;
+
+      // Pick a dynamic count that drifts ±1–6 from the previous round, capped at max
+      const botCount = Math.min(computeDynamicBotCount(botCountMax), allMockPlayers.length);
+      console.log(`[MockBot] Dynamic bot count: ${botCount} / ${botCountMax} (max)`);
 
       const selected = shuffle(allMockPlayers).slice(0, botCount);
 
@@ -272,34 +306,45 @@ export const MockPlayerBotService = {
       // ── Pre-simulate to find the winning cartela number ───────────────────
       let predeterminedWinnerCartelaNumber: number | null = null;
       let preGeneratedSequence: number[] | null = null;
+      let earlyWinCartelas: number[] = [];
 
       if (winEnabled) {
         const sim = await preSimulateRound(poolSize, winningPattern);
         if (sim && !takenSet.has(sim.winningCartelaNumber)) {
           predeterminedWinnerCartelaNumber = sim.winningCartelaNumber;
           preGeneratedSequence = sim.sequence;
+          // Collect early-win cartelas that are still available (not already taken)
+          earlyWinCartelas = sim.earlyWinCartelas.filter((n) => !takenSet.has(n));
           // Register the sequence with NCE now — before the round goes active
           nce.setPreGeneratedSequence(roundId, sim.sequence);
           console.log(
             `[MockBot] Pre-simulated round ${roundId}: cartela #${sim.winningCartelaNumber} wins ` +
-            `after ${sim.numbersUntilWin} numbers (pattern: ${winningPattern})`,
+            `after ${sim.numbersUntilWin} numbers (pattern: ${winningPattern}), ` +
+            `${earlyWinCartelas.length} early-win cartelas to reserve for mock players`,
           );
         } else {
           console.log(`[MockBot] Pre-simulation found no usable winner for round ${roundId} — win mode disabled for this round`);
         }
       }
 
-      // Build the available cartela pool, ensuring the winning cartela is reserved
-      // for the designated mock player (index 0) and not accidentally assigned to others
+      // Build the available cartela pool:
+      //  - early-win cartelas (win before call 16) are placed first so mock players absorb them
+      //  - the predetermined winner cartela is placed at index 0 (assigned to mock player[0])
+      //  - remaining slots are filled with shuffled other cartelas
       let available = shuffle(
-        Array.from({ length: poolSize }, (_, i) => i + 1).filter((n) => !takenSet.has(n)),
+        Array.from({ length: poolSize }, (_, i) => i + 1).filter(
+          (n) => !takenSet.has(n) && n !== predeterminedWinnerCartelaNumber && !earlyWinCartelas.includes(n),
+        ),
       );
 
       if (predeterminedWinnerCartelaNumber !== null) {
-        // Remove the winning cartela from the pool — it will be injected at index 0
-        available = available.filter((n) => n !== predeterminedWinnerCartelaNumber);
-        // Put the winning cartela at the front so player[0] gets it
-        available.unshift(predeterminedWinnerCartelaNumber);
+        // Winner cartela at front (→ mock player[0])
+        // Early-win cartelas right after (→ mock player[1], [2], …)
+        // Remaining random cartelas fill the rest
+        available = [predeterminedWinnerCartelaNumber, ...shuffle(earlyWinCartelas), ...available];
+      } else if (earlyWinCartelas.length > 0) {
+        // Win mode off but still push early-win cartelas to mock players if possible
+        available = [...shuffle(earlyWinCartelas), ...available];
       }
 
       if (available.length < selected.length) {
