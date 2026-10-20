@@ -7,12 +7,13 @@ const router: RouterType = Router();
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
     const sizes = await prisma.$queryRawUnsafe(`
-      SELECT relname AS table_name,
-             pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
-             pg_total_relation_size(relid)::text AS bytes,
-             reltuples::bigint::text AS estimated_rows
-      FROM pg_catalog.pg_statio_user_tables
-      ORDER BY pg_total_relation_size(relid) DESC LIMIT 15
+      SELECT s.relname AS table_name,
+             pg_size_pretty(pg_total_relation_size(s.relid)) AS total_size,
+             pg_total_relation_size(s.relid)::text AS bytes,
+             c.reltuples::bigint::text AS estimated_rows
+      FROM pg_catalog.pg_statio_user_tables s
+      JOIN pg_catalog.pg_class c ON c.oid = s.relid
+      ORDER BY pg_total_relation_size(s.relid) DESC LIMIT 15
     `) as any[];
 
     const totalResult = await prisma.$queryRawUnsafe(`
