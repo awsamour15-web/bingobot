@@ -9,15 +9,15 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     const sizes = await prisma.$queryRawUnsafe(`
       SELECT relname AS table_name,
              pg_size_pretty(pg_total_relation_size(relid)) AS total_size,
-             pg_total_relation_size(relid) AS bytes,
-             reltuples::bigint AS estimated_rows
+             pg_total_relation_size(relid)::text AS bytes,
+             reltuples::bigint::text AS estimated_rows
       FROM pg_catalog.pg_statio_user_tables
       ORDER BY pg_total_relation_size(relid) DESC LIMIT 15
     `) as any[];
 
     const totalResult = await prisma.$queryRawUnsafe(`
       SELECT pg_size_pretty(pg_database_size(current_database())) AS total,
-             pg_database_size(current_database()) AS bytes
+             pg_database_size(current_database())::text AS bytes
     `) as any[];
     const total = totalResult[0];
 
@@ -51,7 +51,8 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     res.json({ total: { size: total.total, bytes: total.bytes }, tables: sizes, counts, dateRange: { oldest: oldest?.start_time, newest: newest?.start_time }, potentialSavings: savings });
     return;
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('[storage GET]', error);
+    res.status(500).json({ error: error.message, detail: error.stack?.split('\n')[1] ?? '' });
     return;
   }
 });
