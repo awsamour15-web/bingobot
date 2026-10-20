@@ -367,6 +367,11 @@ export class NumberCallingEngine {
         this.calledSets.set(roundId, calledSet);
       }
 
+      // ── Minimum call count guard ───────────────────────────────────────────
+      // Do not allow any win before 16 numbers have been called.
+      // This prevents cartelas from winning too early in the sequence.
+      if (calledSet.size < 16) return false;
+
       // Always fetch fresh entries — players can join after the round starts
       const entries = await prisma.roundEntry.findMany({
         where: { round_id: roundId, is_watching: false },
