@@ -332,7 +332,6 @@ export default function WalletScreen() {
   const playBal   = Number(profile.playWallet?.balance ?? 0);
   const totalBal  = mainBal + playBal;
   const username  = (profile as any).username ?? (profile as any).phone ?? '—';
-  const txTotal   = txData ? Math.ceil(txData.total / txData.pageSize) : 1;
 
   const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     {
