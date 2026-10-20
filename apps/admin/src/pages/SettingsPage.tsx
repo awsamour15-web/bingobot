@@ -528,6 +528,7 @@ function DepositAccountsSection() {
   const [error, setError] = useState<string | null>(null);
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
+  const [newBank, setNewBank] = useState<'telebirr' | 'cbebirr'>('telebirr');
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -542,9 +543,9 @@ function DepositAccountsSection() {
     if (!newPhone.trim() || !newName.trim()) { setCreateMsg({ type: 'error', text: 'Phone and name required.' }); return; }
     setCreating(true); setCreateMsg(null);
     try {
-      const account = await createDepositAccount(newPhone.trim(), newName.trim());
+      const account = await createDepositAccount(newPhone.trim(), newName.trim(), newBank);
       setAccounts(p => [account, ...p]);
-      setNewPhone(''); setNewName('');
+      setNewPhone(''); setNewName(''); setNewBank('telebirr');
       setCreateMsg({ type: 'success', text: 'Account added.' });
     } catch (e: unknown) { setCreateMsg({ type: 'error', text: (e as Error).message ?? 'Failed' }); }
     finally { setCreating(false); }
@@ -603,7 +604,7 @@ function DepositAccountsSection() {
       <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 20 }}>
         <p style={sectionTitle}>Add Deposit Account</p>
         {createMsg && <Alert type={createMsg.type}>{createMsg.text}</Alert>}
-        <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, maxWidth: 560 }}>
+        <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, maxWidth: 700 }}>
           <Field label="Phone">
             <input style={inputCss} type="text" placeholder="0912345678"
               value={newPhone} onChange={e => setNewPhone(e.target.value)} disabled={creating} required />
@@ -611,6 +612,13 @@ function DepositAccountsSection() {
           <Field label="Account Name">
             <input style={inputCss} type="text" placeholder="Abebe Zewude"
               value={newName} onChange={e => setNewName(e.target.value)} disabled={creating} required />
+          </Field>
+          <Field label="Bank">
+            <select style={selectCss} value={newBank}
+              onChange={e => setNewBank(e.target.value as 'telebirr' | 'cbebirr')} disabled={creating}>
+              <option value="telebirr">Telebirr</option>
+              <option value="cbebirr">CBE Birr</option>
+            </select>
           </Field>
           <Field label=" ">
             <Btn type="submit" disabled={creating} fullWidth>
