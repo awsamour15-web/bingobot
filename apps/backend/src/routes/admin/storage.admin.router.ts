@@ -21,16 +21,20 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     `) as any[];
     const total = totalResult[0];
 
+    const safeCount = async (fn: () => Promise<number>): Promise<number> => {
+      try { return await fn(); } catch { return 0; }
+    };
+
     const counts = {
-      gameRounds:    await prisma.gameRound.count(),
-      roundEntries:  await prisma.roundEntry.count(),
-      calledNumbers: await prisma.calledNumber.count(),
-      roundWinners:  await prisma.roundWinner.count(),
-      promotionLogs: await prisma.promotionLog.count(),
-      transactions:  await prisma.transaction.count(),
-      crashRounds:   await prisma.crashRound.count(),
-      slotSpins:     await prisma.slotSpin.count(),
-      kenoRounds:    await prisma.kenoRound.count(),
+      gameRounds:    await safeCount(() => prisma.gameRound.count()),
+      roundEntries:  await safeCount(() => prisma.roundEntry.count()),
+      calledNumbers: await safeCount(() => prisma.calledNumber.count()),
+      roundWinners:  await safeCount(() => prisma.roundWinner.count()),
+      promotionLogs: await safeCount(() => prisma.promotionLog.count()),
+      transactions:  await safeCount(() => prisma.transaction.count()),
+      crashRounds:   await safeCount(() => prisma.crashRound.count()),
+      slotSpins:     await safeCount(() => prisma.slotSpin.count()),
+      kenoRounds:    await safeCount(() => prisma.kenoRound.count()),
     };
 
     const oldest = await prisma.gameRound.findFirst({ orderBy: { start_time: 'asc' },  select: { start_time: true } });
