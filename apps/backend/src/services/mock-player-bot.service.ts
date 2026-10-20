@@ -459,11 +459,22 @@ export const MockPlayerBotService = {
         console.log(`[MockBot] Predetermined winner: cartela #${predeterminedWinnerCartelaNumber} → ${selected[0]!.username}`);
       }
 
-      // Broadcast CARTELA_TAKEN so clients update derash and player count instantly
+      // Stagger CARTELA_TAKEN broadcasts 100ms apart so clients see players
+      // trickling in one by one rather than all at once.
       if (GameRoundService._onCartelaTaken) {
-        const finalCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
-        const allCartelas = selected.map((_, i) => available[i]!);
-        await GameRoundService._onCartelaTaken(roundId, allCartelas, finalCount, undefined);
+        const baseCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
+        const offset = baseCount - selected.length; // entries already present before mock join
+        for (let i = 0; i < selected.length; i++) {
+          const cartela = available[i]!;
+          const count = offset + i + 1;
+          // fire-and-forget each broadcast with a growing delay
+          void (async (c: number, n: number, delay: number) => {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            if (GameRoundService._onCartelaTaken) {
+              await GameRoundService._onCartelaTaken(roundId, [c], n, undefined);
+            }
+          })(cartela, count, i * 100);
+        }
       }
     } catch (err) {
       console.error(`[MockBot] onRoundPending error for round ${roundId}:`, err);
