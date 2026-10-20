@@ -316,7 +316,12 @@ async function distributeWinnings(
 
     // Replenish pending rounds — wait 5s so clients can see the winner screen first
     setTimeout(() => {
-      import('./round-scheduler.service.js').then(({ RoundScheduler }) => {
+      import('./round-scheduler.service.js').then(({ RoundScheduler, recordStakeEnded }) => {
+        // Record that this stake's round just ended so the cooldown kicks in
+        import('../lib/prisma.js').then(async ({ default: p }) => {
+          const r = await p.gameRound.findUnique({ where: { id: roundId }, select: { stake: true } });
+          if (r) recordStakeEnded(Number(r.stake));
+        }).catch(() => {});
         void RoundScheduler.ensureRoundsExist();
       }).catch(() => {});
     }, 5_000);

@@ -12,6 +12,14 @@ const STAKE_LEVELS = [10, 20, 50];
 const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
 const CHECK_INTERVAL_MS = 2_000;
+const POST_ROUND_COOLDOWN_MS = 15_000; // wait 15s after a round ends before creating next one
+
+// Tracks when each stake last had a round end (win/void) — enforces cooldown
+const stakeLastEndedAt = new Map<number, number>();
+
+export function recordStakeEnded(stake: number): void {
+  stakeLastEndedAt.set(stake, Date.now());
+}
 
 // Jackpot round: one daily round at a configured stake (default 100 Birr)
 // Scheduled once per day at a configured hour (UTC, default 18:00)
@@ -209,6 +217,7 @@ export const RoundScheduler = {
               data: { status: GameStatus.void, ended_at: new Date() },
             });
             console.log(`[Scheduler] Voided round ${round.id} (only ${round._count.round_entries} player(s), need >=${minPlayers})`);
+            stakeLastEndedAt.set(stake, Date.now());
             needsReplenish = true;
           } catch (err) {
             console.error(`[Scheduler] Failed to void low-player round ${round.id}:`, err);
@@ -367,6 +376,13 @@ export const RoundScheduler = {
         if (pendingStakes.has(stake)) continue;
         if (activeStakes.has(stake)) {
           console.log(`[Scheduler] Skipping round creation for stake=${stake} - a round is still active`);
+          continue;
+        }
+        // Enforce cooldown after a round ends — gives players time to see the winner screen
+        const lastEnded = stakeLastEndedAt.get(stake);
+        if (lastEnded && Date.now() - lastEnded < POST_ROUND_COOLDOWN_MS) {
+          const remaining = Math.ceil((POST_ROUND_COOLDOWN_MS - (Date.now() - lastEnded)) / 1000);
+          console.log(`[Scheduler] Skipping round creation for stake=${stake} - cooldown (${remaining}s remaining)`);
           continue;
         }
         const startTime = new Date(Date.now() + LEAD_TIME_MS);
