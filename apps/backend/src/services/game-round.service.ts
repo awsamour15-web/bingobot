@@ -325,17 +325,13 @@ export const GameRoundService = {
       return;
     }
 
-    // Derash = sum of all game_entry transactions for this round (actual money collected)
-    const entryTxAgg = await prisma.transaction.aggregate({
-      where: { type: TxType.game_entry, reference_id: roundId },
-      _sum: { amount: true },
-    });
-    const totalCollected = Math.round(Number(entryTxAgg._sum.amount ?? 0));
+    // Derash = entry count × stake × (1 - commission).
+    // We use entry count here (not transaction sum) because real-player payments
+    // are collected asynchronously AFTER this point, so transaction totals are
+    // incomplete at start time. After collectRoundPayments finishes it will
+    // recalculate and update derash if any players are removed for insufficient funds.
     const stake = Number(round.stake);
-    // Fall back to entry count * stake if no transactions found (e.g. mock-only round)
-    const finalDerash = totalCollected > 0
-      ? Math.floor(totalCollected * (1 - round.commission_pct / 100))
-      : Math.floor(finalEntryCount * stake * (1 - round.commission_pct / 100));
+    const finalDerash = Math.floor(finalEntryCount * stake * (1 - round.commission_pct / 100));
     await prisma.gameRound.update({ where: { id: roundId }, data: { derash: finalDerash } });
 
     // Collect payments from all players in the background (non-blocking)
