@@ -788,6 +788,10 @@ export function seedMockPlayers(): Promise<{ message: string; players: Array<{ i
   return adminApiRequest('POST', '/api/admin/mock-players/seed');
 }
 
+export function createMockPlayers(count: number, usernames?: string[]): Promise<{ message: string; players: Array<{ id: string; username: string; created: boolean }> }> {
+  return adminApiRequest('POST', '/api/admin/mock-players/create', { count, usernames });
+}
+
 export function getMockPlayers(): Promise<MockPlayer[]> {
   return adminApiRequest<MockPlayer[]>('GET', '/api/admin/mock-players');
 }

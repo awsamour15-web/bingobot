@@ -3,7 +3,7 @@ import type { AdminRound } from '@fidel/shared';
 import { WIN_PATTERN_LABELS, WinPattern } from '@fidel/shared';
 import {
   getMockPlayers, seedMockPlayers, creditMockPlayer,
-  joinRoundWithMockPlayers, renameMockPlayer, createRound, type MockPlayer,
+  joinRoundWithMockPlayers, renameMockPlayer, createRound, createMockPlayers, type MockPlayer,
 } from '../lib/api';
 import { adminApiRequest } from '../lib/api';
 import { getAdminRounds } from '../lib/api';
@@ -83,6 +83,79 @@ function CreateRoundCard({ onCreated }: { onCreated: () => void }) {
           </Field>
         </div>
         <Btn type="submit" disabled={loading}>{loading ? 'Creating…' : '+ Create Round'}</Btn>
+      </form>
+    </Card>
+  );
+}
+
+// ─── Create Mock Players Card ─────────────────────────────────────────────────
+
+function CreateMockPlayerCard({ onCreated }: { onCreated: () => void }) {
+  const [mode, setMode] = useState<'count' | 'names'>('count');
+  const [count, setCount] = useState('10');
+  const [namesText, setNamesText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true); setErr(null); setMsg(null);
+    try {
+      let res;
+      if (mode === 'names') {
+        const usernames = namesText.split('\n').map(s => s.trim()).filter(Boolean);
+        if (!usernames.length) { setErr('Enter at least one username'); setLoading(false); return; }
+        res = await createMockPlayers(usernames.length, usernames);
+      } else {
+        const n = parseInt(count, 10);
+        if (isNaN(n) || n < 1) { setErr('Enter a valid count >= 1'); setLoading(false); return; }
+        res = await createMockPlayers(n);
+      }
+      setMsg(res.message);
+      onCreated();
+    } catch (ex: unknown) {
+      setErr((ex as Error).message ?? 'Failed');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader title="Create Mock Players" subtitle="Add any number of mock players without a limit" />
+      {err && <Alert type="error">{err}</Alert>}
+      {msg && <Alert type="success">{msg}</Alert>}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {(['count', 'names'] as const).map(m => (
+          <button key={m} onClick={() => setMode(m)} style={{
+            padding: '6px 16px', borderRadius: 8, border: '1px solid var(--c-border)',
+            background: mode === m ? 'rgba(99,102,241,0.15)' : 'var(--c-surface)',
+            color: mode === m ? '#a5b4fc' : 'var(--c-text-secondary)',
+            fontWeight: 600, fontSize: 13, cursor: 'pointer',
+          }}>
+            {m === 'count' ? '# Auto-generate' : '✏ Custom names'}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={handleSubmit}>
+        {mode === 'count' ? (
+          <Field label="Number of players to create">
+            <input style={inputCss} type="number" min="1" value={count}
+              onChange={e => setCount(e.target.value)} placeholder="e.g. 50" required />
+          </Field>
+        ) : (
+          <Field label="Usernames (one per line)">
+            <textarea
+              style={{ ...inputCss, minHeight: 100, resize: 'vertical' }}
+              value={namesText}
+              onChange={e => setNamesText(e.target.value)}
+              placeholder={'bot_alpha\nbot_beta\nbot_gamma'}
+              required
+            />
+          </Field>
+        )}
+        <div style={{ marginTop: 12 }}>
+          <Btn type="submit" disabled={loading}>{loading ? 'Creating…' : '+ Create Mock Players'}</Btn>
+        </div>
       </form>
     </Card>
   );
@@ -576,6 +649,7 @@ export function MockPlayersPage() {
       {fetchErr && <Alert type="error">{fetchErr}</Alert>}
 
       <CreateRoundCard onCreated={fetchPlayers} />
+      <CreateMockPlayerCard onCreated={fetchPlayers} />
       <SeedCard onSeeded={fetchPlayers} />
 
       <ResetBalancesCard onDone={fetchPlayers} />
@@ -590,7 +664,7 @@ export function MockPlayersPage() {
         <CardHeader
           title="Mock Players"
           subtitle="Bot-controlled players managed by admin"
-          action={<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-muted)' }}>{players.length} / 10</span>}
+          action={<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-muted)' }}>{players.length} players</span>}
         />
         <PlayersTable players={players} loading={loading} onCredit={setCreditTarget} onRename={setRenameTarget} />
       </Card>

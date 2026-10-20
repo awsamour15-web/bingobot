@@ -17,7 +17,80 @@ const MOCK_PLAYER_COUNT = 50;
 const MOCK_TELEGRAM_IDS = Array.from({ length: MOCK_PLAYER_COUNT }, (_, i) => BigInt(-(i + 1)));
 const MOCK_USERNAMES = Array.from({ length: MOCK_PLAYER_COUNT }, (_, i) => `mock_player_${i + 1}`);
 
-// POST /api/admin/mock-players/seed
+// POST /api/admin/mock-players/create
+// Create one or more mock players with custom or auto-generated usernames
+router.post('/create', async (req: Request, res: Response): Promise<void> => {
+  const { usernames, count } = req.body as { usernames?: string[]; count?: number };
+
+  // Build the list of usernames to create
+  let names: string[] = [];
+  if (Array.isArray(usernames) && usernames.length > 0) {
+    names = usernames.map((u) => u.trim()).filter(Boolean);
+  } else {
+    const n = Math.min(Math.max(1, parseInt(String(count ?? 1), 10)), 500);
+    // Generate sequential names based on current max mock player index
+    const existing = await prisma.$queryRaw<Array<{ username: string }>>`
+      SELECT username FROM players WHERE is_mock = true ORDER BY created_at DESC
+    `;
+    const existingNames = new Set(existing.map((r) => r.username));
+    let idx = existing.length + 1;
+    for (let i = 0; i < n; i++) {
+      let name = `mock_player_${idx}`;
+      while (existingNames.has(name)) { idx++; name = `mock_player_${idx}`; }
+      names.push(name);
+      existingNames.add(name);
+      idx++;
+    }
+  }
+
+  if (!names.length) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Provide usernames or a count >= 1' });
+    return;
+  }
+
+  const results: Array<{ username: string; id: string; created: boolean }> = [];
+
+  for (const username of names) {
+    // Check for duplicate username
+    const dup = await prisma.player.findFirst({ where: { username } });
+    if (dup) {
+      results.push({ username, id: dup.id, created: false });
+      continue;
+    }
+
+    // Use a unique negative telegram_id (timestamp-based to avoid collisions)
+    const telegramId = BigInt(-(Date.now() * 1000 + Math.floor(Math.random() * 1000)));
+
+    const [newPlayer] = await prisma.$queryRaw<Array<{ id: string; username: string }>>`
+      INSERT INTO players (id, telegram_id, username, is_mock, phone_verified, is_suspended, created_at)
+      VALUES (gen_random_uuid(), ${telegramId}, ${username}, true, false, false, now())
+      ON CONFLICT DO NOTHING
+      RETURNING id, username
+    `;
+
+    if (!newPlayer) {
+      results.push({ username, id: '', created: false });
+      continue;
+    }
+
+    await prisma.wallet.createMany({
+      data: [
+        { player_id: newPlayer.id, type: WalletType.main, balance: 0 },
+        { player_id: newPlayer.id, type: WalletType.play, balance: 0 },
+      ],
+    });
+
+    results.push({ username: newPlayer.username, id: newPlayer.id, created: true });
+  }
+
+  const created = results.filter((r) => r.created).length;
+  res.status(201).json({
+    message: `${created} mock player(s) created.`,
+    players: results,
+  });
+});
+
+
 // Creates the 10 mock players if they don't exist yet
 router.post('/seed', async (_req: Request, res: Response): Promise<void> => {
   const results: Array<{ username: string; id: string; created: boolean }> = [];
