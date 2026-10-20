@@ -81,18 +81,14 @@ async function getBotCount(): Promise<number> {
 }
 
 // ─── Dynamic bot count ────────────────────────────────────────────────────────
-// Admin sets mock_bot_count as the MAXIMUM. Each round the actual count drifts
-// randomly by ±1–6 from the previous round's count, clamped to [1, max].
-// This makes the player count feel organic rather than a fixed number every round.
+// Always picks a random count in the range [max-4, max] (inclusive).
+// This keeps bot count high and realistic — never drops to 1 or 3.
 
-const BOT_COUNT_DRIFT_MAX = 6; // max change per round (±1–6)
-let _lastBotCount: number | null = null; // persisted across rounds in-process
+let _lastBotCount: number | null = null;
 
 function computeDynamicBotCount(max: number): number {
-  const last = _lastBotCount ?? Math.ceil(max / 2); // start near the middle
-  const drift = Math.floor(Math.random() * BOT_COUNT_DRIFT_MAX) + 1; // 1–6
-  const direction = Math.random() < 0.5 ? -1 : 1;
-  const next = Math.min(max, Math.max(1, last + direction * drift));
+  const min = Math.max(1, max - 4);
+  const next = min + Math.floor(Math.random() * (max - min + 1));
   _lastBotCount = next;
   return next;
 }
