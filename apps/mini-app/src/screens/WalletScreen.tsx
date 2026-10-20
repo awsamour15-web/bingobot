@@ -58,15 +58,9 @@ const QUICK_AMOUNTS = [50, 100, 200, 500, 1000];
 const BANK_LABELS: Record<string, string> = {
   telebirr: '📱 Telebirr',
   cbebirr:  '📱 CBE Birr',
-  cbe:      '🏦 CBE',
-  boa:      '🏦 BOA',
-  dashen:   '🏦 Dashen',
-  awash:    '🏦 Awash',
-  mpesa:    '📱 M-Pesa',
-  other:    '🏦 Bank',
 };
 
-type Tab = 'balance' | 'deposit' | 'withdraw' | 'history';
+type Tab = 'deposit' | 'withdraw';
 
 // ── Small reusable button ─────────────────────────────────────────────────────
 function Btn({
@@ -174,7 +168,7 @@ function Alert({ type, msg }: { type: 'success' | 'error' | 'info'; msg: string 
 export default function WalletScreen() {
   const [profile,    setProfile]    = useState<PlayerProfile | null>(null);
   const [txData,     setTxData]     = useState<PaginatedResponse<TransactionListItem> | null>(null);
-  const [tab,        setTab]        = useState<Tab>('balance');
+  const [tab,        setTab]        = useState<Tab>('deposit');
   const [txPage,     setTxPage]     = useState(1);
   const [loading,    setLoading]    = useState(true);
   const [txLoading,  setTxLoading]  = useState(false);
@@ -228,7 +222,7 @@ export default function WalletScreen() {
     if (tab !== 'deposit') return;
     setAccountsLoading(true);
     getDepositAccounts()
-      .then(r => setDepositAccounts(r.accounts))
+      .then(r => setDepositAccounts(r.accounts.filter(a => !a.bank || a.bank === 'telebirr' || a.bank === 'cbebirr')))
       .catch(() => {})
       .finally(() => setAccountsLoading(false));
   }, [tab]);
@@ -283,7 +277,7 @@ export default function WalletScreen() {
       return;
     }
     if (!depositReceipt.trim()) {
-      setDepositResult({ type: 'error', msg: 'Please paste your payment receipt (Telebirr, CBE, BOA, Dashen, CBE Birr) / ደረሰኙን ይለጥፉ' });
+      setDepositResult({ type: 'error', msg: 'Please paste your payment receipt (Telebirr or CBE Birr) / ደረሰኙን ይለጥፉ' });
       return;
     }
     setDepositLoading(true);
@@ -371,16 +365,6 @@ export default function WalletScreen() {
 
   const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     {
-      id: 'balance',
-      label: 'Balance / ቀሪ',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <path d="M2 10h20" />
-        </svg>
-      ),
-    },
-    {
       id: 'deposit',
       label: 'Deposit / ዲፖዚት',
       icon: (
@@ -395,16 +379,6 @@ export default function WalletScreen() {
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 19V5M5 12l7-7 7 7" />
-        </svg>
-      ),
-    },
-    {
-      id: 'history',
-      label: 'History / ታሪክ',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
         </svg>
       ),
     },
@@ -573,7 +547,7 @@ export default function WalletScreen() {
             <div style={{
               display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12,
             }}>
-              {['📱 Telebirr', '📱 CBE Birr', '🏦 CBE', '🏦 BOA', '🏦 Dashen'].map(b => (
+              {['📱 Telebirr', '📱 CBE Birr'].map(b => (
                 <span key={b} style={{
                   padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
                   background: C.amberDim, color: C.amber, border: `1px solid rgba(245,158,11,0.25)`,
@@ -653,17 +627,14 @@ export default function WalletScreen() {
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '16px 18px' }}>
             <Step n={3} label="Paste your payment receipt / ደረሰኙን ይለጥፉ" />
             <div style={{ color: C.muted, fontSize: 12, marginBottom: 10, lineHeight: 1.5 }}>
-              ✅ Telebirr SMS · CBE Ref · BOA Ref · Dashen Ref · CBE Birr SMS<br/>
-              ከዚህ ባንኮች ያስተላለፉ ከሆነ የደረሰኙን ቁጥር ወይም ሙሉ SMS ይለጥፉ
+              ✅ Telebirr SMS · CBE Birr SMS<br/>
+              ከዚህ ሁለት መንገዶች ያስተላለፉ ከሆነ የደረሰኙን ቁጥር ወይም ሙሉ SMS ይለጥፉ
             </div>
             <textarea
               value={depositReceipt}
               onChange={e => { setDepositReceipt(e.target.value); setDepositResult(null); }}
               placeholder={
                 'Telebirr: "Your transaction number is ABC123XYZ0..."\n' +
-                'CBE: "Ref No: FT26123456789, ETB 200.00..."\n' +
-                'BOA: "Ref: BOA2026XXXXXX, ETB 200.00..."\n' +
-                'Dashen: "Ref: DB20260XXXXXX, ETB 200.00..."\n' +
                 'CBE Birr: "Receipt No: CB20260XXXXX..."'
               }
               rows={5}
