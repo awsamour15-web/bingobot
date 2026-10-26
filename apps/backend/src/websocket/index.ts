@@ -93,6 +93,34 @@ async function broadcastSystemState(io: InstanceType<typeof SocketIOServer>): Pr
   }, 200);
 }
 
+/** Sends SYSTEM_STATE only to a single socket — used on initial connection. */
+async function sendSystemStateToSocket(socket: { emit: (event: string, data: object) => void }): Promise<void> {
+  try {
+    const [activeRound, pendingRound] = await Promise.all([
+      prisma.gameRound.findFirst({
+        where: { status: GameStatus.active },
+        orderBy: { start_time: 'asc' },
+        select: { id: true, stake: true },
+      }),
+      prisma.gameRound.findFirst({
+        where: { status: GameStatus.pending },
+        orderBy: { start_time: 'asc' },
+        select: { id: true, stake: true },
+      }),
+    ]);
+
+    if (activeRound) {
+      socket.emit('SYSTEM_STATE', { phase: 'live', roundId: activeRound.id, stake: Number(activeRound.stake) });
+    } else if (pendingRound) {
+      socket.emit('SYSTEM_STATE', { phase: 'cartela', roundId: pendingRound.id, stake: Number(pendingRound.stake) });
+    } else {
+      socket.emit('SYSTEM_STATE', { phase: 'idle', roundId: null, stake: null });
+    }
+  } catch (err) {
+    console.error('[WebSocket] sendSystemStateToSocket error:', err);
+  }
+}
+
 async function _dobroadcastSystemState(io: InstanceType<typeof SocketIOServer>): Promise<void> {
   try {
     const [activeRound, pendingRound] = await Promise.all([
@@ -144,6 +172,10 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
     transports: ['websocket', 'polling'],
     // Connection timeout
     connectTimeout: 10000,
+    // Compress WebSocket frames to reduce bandwidth
+    perMessageDeflate: {
+      threshold: 256, // only compress payloads > 256 bytes
+    },
   }) as InstanceType<typeof SocketIOServer>;
 
   // ── JWT auth middleware on every socket connection ──────────────────────────
@@ -300,8 +332,8 @@ export function setupWebSocket(httpServer: HttpServer): InstanceType<typeof Sock
   io.on('connection', (socket: any) => {
     const playerId = socket.data.playerId as string;
 
-    // Send current system state immediately so new clients sync to correct screen
-    void broadcastSystemState(io);
+    // Send current system state only to this socket — not a global broadcast
+    void sendSystemStateToSocket(socket);
 
     // ── LEAVE_ROUND ───────────────────────────────────────────────────────────
     socket.on('LEAVE_ROUND', async (data: { roundId: string }) => {
