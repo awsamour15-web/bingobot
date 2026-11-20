@@ -1,0 +1,20 @@
+import { io } from 'socket.io-client';
+import { getJwtFromStorage } from './auth-storage';
+// Connect to the same origin as the page (or a configured WebSocket URL).
+// In dev, set VITE_API_URL=http://localhost:3000 so the socket connects to the backend.
+const WS_URL = import.meta.env.VITE_API_URL ?? '';
+export const socket = io(WS_URL, {
+    autoConnect: false,
+    // Prefer WebSocket directly — avoids the polling→upgrade round-trip latency
+    transports: ['websocket', 'polling'],
+    // Aggressive reconnection — minimize the window where events are missed
+    reconnectionDelay: 300,
+    reconnectionDelayMax: 1500,
+    reconnectionAttempts: Infinity,
+    timeout: 8000,
+    auth: (cb) => {
+        // Fetch the JWT dynamically at connection time so the token is always fresh.
+        cb({ token: getJwtFromStorage() ?? '' });
+    },
+});
+//# sourceMappingURL=socket.js.map

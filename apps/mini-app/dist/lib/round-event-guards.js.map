@@ -1,0 +1,1 @@
+{"version":3,"file":"round-event-guards.js","sourceRoot":"","sources":["../../src/lib/round-event-guards.ts"],"names":[],"mappings":"AAAA,MAAM,UAAU,6BAA6B,CAC3C,cAAkC,EAClC,YAAgC;IAEhC,IAAI,CAAC,cAAc;QAAE,OAAO,IAAI,CAAC;IACjC,IAAI,CAAC,YAAY;QAAE,OAAO,IAAI,CAAC;IAC/B,OAAO,cAAc,KAAK,YAAY,CAAC;AACzC,CAAC"}

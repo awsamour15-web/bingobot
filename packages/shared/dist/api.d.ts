@@ -41,6 +41,7 @@ export interface RoundListItem {
     derash: number;
     start_time: string;
     winning_pattern: WinPattern;
+    jackpot_enabled?: boolean | undefined;
 }
 export interface RoundDetail extends RoundListItem {
     commission_pct: number;

@@ -1,0 +1,889 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { socket } from '../lib/socket';
+import { getRound, getMyCartelas, getRounds, getCalledNumbers, getCartelaGridCached } from '../lib/api';
+import { idbGet, idbPut } from '../lib/idb';
+import { getJwtFromStorage } from '../lib/auth-storage';
+import { WinPattern } from '@mada/shared';
+const COLS = ['B', 'I', 'N', 'G', 'O'];
+const COL_COLORS = [
+    '#3b82f6', // B — deep blue
+    '#8b5cf6', // I — purple
+    '#22c55e', // N — green
+    '#f59e0b', // G — amber
+    '#ef4444', // O — red
+];
+function getColIndex(n) { return Math.floor((n - 1) / 15); }
+function getColLabel(n) { return COLS[getColIndex(n)] ?? ''; }
+export default function LiveGameScreen() {
+    const { id: roundId } = useParams();
+    const navigate = useNavigate();
+    const [round, setRound] = useState(null);
+    const [myCartelas, setMyCartelas] = useState([]);
+    const [cartelasLoaded, setCartelasLoaded] = useState(false);
+    const [winnerCartelaGrid, setWinnerCartelaGrid] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [claimError, setClaimError] = useState(null);
+    const [claimPending, setClaimPending] = useState(false);
+    const [soundOn, setSoundOn] = useState(() => localStorage.getItem('soundOn') !== 'false');
+    const [manualMode, setManualMode] = useState(false);
+    const [manuallyMarked, setManuallyMarked] = useState(new Set());
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    // Keep a ref in sync so socket handlers always read the latest value
+    const soundOnRef = useRef(soundOn);
+    useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
+    // Handle responsive resize
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    // Buffer NUMBER_CALLED events that arrive before the REST fetch completes
+    // so they can be merged into the initial calledOrder without duplicates/gaps
+    const pendingNumbers = useRef([]);
+    // Unlock audio context on first user gesture (required by browser autoplay policy)
+    const audioUnlocked = useRef(false);
+    useEffect(() => {
+        const unlock = () => {
+            if (audioUnlocked.current)
+                return;
+            audioUnlocked.current = true;
+            // Play a silent buffer to unlock audio — close the context AFTER it finishes
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const buf = ctx.createBuffer(1, 1, 22050);
+                const src = ctx.createBufferSource();
+                src.buffer = buf;
+                src.connect(ctx.destination);
+                src.onended = () => { ctx.close().catch(() => { }); };
+                src.start(0);
+            }
+            catch { }
+            // Play+pause the first cached audio element to prime the HTML5 audio pipeline
+            // Reduced timeout for faster audio initialization
+            setTimeout(() => {
+                const first = audioCache.current.get(1);
+                if (first) {
+                    first.play().catch(() => { });
+                    first.pause();
+                    first.currentTime = 0;
+                }
+            }, 20);
+        };
+        window.addEventListener('touchstart', unlock, { once: true });
+        window.addEventListener('pointerdown', unlock, { once: true });
+        window.addEventListener('click', unlock, { once: true });
+        return () => {
+            window.removeEventListener('touchstart', unlock);
+            window.removeEventListener('pointerdown', unlock);
+            window.removeEventListener('click', unlock);
+        };
+    }, []);
+    const [nextCountdown, setNextCountdown] = useState(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const handleRefresh = useCallback(() => {
+        setRefreshing(true);
+        window.location.reload();
+    }, []);
+    const [game, setGame] = useState({
+        phase: 'waiting',
+        calledNumbers: new Set(),
+        calledOrder: [],
+        lastCalled: null,
+        playerCount: 0,
+        derash: 0,
+        winnerInfo: null,
+        bonusInfo: null,
+        endMessage: null,
+        winningPattern: WinPattern.any_line,
+    });
+    // ─── Preload all 75 number sounds into memory once ──────────────────────
+    const audioCache = useRef(new Map());
+    useEffect(() => {
+        // Lazy-load sounds: preload only the first 15 immediately (most likely to be called first),
+        // then load the rest in the background in small batches to avoid saturating the network.
+        async function preloadSounds() {
+            const load = async (n) => {
+                if (audioCache.current.has(n))
+                    return;
+                try {
+                    let buf = await idbGet('sounds', n);
+                    if (!buf) {
+                        const res = await fetch(`/sounds/${n}.wav`);
+                        buf = await res.arrayBuffer();
+                        idbPut('sounds', n, buf).catch(() => { });
+                    }
+                    const blob = new Blob([buf], { type: 'audio/wav' });
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    audio.preload = 'auto';
+                    audioCache.current.set(n, audio);
+                }
+                catch {
+                    const audio = new Audio(`/sounds/${n}.wav`);
+                    audio.preload = 'auto';
+                    audioCache.current.set(n, audio);
+                }
+            };
+            // Phase 1: load first 20 numbers immediately for instant playback
+            await Promise.all(Array.from({ length: 20 }, (_, i) => load(i + 1)));
+            // Phase 2: load remaining 55 in background batches of 15 for faster coverage
+            // Use shorter delays to ensure sounds are ready when called
+            const loadBatch = async (start, end) => {
+                await Promise.all(Array.from({ length: end - start }, (_, i) => load(start + i)));
+            };
+            const scheduleBatch = (start, end, delay) => {
+                setTimeout(() => { loadBatch(start, end).catch(() => { }); }, delay);
+            };
+            scheduleBatch(21, 36, 200);
+            scheduleBatch(36, 51, 400);
+            scheduleBatch(51, 66, 600);
+            scheduleBatch(66, 76, 800);
+        }
+        preloadSounds();
+    }, []);
+    function playSound(num) {
+        if (!soundOnRef.current)
+            return;
+        try {
+            const cached = audioCache.current.get(num);
+            const audio = cached ?? new Audio(`/sounds/${num}.wav`);
+            if (!cached) {
+                audio.preload = 'auto';
+                audioCache.current.set(num, audio);
+            }
+            // Prevent overlapping sounds from stacking when the same number is triggered rapidly.
+            audio.pause();
+            audio.currentTime = 0;
+            const p = audio.play();
+            if (p) {
+                p.catch((err) => {
+                    // Autoplay blocked — retry once after a short delay
+                    // (happens when user hasn't interacted with the page yet)
+                    if (err?.name === 'NotAllowedError') {
+                        setTimeout(() => {
+                            audio.pause();
+                            audio.currentTime = 0;
+                            audio.play().catch(() => { });
+                        }, 300);
+                    }
+                });
+            }
+        }
+        catch { }
+    }
+    // ─── Load round + player entry ───────────────────────────────────────────
+    useEffect(() => {
+        if (!roundId)
+            return;
+        // ── Instant cache load — show UI immediately with cached round data ────
+        const cached = sessionStorage.getItem(`roundCache:${roundId}`);
+        if (cached) {
+            try {
+                const cachedRound = JSON.parse(cached);
+                // Only use cache if it's fresh (< 30s old)
+                if (Date.now() - cachedRound.timestamp < 30_000) {
+                    setRound(cachedRound);
+                    setGame(g => ({
+                        ...g,
+                        playerCount: cachedRound.player_count,
+                        derash: cachedRound.derash,
+                        phase: 'active',
+                    }));
+                    setLoading(false); // Show UI instantly
+                }
+            }
+            catch { }
+        }
+        async function load() {
+            try {
+                // Fetch round and called numbers immediately — don't block on cartelas
+                const [r, calledNums] = await Promise.all([
+                    getRound(roundId),
+                    getCalledNumbers(roundId).catch(() => []),
+                ]);
+                setRound(r);
+                // Drain any NUMBER_CALLED events that arrived during the REST fetch.
+                const buffered = pendingNumbers.current.splice(0);
+                buffered.sort((a, b) => a.sequenceIndex - b.sequenceIndex);
+                const restSet = new Set(calledNums);
+                const mergedOrder = [...calledNums];
+                for (const p of buffered) {
+                    if (!restSet.has(p.number)) {
+                        restSet.add(p.number);
+                        mergedOrder.push(p.number);
+                    }
+                }
+                const lastCalled = mergedOrder[mergedOrder.length - 1] ?? null;
+                setGame((g) => ({
+                    ...g,
+                    calledNumbers: restSet,
+                    lastCalled,
+                    playerCount: r.player_count,
+                    derash: r.derash,
+                    calledOrder: mergedOrder,
+                    winningPattern: (r.winning_pattern ?? WinPattern.any_line),
+                    phase: r.status === 'active' ? 'active'
+                        : r.status === 'completed' ? 'won'
+                            : r.status === 'void' ? 'void'
+                                : r.status === 'cancelled' ? 'cancelled'
+                                    : 'waiting',
+                }));
+                // Clear round cache after successful load
+                sessionStorage.removeItem(`roundCache:${roundId}`);
+                if (r.status === 'completed' && r.winner_cartela_number) {
+                    getCartelaGridCached(roundId, r.winner_cartela_number)
+                        .then(res => setWinnerCartelaGrid(res.grid))
+                        .catch(() => { });
+                }
+            }
+            catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to load game');
+            }
+            finally {
+                setLoading(false);
+            }
+        }
+        async function loadCartelas() {
+            // 1. Try sessionStorage + IDB cache first — instant for players who just joined
+            const stored = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+            if (stored) {
+                try {
+                    const nums = JSON.parse(stored);
+                    if (nums.length > 0) {
+                        const cached = await Promise.all(nums.map(async (num) => {
+                            const idb = await idbGet('cartelas', `cartela:${num}`);
+                            const CACHE_TTL_MS = 60 * 60 * 1000;
+                            if (idb && idb.cachedAt && Date.now() - idb.cachedAt < CACHE_TTL_MS)
+                                return { cartelaNumber: num, cartelaGrid: idb.grid };
+                            try {
+                                const fetched = await getCartelaGridCached(roundId, num);
+                                return { cartelaNumber: num, cartelaGrid: fetched.grid };
+                            }
+                            catch {
+                                return null;
+                            }
+                        }));
+                        const resolved = cached.filter((c) => c !== null && c.cartelaGrid.length > 0);
+                        if (resolved.length > 0) {
+                            setMyCartelas(resolved);
+                            setCartelasLoaded(true);
+                            return; // done — no API call needed
+                        }
+                    }
+                }
+                catch { }
+            }
+            // 2. API call with up to 2 retries (300ms gap) for post-round-start race
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const result = await getMyCartelas(roundId);
+                    if (result.cartelas.length > 0) {
+                        setMyCartelas(result.cartelas);
+                        setCartelasLoaded(true);
+                        return;
+                    }
+                }
+                catch { }
+                if (attempt < 2)
+                    await new Promise(res => setTimeout(res, 300));
+            }
+            setCartelasLoaded(true); // no cartelas — player is watching
+        }
+        load();
+        loadCartelas();
+    }, [roundId]);
+    // ─── Socket ──────────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!roundId)
+            return;
+        if (!socket.connected)
+            socket.connect();
+        socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
+        // Re-join the round room whenever the socket reconnects so events keep flowing
+        // without requiring a manual page refresh.
+        const onReconnect = () => {
+            socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
+            // Also re-sync state immediately after reconnect to fill any missed events
+            Promise.all([
+                getRound(roundId).catch(() => null),
+                getCalledNumbers(roundId).catch(() => []),
+            ]).then(([r, nums]) => {
+                if (!r)
+                    return;
+                const mergedSet = new Set(nums);
+                setGame((g) => {
+                    if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled')
+                        return g;
+                    const last = nums[nums.length - 1] ?? g.lastCalled;
+                    const wp = (r.winning_pattern ?? WinPattern.any_line);
+                    if (r.status === 'active') {
+                        return { ...g, phase: 'active', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled, winningPattern: wp };
+                    }
+                    if (r.status === 'completed') {
+                        return { ...g, phase: 'won', derash: r.derash, playerCount: r.player_count, calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled, winningPattern: wp };
+                    }
+                    if (r.status === 'void' || r.status === 'cancelled') {
+                        return { ...g, phase: r.status === 'void' ? 'void' : 'cancelled', endMessage: r.status === 'void' ? 'No winner — stake refunded.' : 'Round cancelled — stake refunded.', calledNumbers: mergedSet, calledOrder: nums, lastCalled: last ?? g.lastCalled };
+                    }
+                    return g;
+                });
+            }).catch(() => { });
+        };
+        socket.on('connect', onReconnect);
+        // Resync immediately when user switches back to the tab/app (Telegram WebView)
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible')
+                return;
+            if (!socket.connected) {
+                socket.connect();
+                return; // onReconnect will handle the resync
+            }
+            // Socket still connected — just re-fetch missed numbers
+            getCalledNumbers(roundId).then((nums) => {
+                setGame((g) => {
+                    if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled')
+                        return g;
+                    if (nums.every(n => g.calledNumbers.has(n)) && g.calledNumbers.size === nums.length)
+                        return g;
+                    const mergedSet = new Set([...g.calledNumbers, ...nums]);
+                    const serverSet = new Set(nums);
+                    const wsExtras = g.calledOrder.filter(n => !serverSet.has(n));
+                    const mergedOrder = [...nums, ...wsExtras];
+                    const last = mergedOrder[mergedOrder.length - 1] ?? g.lastCalled;
+                    return { ...g, calledNumbers: mergedSet, calledOrder: mergedOrder, lastCalled: last ?? g.lastCalled };
+                });
+            }).catch(() => { });
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        const onNumber = (p) => {
+            setGame((g) => {
+                // Ignore any stray NUMBER_CALLED events after the round is over
+                if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled')
+                    return g;
+                // If the REST fetch hasn't loaded yet (phase is still default/waiting from initial state
+                // and calledOrder is empty), buffer this event so load() can merge it in order
+                if (g.calledOrder.length === 0 && g.phase === 'waiting') {
+                    pendingNumbers.current.push(p);
+                    return g;
+                }
+                // Deduplicate: skip numbers already present (can arrive via REST + WS overlap)
+                if (g.calledNumbers.has(p.number))
+                    return g;
+                const next = new Set(g.calledNumbers);
+                next.add(p.number);
+                return { ...g, calledNumbers: next, calledOrder: [...g.calledOrder, p.number], lastCalled: p.number, phase: g.phase === 'waiting' ? 'active' : g.phase };
+            });
+            playSound(p.number);
+        };
+        const onStarted = (p) => setGame((g) => ({ ...g, phase: 'active', derash: p.derash, playerCount: p.playerCount, winningPattern: (p.winningPattern ?? WinPattern.any_line) }));
+        const onJoined = (p) => setGame((g) => ({ ...g, playerCount: p.playerCount }));
+        const onWon = (p) => {
+            // Guard: only process ROUND_WON events for the current round
+            if (p.roundId && p.roundId !== roundId)
+                return;
+            setGame((g) => ({ ...g, phase: 'won', winnerInfo: p, derash: p.totalDerash }));
+            // Play winning sound
+            if (soundOnRef.current) {
+                try {
+                    const winAudio = new Audio('/sounds/bingo-win.mp3');
+                    winAudio.volume = 0.8;
+                    winAudio.pause();
+                    winAudio.currentTime = 0;
+                    winAudio.play().catch(() => {
+                        // Autoplay blocked - retry after short delay
+                        setTimeout(() => {
+                            winAudio.pause();
+                            winAudio.currentTime = 0;
+                            winAudio.play().catch(() => { });
+                        }, 300);
+                    });
+                }
+                catch { }
+            }
+            // Fetch the winning cartela grid so ALL users (including watchers) can see it
+            // Retry up to 3 times in case the DB write hasn't propagated yet
+            const winnerCartelaNum = p.winners[0]?.cartelaNumber;
+            if (winnerCartelaNum && roundId) {
+                const fetchGrid = async (retries = 3) => {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const res = await getCartelaGridCached(roundId, winnerCartelaNum);
+                            if (res.grid.length > 0) {
+                                setWinnerCartelaGrid(res.grid);
+                                return;
+                            }
+                        }
+                        catch { }
+                        if (i < retries - 1)
+                            await new Promise(r => setTimeout(r, 600));
+                    }
+                };
+                void fetchGrid();
+            }
+        };
+        const onVoid = (_p) => setGame((g) => ({ ...g, phase: 'void', endMessage: 'No winner — stake refunded.' }));
+        const onCancelled = (_p) => setGame((g) => ({ ...g, phase: 'cancelled', endMessage: 'Round cancelled — stake refunded.' }));
+        const onRejected = (p) => {
+            // Handle both payload shapes: { reason } (new) and { code, message } (legacy)
+            const reason = p.reason ?? p.code ?? p.message ?? 'UNKNOWN';
+            const silentReasons = ['ROUND_NOT_ACTIVE', 'DUPLICATE_CLAIM', 'CLAIM_WINDOW_CLOSED', 'NO_WINNING_LINE'];
+            if (!silentReasons.includes(reason)) {
+                setClaimError('Win rejected: ' + reason);
+            }
+            setClaimPending(false);
+        };
+        const onBonus = (p) => {
+            setGame((g) => ({ ...g, bonusInfo: p }));
+        };
+        socket.on('NUMBER_CALLED', onNumber);
+        socket.on('ROUND_STARTED', onStarted);
+        socket.on('PLAYER_JOINED', onJoined);
+        socket.on('ROUND_WON', onWon);
+        socket.on('ROUND_BONUS', onBonus);
+        socket.on('ROUND_VOID', onVoid);
+        socket.on('ROUND_CANCELLED', onCancelled);
+        socket.on('WIN_REJECTED', onRejected);
+        return () => {
+            document.removeEventListener('visibilitychange', onVisible);
+            socket.off('connect', onReconnect);
+            socket.off('NUMBER_CALLED', onNumber);
+            socket.off('ROUND_STARTED', onStarted);
+            socket.off('PLAYER_JOINED', onJoined);
+            socket.off('ROUND_WON', onWon);
+            socket.off('ROUND_BONUS', onBonus);
+            socket.off('ROUND_VOID', onVoid);
+            socket.off('ROUND_CANCELLED', onCancelled);
+            socket.off('WIN_REJECTED', onRejected);
+            // Leave the round room so we stop receiving events from this round
+            socket.emit('LEAVE_ROUND', { roundId });
+        };
+        // soundOn intentionally excluded — toggling sound must not reconnect the socket
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roundId]);
+    // ─── Re-sync the round from the server while it is active or still waiting ──
+    // This prevents the board from freezing if socket events are delayed or missed.
+    useEffect(() => {
+        if (!roundId || !['waiting', 'active'].includes(game.phase))
+            return;
+        // Poll at 800 ms — lightweight: only fetch called numbers (no heavy getRound).
+        // This is a safety-net for missed WS events; normal delivery is via socket.
+        const iv = setInterval(async () => {
+            try {
+                const nums = await getCalledNumbers(roundId).catch(() => null);
+                if (!nums)
+                    return;
+                setGame((g) => {
+                    if (g.phase === 'won' || g.phase === 'void' || g.phase === 'cancelled')
+                        return g;
+                    // Skip state update if the server hasn't added anything new
+                    if (nums.every(n => g.calledNumbers.has(n)) && g.calledNumbers.size === nums.length)
+                        return g;
+                    // Merge — never remove a number (prevents flicker when REST lags behind WS)
+                    const mergedSet = new Set([...g.calledNumbers, ...nums]);
+                    const serverSet = new Set(nums);
+                    const wsExtras = g.calledOrder.filter(n => !serverSet.has(n));
+                    const mergedOrder = [...nums, ...wsExtras];
+                    const last = mergedOrder[mergedOrder.length - 1] ?? g.lastCalled;
+                    return { ...g, calledNumbers: mergedSet, calledOrder: mergedOrder, lastCalled: last ?? g.lastCalled };
+                });
+            }
+            catch { }
+        }, 800);
+        return () => clearInterval(iv);
+    }, [game.phase, roundId]);
+    useEffect(() => {
+        if (game.phase !== 'won' && game.phase !== 'void' && game.phase !== 'cancelled')
+            return;
+        // Won: show winner cartela for 5 seconds then navigate
+        // Void/cancelled: navigate after 3 seconds
+        const delay = game.phase === 'won' ? 5 : 3;
+        setNextCountdown(delay);
+        const iv = setInterval(() => {
+            setNextCountdown((p) => { if (p === null || p <= 1) {
+                clearInterval(iv);
+                return 0;
+            } return p - 1; });
+        }, 1000);
+        return () => clearInterval(iv);
+    }, [game.phase]);
+    const nextRoundFiredRef = useRef(false);
+    useEffect(() => {
+        if (nextCountdown !== 0 || nextRoundFiredRef.current)
+            return;
+        nextRoundFiredRef.current = true;
+        async function go() {
+            const stake = Number(round?.stake ?? sessionStorage.getItem('selectedStake') ?? 0);
+            for (let i = 0; i < 30; i++) {
+                try {
+                    const allRounds = await getRounds();
+                    const next = allRounds.find((r) => Number(r.stake) === stake && r.status === 'pending' && r.id !== roundId);
+                    if (next) {
+                        sessionStorage.setItem('stakeSelectedForRound', next.id);
+                        sessionStorage.setItem('selectedRoundId', next.id);
+                        sessionStorage.setItem('selectedStake', String(next.stake));
+                        navigate(`/rounds/${next.id}/cartela`, { replace: true });
+                        return;
+                    }
+                }
+                catch (e) {
+                    console.error('[LiveGame] getRounds error:', e);
+                }
+                await new Promise((r) => setTimeout(r, 1500));
+            }
+            navigate('/', { replace: true });
+        }
+        void go();
+    }, [nextCountdown, navigate]);
+    const toggleSound = useCallback(() => {
+        setSoundOn((v) => { const n = !v; localStorage.setItem('soundOn', String(n)); return n; });
+    }, []);
+    const toggleManualMode = useCallback(() => {
+        if (myCartelas.length > 2)
+            return; // disabled for more than 2 cartelas
+        setManualMode((v) => {
+            if (!v) {
+                // switching to manual — reset manual marks
+                setManuallyMarked(new Set());
+                autoClaimed.current = false;
+            }
+            return !v;
+        });
+    }, [myCartelas.length]);
+    const handleManualMark = useCallback((val) => {
+        if (!manualMode || val === 0)
+            return;
+        setManuallyMarked((prev) => {
+            const next = new Set(prev);
+            if (next.has(val))
+                next.delete(val);
+            else
+                next.add(val);
+            return next;
+        });
+    }, [manualMode]);
+    const allCartelas = myCartelas;
+    const marked = game.calledNumbers;
+    const activeCartela = allCartelas[0];
+    const grid = (activeCartela?.cartelaGrid ?? []);
+    function isMarkedForGrid(g, i) {
+        if (i === 12)
+            return true; // free space
+        const v = g[i];
+        if (v === undefined || v === 0)
+            return false;
+        // In manual mode a cell only counts if the player tapped it AND the number was actually called.
+        // Marking an uncalled number must not produce a winning line.
+        if (manualMode)
+            return manuallyMarked.has(v) && marked.has(v);
+        return marked.has(v);
+    }
+    // Returns the indices that form winning lines for the given pattern
+    function getLinesForPattern(p) {
+        const ROWS = [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24]];
+        const COLS = [[0, 5, 10, 15, 20], [1, 6, 11, 16, 21], [2, 7, 12, 17, 22], [3, 8, 13, 18, 23], [4, 9, 14, 19, 24]];
+        switch (p) {
+            case WinPattern.row: return ROWS;
+            case WinPattern.column: return COLS;
+            case WinPattern.diagonal_tl_br: return [[0, 6, 12, 18, 24]];
+            case WinPattern.diagonal_tr_bl: return [[4, 8, 12, 16, 20]];
+            case WinPattern.corners: return [[0, 4, 20, 24]];
+            case WinPattern.full_house: return [Array.from({ length: 25 }, (_, i) => i)];
+            default: return [...ROWS, ...COLS, [0, 6, 12, 18, 24], [4, 8, 12, 16, 20]];
+        }
+    }
+    function hasWinForGrid(g) {
+        if (!g.length)
+            return false;
+        const lines = getLinesForPattern(game.winningPattern);
+        return lines.some(line => line.every(i => isMarkedForGrid(g, i)));
+    }
+    function winCellsForGrid(g) {
+        const w = new Set();
+        if (!g.length)
+            return w;
+        const lines = getLinesForPattern(game.winningPattern);
+        for (const line of lines) {
+            if (line.every(i => isMarkedForGrid(g, i)))
+                line.forEach(i => w.add(i));
+        }
+        return w;
+    }
+    // Win on ANY cartela
+    const playerHasBingo = allCartelas.some((c) => hasWinForGrid(c.cartelaGrid));
+    const winningCartelaNumber = allCartelas.find((c) => hasWinForGrid(c.cartelaGrid))?.cartelaNumber ?? null;
+    const isWatching = cartelasLoaded && myCartelas.length === 0;
+    const [notWinAlert, setNotWinAlert] = useState(false);
+    const handleManualBingoClaim = useCallback(() => {
+        if (!roundId || claimPending || !myCartelas.length)
+            return;
+        if (!playerHasBingo) {
+            // No winning line — show alert and let them continue
+            setNotWinAlert(true);
+            setTimeout(() => setNotWinAlert(false), 2500);
+            return;
+        }
+        autoClaimed.current = true;
+        setClaimPending(true);
+        setClaimError(null);
+        socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
+    }, [roundId, claimPending, myCartelas, playerHasBingo, winningCartelaNumber]);
+    // ─── Auto-claim win as soon as bingo is detected ─────────────────────────
+    const autoClaimed = useRef(false);
+    useEffect(() => {
+        if (manualMode)
+            return; // manual mode: player must press BINGO button
+        if (!playerHasBingo || game.phase !== 'active' || !roundId || !myCartelas.length || claimPending || autoClaimed.current)
+            return;
+        autoClaimed.current = true;
+        setClaimPending(true);
+        setClaimError(null);
+        socket.emit('CLAIM_WIN', { roundId, cartelaId: winningCartelaNumber ?? 0 });
+    }, [playerHasBingo, game.phase, roundId, myCartelas, claimPending, manualMode]);
+    if (loading)
+        return (_jsx("div", { style: { height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', flexDirection: 'column', gap: 16 }, children: "Loading game..." }));
+    if (error || !round)
+        return (_jsxs("div", { style: { height: '100dvh', background: 'linear-gradient(180deg, #0b1220 0%, #111827 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }, children: [_jsxs("div", { children: [_jsx("div", { style: { fontSize: 32, marginBottom: 8 }, children: "\u26A0\uFE0F" }), error ?? 'Could not load game'] }), _jsx("button", { onClick: handleRefresh, disabled: refreshing, style: {
+                        padding: '10px 24px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                        color: '#fff',
+                        cursor: refreshing ? 'not-allowed' : 'pointer',
+                        opacity: refreshing ? 0.7 : 1,
+                        boxShadow: '0 4px 12px rgba(34,197,94,0.3)',
+                        transition: 'all 0.3s ease',
+                    }, children: refreshing ? '⟳ Refreshing...' : '↻ Refresh Page' })] }));
+    const gameEnded = game.phase === 'won' || game.phase === 'void' || game.phase === 'cancelled';
+    // Exact column colors from the screenshot (B, I, N, G, O)
+    const HDR = ['#3b82f6', '#18b7b0', '#7654c7', '#dca72f', '#df6269'];
+    // ── image col colors: B=blue, I=green, N=purple, G=amber, O=red ──
+    const colBg = (ci, called, isLast) => {
+        if (isLast)
+            return '#f5c518';
+        if (!called)
+            return 'rgba(255,255,255,0.06)';
+        return `${HDR[ci]}`;
+    };
+    void colBg; // used below
+    return (_jsxs("div", { style: { height: '100dvh', background: '#0e1726', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }, children: [_jsx("div", { style: { background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }, children: [
+                    { label: 'GAME ID', value: round.id.slice(-6).toUpperCase() },
+                    { label: 'PLAYERS', value: game.playerCount },
+                    { label: 'BET', value: round.stake },
+                    { label: 'DERASH', value: Math.round(game.derash) },
+                    { label: 'CALLED', value: game.calledNumbers.size },
+                ].map(({ label, value }, i) => (_jsxs("div", { style: { textAlign: 'center', padding: '7px 3px', borderRight: i < 4 ? '1px solid rgba(255,255,255,0.08)' : 'none' }, children: [_jsx("div", { style: { fontSize: 10, color: '#aab5c7', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }, children: label }), _jsx("div", { style: { fontSize: 17, fontWeight: 900, color: '#f0f4ff' }, children: value })] }, label))) }), _jsx("style", { children: `@keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes lastCalledPulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes winnerPulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.15) rotate(5deg); } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }` }), _jsxs("div", { style: { flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }, children: [_jsxs("div", { style: { width: '47%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#0d1a2d' }, children: [_jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '4px 3px 2px', flexShrink: 0 }, children: COLS.map((c, ci) => (_jsx("div", { style: { textAlign: 'center', padding: '5px 0', borderRadius: 5, fontWeight: 900, fontSize: 13, background: HDR[ci], color: '#fff', letterSpacing: 0.5 }, children: c }, c))) }), _jsx("div", { style: { flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gridTemplateRows: 'repeat(15, minmax(22px, 1fr))', gap: 2, padding: '2px 3px 3px' }, children: Array.from({ length: 15 }, (_, row) => Array.from({ length: 5 }, (_, col) => {
+                                    const num = col * 15 + row + 1; // B:1-15, I:16-30, N:31-45, G:46-60, O:61-75
+                                    const called = game.calledNumbers.has(num);
+                                    const isLast = num === game.lastCalled;
+                                    return (_jsx("div", { style: {
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            borderRadius: 4,
+                                            background: isLast ? '#f5c518' : called ? '#234d87' : 'rgba(255,255,255,0.055)',
+                                            color: isLast ? '#0e1726' : called ? '#f4f7ff' : '#9eabc0',
+                                            fontSize: 14, fontWeight: isLast ? 900 : called ? 800 : 500,
+                                            border: isLast ? '2px solid #fff' : called ? '1px solid rgba(76,145,230,0.55)' : '1px solid rgba(255,255,255,0.07)',
+                                            minHeight: 22,
+                                            aspectRatio: '1', transition: 'background 0.18s',
+                                            boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : called ? '0 0 8px rgba(59,130,246,0.35)' : 'none',
+                                        }, children: num }, num));
+                                })).flat() }), _jsx("div", { style: { flexShrink: 0, background: '#0d1a2d', borderTop: '1px solid rgba(255,255,255,0.08)' }, children: _jsxs("div", { style: { display: 'flex', gap: 6, padding: '6px 6px 4px' }, children: [_jsx("button", { type: "button", onClick: () => navigate('/', { replace: true }), style: {
+                                                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                                color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                                                boxShadow: '0 3px 10px rgba(239,68,68,0.4)',
+                                            }, children: "Leave" }), _jsxs("button", { type: "button", onClick: handleRefresh, disabled: refreshing, style: {
+                                                flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                                                background: 'rgba(255,255,255,0.1)',
+                                                color: refreshing ? '#4a6080' : '#94a3b8', fontWeight: 700, fontSize: 13,
+                                                cursor: refreshing ? 'not-allowed' : 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                                            }, children: [_jsx("span", { style: { display: 'inline-block', fontSize: 14, transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }, children: "\u21BB" }), "Refresh"] })] }) })] }), _jsxs("div", { style: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0e1726' }, children: [_jsxs("div", { style: { padding: '13px 11px 11px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }, children: [_jsx("span", { style: { fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }, children: "Last Called" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsxs("div", { onClick: myCartelas.length <= 2 ? toggleManualMode : undefined, style: { display: 'flex', alignItems: 'center', gap: 7, cursor: myCartelas.length <= 2 ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: myCartelas.length > 2 ? 0.4 : 1 }, children: [_jsx("span", { style: { fontSize: 11, color: '#c8d8ec', fontWeight: 600 }, children: "Automatic" }), _jsx("div", { style: {
+                                                                    width: 38, height: 22, borderRadius: 11,
+                                                                    background: !manualMode ? '#22c55e' : 'rgba(255,255,255,0.15)',
+                                                                    position: 'relative', transition: 'background 0.2s',
+                                                                    flexShrink: 0,
+                                                                }, children: _jsx("div", { style: {
+                                                                        position: 'absolute', top: 3, left: !manualMode ? 19 : 3,
+                                                                        width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                                                                        boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                                                                        transition: 'left 0.2s',
+                                                                    } }) })] }), _jsx("button", { type: "button", onClick: toggleSound, style: { background: 'none', border: 'none', color: '#7a95b8', fontSize: 13, cursor: 'pointer', padding: 0 }, children: soundOn ? '🔊' : '🔇' })] })] }), game.lastCalled != null ? (_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 7 }, children: [_jsx("div", { style: {
+                                                    width: 29, height: 29, borderRadius: 5, flexShrink: 0,
+                                                    background: HDR[getColIndex(game.lastCalled)],
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontWeight: 900, fontSize: 13, color: '#fff',
+                                                    animation: 'lastCalledPulse 0.6s ease-in-out infinite',
+                                                }, children: getColLabel(game.lastCalled) }), _jsx("div", { style: { fontSize: 50, fontWeight: 900, color: '#ffffff', lineHeight: 1, fontVariantNumeric: 'tabular-nums', animation: 'lastCalledPulse 0.6s ease-in-out infinite' }, children: game.lastCalled })] })) : (_jsx("div", { style: { fontSize: 13, color: '#4a6080', padding: '7px 0' }, children: game.phase === 'waiting' ? 'Starting…' : '—' }))] }), _jsxs("div", { style: { padding: '7px 10px 6px', flexShrink: 0, background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.08)' }, children: [_jsxs("div", { style: { fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 }, children: ["Called (", game.calledOrder.length, "/75)"] }), _jsx("div", { style: { display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }, children: game.calledOrder.length === 0
+                                            ? _jsx("span", { style: { color: '#4a6080', fontSize: 11 }, children: "\u2014" })
+                                            : [...game.calledOrder].reverse().slice(0, 10).map((num, idx) => {
+                                                const ci = getColIndex(num);
+                                                const isFirst = idx === 0;
+                                                return (_jsx("div", { style: {
+                                                        flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
+                                                        background: isFirst ? HDR[ci] : 'rgba(255,255,255,0.1)',
+                                                        border: isFirst ? `2px solid ${HDR[ci]}` : '1px solid rgba(255,255,255,0.12)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: 10, fontWeight: 700,
+                                                        color: isFirst ? '#fff' : '#7a95b8',
+                                                        boxShadow: isFirst ? `0 0 10px ${HDR[ci]}88` : 'none',
+                                                    }, children: num }, `chip-${num}`));
+                                            }) })] }), _jsxs("div", { style: { flex: 1, overflowY: 'auto', padding: '4px 6px 10px', display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'none', alignItems: 'center' }, children: [!isWatching && allCartelas.length > 0 ? (allCartelas.map((cartela, cardIdx) => {
+                                        const cGrid = cartela.cartelaGrid;
+                                        const winCells = winCellsForGrid(cGrid);
+                                        const hasBingo = hasWinForGrid(cGrid);
+                                        return (_jsxs("div", { style: {
+                                                flexShrink: 0,
+                                                width: '100%',
+                                                maxWidth: 232,
+                                                background: '#132033',
+                                                borderRadius: 6,
+                                                overflow: 'hidden',
+                                                border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)',
+                                            }, children: [_jsxs("div", { style: { padding: '2px 4px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 3 }, children: [_jsxs("span", { style: { fontSize: 7.5, fontWeight: 900, color: '#ffffff', letterSpacing: 0.4 }, children: ["#", cartela.cartelaNumber] }), hasBingo && _jsx("span", { style: { fontSize: 7.5, fontWeight: 700, color: '#22c55e' }, children: "\u2713 BINGO" }), game.phase === 'active' && claimPending && hasBingo && _jsx("span", { style: { fontSize: 7.5, color: '#f59e0b' }, children: "\u23F3 Claiming\u2026" })] }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1, padding: '1px 1px 1px' }, children: COLS.map((c, ci) => (_jsx("div", { style: { textAlign: 'center', padding: '1px 0', borderRadius: 2, fontWeight: 800, fontSize: 6.5, background: HDR[ci], color: '#fff' }, children: c }, c))) }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '1px 1px 1px' }, children: cGrid.map((val, idx) => {
+                                                        const isFree = idx === 12;
+                                                        const isM = isMarkedForGrid(cGrid, idx);
+                                                        const isW = winCells.has(idx);
+                                                        const canMark = manualMode && !isFree && val !== 0 && game.calledNumbers.has(val);
+                                                        return (_jsxs("div", { onClick: () => canMark ? handleManualMark(val) : undefined, style: {
+                                                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                                                aspectRatio: '1', borderRadius: 2,
+                                                                background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#234d87' : 'rgba(255,255,255,0.05)',
+                                                                color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
+                                                                fontSize: 13, fontWeight: isW ? 900 : isM ? 700 : 500,
+                                                                border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
+                                                                boxShadow: isW ? '0 0 6px rgba(245,158,11,0.6)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
+                                                                transition: 'background 0.15s',
+                                                                cursor: canMark ? 'pointer' : 'default',
+                                                                outline: manualMode && canMark && !isM ? '1px dashed rgba(245,197,24,0.3)' : 'none',
+                                                            }, children: [val ? _jsx("span", { style: { fontSize: '13px' }, children: val }) : isFree ? _jsx("span", { style: { fontSize: '16px' }, children: "\u2605" }) : '', isFree && val ? _jsx("span", { style: { fontSize: '7px', opacity: 0.7 }, children: "\u25CF" }) : ''] }, idx));
+                                                    }) })] }, cartela.cartelaNumber));
+                                    })) : isWatching ? (_jsxs("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#4a6080', textAlign: 'center', padding: 16 }, children: [_jsx("div", { style: { fontSize: 28, marginBottom: 8 }, children: "\uD83D\uDC41" }), _jsx("div", { style: { fontSize: 13, fontWeight: 700 }, children: "Watching" })] })) : (Array.from({ length: 2 }, (_, i) => (_jsxs("div", { style: { width: '100%', maxWidth: 220, background: '#132033', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '10px 8px', opacity: 0.4 }, children: [_jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 4 }, children: COLS.map((c, ci) => _jsx("div", { style: { height: 20, borderRadius: 3, background: HDR[ci], opacity: 0.5 } }, c)) }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }, children: Array.from({ length: 25 }, (_, j) => _jsx("div", { style: { height: 28, borderRadius: 4, background: 'rgba(255,255,255,0.06)' } }, j)) })] }, i)))), claimError && _jsx("div", { style: { color: '#f87171', fontSize: 11, textAlign: 'center', padding: '4px 0' }, children: claimError })] }), !isWatching && game.phase === 'active' && manualMode && (_jsxs("div", { style: { flexShrink: 0, padding: '6px 8px 10px', background: '#0e1726', borderTop: '1px solid rgba(255,255,255,0.08)' }, children: [notWinAlert && (_jsx("div", { style: {
+                                            marginBottom: 6, padding: '8px 10px', borderRadius: 8,
+                                            background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+                                            textAlign: 'center', fontSize: 12, color: '#f87171', fontWeight: 700,
+                                        }, children: "\u274C Not a winning line yet \u2014 keep playing!" })), claimPending ? (_jsx("div", { style: {
+                                            padding: '12px 0', borderRadius: 10,
+                                            background: 'rgba(245,197,24,0.12)', border: '1px solid rgba(245,197,24,0.3)',
+                                            textAlign: 'center', fontSize: 14, color: '#f59e0b', fontWeight: 700,
+                                        }, children: "\u23F3 Claiming\u2026" })) : (_jsx("button", { type: "button", onClick: handleManualBingoClaim, style: {
+                                            width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
+                                            background: playerHasBingo
+                                                ? 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)'
+                                                : 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
+                                            color: playerHasBingo ? '#0e1726' : '#94a3b8',
+                                            fontWeight: 900, fontSize: 18, cursor: 'pointer',
+                                            letterSpacing: 2, textTransform: 'uppercase',
+                                            boxShadow: playerHasBingo ? '0 0 24px rgba(245,197,24,0.55)' : 'none',
+                                            animation: playerHasBingo ? 'lastCalledPulse 0.7s ease-in-out infinite' : 'none',
+                                            transition: 'background 0.3s, color 0.3s',
+                                        }, children: playerHasBingo ? '🎉 BINGO!' : 'BINGO' }))] }))] })] }), game.phase === 'won' && game.winnerInfo && (() => {
+                const wi = game.winnerInfo;
+                const winCartelaNum = wi.winners[0]?.cartelaNumber ?? null;
+                const winGrid = winnerCartelaGrid.length > 0
+                    ? winnerCartelaGrid
+                    : (allCartelas.find(c => c.cartelaNumber === winCartelaNum)?.cartelaGrid ?? []);
+                // Compute win cells directly against called numbers (independent of manualMode)
+                const winCells = (() => {
+                    const w = new Set();
+                    if (!winGrid.length)
+                        return w;
+                    const lines = getLinesForPattern(game.winningPattern);
+                    const isHit = (i) => {
+                        if (i === 12)
+                            return true; // free space
+                        const v = winGrid[i];
+                        return v !== undefined && v !== 0 && marked.has(v);
+                    };
+                    for (const line of lines) {
+                        if (line.every(i => isHit(i)))
+                            line.forEach(i => w.add(i));
+                    }
+                    return w;
+                })();
+                return (_jsx("div", { style: {
+                        position: 'fixed', inset: 0, zIndex: 100,
+                        background: 'radial-gradient(ellipse at 50% 0%, rgba(80,113,170,0.26) 0%, rgba(9,14,26,0.98) 48%, #070d18 100%)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        boxSizing: 'border-box',
+                        color: '#f8fafc',
+                        padding: '10px',
+                    }, children: _jsxs("div", { style: { width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 5 }, children: [_jsxs("div", { style: {
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                }, children: [_jsx("div", { style: {
+                                            fontSize: 28, fontWeight: 900, lineHeight: 1,
+                                            color: '#f7c84d', textShadow: '0 0 14px rgba(247,200,77,0.6)',
+                                            marginBottom: 3,
+                                        }, children: "\uD83C\uDFC6 BINGO! \uD83C\uDFC6" }), _jsx("div", { style: { display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 11, color: '#f8fafc' }, children: _jsxs("span", { children: [wi.winnerCount, " WINNER", wi.winnerCount !== 1 ? 'S' : '', "!"] }) })] }), wi.winners.map((winner) => (_jsxs("div", { style: {
+                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    gap: 6, padding: '5px 8px', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.2))',
+                                    border: '1px solid rgba(96,165,250,0.4)', borderRadius: 7,
+                                }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6 }, children: [_jsx("div", { style: {
+                                                    width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 12,
+                                                    color: '#fff',
+                                                }, children: (winner.username ?? '?')[0]?.toUpperCase() }), _jsxs("div", { children: [_jsx("div", { style: { fontSize: 12, fontWeight: 800, lineHeight: 1.1 }, children: winner.username }), _jsxs("div", { style: { fontSize: 9, color: '#dbeafe' }, children: ["Cartela #", winner.cartelaNumber] })] })] }), _jsx("div", { style: { fontSize: 16 }, children: "\uD83C\uDFC6" })] }, winner.cartelaNumber))), _jsxs("div", { style: {
+                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '4px 8px', background: 'rgba(14, 50, 38, 0.7)',
+                                    border: '1.5px solid rgba(52,211,153,0.7)', borderRadius: 7,
+                                }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 9, letterSpacing: 0.3, color: '#4ade80' }, children: [_jsx("span", { style: { fontSize: 11 }, children: "\uD83C\uDFC6" }), _jsx("span", { children: "WINNING CARTELA" })] }), _jsxs("div", { style: {
+                                            minWidth: 34, padding: '2px 5px', borderRadius: 4,
+                                            background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.2)',
+                                            color: '#fcd34d', fontWeight: 900, textAlign: 'center', fontSize: 9,
+                                        }, children: ["#", winCartelaNum] })] }), winGrid.length > 0 && (_jsxs("div", { style: {
+                                    width: '100%', maxWidth: 320, margin: '0 auto',
+                                    background: 'linear-gradient(180deg, rgba(17,25,44,0.9), rgba(12,20,34,0.9))',
+                                    border: '1.5px solid rgba(52,211,153,0.6)', borderRadius: 8, overflow: 'hidden',
+                                }, children: [_jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '3px 3px 0.5px' }, children: COLS.map((col, ci) => (_jsx("div", { style: {
+                                                textAlign: 'center', padding: '1px 0', borderRadius: 2,
+                                                fontWeight: 700, fontSize: 8, background: HDR[ci], color: '#fff',
+                                            }, children: col }, col))) }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '0.5px 3px 3px' }, children: winGrid.map((val, idx) => {
+                                            const isFree = idx === 12;
+                                            const isM = isFree || (val !== 0 && marked.has(val));
+                                            const isW = winCells.has(idx);
+                                            return (_jsx("div", { style: {
+                                                    aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    borderRadius: 3, fontWeight: isW ? 700 : isM ? 600 : 500,
+                                                    color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
+                                                    background: isW
+                                                        ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+                                                        : isM
+                                                            ? '#234d87'
+                                                            : 'rgba(255,255,255,0.04)',
+                                                    border: isW ? '1px solid #fcd34d' : isM ? '1px solid rgba(76,145,230,0.55)' : '0.5px solid rgba(255,255,255,0.05)',
+                                                    boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
+                                                    fontSize: 13,
+                                                }, children: isFree ? '★' : val }, idx));
+                                        }) })] })), game.derash > 0 && (_jsxs("div", { style: {
+                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    gap: 4, padding: '5px 8px',
+                                    background: 'rgba(251,146,60,0.15)', border: '1.5px solid rgba(251,146,60,0.7)',
+                                    borderRadius: 7,
+                                }, children: [_jsx("span", { style: { fontSize: 13 }, children: "\uD83D\uDCB0" }), _jsx("span", { style: { fontSize: 16, fontWeight: 900, color: '#fbbf24', letterSpacing: 0.5 }, children: Math.round(game.derash) }), _jsx("span", { style: { fontSize: 12, fontWeight: 700, color: '#f59e0b' }, children: "Birr" })] })), game.bonusInfo && (() => {
+                                const b = game.bonusInfo;
+                                return (_jsxs("div", { style: {
+                                        width: '100%', padding: '7px 10px', borderRadius: 8,
+                                        background: 'linear-gradient(135deg, rgba(168,85,247,0.22), rgba(139,92,246,0.12))',
+                                        border: '1.5px solid rgba(168,85,247,0.55)',
+                                    }, children: [_jsx("div", { style: { fontSize: 9, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }, children: "\uD83C\uDF81 Bonus Cartela Winner" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 7 }, children: [_jsx("div", { style: {
+                                                                width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                background: 'linear-gradient(135deg, #a855f7, #7c3aed)', fontWeight: 900, fontSize: 13, color: '#fff',
+                                                            }, children: (b.username ?? '?')[0]?.toUpperCase() }), _jsxs("div", { children: [_jsx("div", { style: { fontSize: 13, fontWeight: 800, color: '#f3f4f6', lineHeight: 1.1 }, children: b.username }), _jsxs("div", { style: { fontSize: 9, color: '#c4b5fd' }, children: ["Cartela #", b.cartelaNumber] })] })] }), _jsxs("div", { style: { textAlign: 'right' }, children: [_jsxs("div", { style: { fontSize: 16, fontWeight: 900, color: '#a78bfa', lineHeight: 1 }, children: ["+", b.bonusAmount] }), _jsx("div", { style: { fontSize: 9, color: '#c4b5fd', fontWeight: 600 }, children: "Birr added" })] })] })] }));
+                            })(), nextCountdown !== null && (_jsxs("div", { style: {
+                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    gap: 4, padding: '5px 8px', borderRadius: 7,
+                                    background: 'linear-gradient(135deg, rgba(30,64,175,0.3), rgba(59,130,246,0.15))',
+                                    border: '1.5px solid rgba(96,165,250,0.6)', color: '#dbeafe', fontSize: 10, fontWeight: 700,
+                                }, children: [_jsx("span", { style: { display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 5px rgba(74,222,128,0.7)' } }), _jsx("span", { children: "Next in" }), _jsxs("span", { style: { color: '#f8fafc', fontWeight: 900 }, children: [nextCountdown, "s"] })] }))] }) }));
+            })(), (game.phase === 'void' || game.phase === 'cancelled') && (_jsxs("div", { style: { position: 'fixed', inset: 0, zIndex: 100, background: 'linear-gradient(135deg, rgba(10,14,26,0.98) 0%, rgba(30,20,20,0.98) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }, children: [_jsx("div", { style: { fontSize: 56, marginBottom: 8, animation: 'winnerPulse 0.8s ease-in-out infinite' }, children: game.phase === 'void' ? '🔄' : '⚠️' }), _jsx("div", { style: { fontSize: 20, fontWeight: 800, color: '#f1f5f9', textAlign: 'center', letterSpacing: 0.5 }, children: game.endMessage }), nextCountdown !== null && nextCountdown > 0 && (_jsxs("div", { style: { fontSize: 14, color: '#94a3b8', marginTop: 12, fontWeight: 600 }, children: ["Returning in ", nextCountdown, "s\u2026"] }))] }))] }));
+}
+//# sourceMappingURL=LiveGameScreen.js.map

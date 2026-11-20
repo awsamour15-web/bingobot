@@ -1,0 +1,659 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useState, useRef, memo, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getRound, getCartelaAvailability, joinRoundBatch, leaveRound, getProfile } from '../lib/api';
+import cartelaGrids from '../lib/cartela-grids.json';
+// Instant local grid lookup — no network needed
+function getLocalGrid(num) {
+    const rows = cartelaGrids[String(num)];
+    return rows ?? null;
+}
+import { initAuth } from '../lib/auth';
+import { getJwtFromStorage } from '../lib/auth-storage';
+import { socket } from '../lib/socket';
+import { shouldHandleCurrentRoundEvent } from '../lib/round-event-guards';
+import { isRoundStartBlocked } from '../lib/round-start-flow';
+import { formatWholeMoney } from '../lib/format';
+const asSafeBalance = (wallet) => {
+    const value = wallet?.balance ?? 0;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+};
+export const TOTAL_CARTELAS = 800;
+const BINGO_COLS = ['B', 'I', 'N', 'G', 'O'];
+const COL_COLORS = ['#3b82f6', '#18b7b0', '#7654c7', '#dca72f', '#df6269'];
+const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirmed, disabled, onClick }) {
+    const bg = isPicked
+        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+        : taken
+            ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
+            : 'linear-gradient(180deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)';
+    const color = isPicked ? '#ecfdf5' : taken ? '#fecaca' : '#cbd5e1';
+    const border = isPicked
+        ? '2px solid #6ee7b7'
+        : taken
+            ? '2px solid #dc2626'
+            : '1px solid rgba(148,163,184,0.15)';
+    const shadow = isPicked
+        ? '0 0 20px rgba(16,185,129,0.4), inset 0 1px 2px rgba(255,255,255,0.1)'
+        : taken
+            ? '0 4px 14px rgba(220,38,38,0.3)'
+            : '0 2px 8px rgba(0,0,0,0.2)';
+    const handleClick = () => {
+        if (taken || disabled)
+            return;
+        onClick(num);
+    };
+    return (_jsx("button", { disabled: disabled || taken, onClick: handleClick, style: {
+            padding: '10px 0', borderRadius: 14, border, background: bg, color,
+            fontWeight: isPicked || taken ? 800 : 700, fontSize: 17,
+            cursor: disabled || taken ? 'not-allowed' : 'pointer',
+            opacity: disabled && !taken && !isPicked ? 0.5 : 1,
+            transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: isPicked ? 'translateY(-2px) scale(1.08)' : taken ? 'scale(0.98)' : 'translateY(0) scale(1)',
+            WebkitAppearance: 'none', appearance: 'none', outline: 'none',
+            lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '52px',
+            boxShadow: shadow, position: 'relative', overflow: 'hidden',
+            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+        }, children: num }));
+});
+const LOCAL_COUNTDOWN_SEC = 40; // must match LEAD_TIME_MS (40s) in round-scheduler.service.ts
+/**
+ * Countdown that derives remaining time from the round's server-side start_time.
+ * Falls back to LOCAL_COUNTDOWN_SEC if start_time is not yet known.
+ * Survives page refreshes correctly because it anchors to the server timestamp.
+ */
+function useLocalCountdown(startTime) {
+    // Total duration = distance from now to start_time (captured once when start_time first resolves)
+    const totalMsRef = useRef(LOCAL_COUNTDOWN_SEC * 1000);
+    const getDeadline = () => startTime ? new Date(startTime).getTime() : Date.now() + LOCAL_COUNTDOWN_SEC * 1000;
+    const [msLeft, setMsLeft] = useState(() => Math.max(0, getDeadline() - Date.now()));
+    useEffect(() => {
+        const deadline = getDeadline();
+        // Capture total duration once when start_time is known
+        totalMsRef.current = Math.max(1, deadline - Date.now());
+        const tick = () => setMsLeft(Math.max(0, deadline - Date.now()));
+        tick();
+        const id = setInterval(tick, 100);
+        return () => clearInterval(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [startTime]);
+    const secLeft = Math.ceil(msLeft / 1000);
+    return {
+        msLeft,
+        label: `${secLeft}s`,
+        pct: msLeft / totalMsRef.current,
+    };
+}
+export default function CartelaScreen() {
+    const { id: roundId } = useParams();
+    const navigate = useNavigate();
+    const [round, setRound] = useState(null);
+    const [availability, setAvailability] = useState(null);
+    const [balances, setBalances] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    // Local picks — restore from sessionStorage on mount, persist on change.
+    // Also re-populate from confirmed joined cartelas so the player's own cartelas
+    // show as "selected" (green) instead of "taken by another player" (red) on reload.
+    const [picks, setPicks] = useState(() => {
+        if (!roundId)
+            return new Set();
+        try {
+            const saved = sessionStorage.getItem(`selectedCartelas:${roundId}`);
+            if (saved)
+                return new Set(JSON.parse(saved));
+            // Fallback: restore from confirmed joined cartelas (e.g. after page reload)
+            const confirmed = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+            return confirmed ? new Set(JSON.parse(confirmed)) : new Set();
+        }
+        catch {
+            return new Set();
+        }
+    });
+    const picksRef = useRef(picks);
+    // Keep picksRef in sync synchronously — do NOT use useEffect here
+    // because there's a render cycle gap where the ref would be stale.
+    picksRef.current = picks;
+    // Persist picks to sessionStorage whenever they change
+    useEffect(() => {
+        if (!roundId)
+            return;
+        sessionStorage.setItem(`selectedCartelas:${roundId}`, JSON.stringify([...picks]));
+    }, [picks, roundId]);
+    // Cartelas recently released may still be reported as taken by stale server responses
+    const recentlyReleasedRef = useRef(new Set());
+    const [balanceAlert, setBalanceAlert] = useState(null);
+    const [joinError, setJoinError] = useState(null);
+    const [committing, setCommitting] = useState(false);
+    const [starting, setStarting] = useState(false);
+    const joinedRef = useRef(false);
+    const countdownStartedRef = useRef(false);
+    const startRequestLockRef = useRef(false);
+    const [manualTrigger, setManualTrigger] = useState(false);
+    // Cartelas currently reserved by other players (transient, not yet taken)
+    const [reservedByOthers, setReservedByOthers] = useState(new Set());
+    // Grids for picked cartelas — fetched on pick
+    const [pickedGrids, setPickedGrids] = useState(new Map());
+    const { msLeft, label: countdownLabel, pct } = useLocalCountdown(round?.start_time);
+    useEffect(() => {
+        if (!roundId)
+            return;
+        async function load() {
+            try {
+                await initAuth();
+                const [r, avail, profile] = await Promise.all([
+                    getRound(roundId),
+                    getCartelaAvailability(roundId),
+                    getProfile().catch(() => null),
+                ]);
+                setRound(r);
+                // Strip the current player's own joined cartelas from the taken list so
+                // they render as "selected" (green) rather than "taken by others" (red).
+                setAvailability(() => {
+                    const myNums = (() => {
+                        try {
+                            return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
+                        }
+                        catch {
+                            return [];
+                        }
+                    })();
+                    const mySet = new Set(myNums);
+                    if (mySet.size === 0)
+                        return avail;
+                    return {
+                        taken: avail.taken.filter(n => !mySet.has(n)),
+                        available: avail.available,
+                    };
+                });
+                if (profile)
+                    setBalances(profile);
+                // If round is already active/completed, mark countdown as started so
+                // the navigate effect can fire immediately
+                if (r.status === 'active' || r.status === 'completed') {
+                    countdownStartedRef.current = true;
+                }
+                // If start_time is already past, treat countdown as having started
+                if (r.start_time && new Date(r.start_time).getTime() <= Date.now()) {
+                    countdownStartedRef.current = true;
+                }
+            }
+            catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to load');
+            }
+            finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, [roundId]);
+    // Commit picks to server — called when game is about to start.
+    // Cartelas are already joined on pick, so just confirm sessionStorage is set.
+    async function commitPicks(currentPicks) {
+        if (currentPicks.size === 0) {
+            sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+            return false;
+        }
+        if (round) {
+            sessionStorage.setItem(`roundCache:${roundId}`, JSON.stringify({
+                id: round.id, stake: round.stake, derash: round.derash,
+                player_count: round.player_count, status: 'active', timestamp: Date.now(),
+            }));
+        }
+        // Cartelas were joined immediately on pick — just confirm sessionStorage
+        const stored = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+        if (stored)
+            return true;
+        // Fallback: batch join anything not yet confirmed
+        setCommitting(true);
+        try {
+            const result = await joinRoundBatch(roundId, [...currentPicks]);
+            setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
+            sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(result.cartelaNumbers));
+            sessionStorage.removeItem(`selectedCartelas:${roundId}`);
+            return true;
+        }
+        catch (err) {
+            const e = err;
+            if (e.code === 'CARTELA_TAKEN' || e.code === 'ROUND_NOT_JOINABLE') {
+                const fallback = sessionStorage.getItem(`myCartelaNumbers:${roundId}`);
+                if (fallback)
+                    return true;
+                sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+            }
+            else if (e.code === 'INSUFFICIENT_BALANCE' || e.message?.includes('ቀሪ ሂሳብ')) {
+                setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+            }
+            else if (e.code === 'PLAYER_SUSPENDED') {
+                setJoinError({ title: 'Account Suspended', message: 'Your account has been suspended. Please contact support.' });
+            }
+            else {
+                sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+            }
+            return false;
+        }
+        finally {
+            setCommitting(false);
+        }
+    }
+    useEffect(() => {
+        if (!roundId)
+            return;
+        if (!socket.connected)
+            socket.connect();
+        socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
+        // Re-join the round room on socket reconnect so cartela availability stays live
+        const onReconnect = () => {
+            socket.emit('JOIN_ROUND', { roundId, token: getJwtFromStorage() ?? '' });
+        };
+        socket.on('connect', onReconnect);
+        const onJoined = (p) => {
+            setRound(r => r ? { ...r, player_count: p.playerCount } : r);
+        };
+        const onCartelaTaken = (p) => {
+            setRound(r => r ? { ...r, player_count: p.playerCount } : r);
+            setAvailability(prev => {
+                if (!prev)
+                    return prev;
+                // Only add to taken if not our own pick
+                const incoming = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
+                if (incoming.length === 0)
+                    return prev;
+                const newTaken = new Set([...prev.taken, ...incoming]);
+                return { taken: [...newTaken], available: prev.available.filter(n => !newTaken.has(n)) };
+            });
+            // Never remove from picks — the picker manages their own state
+        };
+        const onCartelaReserved = (p) => {
+            setAvailability(prev => {
+                if (!prev)
+                    return prev;
+                const incoming = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
+                if (incoming.length === 0)
+                    return prev;
+                const takenSet = new Set([...prev.taken, ...incoming]);
+                return { taken: [...takenSet], available: prev.available.filter(n => !takenSet.has(n)) };
+            });
+        };
+        const onCartelaUnreserved = (p) => {
+            setAvailability(prev => {
+                if (!prev)
+                    return prev;
+                const released = p.cartelaNumbers.filter(n => !picksRef.current.has(n));
+                if (released.length === 0)
+                    return prev;
+                const releasedSet = new Set(released);
+                return {
+                    taken: prev.taken.filter(n => !releasedSet.has(n)),
+                    available: [...new Set([...prev.available, ...released])].sort((a, b) => a - b),
+                };
+            });
+        };
+        const onStarted = async (_p) => {
+            if (_p.roundId && !shouldHandleCurrentRoundEvent(roundId, _p.roundId))
+                return;
+            if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current }))
+                return;
+            joinedRef.current = true;
+            startRequestLockRef.current = true;
+            setStarting(true);
+            sessionStorage.setItem('selectedRoundId', roundId);
+            // Navigate IMMEDIATELY
+            navigate(`/rounds/${roundId}/game`, { replace: true });
+            // Join in background (fire-and-forget)
+            if (picksRef.current.size > 0) {
+                commitPicks(picksRef.current).catch(() => {
+                    sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+                });
+            }
+            else {
+                sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+            }
+        };
+        const onEnded = (p) => {
+            if (p && !shouldHandleCurrentRoundEvent(roundId, p.roundId))
+                return;
+            sessionStorage.removeItem('stakeSelectedForRound');
+            navigate('/', { replace: true });
+        };
+        socket.on('PLAYER_JOINED', onJoined);
+        socket.on('CARTELA_TAKEN', onCartelaTaken);
+        socket.on('CARTELA_RESERVED', onCartelaReserved);
+        socket.on('CARTELA_UNRESERVED', onCartelaUnreserved);
+        socket.on('ROUND_STARTED', onStarted);
+        socket.on('ROUND_VOID', onEnded);
+        socket.on('ROUND_CANCELLED', onEnded);
+        // Poll every 3s — catches missed socket events without hammering the server
+        const poll = setInterval(() => {
+            // Also fetch round status to catch missed ROUND_STARTED socket events
+            Promise.all([
+                getCartelaAvailability(roundId),
+                getRound(roundId),
+            ]).then(([fresh, latestRound]) => {
+                // If round went active and we haven't joined yet, navigate IMMEDIATELY
+                if (latestRound.status === 'active' && !joinedRef.current) {
+                    if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current }))
+                        return;
+                    joinedRef.current = true;
+                    startRequestLockRef.current = true;
+                    setStarting(true);
+                    clearInterval(poll);
+                    sessionStorage.setItem('selectedRoundId', roundId);
+                    // Navigate first, join in background
+                    navigate(`/rounds/${roundId}/game`, { replace: true });
+                    if (picksRef.current.size > 0) {
+                        commitPicks(picksRef.current).catch(() => {
+                            sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+                        });
+                    }
+                    else {
+                        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+                    }
+                    return;
+                }
+                // Round ended (void/cancelled) — go home
+                if (latestRound.status === 'void' || latestRound.status === 'cancelled') {
+                    clearInterval(poll);
+                    sessionStorage.removeItem('stakeSelectedForRound');
+                    navigate('/', { replace: true });
+                    return;
+                }
+                setAvailability(prev => {
+                    if (!prev)
+                        return fresh;
+                    const localPicks = picksRef.current;
+                    const recentlyReleased = recentlyReleasedRef.current;
+                    const myConfirmed = (() => {
+                        try {
+                            return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
+                        }
+                        catch {
+                            return [];
+                        }
+                    })();
+                    const mySet = new Set([...localPicks, ...myConfirmed]);
+                    // taken = server's fresh taken, minus anything that's ours
+                    const takenFromServer = fresh.taken.filter(n => !mySet.has(n) && !recentlyReleased.has(n));
+                    const available = fresh.available.filter(n => !mySet.has(n));
+                    return { taken: takenFromServer, available };
+                });
+            }).catch(() => { });
+        }, 3000);
+        return () => {
+            socket.off('connect', onReconnect);
+            socket.off('PLAYER_JOINED', onJoined);
+            socket.off('CARTELA_TAKEN', onCartelaTaken);
+            socket.off('CARTELA_RESERVED', onCartelaReserved);
+            socket.off('CARTELA_UNRESERVED', onCartelaUnreserved);
+            socket.off('ROUND_STARTED', onStarted);
+            socket.off('ROUND_VOID', onEnded);
+            socket.off('ROUND_CANCELLED', onEnded);
+            clearInterval(poll);
+            socket.emit('LEAVE_ROUND', { roundId });
+            // Clear selected cartelas when leaving the round
+            if (roundId)
+                sessionStorage.removeItem(`selectedCartelas:${roundId}`);
+        };
+    }, [roundId, navigate]);
+    useEffect(() => { if (msLeft > 0)
+        countdownStartedRef.current = true; }, [msLeft]);
+    // If round is already active when we arrive (msLeft starts at 0 and never ticks down),
+    // navigate to the game immediately after load completes.
+    useEffect(() => {
+        if (loading || !round || joinedRef.current)
+            return;
+        if (round.status !== 'active')
+            return;
+        if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current }))
+            return;
+        joinedRef.current = true;
+        startRequestLockRef.current = true;
+        setStarting(true);
+        sessionStorage.setItem('selectedRoundId', roundId ?? '');
+        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+        navigate(`/rounds/${roundId}/game`, { replace: true });
+    }, [loading, round, roundId, navigate, starting]);
+    // Countdown hit 0 — navigate immediately, commit picks in background
+    useEffect(() => {
+        if (msLeft !== 0 || !countdownStartedRef.current || joinedRef.current)
+            return;
+        if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current }))
+            return;
+        (async () => {
+            joinedRef.current = true;
+            startRequestLockRef.current = true;
+            setStarting(true);
+            sessionStorage.setItem('selectedRoundId', roundId ?? '');
+            // Navigate IMMEDIATELY for instant transition
+            navigate(`/rounds/${roundId}/game`, { replace: true });
+            // Join in background (fire-and-forget)
+            if (picksRef.current.size > 0) {
+                commitPicks(picksRef.current).catch(() => {
+                    // On error, store empty cartelas so user watches instead of crashing
+                    sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+                });
+            }
+            else {
+                sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+            }
+        })();
+    }, [msLeft, roundId, navigate, starting]);
+    // Manual "Go to Game" trigger (edge case when countdown already passed)
+    useEffect(() => {
+        if (!manualTrigger || joinedRef.current || starting)
+            return;
+        if (isRoundStartBlocked({ joined: joinedRef.current, starting, startRequested: startRequestLockRef.current }))
+            return;
+        async function startGame() {
+            joinedRef.current = true;
+            startRequestLockRef.current = true;
+            setStarting(true);
+            setError(null);
+            try {
+                const currentRound = await getRound(roundId);
+                if (currentRound.status === 'void' || currentRound.status === 'cancelled') {
+                    sessionStorage.removeItem('stakeSelectedForRound');
+                    navigate('/', { replace: true });
+                    return;
+                }
+                sessionStorage.setItem('selectedRoundId', roundId);
+                // Navigate immediately
+                navigate(`/rounds/${roundId}/game`, { replace: true });
+                // Join in background
+                if (picksRef.current.size > 0 && currentRound.status === 'pending') {
+                    commitPicks(picksRef.current).catch(() => {
+                        sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+                    });
+                }
+                else {
+                    sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([]));
+                }
+            }
+            catch {
+                setStarting(false);
+                joinedRef.current = false;
+                startRequestLockRef.current = false;
+            }
+        }
+        void startGame();
+    }, [manualTrigger, roundId, navigate, starting]);
+    const handleCellClick = useCallback((num) => {
+        // Own pick — deselect
+        if (picksRef.current.has(num)) {
+            const next = new Set(picksRef.current);
+            next.delete(num);
+            picksRef.current = next;
+            setPicks(new Set(next));
+            setRound(current => current ? { ...current, derash: Math.max(0, current.derash - payoutPerCartela) } : current);
+            setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
+            try {
+                const existing = JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
+                sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify(existing.filter(n => n !== num)));
+            }
+            catch { /* ignore */ }
+            recentlyReleasedRef.current.add(num);
+            window.setTimeout(() => { recentlyReleasedRef.current.delete(num); }, 1500);
+            if (roundId) {
+                leaveRound(roundId, num)
+                    .then((result) => {
+                    // Update balances with refunded amount
+                    setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
+                    getRound(roundId).then(setRound).catch(() => { });
+                })
+                    .catch(() => {
+                    const restored = new Set(picksRef.current);
+                    restored.add(num);
+                    picksRef.current = restored;
+                    setPicks(new Set(restored));
+                    setRound(current => current ? { ...current, derash: current.derash + payoutPerCartela } : current);
+                });
+            }
+            return;
+        }
+        // Taken by another player
+        if (availability && availability.taken.includes(num) && !recentlyReleasedRef.current.has(num)) {
+            setBalanceAlert(`Cartela ${num} is already taken by another player.`);
+            return;
+        }
+        if (picksRef.current.size >= (round?.max_cartelas_per_player ?? 2))
+            return;
+        // Balance check
+        if (round && balances) {
+            const stake = Number(round.stake);
+            const total = (picksRef.current.size + 1) * stake;
+            const bal = asSafeBalance(balances?.playWallet) + asSafeBalance(balances?.mainWallet);
+            if (bal < total) {
+                setBalanceAlert(`ቀሪ ሂሳብ አይበቃም!\nNeed ${total} Birr — you have ${formatWholeMoney(bal)} Birr.\nPlease deposit to continue.`);
+                return;
+            }
+        }
+        // Add to picks immediately
+        const next = new Set(picksRef.current);
+        next.add(num);
+        picksRef.current = next;
+        setPicks(new Set(next));
+        setRound(current => current ? { ...current, derash: current.derash + payoutPerCartela } : current);
+        // Load grid for preview
+        const localGrid = getLocalGrid(num);
+        if (localGrid) {
+            setPickedGrids(prev => new Map(prev).set(num, localGrid));
+            if (roundId) {
+                import('../lib/idb').then(({ idbPut }) => {
+                    idbPut('cartelas', `${roundId}:${num}`, { cartela_number: num, grid: localGrid }).catch(() => { });
+                });
+            }
+        }
+        // Join immediately — CARTELA_TAKEN broadcasts to all other clients (shows red for them)
+        if (roundId) {
+            joinRoundBatch(roundId, [num])
+                .then(result => {
+                setBalances({ mainWallet: { balance: result.mainWalletBalance }, playWallet: { balance: result.playWalletBalance } });
+                const existing = (() => { try {
+                    return JSON.parse(sessionStorage.getItem(`myCartelaNumbers:${roundId}`) ?? '[]');
+                }
+                catch {
+                    return [];
+                } })();
+                sessionStorage.setItem(`myCartelaNumbers:${roundId}`, JSON.stringify([...new Set([...existing, num])]));
+                void getRound(roundId).then(setRound).catch(() => { });
+            })
+                .catch((err) => {
+                const e = err;
+                const rollback = new Set(picksRef.current);
+                rollback.delete(num);
+                picksRef.current = rollback;
+                setPicks(new Set(rollback));
+                setRound(current => current ? { ...current, derash: Math.max(0, current.derash - payoutPerCartela) } : current);
+                setPickedGrids(prev => { const m = new Map(prev); m.delete(num); return m; });
+                if (e.code === 'CARTELA_TAKEN') {
+                    setBalanceAlert(`Cartela ${num} was just taken. Pick another.`);
+                    if (roundId)
+                        getCartelaAvailability(roundId).then(fresh => setAvailability(fresh)).catch(() => { });
+                }
+                else if (e.code === 'INSUFFICIENT_BALANCE') {
+                    setBalanceAlert(e.message ?? 'ቀሪ ሂሳብ አይበቃም!\nPlease deposit to continue.');
+                }
+                else if (e.code !== 'ROUND_NOT_JOINABLE') {
+                    setBalanceAlert(e.message ?? 'Could not join. Please try again.');
+                }
+            });
+        }
+    }, [roundId, round, balances, availability]);
+    if (loading)
+        return (_jsx("div", { style: { height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #0a0e1a 100%)' } }));
+    if (!round || !availability)
+        return (_jsxs("div", { style: { height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }, children: [_jsx("div", { style: { fontSize: 56 }, children: "\uD83D\uDEAB" }), _jsx("div", { style: { fontSize: 18, fontWeight: 700 }, children: error ? 'Failed to Load' : 'Round Not Found' }), _jsx("div", { style: { fontSize: 13, color: '#94a3b8' }, children: error || 'Could not load round data' })] }));
+    // availability.taken contains ONLY other players' cartelas — never the current player's picks
+    const takenSet = new Set(availability.taken);
+    const urgent = msLeft > 0 && msLeft < 10_000;
+    const maxSelect = round.max_cartelas_per_player ?? 2;
+    const canPick = picks.size < maxSelect;
+    const poolSize = Math.min(round.active_cartela_count ?? TOTAL_CARTELAS, TOTAL_CARTELAS);
+    const allNumbers = Array.from({ length: poolSize }, (_, i) => i + 1);
+    const picksArr = [...picks].sort((a, b) => a - b);
+    const payoutPerCartela = Number(round.stake) * (1 - round.commission_pct / 100);
+    // How much vertical space the bingo preview needs
+    const previewCount = picksArr.length;
+    return (_jsxs("div", { style: { height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }, children: [_jsxs("div", { style: { background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.12)', padding: '12px 14px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12 }, children: [_jsx("button", { onClick: () => navigate(-1), style: { background: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)', border: '1px solid rgba(59,130,246,0.32)', color: '#7db3f5', width: 34, height: 34, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transition: 'all 0.3s', fontWeight: 700 }, children: "\u2190" }), _jsxs("div", { children: [_jsx("div", { style: { fontSize: 15, fontWeight: 800, color: '#f8fafc' }, children: "Select Cartelas" }), _jsxs("div", { style: { fontSize: 12, color: '#94a3b8', marginTop: 2 }, children: ["Up to ", round?.max_cartelas_per_player ?? 2, " cartela", (round?.max_cartelas_per_player ?? 2) !== 1 ? 's' : ''] })] })] }), _jsxs("div", { style: { textAlign: 'right', display: 'flex', alignItems: 'center', gap: 6 }, children: [_jsxs("div", { style: { background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 10, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(8px)' }, children: [_jsx("span", { style: { fontSize: 14 }, children: "\u23F1\uFE0F" }), _jsx("span", { style: { fontSize: 11, fontWeight: 800, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#fbbf24', fontVariantNumeric: 'tabular-nums' }, children: msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : starting ? '●' : '0s' })] }), _jsx("button", { onClick: () => window.location.reload(), style: { background: 'linear-gradient(135deg, rgba(100,116,139,0.15) 0%, rgba(71,85,105,0.1) 100%)', border: '1px solid rgba(148,163,184,0.25)', color: '#cbd5e1', padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s' }, children: "\u21BB" })] })] }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 10 }, children: [
+                            { label: '💰 Main', value: balances ? Math.floor(asSafeBalance(balances.mainWallet)) : 0, color: '#3b82f6' },
+                            { label: '🎮 Play', value: balances ? Math.floor(asSafeBalance(balances.playWallet)) : 0, color: '#10b981' },
+                            { label: '🎯 Stake', value: round ? Number(round.stake) : 0, color: '#f59e0b' },
+                        ].map(({ label, value, color }) => (_jsxs("div", { style: { background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`, border: `1px solid ${color}30`, borderRadius: 10, padding: '8px', textAlign: 'center', backdropFilter: 'blur(8px)' }, children: [_jsx("div", { style: { fontSize: 10, color: '#94a3b8', fontWeight: 700, marginBottom: 2 }, children: label }), _jsx("div", { style: { fontSize: 13, fontWeight: 900, color: '#f1f5f9' }, children: value.toLocaleString() })] }, label))) })] }), error && (_jsxs("div", { style: { background: 'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.08) 100%)', borderBottom: '1.5px solid rgba(239,68,68,0.25)', color: '#fca5a5', padding: '8px 14px', fontSize: 12, flexShrink: 0, display: 'flex', gap: 10, alignItems: 'center', fontWeight: 500 }, children: [_jsx("span", { style: { fontSize: 16 }, children: "\u26A0\uFE0F" }), _jsx("span", { children: error })] })), _jsx("div", { style: {
+                    flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                    display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                    gap: 10, padding: '20px', alignContent: 'start',
+                    background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
+                    borderTop: '1px solid rgba(148,163,184,0.08)',
+                }, children: allNumbers.map(num => {
+                    const isPicked = picks.has(num);
+                    const taken = takenSet.has(num) && !isPicked;
+                    const isConfirmed = false;
+                    const disabled = starting || committing || taken || (!isPicked && picks.size >= maxSelect);
+                    return (_jsx(CartelaCell, { num: num, taken: taken, isPicked: isPicked, isConfirmed: isConfirmed, disabled: disabled, onClick: handleCellClick }, num));
+                }) }), previewCount > 0 && (_jsx("div", { style: {
+                    flexShrink: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,14,26,0.9) 100%)',
+                    borderTop: '1.5px solid rgba(148,163,184,0.1)',
+                    padding: '12px 12px', gap: 10,
+                    display: 'grid',
+                    gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
+                    boxShadow: '0 -8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+                    maxHeight: '24%',
+                    overflowY: 'auto',
+                }, children: picksArr.map(cartelaNum => {
+                    const grid = pickedGrids.get(cartelaNum);
+                    return (_jsxs("div", { style: { background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.04) 100%)', border: '1.5px solid rgba(16,185,129,0.25)', borderRadius: 10, padding: '8px 6px 6px', boxShadow: '0 8px 16px rgba(16,185,129,0.12)', backdropFilter: 'blur(8px)' }, children: [_jsxs("div", { style: { textAlign: 'center', fontSize: 15, color: '#34d399', fontWeight: 900, marginBottom: 6 }, children: ["Card #", cartelaNum] }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2, marginBottom: 2 }, children: BINGO_COLS.map((col, ci) => (_jsx("div", { style: {
+                                        background: `linear-gradient(180deg, ${COL_COLORS[ci]} 0%, rgba(15,23,42,0.9) 100%)`, color: '#fff', fontWeight: 800,
+                                        fontSize: 7, textAlign: 'center', borderRadius: 3, padding: '2px 0',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        boxShadow: `0 2px 6px ${COL_COLORS[ci]}40`
+                                    }, children: col }, col))) }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }, children: grid ? grid.map((val, idx) => {
+                                    const isFree = idx === 12;
+                                    return (_jsx("div", { style: {
+                                            background: isFree ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(20,29,39,0.95) 100%)',
+                                            color: isFree ? '#ecfdf5' : '#cbd5e1',
+                                            fontWeight: 700, fontSize: 11,
+                                            textAlign: 'center', borderRadius: 3,
+                                            border: isFree ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(148,163,184,0.15)',
+                                            minHeight: '24px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            boxShadow: isFree ? '0 0 12px rgba(16,185,129,0.25)' : 'none'
+                                        }, children: isFree ? '★' : val }, idx));
+                                }) : Array.from({ length: 25 }, (_, i) => (_jsx("div", { style: {
+                                        background: 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(20,29,39,0.95) 100%)', borderRadius: 3,
+                                        border: '1px solid rgba(148,163,184,0.15)', minHeight: '18px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 8, color: '#475569',
+                                    }, children: "\u00B7" }, i))) })] }, cartelaNum));
+                }) })), (starting || committing) && (_jsxs("div", { style: { position: 'fixed', inset: 0, background: 'linear-gradient(135deg, rgba(10,14,26,0.98) 0%, rgba(10,14,26,0.95) 100%)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 18, zIndex: 50 }, children: [_jsx("div", { style: { width: 72, height: 72, background: 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(59,130,246,0.15) 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, animation: 'pulse 2s ease-in-out infinite', border: '2px solid rgba(16,185,129,0.4)', boxShadow: '0 0 24px rgba(16,185,129,0.2)' }, children: "\uD83C\uDFAE" }), _jsxs("div", { style: { textAlign: 'center' }, children: [_jsx("div", { style: { color: '#10b981', fontWeight: 900, fontSize: 20, marginBottom: 10 }, children: "Starting Game\u2026" }), _jsx("div", { style: { color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }, children: picks.size > 0 ? `Joining with cartela ${picksArr.join(' & ')}` : 'Joining as watcher' })] }), _jsx("style", { children: `@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } }` })] })), balanceAlert && (() => {
+                const isBalanceError = balanceAlert.includes('ቀሪ ሂሳብ') || balanceAlert.toLowerCase().includes('insufficient');
+                const isAvailabilityError = balanceAlert.includes('not available') || balanceAlert.includes('taken');
+                const icon = isBalanceError ? '💳' : isAvailabilityError ? '🎫' : '⚠️';
+                const title = isBalanceError ? 'Insufficient Balance' : isAvailabilityError ? 'Cartela Unavailable' : 'Alert';
+                const bgColor = isBalanceError ? 'rgba(249,115,22,0.15)' : isAvailabilityError ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)';
+                const borderColor = isBalanceError ? 'rgba(249,115,22,0.3)' : isAvailabilityError ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)';
+                const titleColor = isBalanceError ? '#fb923c' : isAvailabilityError ? '#fbbf24' : '#f87171';
+                return (_jsx("div", { style: { position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 20 }, onClick: () => setBalanceAlert(null), children: _jsxs("div", { style: { background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: 16, padding: '28px 24px', maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }, onClick: e => e.stopPropagation(), children: [_jsx("div", { style: { fontSize: 48, marginBottom: 14 }, children: icon }), _jsx("div", { style: { fontWeight: 700, fontSize: 18, color: titleColor, marginBottom: 10 }, children: title }), balanceAlert.split('\n').map((line, i) => (_jsx("div", { style: { fontSize: 13, color: '#cbd5e1', marginBottom: 4 }, children: line }, i))), _jsx("button", { onClick: () => setBalanceAlert(null), style: { marginTop: 20, width: '100%', padding: '12px', background: titleColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }, children: "Got it" })] }) }));
+            })(), joinError && (_jsx("div", { style: { position: 'fixed', inset: 0, background: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 20 }, onClick: () => setJoinError(null), children: _jsxs("div", { style: { background: 'rgba(239,68,68,0.15)', border: '1.5px solid rgba(239,68,68,0.3)', borderRadius: 16, padding: '28px 24px', maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }, onClick: e => e.stopPropagation(), children: [_jsx("div", { style: { fontSize: 48, marginBottom: 14 }, children: "\u26A0\uFE0F" }), _jsx("div", { style: { fontWeight: 700, fontSize: 18, color: '#f87171', marginBottom: 10 }, children: joinError.title }), _jsx("div", { style: { fontSize: 13, color: '#cbd5e1', marginBottom: 4 }, children: joinError.message }), _jsx("button", { onClick: () => setJoinError(null), style: { marginTop: 20, width: '100%', padding: '12px', background: '#f87171', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s' }, children: "Dismiss" })] }) }))] }));
+}
+//# sourceMappingURL=CartelaScreen.js.map
