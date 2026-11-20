@@ -384,9 +384,9 @@ export default function GameScreen() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{
+    <div className="gs-root" style={{
       minHeight: '100dvh',
-      background: 'linear-gradient(170deg, #120e2e 0%, #0c0a1e 55%, #09071a 100%)',
+      background: 'radial-gradient(circle at 85% -5%, rgba(168,85,247,0.16), transparent 32%), radial-gradient(circle at -12% 32%, rgba(99,212,186,0.12), transparent 30%), linear-gradient(170deg, #150b33 0%, #0e0a24 55%, #0a0718 100%)',
       color: '#f1f5f9',
       maxWidth: 480,
       margin: '0 auto',
@@ -398,14 +398,16 @@ export default function GameScreen() {
         @keyframes gs-tick-in { from{opacity:0;transform:translateY(-8px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes gs-card-in { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes gs-fade-in { from{opacity:0} to{opacity:1} }
+        .gs-root { max-width: 480px; margin: 0 auto; }
+        @media (min-width: 560px) { .gs-root { max-width: 560px; } }
       `}</style>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{
         padding: '14px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'rgba(10,8,24,0.96)',
-        borderBottom: '1px solid rgba(124,58,237,0.18)',
+        background: 'rgba(12,9,28,0.92)',
+        borderBottom: '1px solid rgba(124,58,237,0.22)',
         backdropFilter: 'blur(20px)',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
@@ -477,10 +479,12 @@ export default function GameScreen() {
       {/* ── HERO BANNER ────────────────────────────────────────────────────── */}
       <div style={{
         margin: '16px 14px 0',
-        borderRadius: 20,
-        background: 'linear-gradient(135deg, #2e1065 0%, #4c1d95 40%, #6d28d9 100%)',
-        padding: '20px 20px 18px',
+        borderRadius: 22,
+        background: 'linear-gradient(135deg, #31156e 0%, #4c1d95 40%, #6d28d9 100%)',
+        border: '1px solid rgba(167,139,250,0.25)',
+        padding: '22px 20px 20px',
         position: 'relative', overflow: 'hidden',
+        boxShadow: '0 18px 40px rgba(76,29,149,0.35)',
       }}>
         {/* Decorative circles */}
         <div style={{
@@ -530,7 +534,7 @@ export default function GameScreen() {
           margin: '12px 14px 0',
           background: 'rgba(124,58,237,0.08)',
           border: '1px solid rgba(124,58,237,0.22)',
-          borderRadius: 16,
+          borderRadius: 18,
           padding: '12px 14px',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
