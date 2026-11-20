@@ -16,7 +16,7 @@ const rl = readline.createInterface({
 const question = (prompt) => new Promise((resolve) => rl.question(prompt, resolve));
 
 async function main() {
-  console.log('🎨 Fidel Bingo - Promotion Sender\n');
+  console.log('🎨 Mada Bingo - Promotion Sender\n');
 
   // Step 1: Login
   console.log('📝 Step 1: Admin Login');

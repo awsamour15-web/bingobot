@@ -3,7 +3,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../../lib/prisma.js';
 import { cashierAuthMiddleware } from '../../middleware/cashier-auth.middleware.js';
-import { TxType } from '@fidel/shared';
+import { TxType } from '@mada/shared';
 import { processDepositClaim } from '../../bot/index.js';
 
 const router: RouterType = Router();

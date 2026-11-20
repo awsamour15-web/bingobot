@@ -32,7 +32,7 @@ importers:
 
   apps/admin:
     dependencies:
-      '@fidel/shared':
+      '@mada/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       react:
@@ -63,7 +63,7 @@ importers:
 
   apps/backend:
     dependencies:
-      '@fidel/shared':
+      '@mada/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@prisma/client':
@@ -154,7 +154,7 @@ importers:
 
   apps/mini-app:
     dependencies:
-      '@fidel/shared':
+      '@mada/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@twa-dev/sdk':

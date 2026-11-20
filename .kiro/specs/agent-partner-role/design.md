@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature adds an Agent/Partner role to the Fidel Bingo platform. Agents are trusted partners who earn 10% commission on every deposit made by players they recruited. The implementation spans the database layer, backend services, bot, REST API, admin panel, and Telegram mini-app.
+This feature adds an Agent/Partner role to the Mada Bingo platform. Agents are trusted partners who earn 10% commission on every deposit made by players they recruited. The implementation spans the database layer, backend services, bot, REST API, admin panel, and Telegram mini-app.
 
 ---
 

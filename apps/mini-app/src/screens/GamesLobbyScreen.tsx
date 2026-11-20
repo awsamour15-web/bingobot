@@ -28,7 +28,7 @@ interface Game {
 const GAMES: Game[] = [
   {
     id: 'bingo',
-    title: 'Fidel Bingo',
+    title: 'Mada Bingo',
     subtitle: 'Live multiplayer - Win up to 40K ETB',
     emoji: '🎯',
     gradient: 'linear-gradient(135deg,#1e3a5f 0%,#0f2140 55%,#0a1628 100%)',
@@ -331,7 +331,7 @@ export default function GamesLobbyScreen() {
       <div style={{ height: 76, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(134,165,226,0.16)', boxSizing: 'border-box', background: 'rgba(7,11,20,0.68)' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#6ed4bd', fontWeight: 900, letterSpacing: '0.16em' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#63d4ba', animation: 'lobbyLivePulse 1.8s ease-out infinite' }} /> FIDEL PLAY
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#63d4ba', animation: 'lobbyLivePulse 1.8s ease-out infinite' }} /> MADA PLAY
           </div>
           <div style={{ marginTop: 3, fontSize: 17, fontWeight: 900, color: '#f4f7fb' }}>Choose your game</div>
         </div>

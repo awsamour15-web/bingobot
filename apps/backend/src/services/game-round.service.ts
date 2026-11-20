@@ -1,7 +1,7 @@
 // Game Round Lifecycle Service
 // Requirements: 3.3, 3.5, 3.6, 13.1, 13.2, 13.3, 15.4
 
-import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
+import { GameStatus, TxType, WalletType, WinPattern } from '@mada/shared';
 import prisma from '../lib/prisma.js';
 import { Prisma } from '@prisma/client';
 import { WalletService } from './wallet.service.js';

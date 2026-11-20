@@ -4,7 +4,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
-import type { ReferralStats } from '@fidel/shared';
+import type { ReferralStats } from '@mada/shared';
 
 const router: RouterType = Router();
 
@@ -25,7 +25,7 @@ router.get('/link', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
+  const botUsername = process.env['BOT_USERNAME'] ?? 'MadaBingoBot';
   const referralLink = `https://t.me/${botUsername}?start=ref_${player.telegram_id}`;
 
   // Count active referrals — only players who have deposited or played (bonus was paid)

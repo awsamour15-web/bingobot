@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getHistoryDetail } from '../lib/api';
-import type { HistoryDetail } from '@fidel/shared';
+import type { HistoryDetail } from '@mada/shared';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
 

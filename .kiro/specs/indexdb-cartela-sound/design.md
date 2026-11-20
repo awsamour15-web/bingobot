@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature consolidates and completes the IndexedDB caching layer in the Fidel Bingo mini-app. Two concerns are addressed together because they share the same storage infrastructure (`idb.ts`) and the same runtime context (`LiveGameScreen`):
+This feature consolidates and completes the IndexedDB caching layer in the Mada Bingo mini-app. Two concerns are addressed together because they share the same storage infrastructure (`idb.ts`) and the same runtime context (`LiveGameScreen`):
 
 1. **Sound caching** — All 75 `.wav` files are fetched once, persisted as `ArrayBuffer` in the `sounds` store, and served from cache on subsequent visits. Repeated network downloads on every session are eliminated.
 2. **Cartela grid caching** — The 5×5 grid for each cartela the player has joined is written to the `cartelas` store immediately after being fetched, so a mid-game page reload does not require a new API call.

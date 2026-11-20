@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest, AdminRole } from '@fidel/shared';
+import type { ConfigEntry, AdminAccount, CreateAdminRequest, UpdateAdminRequest, AdminRole } from '@mada/shared';
 import {
   getConfig, updateConfig, getAdmins, createAdmin, updateAdmin,
   getDepositAccounts, createDepositAccount, updateDepositAccount, deleteDepositAccount,

@@ -16,7 +16,7 @@
 
 import prisma from '../lib/prisma.js';
 import { WalletService } from './wallet.service.js';
-import { TxType, WalletType } from '@fidel/shared';
+import { TxType, WalletType } from '@mada/shared';
 import { getConfigBool, getConfigFloat } from '../lib/config-cache.js';
 
 export type CashbackGame = 'bingo' | 'crash' | 'slots' | 'keno' | 'plinko' | 'royal_drop';

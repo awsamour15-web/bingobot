@@ -59,7 +59,7 @@ pg_dump "$DATABASE_URL" > backup_$(date +%Y%m%d_%H%M%S).sql
 
 ```bash
 cd apps/backend
-npm run db:restore ./backups/fidelbingo_backup_20260819_120000.sql.gz
+npm run db:restore ./backups/madabingo_backup_20260819_120000.sql.gz
 ```
 
 ### From Uncompressed Backup:
@@ -155,14 +155,14 @@ If you're on a paid Render plan, you can restore from automatic backups:
 
 ```bash
 # After creating backup
-aws s3 cp ./backups/fidelbingo_backup_*.sql.gz s3://your-bucket/database-backups/
+aws s3 cp ./backups/madabingo_backup_*.sql.gz s3://your-bucket/database-backups/
 ```
 
 ### Google Drive (using rclone):
 
 ```bash
 # After creating backup
-rclone copy ./backups/ gdrive:FidelBingo-Backups/
+rclone copy ./backups/ gdrive:MadaBingo-Backups/
 ```
 
 ## Emergency Recovery

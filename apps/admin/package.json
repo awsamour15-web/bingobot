@@ -1,15 +1,15 @@
 {
-  "name": "@fidel/admin",
+  "name": "@mada/admin",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter @fidel/shared build && tsc && vite build",
+    "build": "pnpm --filter @mada/shared build && tsc && vite build",
     "type-check": "tsc --noEmit",
     "dev": "vite",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fidel/shared": "workspace:*",
+    "@mada/shared": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^6.26.0"

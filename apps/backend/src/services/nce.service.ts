@@ -1,7 +1,7 @@
 // Number Calling Engine (NCE)
 // Requirements: 16.1, 16.2, 16.3, 16.4
 
-import { GameStatus, TxType, WalletType, WinPattern } from '@fidel/shared';
+import { GameStatus, TxType, WalletType, WinPattern } from '@mada/shared';
 import prisma from '../lib/prisma.js';
 import { getConfigInt } from '../lib/config-cache.js';
 import { seededShuffle } from '../lib/shuffle.js';

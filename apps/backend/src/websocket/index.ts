@@ -12,7 +12,7 @@ import { GameRoundService } from '../services/game-round.service.js';
 import { RoundScheduler } from '../services/round-scheduler.service.js';
 import { MockPlayerBotService } from '../services/mock-player-bot.service.js';
 import { RoundBonusService } from '../services/round-bonus.service.js';
-import { GameStatus } from '@fidel/shared';
+import { GameStatus } from '@mada/shared';
 import { getCachedSuspension, setCachedSuspension } from '../middleware/jwt-auth.middleware.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

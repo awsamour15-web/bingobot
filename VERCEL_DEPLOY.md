@@ -55,7 +55,7 @@ This is required for React Router to work — without it, refreshing any page re
 
 ## pnpm workspace issues
 
-If Vercel fails to resolve `@fidel/shared`, add this environment variable in Vercel project settings:
+If Vercel fails to resolve `@mada/shared`, add this environment variable in Vercel project settings:
 
 ```
 ENABLE_EXPERIMENTAL_COREPACK = 1

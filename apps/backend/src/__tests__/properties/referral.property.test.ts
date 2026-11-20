@@ -1,4 +1,4 @@
-// Feature: fidel-bingo-telegram, Property 14: Referral Link Uniqueness
+// Feature: mada-bingo-telegram, Property 14: Referral Link Uniqueness
 // Validates: Requirements 9.1
 
 import { describe, it, expect } from 'vitest';
@@ -14,7 +14,7 @@ import * as fc from 'fast-check';
 // telegram_id, then their referral link identifier (`ref_<telegramId>`) is
 // also distinct.
 
-const BOT_USERNAME = 'FidelBingoBot';
+const BOT_USERNAME = 'MadaBingoBot';
 
 /**
  * Generates the referral link for a player given their Telegram ID.
@@ -118,7 +118,7 @@ describe('Property 14: Referral Link Uniqueness', () => {
 });
 
 // ─── Property 15: Referral Commission Credited on Paid Round Completion ───────
-// Feature: fidel-bingo-telegram, Property 15: Referral Commission Credited on Paid Round Completion
+// Feature: mada-bingo-telegram, Property 15: Referral Commission Credited on Paid Round Completion
 // Validates: Requirements 9.3
 
 /**

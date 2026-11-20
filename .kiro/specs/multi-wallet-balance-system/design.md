@@ -18,7 +18,7 @@ Key design decisions:
 - The `debitDual` method is replaced by `debitWithPriority(gameType, ...)`, which encodes the priority order internally.
 - Round-entry balance checks and the payment collection loop in `GameRoundService.start()` both need to include `bonus` for Bingo.
 - Refunds on void/cancel must restore each wallet in the exact split that was originally debited, so the split must be persisted. A new `RoundEntryWalletSplit` table stores this.
-- The `WalletType` enum gains a `bonus` value in both Prisma schema and the `@fidel/shared` package.
+- The `WalletType` enum gains a `bonus` value in both Prisma schema and the `@mada/shared` package.
 
 ---
 
@@ -158,7 +158,7 @@ Wherever a new player's wallets are seeded (bot auth flow / `auth.router`), a th
 
 ### 6. API response shapes (updated)
 
-`PlayerProfile` and `JoinRoundResponse` in `@fidel/shared/api.ts` gain `bonusWallet: WalletBalance` and `bonusWalletBalance: number` respectively.
+`PlayerProfile` and `JoinRoundResponse` in `@mada/shared/api.ts` gain `bonusWallet: WalletBalance` and `bonusWalletBalance: number` respectively.
 
 `AdminPlayer` gains `bonus_wallet_balance: number`.
 

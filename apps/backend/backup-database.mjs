@@ -21,7 +21,7 @@ async function backupDatabase() {
 
     // Generate timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    const backupFile = path.join(BACKUP_DIR, `fidelbingo_backup_${timestamp}.sql`);
+    const backupFile = path.join(BACKUP_DIR, `madabingo_backup_${timestamp}.sql`);
 
     console.log('Starting database backup...');
     console.log(`Backup file: ${backupFile}`);
@@ -43,7 +43,7 @@ async function backupDatabase() {
     // Clean up old backups (keep last 7)
     const files = await fs.readdir(BACKUP_DIR);
     const backupFiles = files
-      .filter(f => f.startsWith('fidelbingo_backup_') && f.endsWith('.sql.gz'))
+      .filter(f => f.startsWith('madabingo_backup_') && f.endsWith('.sql.gz'))
       .sort()
       .reverse();
 

@@ -1,4 +1,4 @@
-import { TxType, WalletType } from "@fidel/shared";
+import { TxType, WalletType } from "@mada/shared";
 import prisma from "../lib/prisma.js";
 
 export class InsufficientFundsError extends Error {

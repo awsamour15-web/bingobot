@@ -19,9 +19,9 @@ COPY packages/shared ./packages/shared
 COPY apps/backend ./apps/backend
 
 # Build shared package then backend
-RUN pnpm --filter @fidel/shared build
-RUN pnpm --filter @fidel/backend exec prisma generate
-RUN pnpm --filter @fidel/backend exec tsc
+RUN pnpm --filter @mada/shared build
+RUN pnpm --filter @mada/backend exec prisma generate
+RUN pnpm --filter @mada/backend exec tsc
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM node:20-slim AS runner

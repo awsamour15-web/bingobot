@@ -1,13 +1,13 @@
 ---
 name: ui-ux-workflow
-description: 'Build production-ready UI components following Fidel Bingo design standards. Use when: implementing new components, refining existing screens, ensuring visual consistency, or reviewing UI/UX work. Covers design review → implementation → quality verification.'
+description: 'Build production-ready UI components following Mada Bingo design standards. Use when: implementing new components, refining existing screens, ensuring visual consistency, or reviewing UI/UX work. Covers design review → implementation → quality verification.'
 argument-hint: '[component-name] or [screen-name]'
 user-invocable: true
 ---
 
 # UI/UX Component Development Workflow
 
-Complete workflow for building professional UI components using the established Fidel Bingo design system. Ensures visual consistency, performance, and quality across the mini-app and admin interfaces.
+Complete workflow for building professional UI components using the established Mada Bingo design system. Ensures visual consistency, performance, and quality across the mini-app and admin interfaces.
 
 ## When to Use
 

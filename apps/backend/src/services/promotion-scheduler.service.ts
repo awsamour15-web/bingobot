@@ -44,7 +44,7 @@ async function sendToOne(
 ): Promise<void> {
   if (!bot) throw new Error('Bot not initialized');
 
-  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
+  const botUsername = process.env['BOT_USERNAME'] ?? 'MadaBingoBot';
   const playLink = `https://t.me/${botUsername}`;
 
   const keyboard = {

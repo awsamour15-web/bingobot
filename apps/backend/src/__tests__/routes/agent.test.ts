@@ -46,7 +46,7 @@ describe('Agent Self-Service Router', () => {
     });
 
     it('should generate the correct activation link for agent onboarding', () => {
-      expect(agentInviteLink('agent-123')).toBe('https://t.me/FidelBingoBot?start=agent_agent-123');
+      expect(agentInviteLink('agent-123')).toBe('https://t.me/MadaBingoBot?start=agent_agent-123');
     });
 
     it('should mock playerInviteLink to return invite link', async () => {

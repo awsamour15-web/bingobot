@@ -2,7 +2,7 @@
 // Mock players are bot-controlled players used by admin to fill games
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
-import { WalletType, TxType } from '@fidel/shared';
+import { WalletType, TxType } from '@mada/shared';
 import prisma from '../../lib/prisma.js';
 import { Prisma } from '@prisma/client';
 import { WalletService } from '../../services/wallet.service.js';

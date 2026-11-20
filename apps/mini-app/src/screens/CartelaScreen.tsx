@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, memo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getRound, getCartelaAvailability, joinRoundBatch, leaveRound, getProfile, getCartelaGridCached } from '../lib/api';
 import cartelaGrids from '../lib/cartela-grids.json';
-import { WIN_PATTERN_LABELS } from '@fidel/shared';
+import { WIN_PATTERN_LABELS } from '@mada/shared';
 
 // Instant local grid lookup — no network needed
 function getLocalGrid(num: number): number[] | null {

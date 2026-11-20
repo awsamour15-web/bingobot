@@ -1,4 +1,4 @@
-// Modern professional UI primitives — Fidel Bingo Admin
+// Modern professional UI primitives — Mada Bingo Admin
 import React, { useEffect, useMemo, useState } from 'react';
 
 export const C = {

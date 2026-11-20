@@ -17,8 +17,8 @@ import {
 } from '../services/game-round.service.js';
 import { CartelaReservationService, CartelaAlreadyReservedError, MaxCartelaLimitExceededError, ReservationNotFoundError } from '../services/cartela-reservation.service.js';
 import { InsufficientFundsError } from '../services/wallet.service.js';
-import { WalletType, TxType } from '@fidel/shared';
-import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@fidel/shared';
+import { WalletType, TxType } from '@mada/shared';
+import type { RoundListItem, RoundDetail, JoinRoundResponse, CartelaAvailability } from '@mada/shared';
 import { getConfigInt } from '../lib/config-cache.js';
 
 const router: RouterType = Router();
@@ -86,7 +86,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       active_cartela_count: cappedCartelaCount,
       derash: Number(r.derash),
       start_time: r.start_time.toISOString(),
-      winning_pattern: (r.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
+      winning_pattern: (r.winning_pattern ?? 'any_line') as import('@mada/shared').WinPattern,
       jackpot_enabled: jackpotStakes.includes(Number(r.stake)),
     }));
 
@@ -136,7 +136,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     winner_cartela_number: round.winner_cartela_number ?? undefined,
     max_cartelas_per_player: maxCartelasPerPlayer,
     active_cartela_count: activeCartelaCount,
-    winning_pattern: (round.winning_pattern ?? 'any_line') as import('@fidel/shared').WinPattern,
+    winning_pattern: (round.winning_pattern ?? 'any_line') as import('@mada/shared').WinPattern,
   };
 
   res.status(200).json(detail);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProfile, getReferralLink } from '../lib/api';
 import { initAuth, getAgentJwt } from '../lib/auth';
 import { formatMoney } from '../lib/format';
-import type { PlayerProfile, ReferralStats } from '@fidel/shared';
+import type { PlayerProfile, ReferralStats } from '@mada/shared';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const C = {

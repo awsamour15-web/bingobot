@@ -1,4 +1,4 @@
-// Feature: fidel-bingo-telegram, Property 20: No Duplicate Numbers in a Round
+// Feature: mada-bingo-telegram, Property 20: No Duplicate Numbers in a Round
 // Validates: Requirements 16.1
 
 import { describe, it, expect } from 'vitest';

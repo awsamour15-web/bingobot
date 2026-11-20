@@ -1,6 +1,6 @@
 # 🚀 Migrate to Neon Database - Complete Guide
 
-This guide walks you through migrating your Fidel Bingo database from Render to Neon.
+This guide walks you through migrating your Mada Bingo database from Render to Neon.
 
 ## Why Neon?
 - ✅ Better free tier (0.5 GB storage + generous compute)
@@ -35,7 +35,7 @@ This creates a backup file in `apps/backend/backups/` with timestamp.
 
 2. **Create a new project**
    - Click "Create Project"
-   - Project name: `fidel-bingo` (or any name)
+   - Project name: `mada-bingo` (or any name)
    - Region: Choose closest to your users (e.g., US East, EU West)
    - PostgreSQL version: 16 (latest)
    - Click "Create Project"
@@ -67,20 +67,20 @@ Edit `apps/backend/.env`:
 
 ```env
 # OLD - Render Database (keep as backup reference)
-# DATABASE_URL="postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo"
-# DIRECT_URL="postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo"
+# DATABASE_URL="postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo"
+# DIRECT_URL="postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo"
 
 # NEW - Neon Database
 DATABASE_URL="YOUR_NEON_POOLED_CONNECTION_STRING_HERE"
 DIRECT_URL="YOUR_NEON_DIRECT_CONNECTION_STRING_HERE"
 
 # Keep these unchanged
-JWT_SECRET="fidel-bingo-dev-secret"
+JWT_SECRET="mada-bingo-dev-secret"
 BOT_TOKEN="8643757251:AAEp5dRCld3yQTCpND8h5xV78M7M_vhauEU"
 BOT_USERNAME="f_bingobot"
 MINI_APP_URL="https://bingobot-mini-app.vercel.app/"
 PORT=3000
-CORS_ORIGIN="https://fidelbingo-admin.pages.dev,https://bingobot.pages.dev,http://localhost:5173,https://bingobot-mini-app.vercel.app"
+CORS_ORIGIN="https://madabingo-admin.pages.dev,https://bingobot.pages.dev,http://localhost:5173,https://bingobot-mini-app.vercel.app"
 ```
 
 ### For Production (Render.com)
@@ -244,8 +244,8 @@ If you encounter issues with Neon:
 1. **Immediate rollback:**
    ```bash
    # In apps/backend/.env, uncomment the old Render URLs:
-   DATABASE_URL="postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo"
-   DIRECT_URL="postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo"
+   DATABASE_URL="postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo"
+   DIRECT_URL="postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo"
    ```
 
 2. **Redeploy with old credentials**

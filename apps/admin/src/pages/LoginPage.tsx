@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, Alert, inputCss, GLOBAL_CSS } from '../components/ui';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://madabingobot.onrender.com';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ export function LoginPage() {
               🎲
             </div>
             <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.03em' }}>
-              Fidel Bingo
+              Mada Bingo
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--c-muted)' }}>
               Admin Dashboard

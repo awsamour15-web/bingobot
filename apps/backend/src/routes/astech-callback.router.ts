@@ -15,7 +15,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { WalletService } from '../services/wallet.service.js';
-import { TxType, WalletType } from '@fidel/shared';
+import { TxType, WalletType } from '@mada/shared';
 import { verifySignature } from '../services/astech.service.js';
 
 const router: RouterType = Router();

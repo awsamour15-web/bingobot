@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://madabingobot.onrender.com';
 function getApiBase() { return BASE_URL; }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ function LoginForm({ onLogin }: { onLogin: (s: CashierSession) => void }) {
             fontSize: 26, boxShadow: '0 8px 24px rgba(245,158,11,0.35)',
           }}>💰</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: C.text }}>Cashier Login</div>
-          <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Fidel Bingo Cashier App</div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Mada Bingo Cashier App</div>
         </div>
 
         {error && (

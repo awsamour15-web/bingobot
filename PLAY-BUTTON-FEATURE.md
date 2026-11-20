@@ -114,10 +114,10 @@ const keyboard = {
 The button uses the `BOT_USERNAME` environment variable from your `.env` file:
 
 ```env
-BOT_USERNAME=FidelBingoBot
+BOT_USERNAME=MadaBingoBot
 ```
 
-If not set, it defaults to 'FidelBingoBot'.
+If not set, it defaults to 'MadaBingoBot'.
 
 ## Testing
 

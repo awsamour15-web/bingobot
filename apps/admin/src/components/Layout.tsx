@@ -231,7 +231,7 @@ export function Layout() {
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">🎲</div>
           <div>
-            <div className="sidebar-brand-name">Fidel Bingo</div>
+            <div className="sidebar-brand-name">Mada Bingo</div>
             <div className="sidebar-brand-tag">Admin</div>
           </div>
         </div>

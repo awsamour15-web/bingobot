@@ -3,14 +3,14 @@
 
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import rateLimit from 'express-rate-limit';
-import { TxType, WalletType } from '@fidel/shared';
+import { TxType, WalletType } from '@mada/shared';
 import prisma from '../lib/prisma.js';
 import { jwtAuthMiddleware } from '../middleware/jwt-auth.middleware.js';
 import { getPaymentGateway } from '../services/payment.service.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
 import { getConfigOrDefault } from '../lib/config-cache.js';
 import { processDepositClaim, validateDepositReceipt } from '../bot/index.js';
-import type { TransactionListItem, PaginatedResponse } from '@fidel/shared';
+import type { TransactionListItem, PaginatedResponse } from '@mada/shared';
 
 const router: RouterType = Router();
 

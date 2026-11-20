@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import type { ServerToClientEvents, ClientToServerEvents } from '@fidel/shared';
+import type { ServerToClientEvents, ClientToServerEvents } from '@mada/shared';
 import { getJwtFromStorage } from './auth-storage';
 
 // Connect to the same origin as the page (or a configured WebSocket URL).

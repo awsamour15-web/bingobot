@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { AdminRound } from '@fidel/shared';
-import { WIN_PATTERN_LABELS, WinPattern } from '@fidel/shared';
+import type { AdminRound } from '@mada/shared';
+import { WIN_PATTERN_LABELS, WinPattern } from '@mada/shared';
 import {
   getMockPlayers, seedMockPlayers, creditMockPlayer,
   joinRoundWithMockPlayers, renameMockPlayer, createRound, createMockPlayers, type MockPlayer,

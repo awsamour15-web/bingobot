@@ -2,7 +2,7 @@ cat << 'EOF' > apps/backend/src/services/wallet.service.ts
 // Wallet service — atomic debit and credit operations
 // Requirements: 3.3, 3.4, 5.3, 6.2, 6.4
 
-import { TxType, WalletType } from '@fidel/shared';
+import { TxType, WalletType } from '@mada/shared';
 import prisma from '../lib/prisma.js';
 
 // ————— Typed error —————————————————————————————————————————————————————————————————————————————————————

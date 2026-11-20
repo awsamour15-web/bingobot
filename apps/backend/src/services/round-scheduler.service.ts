@@ -4,7 +4,7 @@
 import prisma from '../lib/prisma.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
-import { GameStatus, WinPattern } from '@fidel/shared';
+import { GameStatus, WinPattern } from '@mada/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
 import { getConfigInt, getConfigFloat, getConfigOrDefault, setConfig } from '../lib/config-cache.js';
 

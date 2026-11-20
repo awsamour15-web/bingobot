@@ -11,7 +11,7 @@ import type {
   DepositResponse,
   ReferralStats,
   PaginatedResponse,
-} from '@fidel/shared';
+} from '@mada/shared';
 import { idbGet, idbPut } from './idb';
 import { parseError, errorLogger } from './error-handler';
 import { getJwtFromStorage, getAgentJwtFromStorage, authStorageKey } from './auth-storage';
@@ -70,9 +70,9 @@ export type {
   RoundCancelledPayload,
   PlayerJoinedPayload,
   WinRejectedPayload,
-} from '@fidel/shared';
+} from '@mada/shared';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://madabingobot.onrender.com';
 
 // Imported lazily to avoid circular dependency (auth.ts imports login() from here)
 async function getReAuth(): Promise<() => Promise<void>> {

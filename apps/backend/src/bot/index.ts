@@ -159,7 +159,7 @@ async function getRegisteredPlayerWithWallets(telegramId: bigint) {
  * Builds an InlineKeyboard with a single web_app button for the Play handler.
  */
 export function buildPlayReplyMarkup(miniAppUrl: string): InlineKeyboard {
-  return new InlineKeyboard().webApp('Open Fidel Bingo', miniAppUrl);
+  return new InlineKeyboard().webApp('Open Mada Bingo', miniAppUrl);
 }
 
 /**
@@ -232,8 +232,8 @@ export async function buildDepositText(): Promise<string> {
 }
 
 export const INSTRUCTION_TEXT =
-  `📖 How to Play Fidel Bingo\n\n` +
-  `Fidel Bingo is an exciting online bingo game!\n\n` +
+  `📖 How to Play Mada Bingo\n\n` +
+  `Mada Bingo is an exciting online bingo game!\n\n` +
   `1. 🎮 Open the game by tapping Play 🎮.\n` +
   `2. 🃏 Purchase a bingo card (cartela) using your play wallet balance.\n` +
   `3. 🔢 Numbers are drawn one by one — mark them on your card.\n` +
@@ -1169,7 +1169,7 @@ if (BOT_TOKEN) {
           } else if (msg.includes('No Agent found')) {
             // Invalid agent ID — fall through to normal player flow below
             await ctx.reply(
-              '👋 Welcome to Fidel Bingo! Choose an Option below.',
+              '👋 Welcome to Mada Bingo! Choose an Option below.',
               { reply_markup: buildMainMenu() },
             );
           } else {
@@ -1280,7 +1280,7 @@ if (BOT_TOKEN) {
       const registered = await isRegistered(telegramId);
       if (!registered) {
         await ctx.reply(
-          '👋 Welcome to Fidel Bingo!\n\n📱 To get started, please share your phone number by tapping the button below.',
+          '👋 Welcome to Mada Bingo!\n\n📱 To get started, please share your phone number by tapping the button below.',
           {
             reply_markup: new Keyboard()
               .requestContact('📲 Share Phone Number')
@@ -1293,7 +1293,7 @@ if (BOT_TOKEN) {
 
       // Send the persistent main menu keyboard
       await ctx.reply(
-        '👋 Welcome to Fidel Bingo! Choose an Option below.',
+        '👋 Welcome to Mada Bingo! Choose an Option below.',
         { reply_markup: buildMainMenu() },
       );
 
@@ -1448,7 +1448,7 @@ if (BOT_TOKEN) {
       }
 
       await ctx.reply(
-        `✅ Registration successful!\n\nWelcome to Fidel Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
+        `✅ Registration successful!\n\nWelcome to Mada Bingo, ${player.username}! 🎉\n\n🎁 You have received a 10 ETB welcome bonus in your play wallet!\n\nTap Play 🎮 to start playing.`,
         { reply_markup: await getMenuForUser(telegramId) },
       );
 

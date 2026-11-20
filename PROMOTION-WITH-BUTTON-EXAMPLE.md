@@ -221,7 +221,7 @@ Try it now!
 
 2. **User taps button**
    - Telegram opens bot chat
-   - Bot shows: "👋 Welcome to Fidel Bingo!"
+   - Bot shows: "👋 Welcome to Mada Bingo!"
 
 3. **User sees menu**
    ```
@@ -244,7 +244,7 @@ Try it now!
 ### When sent to Channel:
 ```
 Channel: @YourBingoChannel
-Posted by: Fidel Bingo Bot
+Posted by: Mada Bingo Bot
 
 [Promotional content]
 [🎮 Play Now button]
@@ -255,7 +255,7 @@ New users start registration flow
 
 ### When sent to individual users:
 ```
-Private chat from: Fidel Bingo Bot
+Private chat from: Mada Bingo Bot
 
 [Promotional content]
 [🎮 Play Now button]

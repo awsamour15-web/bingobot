@@ -6,7 +6,7 @@
 - [ ] 1.2 Add `Agent`, `AgentTransaction`, and `AgentCommissionAudit` models to Prisma schema
 - [ ] 1.3 Add `AgentTransaction` relation to `Player` model in Prisma schema
 - [ ] 1.4 Create and run Prisma migration for agent tables
-- [ ] 1.5 Add shared types to `@fidel/shared`: `AgentAccount`, `AgentTxRecord`, `AgentSummary`, `PlayerLookupResult`, `TopUpResult`, `CreateAgentRequest`
+- [ ] 1.5 Add shared types to `@mada/shared`: `AgentAccount`, `AgentTxRecord`, `AgentSummary`, `PlayerLookupResult`, `TopUpResult`, `CreateAgentRequest`
 
 ## Phase 2: Backend — Agent Auth Middleware
 

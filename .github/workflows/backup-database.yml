@@ -24,7 +24,7 @@ jobs:
           BACKUP_URL: ${{ secrets.BACKUP_URL }}
         run: |
           TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-          BACKUP_FILE="fidelbingo_backup_${TIMESTAMP}.json"
+          BACKUP_FILE="madabingo_backup_${TIMESTAMP}.json"
           echo "Creating backup: $BACKUP_FILE"
           curl -f -H "Authorization: Bearer ${{ secrets.ADMIN_JWT }}" \
             "$BACKUP_URL/api/admin/backup" -o "$BACKUP_FILE"

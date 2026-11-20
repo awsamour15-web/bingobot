@@ -47,7 +47,7 @@ export default function WebLoginScreen({ onSuccess }: Props) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       if (msg.includes('PHONE_NOT_FOUND') || msg.includes('No verified account')) {
-        setError('No account found for this number. Register first via @FidelBingoBot on Telegram.');
+        setError('No account found for this number. Register first via @MadaBingoBot on Telegram.');
       } else if (msg.includes('RATE_LIMIT')) {
         setError('Too many attempts. Please wait a minute and try again.');
       } else if (msg.includes('INVALID_PHONE')) {
@@ -90,7 +90,7 @@ export default function WebLoginScreen({ onSuccess }: Props) {
       }}>FB</div>
 
       <div style={{ fontSize: 26, fontWeight: 900, color: C.text, marginBottom: 6, letterSpacing: -0.5 }}>
-        Fidel Bingo
+        Mada Bingo
       </div>
       <div style={{ fontSize: 13, color: C.muted, marginBottom: 36, textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
         Enter your registered phone number to continue playing
@@ -188,7 +188,7 @@ export default function WebLoginScreen({ onSuccess }: Props) {
           DON'T HAVE AN ACCOUNT?
         </div>
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.9 }}>
-          1. Open <span style={{ color: C.text, fontWeight: 700 }}>@FidelBingoBot</span> in Telegram<br />
+          1. Open <span style={{ color: C.text, fontWeight: 700 }}>@MadaBingoBot</span> in Telegram<br />
           2. Tap <span style={{ color: C.text, fontWeight: 700 }}>Register 📝</span> and share your phone<br />
           3. Come back here and sign in 🎮
         </div>

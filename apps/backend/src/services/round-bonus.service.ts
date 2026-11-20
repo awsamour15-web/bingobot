@@ -2,7 +2,7 @@
 // After every completed round, one random registered cartela is selected as the bonus winner.
 // That player receives their stake back (1 cartela price) credited to their main wallet.
 
-import { TxType } from '@fidel/shared';
+import { TxType } from '@mada/shared';
 import prisma from '../lib/prisma.js';
 import { Prisma } from '@prisma/client';
 

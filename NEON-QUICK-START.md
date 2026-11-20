@@ -19,7 +19,7 @@ npm run db:backup
 ```
 
 **What this does:**
-- Creates `backups/fidelbingo_backup_[timestamp].sql.gz`
+- Creates `backups/madabingo_backup_[timestamp].sql.gz`
 - This is your safety net!
 
 **✅ Success check:** You see "Backup completed successfully!"
@@ -32,7 +32,7 @@ npm run db:backup
 2. Click **"Sign up"** (GitHub/Google recommended)
 3. Click **"Create Project"**
 4. Settings:
-   - Name: `fidel-bingo`
+   - Name: `mada-bingo`
    - Region: Choose closest to your users
    - PostgreSQL: 16 (latest)
 5. Click **"Create Project"**
@@ -66,20 +66,20 @@ Edit `apps/backend/.env`:
 
 ```env
 # Comment out old Render database (keep as backup)
-# DATABASE_URL="postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo"
-# DIRECT_URL="postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo"
+# DATABASE_URL="postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo"
+# DIRECT_URL="postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo"
 
 # Paste your Neon strings here
 DATABASE_URL="YOUR_NEON_POOLED_STRING_HERE"
 DIRECT_URL="YOUR_NEON_DIRECT_STRING_HERE"
 
 # Keep everything else the same
-JWT_SECRET="fidel-bingo-dev-secret"
+JWT_SECRET="mada-bingo-dev-secret"
 BOT_TOKEN="8643757251:AAEp5dRCld3yQTCpND8h5xV78M7M_vhauEU"
 BOT_USERNAME="f_bingobot"
 MINI_APP_URL="https://bingobot-mini-app.vercel.app/"
 PORT=3000
-CORS_ORIGIN="https://fidelbingo-admin.pages.dev,https://bingobot.pages.dev,http://localhost:5173,https://bingobot-mini-app.vercel.app"
+CORS_ORIGIN="https://madabingo-admin.pages.dev,https://bingobot.pages.dev,http://localhost:5173,https://bingobot-mini-app.vercel.app"
 ```
 
 **✅ Success check:** File saved with new URLs
@@ -116,11 +116,11 @@ Find your backup file in `apps/backend/backups/`
 ```bash
 # First, uncompress the backup
 cd apps/backend/backups
-gunzip fidelbingo_backup_[timestamp].sql.gz
+gunzip madabingo_backup_[timestamp].sql.gz
 
 # Then restore (replace [timestamp] with your actual file)
 cd ..
-psql "YOUR_NEON_DIRECT_URL_HERE" < backups/fidelbingo_backup_[timestamp].sql
+psql "YOUR_NEON_DIRECT_URL_HERE" < backups/madabingo_backup_[timestamp].sql
 ```
 
 ### Method 2: Using Neon SQL Editor (if psql not available)
@@ -208,7 +208,7 @@ Wait 2-3 minutes for deployment, then:
    - Try joining a game
 
 2. **Check admin panel:**
-   - Go to `https://fidelbingo-admin.pages.dev`
+   - Go to `https://madabingo-admin.pages.dev`
    - Login
    - Verify dashboard loads
    - Check player list

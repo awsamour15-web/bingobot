@@ -4,7 +4,7 @@ import WebApp from '@twa-dev/sdk';
 import { initAuth, getJwt } from '../lib/auth';
 import { getRounds, getSystemStats, getProfile, getReferralLink } from '../lib/api';
 import { socket } from '../lib/socket';
-import type { RoundListItem, RoundWonPayload } from '@fidel/shared';
+import type { RoundListItem, RoundWonPayload } from '@mada/shared';
 
 const ALLOWED_STAKES = [10, 20, 50, 100, 500];
 
@@ -307,7 +307,7 @@ export default function GameScreen() {
         if (!cancelled) {
           const msg = err instanceof Error ? err.message : 'Failed to load';
           if (msg.includes('Unauthorized') || msg.includes('INVALID_TELEGRAM_AUTH')) {
-            setError('This app must be opened from Telegram. Please use the @FidelBingoBot to access the game.');
+            setError('This app must be opened from Telegram. Please use the @MadaBingoBot to access the game.');
           } else {
             setError(msg);
           }
@@ -420,7 +420,7 @@ export default function GameScreen() {
             flexShrink: 0, letterSpacing: -0.5,
           }}>FB</div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: '#f1f5f9', letterSpacing: -0.3 }}>Fidel Bingo</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#f1f5f9', letterSpacing: -0.3 }}>Mada Bingo</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
               <span style={{
                 width: 5, height: 5, borderRadius: '50%', background: '#34d399',
@@ -550,7 +550,7 @@ export default function GameScreen() {
             onClick={() => {
               if (copyDone) return;
               if (WebApp.openTelegramLink) {
-                const shareText = encodeURIComponent('Join me on Fidel Bingo! 🎱 Play live bingo and win real ETB.\n');
+                const shareText = encodeURIComponent('Join me on Mada Bingo! 🎱 Play live bingo and win real ETB.\n');
                 WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`);
               } else {
                 navigator.clipboard.writeText(referralLink).catch(() => {});

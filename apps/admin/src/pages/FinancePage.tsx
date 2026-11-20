@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AdminDeposit, DepositsResponse, FinanceSummary } from '../lib/api';
-import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
+import type { WithdrawalRequest, RevenueStats } from '@mada/shared';
 import { getDeposits, createDeposit, cancelDeposit, approveDeposit, getWithdrawals, approveWithdrawal, rejectWithdrawal, getRevenue, getFinanceSummary } from '../lib/api';
 import {
   C, Btn, Badge, Card, CardHeader, StatCard, Table, Th, Td,

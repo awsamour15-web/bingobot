@@ -5,7 +5,7 @@
 
 if [ -z "$1" ]; then
     echo "Usage: bash restore-database.sh <backup-file>"
-    echo "Example: bash restore-database.sh ./backups/fidelbingo_backup_20260819_120000.sql.gz"
+    echo "Example: bash restore-database.sh ./backups/madabingo_backup_20260819_120000.sql.gz"
     exit 1
 fi
 

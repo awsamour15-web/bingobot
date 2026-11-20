@@ -1,16 +1,16 @@
 {
-  "name": "@fidel/mini-app",
+  "name": "@mada/mini-app",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter @fidel/shared build && tsc && vite build",
+    "build": "pnpm --filter @mada/shared build && tsc && vite build",
     "type-check": "tsc --noEmit",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest --run"
   },
   "dependencies": {
-    "@fidel/shared": "workspace:*",
+    "@mada/shared": "workspace:*",
     "@twa-dev/sdk": "^8.0.2",
     "lucide-react": "^1.40.0",
     "motion": "^13.2.0",

@@ -9,7 +9,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import prisma from '../lib/prisma.js';
 import { WalletService, InsufficientFundsError } from '../services/wallet.service.js';
-import { WalletType } from '@fidel/shared';
+import { WalletType } from '@mada/shared';
 import {
   verifySignature,
   GREGMORN_SECRET,
@@ -20,9 +20,9 @@ import {
 
 // TxType values added via migration — cast as any to avoid Prisma enum mismatch
 // until prisma migrate deploy is run in production
-const EXT_GAME_BET      = 'ext_game_bet'      as unknown as import('@fidel/shared').TxType;
-const EXT_GAME_WIN      = 'ext_game_win'      as unknown as import('@fidel/shared').TxType;
-const EXT_GAME_ROLLBACK = 'ext_game_rollback' as unknown as import('@fidel/shared').TxType;
+const EXT_GAME_BET      = 'ext_game_bet'      as unknown as import('@mada/shared').TxType;
+const EXT_GAME_WIN      = 'ext_game_win'      as unknown as import('@mada/shared').TxType;
+const EXT_GAME_ROLLBACK = 'ext_game_rollback' as unknown as import('@mada/shared').TxType;
 
 const router: RouterType = Router();
 

@@ -4,7 +4,7 @@ inclusion: manual
 
 # Game Rules & Mechanics Guide
 
-This steering file documents the core game rules and mechanics for all games in the Fidel Bingo platform.
+This steering file documents the core game rules and mechanics for all games in the Mada Bingo platform.
 
 ## Multi Hot 5 Slots
 

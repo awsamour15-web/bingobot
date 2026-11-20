@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Fidel Bingo mini-app (Telegram, React/Vite) already has a thin IndexedDB wrapper (`idb.ts`) with two object stores: `sounds` (keyed by number 1–75, value `ArrayBuffer`) and `cartelas` (keyed by string, value arbitrary object). Sound preloading is used in `LiveGameScreen` and history-detail caching is used in `api.ts`, but both implementations are incomplete and inconsistent. This feature consolidates and completes the IndexedDB caching layer so that:
+The Mada Bingo mini-app (Telegram, React/Vite) already has a thin IndexedDB wrapper (`idb.ts`) with two object stores: `sounds` (keyed by number 1–75, value `ArrayBuffer`) and `cartelas` (keyed by string, value arbitrary object). Sound preloading is used in `LiveGameScreen` and history-detail caching is used in `api.ts`, but both implementations are incomplete and inconsistent. This feature consolidates and completes the IndexedDB caching layer so that:
 
 1. All 75 `.wav` sound files are reliably fetched once, persisted in IndexedDB, and served from cache on subsequent visits — eliminating repeated network downloads on every session.
 2. Cartela grid data (the 5×5 bingo card numbers for a player's joined cartelas) is cached per round so it survives page reloads during a live game without requiring a new API call.

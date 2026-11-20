@@ -10,7 +10,7 @@ Users can request withdrawals from their winning balance (main wallet) through *
 ### Steps:
 
 1. **Open the Bot**
-   - Go to your Fidel Bingo Telegram bot
+   - Go to your Mada Bingo Telegram bot
 
 2. **Tap "Withdraw 🤑" Button**
    - This button is in the main menu (4th row, left side)

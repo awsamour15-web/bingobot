@@ -3,7 +3,7 @@
 import { Router, type Request, type Response, type Router as RouterType } from 'express';
 import { randomUUID } from 'crypto';
 import prisma from '../../lib/prisma.js';
-import { TxType } from '@fidel/shared';
+import { TxType } from '@mada/shared';
 import { CouponScheduler } from '../../services/coupon-scheduler.service.js';
 
 const router: RouterType = Router();

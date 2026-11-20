@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { AdminPlayer, AdminCreditRequest } from '@fidel/shared';
+import type { AdminPlayer, AdminCreditRequest } from '@mada/shared';
 import { getPlayers, getPlayer, suspendPlayer, restorePlayer, creditPlayer, getPlayerTransactions, deletePlayerTransaction } from '../lib/api';
 import type { AdminTransaction } from '../lib/api';
 import {

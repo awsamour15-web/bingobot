@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature adds comprehensive IndexedDB caching for sounds and cartela grids in the Fidel Bingo mini-app. The implementation follows a cache-first, write-through pattern where all IndexedDB errors are gracefully degraded. Changes are confined to three existing files: `idb.ts` (no changes), `api.ts` (add caching wrappers), and `LiveGameScreen.tsx` (minimal changes).
+This feature adds comprehensive IndexedDB caching for sounds and cartela grids in the Mada Bingo mini-app. The implementation follows a cache-first, write-through pattern where all IndexedDB errors are gracefully degraded. Changes are confined to three existing files: `idb.ts` (no changes), `api.ts` (add caching wrappers), and `LiveGameScreen.tsx` (minimal changes).
 
 ## Tasks
 

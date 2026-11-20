@@ -15,7 +15,7 @@ import type {
   PlayerJoinedPayload,
   WinRejectedPayload,
 } from '../lib/api';
-import { WIN_PATTERN_LABELS, WinPattern } from '@fidel/shared';
+import { WIN_PATTERN_LABELS, WinPattern } from '@mada/shared';
 
 const COLS = ['B', 'I', 'N', 'G', 'O'];
 const COL_COLORS = [

@@ -5,7 +5,7 @@
  * Edit the variables below before running.
  */
 
-const SERVER_URL = process.env.SERVER_URL ?? 'https://fidelbingobot.onrender.com';
+const SERVER_URL = process.env.SERVER_URL ?? 'https://madabingobot.onrender.com';
 const SMS_SECRET = process.env.SMS_WEBHOOK_SECRET ?? 'change-me-to-a-strong-random-secret';
 
 // ─── Test cases ───────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const RENDER_URL = 'postgresql://fidelbingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/fidelbingo';
+const RENDER_URL = 'postgresql://madabingo_user:Y3Lbz9YxkWZ4Ssmwvm4NPKGH89kyPs6V@dpg-d9l6hfrm8hqs739bm19g-a.oregon-postgres.render.com:5432/madabingo';
 const NEON_URL = 'postgresql://neondb_owner:npg_haZGQOu3M1jT@ep-raspy-sound-axdqg09y-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require';
 
 async function checkDB(name, url) {

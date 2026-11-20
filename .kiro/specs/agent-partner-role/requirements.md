@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature introduces an **Agent/Partner** role to the Fidel Bingo platform. Agents are trusted partners who recruit players via unique Telegram deep-link invitation URLs. Each time a player recruited by an agent makes a deposit, the agent automatically earns a 10% commission on that deposit amount. Agents can monitor their performance through a dedicated dashboard in the Telegram mini-app and are managed by admins through the admin panel.
+This feature introduces an **Agent/Partner** role to the Mada Bingo platform. Agents are trusted partners who recruit players via unique Telegram deep-link invitation URLs. Each time a player recruited by an agent makes a deposit, the agent automatically earns a 10% commission on that deposit amount. Agents can monitor their performance through a dedicated dashboard in the Telegram mini-app and are managed by admins through the admin panel.
 
 The feature spans three surfaces:
 - **Backend**: new database models, commission logic, and API endpoints

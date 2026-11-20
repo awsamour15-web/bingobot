@@ -94,7 +94,7 @@ const allowedOrigins = process.env['CORS_ORIGIN']
   : [
       'https://bingobot-mini-app.vercel.app',
       'https://bingobot-admin.vercel.app',
-      'https://fidelbingo-admin.pages.dev',
+      'https://madabingo-admin.pages.dev',
     ];
 
 // Manually set CORS headers on every response to ensure they are always present,

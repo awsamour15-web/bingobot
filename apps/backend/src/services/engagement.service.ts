@@ -1,7 +1,7 @@
 // Engagement Service
 // Daily login bonus, streak rewards, referral leaderboard, auto-rejoin
 
-import { TxType } from '@fidel/shared';
+import { TxType } from '@mada/shared';
 import prisma from '../lib/prisma.js';
 import { getConfigInt, getConfigOrDefault } from '../lib/config-cache.js';
 

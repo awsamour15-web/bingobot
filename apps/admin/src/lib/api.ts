@@ -8,12 +8,12 @@ import type {
   CreateAdminRequest,
   UpdateAdminRequest,
   PaginatedResponse,
-} from '@fidel/shared';
-import type { WithdrawalRequest, RevenueStats } from '@fidel/shared';
+} from '@mada/shared';
+import type { WithdrawalRequest, RevenueStats } from '@mada/shared';
 
 export type { WithdrawalRequest, RevenueStats };
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://fidelbingobot.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://madabingobot.onrender.com';
 
 export function getAdminJwt(): string | null {
   // sessionStorage (new) takes priority; fall back to localStorage for existing sessions
@@ -93,7 +93,7 @@ export async function adminApiRequest<T>(
 export function adminLogin(
   username: string,
   password: string,
-): Promise<{ token: string; adminId: string; role: import('@fidel/shared').AdminRole }> {
+): Promise<{ token: string; adminId: string; role: import('@mada/shared').AdminRole }> {
   return adminApiRequest('POST', '/api/admin/auth/login', { username, password });
 }
 

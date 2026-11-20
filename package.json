@@ -1,9 +1,9 @@
 {
-  "name": "fidel-bingo",
+  "name": "mada-bingo",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter @fidel/shared build && pnpm --filter !@fidel/shared -r build",
+    "build": "pnpm --filter @mada/shared build && pnpm --filter !@mada/shared -r build",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
     "type-check": "pnpm -r type-check",

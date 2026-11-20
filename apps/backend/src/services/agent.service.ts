@@ -591,7 +591,7 @@ export const AgentService = {
     if (agent.telegram_id) {
       try {
         const { bot } = await import('../bot/index.js');
-        const botUsername = process.env.BOT_USERNAME || 'FidelBingoBot';
+        const botUsername = process.env.BOT_USERNAME || 'MadaBingoBot';
         const playerInvite = `https://t.me/${botUsername}?start=ref_agent_${agent.id}`;
         
         await bot?.api.sendMessage(

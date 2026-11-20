@@ -16,7 +16,7 @@ import { Prisma } from '@prisma/client';
 import { WalletService } from './wallet.service.js';
 import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
-import { TxType, WalletType } from '@fidel/shared';
+import { TxType, WalletType } from '@mada/shared';
 import { shuffle } from '../lib/shuffle.js';
 import { getConfigBool, getConfigInt, getConfigFloat, getConfigOrDefault } from '../lib/config-cache.js';
 import { checkWin } from './win-detection.service.js';

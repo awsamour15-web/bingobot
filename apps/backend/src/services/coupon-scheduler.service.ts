@@ -36,14 +36,14 @@ async function saveSchedules(schedules: CouponSchedule[]): Promise<void> {
 async function sendCouponAnnouncement(schedule: CouponSchedule): Promise<void> {
   if (!bot) return;
 
-  const botUsername = process.env['BOT_USERNAME'] ?? 'FidelBingoBot';
+  const botUsername = process.env['BOT_USERNAME'] ?? 'MadaBingoBot';
   const playLink = `https://t.me/${botUsername}`;
 
   const text =
     `🎁 *SPECIAL BONUS ALERT!* 🎁\n\n` +
     `💰 Get *${schedule.coupon_amount} ETB* FREE!\n\n` +
     `🎟️ Coupon Code: \`${schedule.coupon_code}\`${schedule.coupon_description ? `\n\n📝 ${schedule.coupon_description}` : ''}\n\n` +
-    `⚡ Open Fidel Bingo and enter this code in the game lobby to claim your bonus!\n\n` +
+    `⚡ Open Mada Bingo and enter this code in the game lobby to claim your bonus!\n\n` +
     `🎮 Good luck and have fun playing!`;
 
   // Resolve targets — if __bot_broadcast__ send to all players

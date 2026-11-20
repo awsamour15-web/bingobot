@@ -14,7 +14,7 @@ The bot has built-in channel membership verification that requires all users to 
 
 **For Public Channels:**
 - Format: `@YourChannelUsername`
-- Example: `@FidelBingo`
+- Example: `@MadaBingo`
 - Just use the @ symbol followed by your channel username
 
 **For Private Channels:**
@@ -72,7 +72,7 @@ If your bot is already running, restart it to apply changes:
 
 ```bash
 # On your server
-pm2 restart fidel-bingo-bot
+pm2 restart mada-bingo-bot
 # or
 npm run bot:restart
 ```

@@ -88,7 +88,7 @@ router.post('/web-login', webLoginRateLimiter, async (req: Request, res: Respons
     // so we don't leak which phones are registered.
     res.status(401).json({
       error: 'PHONE_NOT_FOUND',
-      message: 'No verified account found for this phone number. Please register first via the Telegram bot @FidelBingoBot.',
+      message: 'No verified account found for this phone number. Please register first via the Telegram bot @MadaBingoBot.',
     });
     return;
   }
