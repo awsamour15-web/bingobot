@@ -47,6 +47,7 @@ import adminCashiersRouter from './routes/admin/cashiers.admin.router.js';
 import adminBackupRouter from './routes/admin/backup.admin.router.js';
 import adminCleanupRouter from './routes/admin/cleanup.admin.router.js';
 import smsWebhookRouter from './routes/sms-webhook.router.js';
+import webAuthRouter from './routes/web-auth.router.js';
 import adminRoundBonusRouter from './routes/admin/round-bonus.admin.router.js';
 import adminStorageRouter from './routes/admin/storage.admin.router.js';
 import helmet from 'helmet';
@@ -151,6 +152,7 @@ app.use('/api/astech/callback', express.raw({ type: '*/*' }));
 
 // ─── Player Routes ────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
+app.use('/api/auth', webAuthRouter);
 app.use('/api/players', playersRouter);
 app.use('/api/rounds', roundsRouter);
 app.use('/api/history', historyRouter);

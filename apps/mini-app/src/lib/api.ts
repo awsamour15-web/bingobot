@@ -193,10 +193,19 @@ export async function apiRequest<T>(
         }
       }
       
-      // Final attempt failed or no token available - clear and redirect
+      // Final attempt failed or no token available - clear session and reload
+      // so RegistrationGate picks up the cleared state and shows the login screen.
       console.error('[API] 401 Unauthorized after retries, clearing session');
-      localStorage.clear();
-      window.location.href = '/';
+      // Only clear auth keys, not all of localStorage (preserves settings like soundOn)
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.endsWith(':jwt') || k.endsWith(':playerId') || k.endsWith(':phoneVerified') || k.endsWith(':agentJwt') || k.endsWith(':agentId'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      window.location.reload();
       throw new Error('Unauthorized');
     }
 
@@ -299,6 +308,19 @@ export async function agentApiRequest<T>(
 
 export function login(initData: string, start?: string): Promise<LoginResponse> {
   return apiRequest<LoginResponse>('POST', '/api/auth/login', { initData, start });
+}
+
+export interface WebLoginResponse {
+  token: string;
+  playerId: string;
+  phoneVerified: boolean;
+  username: string;
+  agentToken?: string;
+  agentId?: string;
+}
+
+export function webLogin(phone: string): Promise<WebLoginResponse> {
+  return apiRequest<WebLoginResponse>('POST', '/api/auth/web-login', { phone });
 }
 
 // ---------------------------------------------------------------------------

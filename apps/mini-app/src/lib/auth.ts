@@ -12,6 +12,14 @@ let authPromise: Promise<void> | null = null;
 const storageKey = authStorageKey;
 
 /**
+ * Returns true when the app is running inside a Telegram WebView.
+ * We check for a non-empty initData string — Telegram always provides it.
+ */
+export function isTelegramContext(): boolean {
+  return !!WebApp.initData;
+}
+
+/**
  * Decodes the JWT payload without verifying the signature.
  * We only use this to check the `exp` claim client-side — the server
  * still performs full verification on every request.
@@ -52,18 +60,22 @@ export function clearSession(): void {
 }
 
 async function doLogin(): Promise<void> {
+  // Web (non-Telegram) context — do NOT attempt initData login.
+  // The user must authenticate via the WebLoginScreen (phone number).
+  // If they already have a valid stored JWT from a previous web login, isLoggedIn()
+  // will return true and this function won't be called.
+  if (!WebApp.initData) {
+    // No Telegram context and no stored session — throw so callers know
+    // the user needs to log in via the web login screen.
+    throw new Error('WEB_NO_SESSION');
+  }
+
   const initData = WebApp.initData || DEV_MOCK_INIT_DATA;
 
-  console.log('[Auth] Attempting login...', {
+  console.log('[Auth] Attempting Telegram login...', {
     hasInitData: !!WebApp.initData,
     initDataLength: WebApp.initData?.length || 0,
-    isMock: initData === DEV_MOCK_INIT_DATA,
   });
-
-  // Check if we're running outside Telegram (no real initData)
-  if (!WebApp.initData && initData === DEV_MOCK_INIT_DATA) {
-    console.warn('Running outside Telegram - using mock auth data. This will fail in production.');
-  }
 
   const startParam = (WebApp.initDataUnsafe as { start_param?: string }).start_param;
 
@@ -74,7 +86,6 @@ async function doLogin(): Promise<void> {
     localStorage.setItem(storageKey('playerId'), response.playerId);
     localStorage.setItem(storageKey('phoneVerified'), String(response.phoneVerified ?? false));
 
-    // Store agent JWT if the user is also an agent
     if (response.agentToken) {
       localStorage.setItem(storageKey('agentJwt'), response.agentToken);
     }
@@ -83,16 +94,12 @@ async function doLogin(): Promise<void> {
     }
   } catch (error) {
     console.error('[Auth] Login failed:', error);
-    if (!WebApp.initData) {
-      throw new Error('This app must be opened from Telegram. Please use @FidelBingoBot to play.');
-    }
     throw error;
   }
 }
 
 export async function initAuth(): Promise<void> {
   // If logged in but phoneVerified is still false, force a fresh login to re-check
-  // (guards against stale localStorage after the user completes phone registration)
   const phoneVerifiedStored = localStorage.getItem(storageKey('phoneVerified'));
   if (isLoggedIn() && phoneVerifiedStored === 'true') return;
   if (authPromise) return authPromise;
@@ -105,9 +112,25 @@ export async function initAuth(): Promise<void> {
 }
 
 /**
+ * Stores a web login session (JWT + playerId) obtained from /api/auth/web-login.
+ * Called by the WebLoginScreen after a successful phone login.
+ */
+export function storeWebSession(params: {
+  token: string;
+  playerId: string;
+  phoneVerified: boolean;
+  agentToken?: string;
+  agentId?: string;
+}): void {
+  localStorage.setItem(storageKey('jwt'), params.token);
+  localStorage.setItem(storageKey('playerId'), params.playerId);
+  localStorage.setItem(storageKey('phoneVerified'), String(params.phoneVerified));
+  if (params.agentToken) localStorage.setItem(storageKey('agentJwt'), params.agentToken);
+  if (params.agentId) localStorage.setItem(storageKey('agentId'), params.agentId);
+}
+
+/**
  * Clears the current session and forces a fresh login.
- * Call this when the backend returns 404 NOT_FOUND for a player-scoped
- * endpoint, meaning the JWT is valid but the player record no longer exists.
  */
 export async function reAuth(): Promise<void> {
   clearSession();

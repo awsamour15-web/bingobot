@@ -7,40 +7,40 @@ import type { PlayerProfile, ReferralStats } from '@fidel/shared';
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  bg: '#07091a',
-  surface: '#0d1425',
-  surface2: '#111c35',
-  surface3: '#162040',
-  border: 'rgba(255,255,255,0.06)',
-  borderGlow: 'rgba(245,158,11,0.25)',
-  amber: '#f59e0b',
-  amberLight: '#fcd34d',
-  amberDim: 'rgba(245,158,11,0.12)',
-  teal: '#14b8a6',
-  tealDim: 'rgba(20,184,166,0.12)',
-  blue: '#60a5fa',
-  blueDim: 'rgba(96,165,250,0.12)',
-  green: '#34d399',
-  greenDim: 'rgba(52,211,153,0.12)',
-  purple: '#a78bfa',
-  purpleDim: 'rgba(167,139,250,0.12)',
-  pink: '#f472b6',
-  text: '#f1f5f9',
-  muted: '#64748b',
-  dim: '#334155',
+  bg:          '#0e0b25',
+  surface:     '#13102b',
+  surface2:    '#1a1535',
+  surface3:    '#1e1a3a',
+  border:      'rgba(124,58,237,0.18)',
+  borderGlow:  'rgba(124,58,237,0.4)',
+  violet:      '#7c3aed',
+  magenta:     '#e040fb',
+  magentaDim:  'rgba(224,64,251,0.1)',
+  gold:        '#ffd54f',
+  goldDim:     'rgba(255,213,79,0.12)',
+  teal:        '#34d399',
+  tealDim:     'rgba(52,211,153,0.12)',
+  blue:        '#60a5fa',
+  blueDim:     'rgba(96,165,250,0.12)',
+  purple:      '#a78bfa',
+  purpleDim:   'rgba(167,139,250,0.12)',
+  pink:        '#f472b6',
+  text:        '#f1f5f9',
+  muted:       'rgba(255,255,255,0.45)',
+  dim:         'rgba(255,255,255,0.22)',
 };
 
 // ── Streak config ─────────────────────────────────────────────────────────────
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
 function getStreakTier(streak: number): { label: string; color: string; emoji: string; glow: string } {
-  if (streak >= 100) return { label: 'Legendary', color: '#fcd34d', emoji: '👑', glow: 'rgba(252,211,77,0.4)' };
+  if (streak >= 100) return { label: 'Legendary', color: '#ffd54f', emoji: '👑', glow: 'rgba(255,213,79,0.4)' };
   if (streak >= 60)  return { label: 'Master',    color: '#a78bfa', emoji: '💎', glow: 'rgba(167,139,250,0.4)' };
   if (streak >= 30)  return { label: 'Expert',    color: '#f472b6', emoji: '🔥', glow: 'rgba(244,114,182,0.35)' };
   if (streak >= 14)  return { label: 'Pro',        color: '#34d399', emoji: '⚡', glow: 'rgba(52,211,153,0.3)' };
-  if (streak >= 7)   return { label: 'Hot',        color: '#f59e0b', emoji: '🌟', glow: 'rgba(245,158,11,0.3)' };
+  if (streak >= 7)   return { label: 'Hot',        color: '#e040fb', emoji: '🌟', glow: 'rgba(224,64,251,0.3)' };
   if (streak >= 3)   return { label: 'Rising',     color: '#60a5fa', emoji: '🚀', glow: 'rgba(96,165,250,0.25)' };
-  return               { label: 'New',         color: C.muted,  emoji: '🌱', glow: 'transparent' };
+  return               { label: 'New',         color: C.muted,   emoji: '🌱', glow: 'transparent' };
 }
 
 function getNextMilestone(streak: number): number | null {
@@ -77,9 +77,12 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
     <button onClick={onToggle} style={{
       width: 52, height: 30, borderRadius: 15, border: 'none',
-      background: on ? C.amber : C.dim,
+      background: on
+        ? 'linear-gradient(135deg, #7c3aed, #e040fb)'
+        : C.dim,
       cursor: 'pointer', position: 'relative', flexShrink: 0,
       transition: 'background 0.25s',
+      boxShadow: on ? '0 2px 10px rgba(124,58,237,0.4)' : 'none',
     }}>
       <div style={{
         position: 'absolute', top: 5,
@@ -98,9 +101,6 @@ function StreakCard({ streak, longest }: { streak: number; longest: number }) {
   const next = getNextMilestone(streak);
   const prevMilestone = [...STREAK_MILESTONES].reverse().find(m => m <= streak) ?? 0;
   const progress = next ? Math.min(((streak - prevMilestone) / (next - prevMilestone)) * 100, 100) : 100;
-
-  // 7-day calendar dots
-  const days = Array.from({ length: 7 }, (_, i) => i < streak % 7 || streak >= 7);
 
   return (
     <Card style={{
@@ -140,9 +140,7 @@ function StreakCard({ streak, longest }: { streak: number; longest: number }) {
 
       {/* 7-day dot tracker */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, letterSpacing: 0.5 }}>
-          Week progress
-        </div>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, letterSpacing: 0.5 }}>Week progress</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {['M','T','W','T','F','S','S'].map((d, i) => {
             const filled = streak >= 7 ? true : i < (streak % 7 === 0 && streak > 0 ? 7 : streak % 7);
@@ -194,7 +192,7 @@ function StreakCard({ streak, longest }: { streak: number; longest: number }) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <span style={{ fontSize: 12, color: C.muted }}>🏆 Personal best</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: C.amberLight }}>{longest} day{longest !== 1 ? 's' : ''}</span>
+        <span style={{ fontSize: 14, fontWeight: 800, color: C.gold }}>{longest} day{longest !== 1 ? 's' : ''}</span>
       </div>
     </Card>
   );
@@ -207,10 +205,10 @@ function StatsGrid({ gamesPlayed, wins }: { gamesPlayed: number; wins: number })
   const losses = Math.max(0, gamesPlayed - wins);
 
   const stats = [
-    { label: 'Games',    value: gamesPlayed,       color: C.blue,   icon: '🎮' },
-    { label: 'Wins',     value: wins,              color: C.green,  icon: '🏆' },
-    { label: 'Losses',   value: losses,            color: C.pink,   icon: '💔' },
-    { label: 'Win Rate', value: `${winRate}%`,     color: C.amber,  icon: '📈' },
+    { label: 'Games',    value: gamesPlayed,    color: C.blue,    icon: '🎮' },
+    { label: 'Wins',     value: wins,           color: C.teal,    icon: '🏆' },
+    { label: 'Losses',   value: losses,         color: C.pink,    icon: '💔' },
+    { label: 'Win Rate', value: `${winRate}%`,  color: C.magenta, icon: '📈' },
   ];
 
   return (
@@ -254,14 +252,15 @@ function Achievements({ streak, wins, gamesPlayed }: { streak: number; wins: num
           <div key={label} title={desc} style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
             padding: '12px 4px', borderRadius: 14,
-            background: unlocked ? C.amberDim : C.surface2,
-            border: `1px solid ${unlocked ? C.borderGlow : C.border}`,
-            opacity: unlocked ? 1 : 0.45,
+            background: unlocked ? 'rgba(124,58,237,0.12)' : C.surface2,
+            border: `1px solid ${unlocked ? 'rgba(124,58,237,0.4)' : C.border}`,
+            opacity: unlocked ? 1 : 0.4,
             transition: 'all 0.2s',
+            boxShadow: unlocked ? '0 0 14px rgba(124,58,237,0.15)' : 'none',
           }}>
             <span style={{ fontSize: 22, filter: unlocked ? 'none' : 'grayscale(1)' }}>{icon}</span>
             <span style={{
-              fontSize: 9, color: unlocked ? C.amberLight : C.muted,
+              fontSize: 9, color: unlocked ? '#a78bfa' : C.muted,
               textAlign: 'center', fontWeight: 700, lineHeight: 1.2,
             }}>{label}</span>
           </div>
@@ -310,23 +309,26 @@ export default function ProfileScreen() {
     </div>
   );
 
-  const avatar = (profile.username?.[0] ?? '?').toUpperCase();
+  const avatar  = (profile.username?.[0] ?? '?').toUpperCase();
   const mainBal = Number(profile.mainWallet?.balance ?? 0);
   const playBal = Number(profile.playWallet?.balance ?? 0);
-  const streak = profile.loginStreak ?? 1;
+  const streak  = profile.loginStreak ?? 1;
   const longest = profile.longestStreak ?? 1;
-  const tier = getStreakTier(streak);
+  const tier    = getStreakTier(streak);
 
   return (
-    <div style={{ background: C.bg, minHeight: '100dvh', paddingBottom: 90 }}>
+    <div style={{
+      background: 'linear-gradient(180deg, #0e0b25 0%, #0c0a1e 100%)',
+      minHeight: '100dvh',
+      paddingBottom: 90,
+    }}>
 
       {/* ── Hero Header ─────────────────────────────────────────────────────── */}
       <div style={{
-        background: `linear-gradient(160deg, ${C.surface3} 0%, ${C.surface2} 60%, ${C.surface} 100%)`,
+        background: 'linear-gradient(160deg, #1e1245 0%, #13102b 60%, #0e0b25 100%)',
         padding: '32px 20px 24px',
-        borderBottom: `1px solid ${C.border}`,
-        position: 'relative',
-        overflow: 'hidden',
+        borderBottom: `1px solid rgba(124,58,237,0.2)`,
+        position: 'relative', overflow: 'hidden',
       }}>
         {/* Decorative glow */}
         <div style={{
@@ -340,10 +342,10 @@ export default function ProfileScreen() {
           {/* Avatar */}
           <div style={{
             width: 72, height: 72, borderRadius: 22,
-            background: `linear-gradient(135deg, ${tier.color}, ${C.amber}90)`,
+            background: `linear-gradient(135deg, #7c3aed, #e040fb)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 32, fontWeight: 900, color: '#07091a',
-            boxShadow: `0 6px 24px ${tier.glow}`,
+            fontSize: 32, fontWeight: 900, color: '#fff',
+            boxShadow: `0 6px 24px rgba(124,58,237,0.5)`,
             flexShrink: 0, letterSpacing: -1,
           }}>{avatar}</div>
 
@@ -354,8 +356,8 @@ export default function ProfileScreen() {
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
               <span style={{
                 fontSize: 11, fontWeight: 700, color: tier.color,
-                background: `${tier.color}18`, borderRadius: 6,
-                padding: '2px 8px', border: `1px solid ${tier.color}30`,
+                background: `${tier.color}18`, borderRadius: 999,
+                padding: '2px 10px', border: `1px solid ${tier.color}30`,
                 letterSpacing: 0.5,
               }}>
                 {tier.emoji} {tier.label}
@@ -373,12 +375,13 @@ export default function ProfileScreen() {
           {/* Streak badge */}
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
-            background: `${tier.color}15`, borderRadius: 16,
-            padding: '10px 14px', border: `1px solid ${tier.color}35`,
+            background: C.magentaDim, borderRadius: 16,
+            padding: '10px 14px',
+            border: `1px solid rgba(224,64,251,0.3)`,
             flexShrink: 0,
           }}>
             <span style={{ fontSize: 20 }}>{tier.emoji}</span>
-            <span style={{ fontSize: 20, fontWeight: 900, color: tier.color, lineHeight: 1.1 }}>{streak}</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: C.magenta, lineHeight: 1.1 }}>{streak}</span>
             <span style={{ fontSize: 9, color: C.muted, fontWeight: 700, letterSpacing: 0.5 }}>DAY{streak !== 1 ? 'S' : ''}</span>
           </div>
         </div>
@@ -387,9 +390,9 @@ export default function ProfileScreen() {
       {/* ── Wallet balances ─────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '14px 14px 0' }}>
         {[
-          { label: 'Main Wallet', value: mainBal, color: C.green, icon: '💰', dim: C.greenDim },
-          { label: 'Play Wallet', value: playBal, color: C.blue,  icon: '🎮', dim: C.blueDim  },
-        ].map(({ label, value, color, icon, dim }) => (
+          { label: 'Main Wallet',  value: mainBal, color: C.gold,   dim: C.goldDim,   icon: '💰' },
+          { label: 'Play Wallet',  value: playBal, color: '#a78bfa', dim: C.purpleDim, icon: '🎮' },
+        ].map(({ label, value, color, dim, icon }) => (
           <div key={label} style={{
             background: C.surface, border: `1px solid ${C.border}`,
             borderRadius: 18, padding: '16px 14px',
@@ -423,26 +426,29 @@ export default function ProfileScreen() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             <input readOnly value={referral.referralLink} style={{
               flex: 1, padding: '11px 12px',
-              background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
+              background: C.surface2, border: `1px solid ${C.border}`,
               borderRadius: 12, fontSize: 12, color: C.muted, outline: 'none',
             }} />
             <button onClick={handleCopy} style={{
               padding: '11px 18px',
-              background: copied ? '#059669' : C.amber,
-              color: '#07091a', border: 'none', borderRadius: 12,
+              background: copied
+                ? 'linear-gradient(135deg, #059669, #34d399)'
+                : 'linear-gradient(135deg, #7c3aed, #e040fb)',
+              color: '#fff', border: 'none', borderRadius: 999,
               cursor: 'pointer', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap',
-              flexShrink: 0, transition: 'background 0.2s',
+              flexShrink: 0, transition: 'all 0.2s',
+              boxShadow: copied ? '0 2px 10px rgba(52,211,153,0.3)' : '0 2px 10px rgba(124,58,237,0.4)',
             }}>
               {copied ? '✓ Copied' : 'Copy'}
             </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ background: C.surface2, borderRadius: 12, padding: '14px', textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 900, color: C.amber }}>{referral.totalReferrals}</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: C.gold }}>{referral.totalReferrals}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3, fontWeight: 600 }}>Friends Invited</div>
             </div>
             <div style={{ background: C.surface2, borderRadius: 12, padding: '14px', textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 900, color: C.green }}>{formatMoney(referral.totalEarnings ?? 0)}</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: C.teal }}>{formatMoney(referral.totalEarnings ?? 0)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3, fontWeight: 600 }}>Birr Earned</div>
             </div>
           </div>
@@ -468,7 +474,7 @@ export default function ProfileScreen() {
             onClick={() => navigate('/agent/dashboard')}
             style={{
               display: 'block', width: '100%',
-              background: 'linear-gradient(135deg,#10b981,#059669)',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
               border: 'none', borderRadius: 14, padding: '16px 18px',
               cursor: 'pointer', textAlign: 'left',
               boxShadow: '0 6px 20px rgba(16,185,129,0.28)',
@@ -476,7 +482,11 @@ export default function ProfileScreen() {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📊</div>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  background: 'rgba(255,255,255,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                }}>📊</div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', marginBottom: 2 }}>Agent Dashboard</div>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>Referrals & earnings</div>
@@ -499,7 +509,7 @@ export default function ProfileScreen() {
           <div key={label} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '13px 0',
-            borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none',
+            borderBottom: i < arr.length - 1 ? `1px solid rgba(124,58,237,0.15)` : 'none',
           }}>
             <span style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600 }}>{label}</span>
             <span style={{ fontSize: 13, color: C.text, fontWeight: 700 }}>{value}</span>

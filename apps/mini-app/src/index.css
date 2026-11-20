@@ -1,4 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+:root {
+  --c-base:     #0c0a1e;
+  --c-surface:  #13102b;
+  --c-surface2: #1a1535;
+  --c-violet:   #7c3aed;
+  --c-magenta:  #e040fb;
+  --c-gold:     #ffd54f;
+  --c-text:     #f1f5f9;
+  --c-muted:    rgba(255,255,255,0.45);
+
+  font-family: 'Nunito', sans-serif;
+  color: var(--c-text);
+  background: var(--c-base);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
 
 html,
 body,
@@ -6,29 +23,22 @@ body,
   min-height: 100%;
 }
 
-:root {
-  font-family: 'DM Sans', sans-serif;
-  color: #f7f8f5;
-  background: #071014;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
-
 body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at 90% -10%, rgba(48, 201, 157, 0.14), transparent 34rem),
-    radial-gradient(circle at 0% 30%, rgba(246, 193, 67, 0.08), transparent 28rem),
-    #071014;
+    radial-gradient(circle at 80% -5%, rgba(124, 58, 237, 0.18), transparent 36rem),
+    radial-gradient(circle at 10% 40%, rgba(224, 64, 251, 0.10), transparent 28rem),
+    radial-gradient(circle at 50% 100%, rgba(124, 58, 237, 0.08), transparent 24rem),
+    var(--c-base);
 }
 
 button, input, select, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 
 .app-surface {
-  background: linear-gradient(180deg, #0a171b 0%, #071014 46%, #04090c 100%);
-  color: #f7f8f5;
+  background: linear-gradient(180deg, #110d2e 0%, #0c0a1e 60%, #08061a 100%);
+  color: var(--c-text);
 }
 
 .display-font { font-family: 'Space Grotesk', sans-serif; }
@@ -36,45 +46,73 @@ button { -webkit-tap-highlight-color: transparent; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ── Existing keyframes (preserved) ─────────────────────────── */
+
 @keyframes pulse-mult {
   0%, 100% { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor; opacity: 1; }
-  50% { text-shadow: 0 0 40px currentColor, 0 0 80px currentColor; opacity: 0.85; }
+  50%       { text-shadow: 0 0 40px currentColor, 0 0 80px currentColor; opacity: 0.85; }
 }
 
 @keyframes crash-shake {
   0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-5px); }
-  40% { transform: translateX(5px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(3px); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-3px); }
+  80%       { transform: translateX(3px); }
 }
 
 @keyframes fade-slide-up {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes boom {
-  0% { transform: scale(0.5); opacity: 1; }
+  0%   { transform: scale(0.5); opacity: 1; }
   100% { transform: scale(2.5); opacity: 0; }
 }
 
 @keyframes cashout-flash {
-  0% { background-color: rgba(6, 214, 160, 0.0); }
-  30% { background-color: rgba(6, 214, 160, 0.15); }
+  0%   { background-color: rgba(6, 214, 160, 0.0); }
+  30%  { background-color: rgba(6, 214, 160, 0.15); }
   100% { background-color: rgba(6, 214, 160, 0.0); }
 }
 
 @keyframes slots-reel-spin {
-  0% { transform: translate3d(0, -14px, 0); opacity: 0.45; }
-  42% { transform: translate3d(0, 0, 0); opacity: 1; }
+  0%   { transform: translate3d(0, -14px, 0); opacity: 0.45; }
+  42%  { transform: translate3d(0, 0, 0);    opacity: 1;    }
   100% { transform: translate3d(0, 14px, 0); opacity: 0.45; }
 }
 
 @keyframes slots-spin-glow {
   0%, 100% { box-shadow: 0 0 18px rgba(255, 99, 143, 0.28); }
-  50% { box-shadow: 0 0 34px rgba(255, 99, 143, 0.62); }
+  50%       { box-shadow: 0 0 34px rgba(255, 99, 143, 0.62); }
 }
+
+@keyframes app-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── New keyframes ───────────────────────────────────────────── */
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(124, 58, 237, 0.3), 0 0 24px rgba(124, 58, 237, 0.15); }
+  50%       { box-shadow: 0 0 24px rgba(124, 58, 237, 0.55), 0 0 48px rgba(124, 58, 237, 0.25); }
+}
+
+@keyframes float-up {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.95); }
+  20%  { opacity: 1; transform: translateY(0)    scale(1);    }
+  80%  { opacity: 1; transform: translateY(0)    scale(1);    }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.97); }
+}
+
+@keyframes card-enter {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+/* ── Animation utility classes ───────────────────────────────── */
 
 .slots-reel-symbol.is-spinning {
   animation: slots-reel-spin 440ms cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
@@ -90,15 +128,12 @@ button { -webkit-tap-highlight-color: transparent; }
   .slots-spin-panel.is-spinning { animation: none; }
 }
 
-.anim-pulse-mult { animation: pulse-mult 2s ease-in-out infinite; }
-.anim-crash-shake { animation: crash-shake 0.5s ease-in-out; }
-.anim-fade-up { animation: fade-slide-up 0.3s ease-out; }
-.anim-boom { animation: boom 0.6s ease-out forwards; }
-.anim-cashout-flash { animation: cashout-flash 0.8s ease-out; }
-
-@keyframes app-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.app-rise { animation: app-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-pulse-mult   { animation: pulse-mult    2s   ease-in-out infinite; }
+.anim-crash-shake  { animation: crash-shake   0.5s ease-in-out; }
+.anim-fade-up      { animation: fade-slide-up 0.3s ease-out; }
+.anim-boom         { animation: boom          0.6s ease-out forwards; }
+.anim-cashout-flash{ animation: cashout-flash 0.8s ease-out; }
+.anim-glow-pulse   { animation: glow-pulse    2.4s ease-in-out infinite; }
+.anim-float-up     { animation: float-up      2.8s ease-in-out forwards; }
+.anim-card-enter   { animation: card-enter    0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.app-rise          { animation: app-rise      0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }

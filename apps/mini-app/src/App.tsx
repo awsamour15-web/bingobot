@@ -20,7 +20,7 @@ import { socket } from './lib/socket';
 
 // Minimal blank fallback — no spinner, no emoji, just background
 function LoadingScreen() {
-  return <div style={{ minHeight: '100dvh', background: '#0a0e1a' }} />;
+  return <div style={{ minHeight: '100dvh', background: '#0c0a1e' }} />;
 }
 
 // ─── Error boundary ───────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ class ErrorBoundary extends React.Component<
 
       return (
         <div style={{
-          minHeight: '100dvh', background: '#0a0e1a', color: '#f87171',
+          minHeight: '100dvh', background: '#0c0a1e', color: '#f87171',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           justifyContent: 'center', padding: 24, fontFamily: 'monospace',
         }}>
@@ -72,7 +72,7 @@ class ErrorBoundary extends React.Component<
           </div>
           <button
             onClick={() => window.location.href = '/'}
-            style={{ marginTop: 20, padding: '10px 24px', background: '#f59e0b', color: '#0a0e1a', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+            style={{ marginTop: 20, padding: '10px 24px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
           >
             Go Home
           </button>
@@ -96,76 +96,96 @@ function BottomNav() {
   if (isFullscreenRoute(location.pathname)) return null;
 
   const tabs = [
-    { to: '/', icon: '🎮', label: 'Games' },
-    { to: '/rank', icon: '🏆', label: 'Rank' },
-    { to: '/history', icon: '🧾', label: 'History' },
-    { to: '/wallet', icon: '💳', label: 'Wallet' },
-    { to: '/profile', icon: '◎', label: 'Profile' },
+    { to: '/',        icon: '🎮', label: 'Play'    },
+    { to: '/wallet',  icon: '💎', label: 'Wallet'  },
+    { to: '/history', icon: '📜', label: 'History' },
+    { to: '/rank',    icon: '🏆', label: 'Rank'    },
+    { to: '/profile', icon: '👤', label: 'Profile' },
   ];
 
   return (
     <>
       <style>{`
-        .mini-app-bottom-nav {
+        .fb-bottom-nav {
           position: fixed;
           left: 0;
           right: 0;
           bottom: 0;
           z-index: 100;
-          background: rgba(5, 15, 18, 0.94);
-          border-top: 1px solid rgba(85, 224, 176, 0.14);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
+          background: rgba(13, 10, 30, 0.96);
+          border-top: 1px solid rgba(124, 58, 237, 0.25);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           padding-bottom: env(safe-area-inset-bottom);
         }
 
-        .mini-app-bottom-nav-inner {
+        .fb-bottom-nav-inner {
           display: flex;
           align-items: stretch;
-          height: 52px;
+          height: 60px;
         }
 
-        .mini-app-bottom-tab {
+        .fb-bottom-tab {
           flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 3px;
+          gap: 4px;
           text-decoration: none;
-          color: #6e8c84;
+          color: rgba(255, 255, 255, 0.35);
           font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.02em;
+          font-weight: 700;
+          letter-spacing: 0.03em;
           line-height: 1;
-          transition: color 0.18s ease, background 0.18s ease;
+          transition: color 0.18s ease;
+          position: relative;
         }
 
-        .mini-app-bottom-tab.active {
-          color: #55e0b0;
+        .fb-bottom-tab.active {
+          color: #e040fb;
         }
 
-        .mini-app-bottom-icon {
-          font-size: 18px;
+        .fb-bottom-icon {
+          font-size: 20px;
           line-height: 1;
           transition: transform 0.18s ease;
+          position: relative;
         }
 
-        .mini-app-bottom-tab.active .mini-app-bottom-icon {
-          transform: scale(1.12);
+        .fb-bottom-tab.active .fb-bottom-icon {
+          transform: scale(1.1);
         }
 
-        .mini-app-bottom-label {
-          opacity: 0.85;
+        .fb-active-dot {
+          position: absolute;
+          top: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: #e040fb;
+          box-shadow: 0 0 8px #e040fb;
+          display: none;
         }
 
-        .mini-app-bottom-tab.active .mini-app-bottom-label {
+        .fb-bottom-tab.active .fb-active-dot {
+          display: block;
+        }
+
+        .fb-bottom-label {
+          opacity: 0.9;
+          font-family: 'Nunito', sans-serif;
+        }
+
+        .fb-bottom-tab.active .fb-bottom-label {
           opacity: 1;
         }
       `}</style>
 
-      <nav className="mini-app-bottom-nav" aria-label="Main navigation">
-        <div className="mini-app-bottom-nav-inner">
+      <nav className="fb-bottom-nav" aria-label="Main navigation">
+        <div className="fb-bottom-nav-inner">
           {tabs.map((tab) => {
             const isActive = tab.to === '/' ? location.pathname === '/' : location.pathname.startsWith(tab.to);
 
@@ -173,10 +193,13 @@ function BottomNav() {
               <NavLink
                 key={tab.to}
                 to={tab.to}
-                className={`mini-app-bottom-tab${isActive ? ' active' : ''}`}
+                className={`fb-bottom-tab${isActive ? ' active' : ''}`}
               >
-                <span className="mini-app-bottom-icon" aria-hidden="true">{tab.icon}</span>
-                <span className="mini-app-bottom-label">{tab.label}</span>
+                <span className="fb-bottom-icon" aria-hidden="true">
+                  <span className="fb-active-dot" />
+                  {tab.icon}
+                </span>
+                <span className="fb-bottom-label">{tab.label}</span>
               </NavLink>
             );
           })}
@@ -235,7 +258,7 @@ function AppInner() {
   }
 
   return (
-    <div className="app-surface" style={{ paddingBottom: isSubPage ? 0 : 'calc(52px + env(safe-area-inset-bottom))', minHeight: '100dvh' }}>
+    <div className="app-surface" style={{ paddingBottom: isSubPage ? 0 : 'calc(60px + env(safe-area-inset-bottom))', minHeight: '100dvh' }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<GameScreen />} />
