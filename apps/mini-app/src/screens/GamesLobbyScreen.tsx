@@ -194,7 +194,7 @@ export default function GamesLobbyScreen() {
 
   if (isSuspended) {
     return (
-      <div style={{ minHeight: '100dvh', background: 'linear-gradient(180deg,#07111e 0%,#050b18 50%,#030710 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px', textAlign: 'center', gap: 16 }}>
+      <div style={{ minHeight: '100dvh', background: 'linear-gradient(180deg, #17102f 0%, #0d0b22 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px', textAlign: 'center', gap: 16 }}>
         <div style={{ fontSize: 56 }}>🚫</div>
         <div style={{ fontSize: 22, fontWeight: 900, color: '#f87171' }}>Account Suspended</div>
         <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, maxWidth: 300 }}>
@@ -308,7 +308,7 @@ export default function GamesLobbyScreen() {
                   </div>
                 </>
               )}
-              <button onClick={() => setCouponAlert(null)} style={{ width: '100%', border: 0, borderRadius: 12, padding: '13px 0', fontSize: 13, fontWeight: 900, letterSpacing: '0.05em', background: couponAlert.type === 'already' ? 'linear-gradient(90deg,#3b4fa8,#5b6fd4)' : 'linear-gradient(90deg,#b45309,#d97706)', color: '#fff', cursor: 'pointer' }}>
+              <button onClick={() => setCouponAlert(null)} style={{ width: '100%', border: 0, borderRadius: 12, padding: '13px 0', fontSize: 13, fontWeight: 900, letterSpacing: '0.05em', background: couponAlert.type === 'already' ? 'linear-gradient(90deg, #7c3aed, #a855f7)' : 'linear-gradient(90deg, #b45309, #d97706)', color: '#fff', cursor: 'pointer' }}>
                 {couponAlert.type === 'already' ? "Got it, keep playing" : "OK, I'll be faster next time"}
               </button>
             </div>

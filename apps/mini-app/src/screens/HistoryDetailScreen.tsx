@@ -28,7 +28,7 @@ export default function HistoryDetailScreen() {
   }, [roundId]);
 
   if (loading) {
-    return <div style={{ minHeight: '100dvh', background: '#0a0e1a' }} />;
+    return <div style={{ minHeight: '100dvh', background: '#0d0b22' }} />;
   }
 
   if (error || !detail) {
@@ -66,7 +66,7 @@ export default function HistoryDetailScreen() {
       {/* Cartela grid */}
       {grid.length > 0 && (
         <div style={{ padding: '16px' }}>
-          <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 600 }}>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 8, fontWeight: 600 }}>
             ካርቴላ #{detail.cartelaNumber}
           </div>
           <div style={{ background: '#171130', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(124,58,237,0.2)' }}>
@@ -87,12 +87,12 @@ export default function HistoryDetailScreen() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: isFree ? '#4f46e5' : marked ? '#c7d2fe' : '#fff',
-                      color: isFree ? '#fff' : '#222',
+            background: isFree ? '#f5c518' : marked ? '#7c3aed' : '#241548',
+                      color: isFree ? '#1a1030' : marked ? '#fff' : '#c4b5fd',
                       borderRadius: 6,
                       fontWeight: marked ? 700 : 400,
                       fontSize: 14,
-                      border: '1px solid #e0e0e0',
+                      border: isFree ? '2px solid #ffd54f' : marked ? '1px solid rgba(167,139,250,0.6)' : '1px solid rgba(124,58,237,0.25)',
                     }}
                   >
                     {isFree ? '★' : val}
@@ -106,7 +106,7 @@ export default function HistoryDetailScreen() {
 
       {/* Called numbers sequence */}
       <div style={{ padding: '0 16px 24px' }}>
-        <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 600 }}>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 8, fontWeight: 600 }}>
           የተጠሩ ቁጥሮች ({detail.calledNumbers.length})
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

@@ -8,24 +8,24 @@ import { getAgentJwt, initAuth } from '../lib/auth';
 import { formatMoney } from '../lib/format';
 
 const C = {
-  bg: '#070d1a',
-  card: '#0c1626',
-  cardHover: '#101e33',
-  border: 'rgba(148,163,184,0.12)',
-  borderBright: 'rgba(148,163,184,0.22)',
-  text: '#e8f0fe',
-  muted: '#7a93b4',
-  dim: '#3d5474',
+  bg: '#0d0b22',
+  card: '#13102b',
+  cardHover: '#17102f',
+  border: 'rgba(124,58,237,0.18)',
+  borderBright: 'rgba(124,58,237,0.32)',
+  text: '#f1f5f9',
+  muted: 'rgba(255,255,255,0.45)',
+  dim: 'rgba(255,255,255,0.22)',
   green: '#34d399',
-  greenDim: 'rgba(52,211,153,0.12)',
+  greenDim: 'rgba(52,211,153,0.15)',
   blue: '#60a5fa',
-  blueDim: 'rgba(96,165,250,0.12)',
+  blueDim: 'rgba(96,165,250,0.15)',
   amber: '#fbbf24',
-  amberDim: 'rgba(251,191,36,0.12)',
+  amberDim: 'rgba(251,191,36,0.15)',
   purple: '#a78bfa',
-  purpleDim: 'rgba(167,139,250,0.12)',
+  purpleDim: 'rgba(167,139,250,0.15)',
   red: '#f87171',
-  redDim: 'rgba(248,113,113,0.1)',
+  redDim: 'rgba(248,113,113,0.15)',
 };
 
 function StatCard({ label, value, color, bg, icon }: {
@@ -140,9 +140,9 @@ export default function AgentDashboardScreen() {
     <div style={{ background: C.bg, minHeight: '100dvh', color: C.text, fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
       {/* ── Header ── */}
-      <div style={{ background: 'linear-gradient(180deg, #0d1e38 0%, #070d1a 100%)', borderBottom: `1px solid ${C.border}`, padding: '14px 16px', position: 'sticky', top: 0, zIndex: 20 }}>
+      <div style={{ background: 'linear-gradient(180deg, #17102f 0%, #0d0b22 100%)', borderBottom: `1px solid ${C.border}`, padding: '14px 16px', position: 'sticky', top: 0, zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 640, margin: '0 auto' }}>
-          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.07)', border: `1px solid ${C.border}`, color: C.text, width: 36, height: 36, borderRadius: 10, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(124,58,237,0.12)', border: `1px solid ${C.border}`, color: C.text, width: 36, height: 36, borderRadius: 10, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>←</button>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 900, fontSize: 17, letterSpacing: -0.3 }}>Agent Dashboard</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Commission overview & tools</div>
@@ -154,7 +154,7 @@ export default function AgentDashboardScreen() {
       </div>
 
       {/* ── Balance hero ── */}
-      <div style={{ background: 'linear-gradient(135deg, #0d1e38 0%, #091526 100%)', borderBottom: `1px solid ${C.border}`, padding: '20px 16px 24px' }}>
+      <div style={{ background: 'linear-gradient(135deg, #17102f 0%, #13102b 100%)', borderBottom: `1px solid ${C.border}`, padding: '20px 16px 24px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Available Balance</div>
           <div style={{ fontSize: 40, fontWeight: 900, color: C.green, letterSpacing: -1, marginBottom: 4 }}>
@@ -169,7 +169,7 @@ export default function AgentDashboardScreen() {
               { label: 'This Week',    value: `ETB ${formatMoney(dashboard.weeklyCommission ?? 0)}`, color: C.amber },
               { label: 'Today',        value: `ETB ${formatMoney(dashboard.dailyCommission ?? 0)}`, color: C.purple },
             ].map(s => (
-              <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: '10px 12px', border: `1px solid ${C.border}` }}>
+              <div key={s.label} style={{ background: 'rgba(124,58,237,0.08)', borderRadius: 12, padding: '10px 12px', border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 10, color: C.muted, marginBottom: 4, fontWeight: 600 }}>{s.label}</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: s.color }}>{s.value}</div>
               </div>

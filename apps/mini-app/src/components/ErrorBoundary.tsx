@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <div
           style={{
             height: '100dvh',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)',
+            background: 'linear-gradient(135deg, #17102f 0%, #0d0b22 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -61,14 +61,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: '#f87171' }}>
               Something went wrong
             </div>
-            <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 20 }}>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 20 }}>
               {this.state.error.message}
             </div>
           </div>
           <button
             onClick={this.reset}
             style={{
-              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              background: 'linear-gradient(135deg, #7c3aed, #e040fb)',
               color: '#fff',
               border: 'none',
               borderRadius: 10,

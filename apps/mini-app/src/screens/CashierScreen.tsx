@@ -31,17 +31,19 @@ interface WithdrawalItem {
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 const C = {
-  bg:      '#0a0e1a',
-  card:    '#0d1b2e',
-  card2:   '#112240',
-  border:  'rgba(255,255,255,0.07)',
+  bg:      '#0d0b22',
+  card:    '#13102b',
+  card2:   '#1a1535',
+  border:  'rgba(124,58,237,0.18)',
+  borderMid: 'rgba(124,58,237,0.3)',
   text:    '#f1f5f9',
-  muted:   '#64748b',
+  muted:   'rgba(255,255,255,0.45)',
   green:   '#34d399',
   red:     '#f87171',
   amber:   '#f59e0b',
   blue:    '#60a5fa',
-  indigo:  '#818cf8',
+  indigo:  '#a78bfa',
+  gold:    '#ffd54f',
 };
 
 // ── Session storage keys ──────────────────────────────────────────────────────
@@ -111,18 +113,19 @@ function LoginForm({ onLogin }: { onLogin: (s: CashierSession) => void }) {
       alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
       <div style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 20, padding: 32, width: '100%', maxWidth: 360,
+        background: 'linear-gradient(160deg, #241548 0%, #13102b 60%, #0d0b22 100%)',
+        border: `1px solid ${C.borderMid}`,
+        borderRadius: 22, padding: 28, width: '100%', maxWidth: 360,
       }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 16, margin: '0 auto 14px',
-            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            width: 60, height: 60, borderRadius: 18, margin: '0 auto 14px',
+            background: 'linear-gradient(135deg, #7c3aed, #e040fb)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, boxShadow: '0 8px 24px rgba(245,158,11,0.35)',
+            fontSize: 28, boxShadow: '0 10px 30px rgba(124,58,237,0.45)',
           }}>💰</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: C.text }}>Cashier Login</div>
-          <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Mada Bingo Cashier App</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: C.text }}>Cashier Login</div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 4, letterSpacing: 0.4 }}>Mada Bingo Cashier App</div>
         </div>
 
         {error && (
@@ -136,7 +139,7 @@ function LoginForm({ onLogin }: { onLogin: (s: CashierSession) => void }) {
         <form onSubmit={(e) => void handleSubmit(e)}>
           <input
             style={{
-              width: '100%', padding: '12px 14px', borderRadius: 12,
+              width: '100%', padding: '13px 14px', borderRadius: 12,
               background: C.card2, border: `1px solid ${C.border}`,
               color: C.text, fontSize: 15, outline: 'none',
               marginBottom: 12, boxSizing: 'border-box',
@@ -150,7 +153,7 @@ function LoginForm({ onLogin }: { onLogin: (s: CashierSession) => void }) {
           <input
             type="password"
             style={{
-              width: '100%', padding: '12px 14px', borderRadius: 12,
+              width: '100%', padding: '13px 14px', borderRadius: 12,
               background: C.card2, border: `1px solid ${C.border}`,
               color: C.text, fontSize: 15, outline: 'none',
               marginBottom: 20, boxSizing: 'border-box',
@@ -166,9 +169,10 @@ function LoginForm({ onLogin }: { onLogin: (s: CashierSession) => void }) {
             disabled={loading}
             style={{
               width: '100%', padding: '14px 0', borderRadius: 14,
-              background: loading ? C.card2 : C.amber,
-              color: loading ? C.muted : '#0a0e1a',
-              border: 'none', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+              background: loading ? C.card2 : 'linear-gradient(135deg, #7c3aed, #e040fb)',
+              color: loading ? C.muted : '#fff',
+              border: 'none', fontSize: 15, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
+              boxShadow: loading ? 'none' : '0 8px 24px rgba(124,58,237,0.4)',
             }}
           >
             {loading ? 'Signing in…' : 'Sign In'}
@@ -184,7 +188,7 @@ function ItemCard({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       background: C.card, border: `1px solid ${C.border}`,
-      borderRadius: 14, padding: '14px 16px', marginBottom: 10,
+      borderRadius: 16, padding: '16px 18px', marginBottom: 12,
     }}>
       {children}
     </div>
@@ -201,7 +205,7 @@ function ActionBtn({ label, color, onClick, loading }: {
       style={{
         padding: '8px 14px', borderRadius: 10, border: 'none',
         background: loading ? C.card2 : color,
-        color: loading ? C.muted : '#0a0e1a',
+        color: loading ? C.muted : '#fff',
         fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
         marginLeft: 8,
       }}
@@ -284,18 +288,18 @@ function Dashboard({ session, onLogout }: { session: CashierSession; onLogout: (
   }
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1, padding: '10px 0', border: 'none',
-    background: active ? C.amber : C.card2,
-    color: active ? '#0a0e1a' : C.muted,
+    flex: 1, padding: '12px 0', border: 'none',
+    background: active ? 'linear-gradient(135deg, #7c3aed, #e040fb)' : C.card2,
+    color: active ? '#fff' : C.muted,
     fontSize: 14, fontWeight: 700, cursor: 'pointer',
-    borderRadius: 10, transition: 'all 0.15s',
+    borderRadius: 14, transition: 'all 0.15s',
   });
 
   return (
     <div style={{ minHeight: '100dvh', background: C.bg, padding: '0 0 80px' }}>
       {/* Header */}
       <div style={{
-        background: C.card, borderBottom: `1px solid ${C.border}`,
+        background: 'linear-gradient(180deg, #241548 0%, #17102f 100%)', borderBottom: `1px solid ${C.border}`,
         padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <div>
@@ -305,11 +309,11 @@ function Dashboard({ session, onLogout }: { session: CashierSession; onLogout: (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             onClick={() => void load()}
-            style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 12px', color: C.muted, fontSize: 13, cursor: 'pointer' }}
+            style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 14px', color: C.text, fontSize: 13, cursor: 'pointer' }}
           >↻ Refresh</button>
           <button
             onClick={() => { clearSession(); onLogout(); }}
-            style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '6px 12px', color: C.red, fontSize: 13, cursor: 'pointer' }}
+            style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 10, padding: '8px 14px', color: C.red, fontSize: 13, cursor: 'pointer' }}
           >Sign out</button>
         </div>
       </div>
@@ -327,8 +331,8 @@ function Dashboard({ session, onLogout }: { session: CashierSession; onLogout: (
 
         {error && (
           <div style={{
-            background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)',
-            borderRadius: 10, padding: '10px 14px', color: C.red, fontSize: 13, marginBottom: 12,
+            background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)',
+            borderRadius: 12, padding: '12px 14px', color: C.red, fontSize: 13, marginBottom: 12,
           }}>{error}</div>
         )}
 

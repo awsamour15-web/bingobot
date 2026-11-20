@@ -204,9 +204,9 @@ export default function RankScreen() {
 
       {/* ── Header ── */}
       <div style={{
-        background: 'linear-gradient(135deg, #1e1245, #13102b)',
+        background: 'linear-gradient(135deg, #241548, #17102f)',
         padding: '24px 20px 20px',
-        borderBottom: `1px solid rgba(124,58,237,0.2)`,
+        borderBottom: `1px solid rgba(124,58,237,0.22)`,
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Decorative glow */}

@@ -721,10 +721,10 @@ export default function LiveGameScreen() {
   void colBg; // used below
 
   return (
-    <div style={{ height: '100dvh', background: '#0e1726', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #17102f 0%, #13102b 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
       {/* ── STATS ROW ── */}
-      <div style={{ background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.09)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }}>
+      <div style={{ background: '#17102f', borderBottom: '1px solid rgba(124,58,237,0.22)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }}>
         {[
           { label: 'GAME ID',   value: round.id.slice(-6).toUpperCase() },
           { label: 'PLAYERS',  value: game.playerCount },
@@ -733,7 +733,7 @@ export default function LiveGameScreen() {
           { label: 'CALLED',   value: game.calledNumbers.size },
         ].map(({ label, value }, i) => (
           <div key={label} style={{ textAlign: 'center', padding: '7px 3px', borderRight: i < 4 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-            <div style={{ fontSize: 10, color: '#aab5c7', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: 10, color: '#c4b5fd', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
             <div style={{ fontSize: 17, fontWeight: 900, color: '#f0f4ff' }}>{value}</div>
           </div>
         ))}
@@ -751,7 +751,7 @@ export default function LiveGameScreen() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
         {/* ══ LEFT: 1–75 bingo board ══ */}
-        <div style={{ width: '47%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#0d1a2d' }}>
+        <div style={{ width: '47%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(124,58,237,0.2)', background: '#13102b' }}>
 
           {/* B I N G O headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '4px 3px 2px', flexShrink: 0 }}>
@@ -772,13 +772,13 @@ export default function LiveGameScreen() {
                   <div key={num} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     borderRadius: 4,
-                    background: isLast ? '#f5c518' : called ? '#234d87' : 'rgba(255,255,255,0.055)',
-                    color: isLast ? '#0e1726' : called ? '#f4f7ff' : '#9eabc0',
+                    background: isLast ? '#f5c518' : called ? '#5b21b6' : 'rgba(124,58,237,0.14)',
+                    color: isLast ? '#1a1030' : called ? '#ede9fe' : '#8b7fc0',
                     fontSize: 14, fontWeight: isLast ? 900 : called ? 800 : 500,
-                    border: isLast ? '2px solid #fff' : called ? '1px solid rgba(76,145,230,0.55)' : '1px solid rgba(255,255,255,0.07)',
+                    border: isLast ? '2px solid #ffd54f' : called ? '1px solid rgba(167,139,250,0.6)' : '1px solid rgba(124,58,237,0.22)',
                     minHeight: 22,
                     aspectRatio: '1', transition: 'background 0.18s',
-                    boxShadow: isLast ? '0 0 10px rgba(245,197,24,0.6)' : called ? '0 0 8px rgba(59,130,246,0.35)' : 'none',
+                    boxShadow: isLast ? '0 0 12px rgba(245,197,24,0.65)' : called ? '0 0 8px rgba(167,139,250,0.45)' : 'none',
                   } as React.CSSProperties}>
                     {num}
                   </div>
@@ -788,7 +788,7 @@ export default function LiveGameScreen() {
           </div>
 
           {/* ── LEFT FOOTER: Leave / Refresh + BINGO button ── */}
-          <div style={{ flexShrink: 0, background: '#0d1a2d', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ flexShrink: 0, background: '#13102b', borderTop: '1px solid rgba(124,58,237,0.2)' }}>
             {/* Leave / Refresh row */}
             <div style={{ display: 'flex', gap: 6, padding: '6px 6px 4px' }}>
               <button
@@ -810,7 +810,7 @@ export default function LiveGameScreen() {
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
                   background: 'rgba(255,255,255,0.1)',
-                  color: refreshing ? '#4a6080' : '#94a3b8', fontWeight: 700, fontSize: 13,
+                  color: refreshing ? '#8b7fc0' : '#c4b5fd', fontWeight: 700, fontSize: 13,
                   cursor: refreshing ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 }}
@@ -825,10 +825,10 @@ export default function LiveGameScreen() {
         </div>
 
         {/* ══ RIGHT PANEL ══ */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0e1726' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#13102b' }}>
 
           {/* LAST CALLED */}
-          <div style={{ padding: '13px 11px 11px', flexShrink: 0, background: '#132033', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ padding: '13px 11px 11px', flexShrink: 0, background: '#17102f', borderBottom: '1px solid rgba(124,58,237,0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Last Called</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -837,7 +837,7 @@ export default function LiveGameScreen() {
                   onClick={myCartelas.length <= 2 ? toggleManualMode : undefined}
                   style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: myCartelas.length <= 2 ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: myCartelas.length > 2 ? 0.4 : 1 }}
                 >
-                  <span style={{ fontSize: 11, color: '#c8d8ec', fontWeight: 600 }}>Automatic</span>
+                  <span style={{ fontSize: 11, color: '#c4b5fd', fontWeight: 600 }}>Automatic</span>
                   <div style={{
                     width: 38, height: 22, borderRadius: 11,
                     background: !manualMode ? '#22c55e' : 'rgba(255,255,255,0.15)',
@@ -852,7 +852,7 @@ export default function LiveGameScreen() {
                     }} />
                   </div>
                 </div>
-                <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#7a95b8', fontSize: 13, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
+                <button type="button" onClick={toggleSound} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 13, cursor: 'pointer', padding: 0 }}>{soundOn ? '🔊' : '🔇'}</button>
               </div>
             </div>
             {game.lastCalled != null ? (
@@ -871,7 +871,7 @@ export default function LiveGameScreen() {
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 13, color: '#4a6080', padding: '7px 0' }}>
+              <div style={{ fontSize: 13, color: '#8b7fc0', padding: '7px 0' }}>
                 {game.phase === 'waiting' ? 'Starting…' : '—'}
               </div>
             )}
@@ -879,24 +879,24 @@ export default function LiveGameScreen() {
           </div>
 
           {/* CALLED chips */}
-          <div style={{ padding: '7px 10px 6px', flexShrink: 0, background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ padding: '7px 10px 6px', flexShrink: 0, background: '#13102b', borderBottom: '1px solid rgba(124,58,237,0.2)' }}>
             <div style={{ fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 }}>
               Called ({game.calledOrder.length}/75)
             </div>
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
               {game.calledOrder.length === 0
-                ? <span style={{ color: '#4a6080', fontSize: 11 }}>—</span>
+                ? <span style={{ color: '#8b7fc0', fontSize: 11 }}>—</span>
                 : [...game.calledOrder].reverse().slice(0, 10).map((num, idx) => {
                     const ci = getColIndex(num);
                     const isFirst = idx === 0;
                     return (
                       <div key={`chip-${num}`} style={{
                         flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
-                        background: isFirst ? HDR[ci] : 'rgba(255,255,255,0.1)',
-                        border: isFirst ? `2px solid ${HDR[ci]}` : '1px solid rgba(255,255,255,0.12)',
+                        background: isFirst ? HDR[ci] : 'rgba(124,58,237,0.22)',
+                        border: isFirst ? `2px solid ${HDR[ci]}` : '1px solid rgba(124,58,237,0.35)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 10, fontWeight: 700,
-                        color: isFirst ? '#fff' : '#7a95b8',
+                        color: isFirst ? '#fff' : '#a78bfa',
                         boxShadow: isFirst ? `0 0 10px ${HDR[ci]}88` : 'none',
                       }}>
                         {num}
@@ -919,13 +919,13 @@ export default function LiveGameScreen() {
                     flexShrink: 0,
                     width: '100%',
                     maxWidth: 232,
-                    background: '#132033',
+                    background: '#17102f',
                     borderRadius: 6,
                     overflow: 'hidden',
                     border: hasBingo ? '1.5px solid #22c55e' : '1px solid rgba(255,255,255,0.09)',
                   }}>
                     {/* Card label */}
-                    <div style={{ padding: '2px 4px', background: '#0d1a2d', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <div style={{ padding: '2px 4px', background: '#13102b', borderBottom: '1px solid rgba(124,58,237,0.18)', display: 'flex', alignItems: 'center', gap: 3 }}>
                       <span style={{ fontSize: 7.5, fontWeight: 900, color: '#ffffff', letterSpacing: 0.4 }}>#{cartela.cartelaNumber}</span>
                       {hasBingo && <span style={{ fontSize: 7.5, fontWeight: 700, color: '#22c55e' }}>✓ BINGO</span>}
                       {game.phase === 'active' && claimPending && hasBingo && <span style={{ fontSize: 7.5, color: '#f59e0b' }}>⏳ Claiming…</span>}
@@ -952,7 +952,7 @@ export default function LiveGameScreen() {
                             style={{
                               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                               aspectRatio: '1', borderRadius: 2,
-                              background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#234d87' : 'rgba(255,255,255,0.05)',
+                              background: isW ? 'linear-gradient(135deg,#f59e0b,#d97706)' : isM ? '#5b21b6' : 'rgba(124,58,237,0.14)',
                               color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
                               fontSize: 13, fontWeight: isW ? 900 : isM ? 700 : 500,
                               border: isW ? '1px solid #fcd34d' : isFree && !isM ? '1px solid rgba(245,197,24,0.4)' : 'none',
@@ -973,13 +973,13 @@ export default function LiveGameScreen() {
                 );
               })
             ) : isWatching ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#4a6080', textAlign: 'center', padding: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#8b7fc0', textAlign: 'center', padding: 16 }}>
                 <div style={{ fontSize: 28, marginBottom: 8 }}>👁</div>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>Watching</div>
               </div>
             ) : (
               Array.from({ length: 2 }, (_, i) => (
-                <div key={i} style={{ width: '100%', maxWidth: 220, background: '#132033', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '10px 8px', opacity: 0.4 }}>
+                <div key={i} style={{ width: '100%', maxWidth: 220, background: '#17102f', borderRadius: 10, border: '1px solid rgba(124,58,237,0.18)', padding: '10px 8px', opacity: 0.4 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 4 }}>
                     {COLS.map((c, ci) => <div key={c} style={{ height: 20, borderRadius: 3, background: HDR[ci], opacity: 0.5 }} />)}
                   </div>
@@ -994,7 +994,7 @@ export default function LiveGameScreen() {
 
           {/* ── BINGO button — bottom of right panel, manual mode only ── */}
           {!isWatching && game.phase === 'active' && manualMode && (
-            <div style={{ flexShrink: 0, padding: '6px 8px 10px', background: '#0e1726', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ flexShrink: 0, padding: '6px 8px 10px', background: '#13102b', borderTop: '1px solid rgba(124,58,237,0.2)' }}>
               {notWinAlert && (
                 <div style={{
                   marginBottom: 6, padding: '8px 10px', borderRadius: 8,
@@ -1020,8 +1020,8 @@ export default function LiveGameScreen() {
                     width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
                     background: playerHasBingo
                       ? 'linear-gradient(135deg, #f5c518 0%, #f59e0b 100%)'
-                      : 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
-                    color: playerHasBingo ? '#0e1726' : '#94a3b8',
+                      : 'linear-gradient(135deg, #241548 0%, #17102f 100%)',
+                    color: playerHasBingo ? '#1a1030' : '#8b7fc0',
                     fontWeight: 900, fontSize: 18, cursor: 'pointer',
                     letterSpacing: 2, textTransform: 'uppercase',
                     boxShadow: playerHasBingo ? '0 0 24px rgba(245,197,24,0.55)' : 'none',
@@ -1150,7 +1150,7 @@ export default function LiveGameScreen() {
                           background: isW
                             ? 'linear-gradient(135deg,#f59e0b,#d97706)'
                             : isM
-                              ? '#234d87'
+                              ? '#5b21b6'
                               : 'rgba(255,255,255,0.04)',
                           border: isW ? '1px solid #fcd34d' : isM ? '1px solid rgba(76,145,230,0.55)' : '0.5px solid rgba(255,255,255,0.05)',
                           boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
@@ -1232,7 +1232,7 @@ export default function LiveGameScreen() {
           <div style={{ fontSize: 56, marginBottom: 8, animation: 'winnerPulse 0.8s ease-in-out infinite' }}>{game.phase === 'void' ? '🔄' : '⚠️'}</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#f1f5f9', textAlign: 'center', letterSpacing: 0.5 }}>{game.endMessage}</div>
           {nextCountdown !== null && nextCountdown > 0 && (
-            <div style={{ fontSize: 14, color: '#94a3b8', marginTop: 12, fontWeight: 600 }}>Returning in {nextCountdown}s…</div>
+            <div style={{ fontSize: 14, color: '#8b7fc0', marginTop: 12, fontWeight: 600 }}>Returning in {nextCountdown}s…</div>
           )}
         </div>
       )}

@@ -597,10 +597,10 @@ export default function CartelaScreen() {
   }, [roundId, round, balances, availability]);
 
   if (loading) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #0a0e1a 100%)' }} />
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #17102f 0%, #0d0b22 100%)' }} />
   );
   if (!round || !availability) return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #17102f 0%, #0d0b22 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', padding: 24, textAlign: 'center', flexDirection: 'column', gap: 16 }}>
       <div style={{ fontSize: 56 }}>🚫</div>
       <div style={{ fontSize: 18, fontWeight: 700 }}>{error ? 'Failed to Load' : 'Round Not Found'}</div>
       <div style={{ fontSize: 13, color: '#94a3b8' }}>{error || 'Could not load round data'}</div>
@@ -620,10 +620,10 @@ export default function CartelaScreen() {
   const previewCount = picksArr.length;
 
   return (
-    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #17102f 0%, #0d0b22 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Professional Header ── */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.12)', padding: '12px 14px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(23,16,47,0.98) 0%, rgba(19,16,43,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(124,58,237,0.22)', padding: '12px 14px', flexShrink: 0, boxShadow: '0 8px 24px rgba(124,58,237,0.18)' }}>
         {/* Header Top - Title & Timer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -680,7 +680,7 @@ export default function CartelaScreen() {
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
         gap: 10, padding: '20px', alignContent: 'start',
-        background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
+        background: 'linear-gradient(180deg, rgba(23,16,47,0.7) 0%, rgba(19,16,43,0.8) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
         {allNumbers.map(num => {
@@ -697,7 +697,7 @@ export default function CartelaScreen() {
       {/* ── Selected cartela BINGO preview ── */}
       {previewCount > 0 && (
         <div style={{
-          flexShrink: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,14,26,0.9) 100%)',
+          flexShrink: 0, background: 'linear-gradient(180deg, rgba(23,16,47,0.95) 0%, rgba(19,16,43,0.9) 100%)',
           borderTop: '1.5px solid rgba(148,163,184,0.1)',
           padding: '12px 12px', gap: 10,
           display: 'grid',
