@@ -1,1 +1,0 @@
-{"version":3,"file":"round-start-flow.d.ts","sourceRoot":"","sources":["../../src/lib/round-start-flow.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,mBAAmB;IAClC,MAAM,EAAE,OAAO,CAAC;IAChB,QAAQ,EAAE,OAAO,CAAC;IAClB,cAAc,EAAE,OAAO,CAAC;CACzB;AAED,wBAAgB,mBAAmB,CAAC,KAAK,EAAE,mBAAmB,GAAG,OAAO,CAEvE"}
