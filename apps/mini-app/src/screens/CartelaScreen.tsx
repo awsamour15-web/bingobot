@@ -68,14 +68,14 @@ const CartelaCell = memo(function CartelaCell({ num, taken, isPicked, isConfirme
       disabled={disabled || taken}
       onClick={handleClick}
       style={{
-        padding: '8px 0', borderRadius: 12, border, background: bg, color,
-        fontWeight: isPicked || taken ? 800 : 700, fontSize: 16,
+        padding: '10px 0', borderRadius: 14, border, background: bg, color,
+        fontWeight: isPicked || taken ? 800 : 700, fontSize: 17,
         cursor: disabled || taken ? 'not-allowed' : 'pointer',
         opacity: disabled && !taken && !isPicked ? 0.5 : 1,
         transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: isPicked ? 'translateY(-2px) scale(1.08)' : taken ? 'scale(0.98)' : 'translateY(0) scale(1)',
         WebkitAppearance: 'none', appearance: 'none', outline: 'none',
-        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '48px',
+        lineHeight: 1, boxSizing: 'border-box', userSelect: 'none', minHeight: '52px',
         boxShadow: shadow, position: 'relative', overflow: 'hidden',
         WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
       }}
@@ -623,20 +623,20 @@ export default function CartelaScreen() {
     <div style={{ height: '100dvh', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0a0e1a 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Professional Header ── */}
-      <div style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.1)', padding: '10px 14px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
+      <div style={{ background: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(20,33,47,0.95) 100%)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(148,163,184,0.12)', padding: '12px 14px', flexShrink: 0, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
         {/* Header Top - Title & Timer */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => navigate(-1)} style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.1) 100%)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transition: 'all 0.3s', fontWeight: 700 }}>
+            <button onClick={() => navigate(-1)} style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(99,102,241,0.14) 100%)', border: '1px solid rgba(59,130,246,0.32)', color: '#7db3f5', width: 34, height: 34, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, transition: 'all 0.3s', fontWeight: 700 }}>
               ←
             </button>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9' }}>Select Cartelas</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Up to {round?.max_cartelas_per_player ?? 2} cartela{(round?.max_cartelas_per_player ?? 2) !== 1 ? 's' : ''}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>Select Cartelas</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Up to {round?.max_cartelas_per_player ?? 2} cartela{(round?.max_cartelas_per_player ?? 2) !== 1 ? 's' : ''}</div>
             </div>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(8px)' }}>
+            <div style={{ background: msLeft > 0 && msLeft < 10_000 ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(220,38,38,0.15) 100%)' : 'linear-gradient(135deg, rgba(245,158,11,0.2) 0%, rgba(217,119,6,0.15) 100%)', border: '1px solid ' + (msLeft > 0 && msLeft < 10_000 ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.3)'), borderRadius: 10, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(8px)' }}>
               <span style={{ fontSize: 14 }}>⏱️</span>
               <span style={{ fontSize: 11, fontWeight: 800, color: msLeft > 0 && msLeft < 10_000 ? '#fca5a5' : '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>
                 {msLeft > 0 ? `${Math.ceil(msLeft / 1000)}s` : starting ? '●' : '0s'}
@@ -649,7 +649,7 @@ export default function CartelaScreen() {
         </div>
 
         {/* Header Bottom - Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 10 }}>
           {[
             { label: '💰 Main', value: balances ? Math.floor(asSafeBalance(balances.mainWallet)) : 0, color: '#3b82f6' },
             { label: '🎮 Play', value: balances ? Math.floor(asSafeBalance(balances.playWallet)) : 0, color: '#10b981' },
@@ -679,7 +679,7 @@ export default function CartelaScreen() {
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
         display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-        gap: 12, padding: '24px 20px', alignContent: 'start',
+        gap: 10, padding: '20px', alignContent: 'start',
         background: 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(10,14,26,0.8) 100%)',
         borderTop: '1px solid rgba(148,163,184,0.08)',
       }}>
@@ -699,7 +699,7 @@ export default function CartelaScreen() {
         <div style={{
           flexShrink: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(10,14,26,0.9) 100%)',
           borderTop: '1.5px solid rgba(148,163,184,0.1)',
-          padding: '10px 10px', gap: 8,
+          padding: '12px 12px', gap: 10,
           display: 'grid',
           gridTemplateColumns: picksArr.length === 2 ? '1fr 1fr' : '1fr',
           boxShadow: '0 -8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
@@ -710,7 +710,7 @@ export default function CartelaScreen() {
             const grid = pickedGrids.get(cartelaNum);
             return (
               <div key={cartelaNum} style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(5,150,105,0.04) 100%)', border: '1.5px solid rgba(16,185,129,0.25)', borderRadius: 10, padding: '8px 6px 6px', boxShadow: '0 8px 16px rgba(16,185,129,0.12)', backdropFilter: 'blur(8px)' }}>
-                <div style={{ textAlign: 'center', fontSize: 13, color: '#10b981', fontWeight: 900, marginBottom: 5 }}>
+                <div style={{ textAlign: 'center', fontSize: 15, color: '#34d399', fontWeight: 900, marginBottom: 6 }}>
                   Card #{cartelaNum}
                 </div>
                 {/* BINGO header row */}
