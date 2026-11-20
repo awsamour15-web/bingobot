@@ -325,9 +325,9 @@ export default function ProfileScreen() {
 
       {/* ── Hero Header ─────────────────────────────────────────────────────── */}
       <div style={{
-        background: 'linear-gradient(160deg, #1e1245 0%, #13102b 60%, #0e0b25 100%)',
-        padding: '32px 20px 24px',
-        borderBottom: `1px solid rgba(124,58,237,0.2)`,
+        background: 'linear-gradient(160deg, #241548 0%, #17102f 60%, #100b26 100%)',
+        padding: '36px 20px 28px',
+        borderBottom: `1px solid rgba(124,58,237,0.22)`,
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Decorative glow */}
@@ -388,14 +388,14 @@ export default function ProfileScreen() {
       </div>
 
       {/* ── Wallet balances ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '14px 14px 0' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '16px 14px 0' }}>
         {[
           { label: 'Main Wallet',  value: mainBal, color: C.gold,   dim: C.goldDim,   icon: '💰' },
           { label: 'Play Wallet',  value: playBal, color: '#a78bfa', dim: C.purpleDim, icon: '🎮' },
         ].map(({ label, value, color, dim, icon }) => (
           <div key={label} style={{
             background: C.surface, border: `1px solid ${C.border}`,
-            borderRadius: 18, padding: '16px 14px',
+            borderRadius: 20, padding: '18px 14px',
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,

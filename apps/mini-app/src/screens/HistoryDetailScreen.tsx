@@ -39,11 +39,11 @@ export default function HistoryDetailScreen() {
   const grid = detail.cartelaGrid;
 
   return (
-    <div>
-      <div style={{ background: '#4f46e5', color: '#fff', padding: '14px 16px' }}>
+    <div style={{ background: 'linear-gradient(180deg, #0e0b25 0%, #0c0a1e 100%)', minHeight: '100dvh' }}>
+      <div style={{ background: 'linear-gradient(135deg, #241548 0%, #17102f 100%)', padding: '16px 16px 20px', borderBottom: '1px solid rgba(124,58,237,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ cursor: 'pointer', fontSize: 18 }} onClick={() => navigate(-1)}>←</span>
-          <span style={{ fontWeight: 700, fontSize: 17 }}>ጨዋታ #{detail.gameId.slice(-6).toUpperCase()}</span>
+          <span style={{ cursor: 'pointer', fontSize: 18, color: '#c4b5fd' }} onClick={() => navigate(-1)}>←</span>
+          <span style={{ fontWeight: 700, fontSize: 17, color: '#f1f5f9' }}>ጨዋታ #{detail.gameId.slice(-6).toUpperCase()}</span>
         </div>
         <div style={{ marginTop: 8, display: 'flex', gap: 20, fontSize: 13 }}>
           <div>
@@ -69,8 +69,8 @@ export default function HistoryDetailScreen() {
           <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 600 }}>
             ካርቴላ #{detail.cartelaNumber}
           </div>
-          <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: '#4f46e5' }}>
+          <div style={{ background: '#171130', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(124,58,237,0.2)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: 'linear-gradient(135deg, #7c3aed, #e040fb)' }}>
               {COLS.map((c) => (
                 <div key={c} style={{ textAlign: 'center', color: '#fff', fontWeight: 900, padding: '10px 0', fontSize: 18 }}>{c}</div>
               ))}
@@ -119,8 +119,8 @@ export default function HistoryDetailScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: '50%',
-                  background: calledSet.has(number) && grid.includes(number) ? '#4f46e5' : '#e0e7ff',
-                  color: calledSet.has(number) && grid.includes(number) ? '#fff' : '#4f46e5',
+                  background: calledSet.has(number) && grid.includes(number) ? '#7c3aed' : '#241548',
+                  color: calledSet.has(number) && grid.includes(number) ? '#fff' : '#c4b5fd',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

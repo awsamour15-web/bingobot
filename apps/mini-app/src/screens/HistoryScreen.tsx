@@ -52,9 +52,9 @@ export default function HistoryScreen() {
 
       {/* ── Header ── */}
       <div style={{
-        background: 'linear-gradient(135deg, #1a1535, #13102b)',
+        background: 'linear-gradient(135deg, #241548, #17102f)',
         padding: '24px 20px 18px',
-        borderBottom: `1px solid rgba(124,58,237,0.2)`,
+        borderBottom: `1px solid rgba(124,58,237,0.22)`,
         position: 'relative', overflow: 'hidden',
       }}>
         <div style={{
@@ -96,7 +96,7 @@ export default function HistoryScreen() {
               style={{
                 background: C.surface,
                 border: `1px solid ${C.border}`,
-                borderRadius: 16, padding: '14px 16px', marginBottom: 10,
+                borderRadius: 18, padding: '14px 16px', marginBottom: 10,
                 cursor: 'pointer',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 transition: 'border-color 0.2s, box-shadow 0.2s',

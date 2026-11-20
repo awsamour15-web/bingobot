@@ -77,8 +77,8 @@ function Btn({
       disabled={disabled}
       style={{
         width: '100%',
-        padding: '14px 0',
-        borderRadius: 999,
+        padding: '15px 0',
+        borderRadius: 14,
         border: 'none',
         background: disabled
           ? C.surface2
@@ -333,7 +333,7 @@ export default function WalletScreen() {
       <button
         onClick={() => { setLoading(true); setError(null); loadProfile(); }}
         style={{
-          marginTop: 8, padding: '12px 28px', borderRadius: 999, border: 'none',
+          marginTop: 8, padding: '14px 28px', borderRadius: 14, border: 'none',
           background: 'linear-gradient(135deg, #7c3aed, #e040fb)',
           color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer',
         }}
@@ -401,11 +401,11 @@ export default function WalletScreen() {
 
         {/* ── Total balance hero card ──────────────────────────────────────── */}
         <div style={{
-          background: 'linear-gradient(135deg, #1e1245 0%, #130f30 100%)',
+          background: 'linear-gradient(135deg, #241548 0%, #170f38 100%)',
           border: `1px solid ${C.borderMid}`,
-          borderRadius: 20, padding: '20px 20px 18px',
-          marginBottom: 16, position: 'relative', overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(124,58,237,0.2)',
+          borderRadius: 22, padding: '22px 20px 20px',
+          marginBottom: 18, position: 'relative', overflow: 'hidden',
+          boxShadow: '0 12px 40px rgba(124,58,237,0.28)',
         }}>
           {/* glow */}
           <div style={{
