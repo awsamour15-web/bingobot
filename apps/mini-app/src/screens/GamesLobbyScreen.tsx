@@ -330,7 +330,7 @@ export default function GamesLobbyScreen() {
         @media (min-width: 560px) { .lobby-root { max-width: 560px; } }
       `}</style>
 
-      <div style={{ padding: '14px 20px 0' }}>
+      <div style={{ minHeight: 76, padding: '14px 20px 0', background: 'rgba(7,11,20,0.66)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(134,165,226,0.14)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg, #63d4ba, #2c8b9f)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#08201b', boxShadow: '0 6px 16px rgba(52,202,176,0.35)' }}>
