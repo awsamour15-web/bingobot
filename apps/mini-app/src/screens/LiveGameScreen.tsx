@@ -723,21 +723,7 @@ export default function LiveGameScreen() {
   return (
     <div style={{ height: '100dvh', background: 'linear-gradient(180deg, #17102f 0%, #13102b 100%)', color: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
 
-      {/* ── STATS ROW ── */}
-      <div style={{ background: '#17102f', borderBottom: '1px solid rgba(124,58,237,0.22)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(5,1fr)' }}>
-        {[
-          { label: 'GAME ID',   value: round.id.slice(-6).toUpperCase() },
-          { label: 'PLAYERS',  value: game.playerCount },
-          { label: 'BET',      value: round.stake },
-          { label: 'DERASH',   value: Math.round(game.derash) },
-          { label: 'CALLED',   value: game.calledNumbers.size },
-        ].map(({ label, value }, i) => (
-          <div key={label} style={{ textAlign: 'center', padding: '7px 3px', borderRight: i < 4 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-            <div style={{ fontSize: 10, color: '#c4b5fd', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
-            <div style={{ fontSize: 17, fontWeight: 900, color: '#f0f4ff' }}>{value}</div>
-          </div>
-        ))}
-      </div>
+      {/* ── ROUND META lives inside the board header now ── */}
 
       {/* ── PATTERN BADGE — hidden ── */}
 
@@ -752,6 +738,12 @@ export default function LiveGameScreen() {
 
         {/* ══ LEFT: 1–75 bingo board ══ */}
         <div style={{ width: '47%', flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', borderRight: '1px solid rgba(124,58,237,0.2)', background: '#13102b' }}>
+
+          {/* ROUND META */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', flexShrink: 0, borderBottom: '1px solid rgba(124,58,237,0.16)' }}>
+            <span style={{ fontSize: 10, fontWeight: 900, color: '#c4b5fd', letterSpacing: 0.8, textTransform: 'uppercase' }}>Round {round.id.slice(-6).toUpperCase()}</span>
+            <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7fc0', letterSpacing: 0.8, textTransform: 'uppercase' }}>{game.phase}</span>
+          </div>
 
           {/* B I N G O headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, padding: '4px 3px 2px', flexShrink: 0 }}>

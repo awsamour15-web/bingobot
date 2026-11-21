@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Gift, TicketPercent, Trophy } from 'lucide-react';
+import { Eye, Gamepad2, Gift, TicketPercent } from 'lucide-react';
 import { initAuth } from '../lib/auth';
 import { getProfile, redeemCoupon, getAvailableCoupons, getSystemStats, type AvailableCoupon } from '../lib/api';
 
@@ -66,7 +66,7 @@ function GameCard({ game }: { game: Game }) {
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        minHeight: game.category === 'coming' ? 76 : 130,
+        minHeight: game.category === 'coming' ? 96 : 168,
         background: 'linear-gradient(180deg,rgba(22,29,43,0.98),rgba(11,15,25,0.98))',
         border: `1px solid ${isAvailable ? 'rgba(98,211,186,0.34)' : 'rgba(170,187,178,0.12)'}`,
         borderRadius: 18,
@@ -99,7 +99,7 @@ function GameCard({ game }: { game: Game }) {
           <div style={{ width: 22, height: 22, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#63d4ba', animation: 'lobbyCardSpin 0.7s linear infinite' }} />
         </div>
       )}
-      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 56 : 84, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', flex: 1, minHeight: game.category === 'coming' ? 96 : 150, background: poster.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 12 }}>
         {game.posterSrc && <img src={game.posterSrc} alt={`${game.title} poster`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg,rgba(255,255,255,0.1),transparent 34%), linear-gradient(145deg,transparent 35%,rgba(0,0,0,0.58))' }} />
         <div style={{ position: 'absolute', left: '50%', top: '13%', width: 100, height: 100, transform: 'translateX(-50%)', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.22)', boxShadow: '0 0 28px rgba(75,221,187,0.2)', opacity: 0.75 }} />
@@ -330,36 +330,47 @@ export default function GamesLobbyScreen() {
         @media (min-width: 560px) { .lobby-root { max-width: 560px; } }
       `}</style>
 
-      <div style={{ height: 76, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(134,165,226,0.14)', boxSizing: 'border-box', background: 'rgba(7,11,20,0.66)', backdropFilter: 'blur(10px)' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#6ed4bd', fontWeight: 900, letterSpacing: '0.16em' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#63d4ba', animation: 'lobbyLivePulse 1.8s ease-out infinite' }} /> MADA PLAY
+      <div style={{ padding: '14px 20px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 12, background: 'linear-gradient(135deg, #63d4ba, #2c8b9f)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#08201b', boxShadow: '0 6px 16px rgba(52,202,176,0.35)' }}>
+              <Gamepad2 size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#8ae5d0', fontWeight: 900, letterSpacing: '0.16em' }}>MADA PLAY</div>
+              <div style={{ marginTop: 2, fontSize: 15, fontWeight: 900, color: '#f4f7fb' }}>Choose your game</div>
+            </div>
           </div>
-          <div style={{ marginTop: 3, fontSize: 17, fontWeight: 900, color: '#f4f7fb' }}>Choose your game</div>
+          <button onClick={() => navigate('/wallet')} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', background: 'rgba(13,20,34,0.88)', border: '1px solid rgba(134,165,226,0.22)', borderRadius: 12, color: '#fff', cursor: 'pointer' }}>
+            <Eye size={13} color="#8e9db4" />
+            <span style={{ fontSize: 9, fontWeight: 900, color: '#95a1b4', letterSpacing: '0.06em' }}>BALANCE</span>
+            <span style={{ fontSize: 11, fontWeight: 900, color: '#f3cf64' }}>{mainBalance === null ? '...' : `${mainBalance.toFixed(2)} ETB`}</span>
+          </button>
         </div>
-        <button onClick={() => navigate('/wallet')} style={{ width: 158, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', background: 'rgba(13,20,34,0.88)', border: '1px solid rgba(134,165,226,0.22)', borderRadius: 14, color: '#fff', cursor: 'pointer', boxShadow: '0 10px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.07)' }}>
-          <div style={{ textAlign: 'left', lineHeight: 1.3, fontSize: 8, fontWeight: 900, color: '#95a1b4' }}>
-            <div>MAIN <span style={{ color: '#f3cf64', marginLeft: 4 }}>{balanceLoading ? '...' : mainBalance === null ? '...' : `${mainBalance.toFixed(2)} ETB`}</span></div>
-            <div>PLAY <span style={{ color: '#61d9ba', marginLeft: 5 }}>{balanceLoading ? '...' : playBalance === null ? '...' : `${playBalance.toFixed(2)} ETB`}</span></div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 26, fontWeight: 1000, color: '#f8fbff', letterSpacing: '-0.02em', lineHeight: 1.05 }}>
+            Play <span style={{ background: 'linear-gradient(90deg,#63d4ba,#2c8b9f)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>bold.</span>
           </div>
-          <Eye size={16} color="#8e9db4" />
-        </button>
+          <div style={{ marginTop: 5, color: '#8b9bb0', fontSize: 12, fontWeight: 700 }}>Pick a game and make your move</div>
+        </div>
       </div>
 
-      <button onClick={() => navigate('/wallet')} style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 'calc(100% - 40px)', minHeight: 82, margin: '16px 20px 0', padding: '14px 15px', overflow: 'hidden', border: '1px solid rgba(97,213,186,0.28)', borderRadius: 20, background: 'linear-gradient(110deg, rgba(18,51,47,0.95) 0%, rgba(16,35,58,0.95) 62%, rgba(39,61,105,0.9) 150%)', color: '#f5f8ff', textAlign: 'left', cursor: 'pointer', boxShadow: '0 14px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 80, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.14),transparent)', animation: 'lobbyShimmer 4.5s ease-in-out infinite', pointerEvents: 'none' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 13, background: 'linear-gradient(145deg,#66dec2,#2c8b9f)', color: '#08201b', boxShadow: '0 6px 16px rgba(52,202,176,0.22)' }}>
+      <div onClick={() => navigate('/wallet')} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: 'calc(100% - 40px)', minHeight: 84, margin: '14px 20px 0', padding: '14px 15px', overflow: 'hidden', border: '1px solid rgba(97,213,186,0.28)', borderRadius: 20, background: 'linear-gradient(110deg, rgba(18,51,47,0.95) 0%, rgba(16,35,58,0.95) 62%, rgba(39,61,105,0.9) 150%)', color: '#f5f8ff', textAlign: 'left', cursor: 'pointer', boxShadow: '0 14px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 90, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.14),transparent)', animation: 'lobbyShimmer 4.5s ease-in-out infinite', pointerEvents: 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1, flex: 1 }}>
+          <div style={{ display: 'grid', placeItems: 'center', width: 44, height: 44, borderRadius: 13, background: 'linear-gradient(145deg,#66dec2,#2c8b9f)', color: '#08201b', boxShadow: '0 6px 16px rgba(52,202,176,0.22)' }}>
             <Gift size={21} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 10, color: '#9ae1d1', fontWeight: 800, letterSpacing: '0.12em' }}>LIMITED PROMOTION</div>
             <div style={{ marginTop: 4, fontSize: 15, fontWeight: 950, fontStyle: 'italic', color: '#fff' }}>BONUS ON YOUR NEXT DEPOSIT</div>
           </div>
         </div>
-        <span style={{ position: 'relative', zIndex: 1, marginLeft: 'auto', color: '#7ee2cc', fontSize: 24, fontWeight: 900 }}>›</span>
+        <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
+          <button onClick={() => navigate('/wallet')} style={{ border: 0, cursor: 'pointer', borderRadius: 999, padding: '9px 16px', background: 'linear-gradient(90deg,#22c77e,#16a05e)', color: '#fff', fontSize: 10, fontWeight: 900, letterSpacing: '0.06em', boxShadow: '0 4px 14px rgba(34,199,126,0.4)' }}>CLAIM</button>
+        </div>
         <div style={{ position: 'absolute', right: -18, top: -35, width: 130, height: 130, borderRadius: '50%', background: 'rgba(98,175,255,0.2)', filter: 'blur(6px)' }} />
-      </button>
+      </div>
 
       <div style={{ margin: '16px 20px 0', padding: '12px', borderRadius: 16, background: 'rgba(13,20,34,0.82)', border: '1px solid rgba(134,165,226,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -372,22 +383,25 @@ export default function GamesLobbyScreen() {
         {couponMessage && <div role="status" style={{ marginTop: 7, color: couponStatus === 'success' ? '#55d993' : '#ff8c82', fontSize: 10, fontWeight: 700 }}>{couponMessage}</div>}
       </div>
 
-      <div style={{ padding: '30px 20px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 22, fontWeight: 1000, color: '#f5f7fb', letterSpacing: '-0.02em' }}>
-            <Trophy size={22} color="#f3cf64" /> PLAY NOW
+      <div style={{ padding: '24px 20px 0' }}>
+        <div style={{ fontSize: 11, color: '#8ae5d0', fontWeight: 900, letterSpacing: '0.16em' }}>AVAILABLE GAMES</div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+          <div>
+            <div style={{ fontSize: 25, fontWeight: 1000, color: '#f8fbff', letterSpacing: '-0.02em', lineHeight: 1.05 }}>
+              Pick your <span style={{ background: 'linear-gradient(90deg,#63d4ba,#2c8b9f)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>fight.</span>
+            </div>
+            <div style={{ marginTop: 6, color: '#8b9bb0', fontSize: 12, fontWeight: 700, maxWidth: 220, lineHeight: 1.5 }}>Choose wisely — every round is for keeps</div>
           </div>
           <span style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(99,212,186,0.1)', color: '#63d4ba', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em' }}>
             {availableGames.filter(game => game.category !== 'coming').length} LIVE PICKS
           </span>
         </div>
-        <div style={{ marginTop: 4, color: '#8b9bb0', fontSize: 12, fontWeight: 700 }}>Pick a game and make your move</div>
         <div style={{ display: 'flex', gap: 7, marginTop: 16, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {([['all', 'ALL'], ['live', 'LIVE'], ['instant', 'INSTANT'], ['coming', 'COMING']] as const).map(([filter, label]) => (
             <button key={filter} onClick={() => setActiveFilter(filter)} style={{ border: `1px solid ${activeFilter === filter ? 'rgba(99,212,186,0.6)' : 'rgba(134,165,226,0.16)'}`, borderRadius: 999, padding: '7px 12px', background: activeFilter === filter ? 'rgba(99,212,186,0.16)' : 'rgba(15,23,37,0.7)', color: activeFilter === filter ? '#8ae5d0' : '#8794a8', fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginTop: 14 }}>
           {filteredGames.map((game, i) => (
             <div key={game.id} className="lobby-card" style={{ animation: `lobbySlideUp 0.35s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both` }}>
               <GameCard game={game} />
