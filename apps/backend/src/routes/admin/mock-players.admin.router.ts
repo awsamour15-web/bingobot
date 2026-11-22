@@ -252,23 +252,27 @@ router.post('/join-round', asyncHandler(async (req: Request, res: Response): Pro
 
   const stake = parseFloat(round.stake.toString());
 
-  // Push the round's start_time 2 minutes into the future so the scheduler
-  // doesn't auto-start it while we're crediting wallets and inserting entries
+  // Hold the round open while we credit wallets and insert entries. This is
+  // reset to a normal ~40s countdown at the end of this handler, so the game
+  // doesn't sit idle for minutes after everyone has already joined.
   await prisma.gameRound.update({
     where: { id: roundId },
-    data: { start_time: new Date(Date.now() + 2 * 60 * 1000) },
+    data: { start_time: new Date(Date.now() + 180 * 1000) },
   });
 
-  // Step 1: Credit balances for all mock players upfront (sequential to avoid wallet conflicts)
-  for (let i = 0; i < mockPlayers.length; i++) {
-    const player = mockPlayers[i]!;
+  // Step 1: Credit balances for all mock players upfront. Bounded concurrency —
+  // the old sequential loop took ~1.5s per player, so joining hundreds of mock
+  // players left the round idle for minutes.
+  const CREDIT_CONCURRENCY = 20;
+  const creditTag = Date.now();
+  const creditOne = async (player: { id: string }, i: number): Promise<void> => {
     if (balance > 0) {
       await WalletService.credit(
         player.id,
         WalletType.play,
         balance,
         TxType.admin_credit,
-        `mock_auto_${Date.now()}_${i}`,
+        `mock_auto_${creditTag}_${i}`,
         'Admin balance for mock round join',
       );
     } else {
@@ -283,11 +287,16 @@ router.post('/join-round', asyncHandler(async (req: Request, res: Response): Pro
           WalletType.play,
           stake - totalBal,
           TxType.admin_credit,
-          `mock_stake_${Date.now()}_${i}`,
+          `mock_stake_${creditTag}_${i}`,
           'Auto stake credit for mock player',
         );
       }
     }
+  };
+  for (let start = 0; start < mockPlayers.length; start += CREDIT_CONCURRENCY) {
+    await Promise.allSettled(
+      mockPlayers.slice(start, start + CREDIT_CONCURRENCY).map((p, j) => creditOne(p, start + j)),
+    );
   }
 
   const TOTAL_CARTELAS = 800;
@@ -327,12 +336,25 @@ router.post('/join-round', asyncHandler(async (req: Request, res: Response): Pro
     })),
   });
 
-  // Step 4: Recalculate derash
+  // Step 4: Recalculate derash and restore a normal ~40s countdown now that
+  // every mock player is in the round (the 3-minute hold above is only a
+  // safety window for the wallet/insert work).
+  const stillPending = await prisma.gameRound.findUnique({
+    where: { id: roundId },
+    select: { status: true, commission_pct: true },
+  });
+  if (!stillPending || stillPending.status !== 'pending') {
+    res.status(409).json({ error: 'ROUND_NOT_PENDING', message: 'Round is no longer pending' });
+    return;
+  }
   const entryCount = await prisma.roundEntry.count({ where: { round_id: roundId, is_watching: false } });
-  const commissionPct = (await prisma.gameRound.findUnique({ where: { id: roundId }, select: { commission_pct: true } }))?.commission_pct ?? 20;
+  const commissionPct = stillPending.commission_pct ?? 20;
   await prisma.gameRound.update({
     where: { id: roundId },
-    data: { derash: entryCount * stake * (1 - commissionPct / 100) },
+    data: {
+      derash: entryCount * stake * (1 - commissionPct / 100),
+      start_time: new Date(Date.now() + 40 * 1000),
+    },
   });
 
   const results = mockPlayers.map((p, i) => ({

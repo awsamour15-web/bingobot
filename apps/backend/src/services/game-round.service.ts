@@ -354,7 +354,10 @@ export const GameRoundService = {
 
     // Collect payments from all players in the background (non-blocking)
     // Players who can't pay are removed from the round before NCE starts
+    const paymentsStartedAt = Date.now();
+    console.log(`[GameRound] Round ${roundId} active (${finalEntryCount} entries) — collecting payments…`);
     void GameRoundService.collectRoundPayments(roundId).then(() => {
+      console.log(`[GameRound] Payments collected for round ${roundId} in ${Date.now() - paymentsStartedAt}ms — starting NCE`);
       // Kick off number calling after payments are collected
       nce.start(roundId).catch((err) => {
         console.error(`[GameRoundService] Failed to start NCE for round ${roundId}:`, err);
@@ -382,22 +385,26 @@ export const GameRoundService = {
 
     const entries = await prisma.roundEntry.findMany({
       where: { round_id: roundId, is_watching: false },
-      select: { player_id: true, cartela_number: true },
+      select: { player_id: true, cartela_number: true, player: { select: { is_mock: true } } },
     });
 
     // Group entries by player
     const byPlayer = new Map<string, number[]>();
+    const mockPlayerIds = new Set<string>();
     for (const e of entries) {
       if (!byPlayer.has(e.player_id)) byPlayer.set(e.player_id, []);
       byPlayer.get(e.player_id)!.push(e.cartela_number);
+      if (e.player?.is_mock) mockPlayerIds.add(e.player_id);
     }
 
     const removedPlayers: string[] = [];
 
     for (const [playerId, cartelas] of byPlayer) {
-      // Skip mock players — their payments are handled by mock bot
-      const player = await prisma.player.findUnique({ where: { id: playerId }, select: { is_mock: true } });
-      if (player?.is_mock) continue;
+      // Skip mock players — their payments are handled by mock bot.
+      // (is_mock comes from the single entries query above; the old per-player
+      // findUnique loop added 100+ sequential queries — ~10-15s — before NCE
+      // could start on bot-filled rounds.)
+      if (mockPlayerIds.has(playerId)) continue;
 
       const totalStake = stake * cartelas.length;
 
