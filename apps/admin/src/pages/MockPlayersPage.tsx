@@ -206,7 +206,7 @@ function ResetBalancesCard({ onDone }: { onDone: () => void }) {
       const r = await adminApiRequest<{ updated: number; amount: number }>(
         'POST', '/api/admin/mock-players/reset-balances', { amount: n },
       );
-      setMsg(`✅ Reset ${r.updated} mock player play wallets to ${r.amount} ETB`);
+      setMsg(`✅ Reset ${r.updated} mock player wallets (main + play) to ${r.amount} ETB`);
       onDone();
     } catch (ex: unknown) {
       setErr((ex as Error).message ?? 'Failed');
@@ -215,7 +215,7 @@ function ResetBalancesCard({ onDone }: { onDone: () => void }) {
 
   return (
     <Card style={{ marginBottom: 20 }}>
-      <CardHeader title="Reset Play Balances" subtitle="Set all mock player play wallets to a fixed amount" />
+      <CardHeader title="Reset All Balances" subtitle="Set every mock player wallet (main + play) to a fixed amount" />
       {err && <Alert type="error">{err}</Alert>}
       {msg && <Alert type="success">{msg}</Alert>}
       <form onSubmit={handleReset} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>

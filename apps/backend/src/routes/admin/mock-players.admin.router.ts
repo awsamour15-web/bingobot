@@ -350,7 +350,7 @@ router.post('/join-round', asyncHandler(async (req: Request, res: Response): Pro
 }));
 
 // POST /api/admin/mock-players/reset-balances
-// Wipe all mock player play-wallet balances and set each to the given amount (default 200)
+// Wipe ALL mock player wallet balances (main + play) and set each to the given amount (default 200)
 router.post('/reset-balances', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { amount = 200 } = req.body as { amount?: number };
   if (typeof amount !== 'number' || amount < 0) {
@@ -358,25 +358,25 @@ router.post('/reset-balances', asyncHandler(async (req: Request, res: Response):
     return;
   }
 
-  // Get all mock players with their play wallets
-  const mockPlayers = await prisma.$queryRaw<Array<{ id: string; wallet_id: string }>>`
-    SELECT p.id, w.id AS wallet_id
-    FROM players p
-    JOIN wallets w ON w.player_id = p.id AND w.type = 'play'
+  // Get every wallet (any type: main, play, ...) belonging to a mock player
+  const mockWallets = await prisma.$queryRaw<Array<{ wallet_id: string }>>`
+    SELECT w.id AS wallet_id
+    FROM wallets w
+    JOIN players p ON p.id = w.player_id
     WHERE p.is_mock = true
   `;
 
-  if (!mockPlayers.length) {
-    res.json({ success: true, updated: 0 });
+  if (!mockWallets.length) {
+    res.json({ success: true, updated: 0, amount });
     return;
   }
 
-  // Set balance directly to the target amount
+  // Set balance directly to the target amount across all mock player wallets
   await prisma.$executeRawUnsafe(
-    `UPDATE wallets SET balance = ${amount} WHERE id = ANY(ARRAY[${mockPlayers.map((p) => `'${p.wallet_id}'`).join(',')}]::text[])`
+    `UPDATE wallets SET balance = ${amount} WHERE id = ANY(ARRAY[${mockWallets.map((w) => `'${w.wallet_id}'`).join(',')}]::text[])`
   );
 
-  res.json({ success: true, updated: mockPlayers.length, amount });
+  res.json({ success: true, updated: mockWallets.length, amount });
 }));
 
 // PATCH /api/admin/mock-players/:id/rename
