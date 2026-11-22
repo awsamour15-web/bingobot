@@ -553,7 +553,7 @@ function BotConfigCard() {
 
   return (
     <Card style={{ marginBottom: 20 }}>
-      <CardHeader title="Auto-Join Bot" subtitle="Mock players automatically join new pending rounds with a 300ms stagger" />
+      <CardHeader title="Auto-Join Bot" subtitle="Mock players automatically join new pending rounds with a randomized stagger" />
       {msg && <Alert type={msg === 'Saved' ? 'success' : 'error'}>{msg}</Alert>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
         <div>
@@ -570,8 +570,8 @@ function BotConfigCard() {
             Guaranteed Win (one mock player wins each round)
           </label>
         </div>
-        <Field label="Players per round (1–50)">
-          <input style={inputCss} type="number" min="1" max="50" value={count}
+        <Field label="Players per round (1–500)">
+          <input style={inputCss} type="number" min="1" max="500" value={count}
             onChange={(e) => setCount(e.target.value)} />
         </Field>
         <Field label="Balance per player (0 = auto-cover stake)">

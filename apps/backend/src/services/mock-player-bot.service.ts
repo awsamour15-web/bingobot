@@ -467,13 +467,15 @@ export const MockPlayerBotService = {
         for (let i = 0; i < selected.length; i++) {
           const cartela = available[i]!;
           const count = offset + i + 1;
-          // fire-and-forget each broadcast with a growing delay
+          // Randomized human-like selection timing — feels real rather than robotic/uniform
+          const delay = 50 + Math.floor(Math.random() * 300);
+          // fire-and-forget each broadcast with a randomized delay
           void (async (c: number, n: number, delay: number) => {
             await new Promise(resolve => setTimeout(resolve, delay));
             if (GameRoundService._onCartelaTaken) {
               await GameRoundService._onCartelaTaken(roundId, [c], n, undefined);
             }
-          })(cartela, count, i * 100);
+          })(cartela, count, delay);
         }
       }
     } catch (err) {
