@@ -819,6 +819,18 @@ export default function LiveGameScreen() {
         {/* ══ RIGHT PANEL ══ */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#13102b' }}>
 
+          {/* PAYOUT BALANCE */}
+          <div style={{ padding: '10px 11px', flexShrink: 0, background: '#17102f', borderBottom: '1px solid rgba(124,58,237,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 10, color: '#7a95b8', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Payout Balance</span>
+              <span style={{ fontSize: 9, color: '#8b7fc0', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>ETB</span>
+            </div>
+            <div style={{ marginTop: 4, fontSize: 22, fontWeight: 900, color: '#fbbf24', letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums' }}>
+              {Math.round(game.derash)}
+            </div>
+            <div style={{ marginTop: 2, fontSize: 10, color: '#8b7fc0', fontWeight: 600 }}>Current payout balance</div>
+          </div>
+
           {/* LAST CALLED */}
           <div style={{ padding: '13px 11px 11px', flexShrink: 0, background: '#17102f', borderBottom: '1px solid rgba(124,58,237,0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
