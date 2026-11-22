@@ -270,7 +270,7 @@ export const MockPlayerBotService = {
 
       const allowedStakes = await getBotStakes();
       if (!allowedStakes.has(stake)) {
-        console.log(`[MockBot] Skipping round ${roundId} — stake ${stake} not in allowed set [${[...allowedStakes].join(',')}]`);
+        console.log(`[MockBot] Skipping round ${roundId} — stake ${stake} not in allowed set [${[...allowedStakes].join(',')}] (enable it in Admin → Mock Players → Active on stakes)`);
         return;
       }
 
@@ -363,15 +363,37 @@ export const MockPlayerBotService = {
         return;
       }
 
-      // Push start_time forward to give us a safe window for crediting + inserting
+      const joinStartedAt = Date.now();
+
+      // Push start_time far forward to buy a safe window. Joining N players means
+      // N wallet credit/debit transactions; with 100+ mock players this can take
+      // longer than the normal 40s countdown, so we hold the round open and only
+      // reset the countdown once everyone is in.
       await prisma.gameRound.update({
         where: { id: roundId },
-        data: { start_time: new Date(Date.now() + 45 * 1000) },
+        data: { start_time: new Date(Date.now() + 180 * 1000) },
       });
 
-      // Credit all players upfront sequentially
-      for (let i = 0; i < selected.length; i++) {
-        const player = selected[i]!;
+      // Insert round entries FIRST — this makes the round non-empty immediately so
+      // the scheduler can't void it as "0 players" while the wallet ops are running.
+      // Previously entries were inserted AFTER the slow sequential wallet loop, so
+      // rounds were voided before mock players ever appeared (they "never selected
+      // a cartela" because their entries landed in an already-voided round).
+      await prisma.roundEntry.createMany({
+        data: selected.map((player, i) => ({
+          round_id: roundId,
+          player_id: player.id,
+          cartela_number: available[i]!,
+          is_watching: false,
+        })),
+        skipDuplicates: true,
+      });
+
+      // Credit + debit each mock player's stake. Run with bounded concurrency —
+      // the old sequential loop took ~2.5 minutes for ~100 players, which let the
+      // scheduler void the round before the join completed.
+      const WALLET_CONCURRENCY = 20;
+      const preparePlayer = async (player: MockPlayerRow, i: number): Promise<void> => {
         if (botBalance > 0) {
           await WalletService.credit(
             player.id,
@@ -398,45 +420,37 @@ export const MockPlayerBotService = {
             );
           }
         }
-      }
 
-      // Bulk insert all round entries at once
-      await prisma.roundEntry.createMany({
-        data: selected.map((player, i) => ({
-          round_id: roundId,
-          player_id: player.id,
-          cartela_number: available[i]!,
-          is_watching: false,
-        })),
-        skipDuplicates: true,
-      });
-
-      // Deduct stake from each mock player so game_entry transactions exist
-      // This ensures derash is correctly calculated from actual payments
-      for (let i = 0; i < selected.length; i++) {
-        const player = selected[i]!;
+        // Deduct stake from each mock player so game_entry transactions exist.
+        // This ensures derash is correctly calculated from actual payments.
         try {
-          await WalletService.debit(
-            player.id,
-            WalletType.play,
-            stake,
-            TxType.game_entry,
-            roundId,
-            'Mock bot game entry',
-          );
+          await WalletService.debit(player.id, WalletType.play, stake, TxType.game_entry, roundId, 'Mock bot game entry');
         } catch {
           // If insufficient funds, try main wallet
           try {
-            await WalletService.debit(
-              player.id,
-              WalletType.main,
-              stake,
-              TxType.game_entry,
-              roundId,
-              'Mock bot game entry',
-            );
+            await WalletService.debit(player.id, WalletType.main, stake, TxType.game_entry, roundId, 'Mock bot game entry');
           } catch { /* ignore — mock player may have zero balance */ }
         }
+      };
+
+      let walletFailures = 0;
+      for (let start = 0; start < selected.length; start += WALLET_CONCURRENCY) {
+        const chunk = selected.slice(start, start + WALLET_CONCURRENCY);
+        const results = await Promise.allSettled(chunk.map((p, j) => preparePlayer(p, start + j)));
+        walletFailures += results.filter((r) => r.status === 'rejected').length;
+      }
+      if (walletFailures > 0) {
+        console.warn(`[MockBot] ${walletFailures} wallet op(s) failed while joining round ${roundId} — entries kept`);
+      }
+
+      // Final guard: the round may have been voided by another path meanwhile
+      const afterJoin = await prisma.gameRound.findUnique({
+        where: { id: roundId },
+        select: { status: true },
+      });
+      if (!afterJoin || afterJoin.status !== 'pending') {
+        console.log(`[MockBot] Round ${roundId} left pending state during join — aborting broadcast`);
+        return;
       }
 
       // Recalculate derash and reset start_time to now+40s so the countdown
@@ -454,7 +468,7 @@ export const MockPlayerBotService = {
         });
       }
 
-      console.log(`[MockBot] Bulk-joined ${selected.length} mock players into round ${roundId}`);
+      console.log(`[MockBot] Bulk-joined ${selected.length} mock players into round ${roundId} in ${Date.now() - joinStartedAt}ms`);
       if (predeterminedWinnerCartelaNumber !== null) {
         console.log(`[MockBot] Predetermined winner: cartela #${predeterminedWinnerCartelaNumber} → ${selected[0]!.username}`);
       }

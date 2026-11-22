@@ -6,7 +6,7 @@ import { GameRoundService } from './game-round.service.js';
 import { nce } from './nce.service.js';
 import { GameStatus, WinPattern } from '@mada/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
-import { getConfigInt, getConfigFloat, getConfigOrDefault, setConfig } from '../lib/config-cache.js';
+import { getConfigInt, getConfigFloat, getConfigBool, getConfigOrDefault, setConfig } from '../lib/config-cache.js';
 
 // Default auto round stakes (comma-separated) used when `auto_round_stakes` config is unset
 const DEFAULT_AUTO_ROUND_STAKES = '10,20,50';
@@ -31,9 +31,30 @@ async function getAutoRoundStakes(): Promise<number[]> {
     .split(',')
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => Number.isFinite(n) && n > 0);
-  const stakes = parsed.length ? parsed : [10, 20, 50];
-  // de-duplicate + sort ascending for deterministic creation order
-  return [...new Set(stakes)].sort((a, b) => a - b);
+  const stakes = [...new Set(parsed.length ? parsed : [10, 20, 50])].sort((a, b) => a - b);
+
+  // When the mock bot is enabled it is the primary source of players. Creating
+  // rounds at stakes the bot is configured to skip guarantees an endless
+  // void → recreate → skip loop (0 players every time), so only create rounds
+  // the bot will actually join. Falls back to the bot's own stake list when the
+  // two configs don't overlap at all.
+  const botEnabled = await getConfigBool('mock_bot_enabled', false);
+  if (!botEnabled) return stakes;
+
+  const botRaw = await getConfigOrDefault('mock_bot_stakes', '10,20,50');
+  const botStakes = [...new Set(
+    botRaw.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => Number.isFinite(n) && n > 0),
+  )].sort((a, b) => a - b);
+  if (botStakes.length === 0) return stakes;
+
+  const joined = stakes.filter((s) => botStakes.includes(s));
+  if (joined.length > 0) return joined;
+
+  console.warn(
+    `[Scheduler] auto_round_stakes [${stakes.join(',')}] and mock_bot_stakes [${botStakes.join(',')}] ` +
+    `do not overlap — using bot stakes [${botStakes.join(',')}]`,
+  );
+  return botStakes;
 }
 
 // Jackpot round: one daily round at a configured stake (default 100 Birr)
