@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { WalletService } from '../../services/wallet.service.js';
 import { GameRoundService } from '../../services/game-round.service.js';
 import { invalidateConfigCache } from '../../lib/config-cache.js';
+import { asyncHandler } from '../../lib/error-handler.js';
 
 const router: RouterType = Router();
 
@@ -19,7 +20,7 @@ const MOCK_USERNAMES = Array.from({ length: MOCK_PLAYER_COUNT }, (_, i) => `mock
 
 // POST /api/admin/mock-players/create
 // Create one or more mock players with custom or auto-generated usernames
-router.post('/create', async (req: Request, res: Response): Promise<void> => {
+router.post('/create', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { usernames, count } = req.body as { usernames?: string[]; count?: number };
 
   // Build the list of usernames to create
@@ -88,11 +89,11 @@ router.post('/create', async (req: Request, res: Response): Promise<void> => {
     message: `${created} mock player(s) created.`,
     players: results,
   });
-});
+}));
 
 
 // Creates the 10 mock players if they don't exist yet
-router.post('/seed', async (_req: Request, res: Response): Promise<void> => {
+router.post('/seed', asyncHandler(async (_req: Request, res: Response): Promise<void> => {
   const results: Array<{ username: string; id: string; created: boolean }> = [];
 
   for (let i = 0; i < MOCK_PLAYER_COUNT; i++) {
@@ -133,7 +134,7 @@ router.post('/seed', async (_req: Request, res: Response): Promise<void> => {
     message: `${created} new mock players created, ${MOCK_PLAYER_COUNT - created} already existed.`,
     players: results,
   });
-});
+}));
 
 // GET /api/admin/mock-players
 // List all mock players with balances
@@ -177,7 +178,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
 // POST /api/admin/mock-players/:id/credit
 // Top-up balance for a single mock player
-router.post('/:id/credit', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/credit', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
   const { amount, walletType } = req.body as { amount?: number; walletType?: string };
 
@@ -202,12 +203,12 @@ router.post('/:id/credit', async (req: Request, res: Response): Promise<void> =>
 
   await WalletService.credit(id, wType, amount, TxType.admin_credit, `mock_credit_${Date.now()}`, 'Admin mock credit');
   res.json({ success: true });
-});
+}));
 
 // POST /api/admin/mock-players/join-round
 // Add one or more mock players to a pending round with auto-assigned cartelas and given balance
 // Body: { roundId, playerIds: string[], balance: number }
-router.post('/join-round', async (req: Request, res: Response): Promise<void> => {
+router.post('/join-round', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { roundId, playerIds, balance } = req.body as {
     roundId?: string;
     playerIds?: string[];
@@ -241,7 +242,7 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
 
   // Verify all are mock players using raw query
   const mockPlayers = await prisma.$queryRawUnsafe<Array<{ id: string; username: string }>>(
-    `SELECT id, username FROM players WHERE id = ANY(ARRAY[${playerIds.map(id => `'${id}'`).join(',')}]::uuid[]) AND is_mock = true`
+    `SELECT id, username FROM players WHERE id = ANY(ARRAY[${playerIds.map(id => `'${id}'`).join(',')}]::text[]) AND is_mock = true`
   );
 
   if (mockPlayers.length !== playerIds.length) {
@@ -346,11 +347,11 @@ router.post('/join-round', async (req: Request, res: Response): Promise<void> =>
   }
 
   res.json({ joined: results, errors: [] });
-});
+}));
 
 // POST /api/admin/mock-players/reset-balances
 // Wipe all mock player play-wallet balances and set each to the given amount (default 200)
-router.post('/reset-balances', async (req: Request, res: Response): Promise<void> => {
+router.post('/reset-balances', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { amount = 200 } = req.body as { amount?: number };
   if (typeof amount !== 'number' || amount < 0) {
     res.status(400).json({ error: 'BAD_REQUEST', message: 'amount must be a non-negative number' });
@@ -372,11 +373,11 @@ router.post('/reset-balances', async (req: Request, res: Response): Promise<void
 
   // Set balance directly to the target amount
   await prisma.$executeRawUnsafe(
-    `UPDATE wallets SET balance = ${amount} WHERE id = ANY(ARRAY[${mockPlayers.map((p) => `'${p.wallet_id}'`).join(',')}]::uuid[])`
+    `UPDATE wallets SET balance = ${amount} WHERE id = ANY(ARRAY[${mockPlayers.map((p) => `'${p.wallet_id}'`).join(',')}]::text[])`
   );
 
   res.json({ success: true, updated: mockPlayers.length, amount });
-});
+}));
 
 // PATCH /api/admin/mock-players/:id/rename
 // Rename a mock player's username
@@ -441,11 +442,11 @@ router.patch('/bot-config', async (req: Request, res: Response): Promise<void> =
 });
 
 // POST /api/admin/mock-players/bot-trigger/:roundId
-router.post('/bot-trigger/:roundId', async (req: Request, res: Response): Promise<void> => {
+router.post('/bot-trigger/:roundId', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { roundId } = req.params as { roundId: string };
   const { MockPlayerBotService } = await import('../../services/mock-player-bot.service.js');
   void MockPlayerBotService.onRoundPending(roundId);
   res.json({ success: true, message: 'Mock bot triggered for round' });
-});
+}));
 
 export default router;

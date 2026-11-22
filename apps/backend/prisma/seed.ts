@@ -79,6 +79,8 @@ async function seedConfig(): Promise<void> {
     { key: 'mock_bot_win_enabled', value: 'false' },
     { key: 'mock_bot_count', value: '3' },
     { key: 'mock_bot_balance', value: '0' },
+    { key: 'mock_bot_stakes', value: '10,20,50' },
+    { key: 'auto_round_stakes', value: '10,20,50' },
   ];
 
   for (const row of defaults) {

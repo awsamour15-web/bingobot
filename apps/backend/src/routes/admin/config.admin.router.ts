@@ -67,6 +67,8 @@ router.put('/config/:key', async (req: Request, res: Response): Promise<void> =>
     'cashback_royal_drop_pct',
     'maintenance_enabled',
     'maintenance_bypass_player_id',
+    // Auto round creation stakes (comma-separated, e.g. "10,20,50")
+    'auto_round_stakes',
   ]);
 
   if (!ALLOWED_CONFIG_KEYS.has(key)) {

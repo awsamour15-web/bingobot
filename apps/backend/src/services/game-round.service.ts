@@ -109,7 +109,25 @@ export const GameRoundService = {
       },
     });
 
+    // Notify the mock player bot to auto-join this newly created round
+    // (it self-guards on pending status + allowed stake + win preset).
+    void GameRoundService._notifyBotCreated(round.id).catch(() => {});
+
     return round.id;
+  },
+
+  /**
+   * Fire-and-forget hook: let the mock player bot auto-join a freshly created round
+   * (pending + stake in allowed set + win preset available). Uses a dynamic import to
+   * avoid a static circular dependency with mock-player-bot.service.
+   */
+  async _notifyBotCreated(roundId: string): Promise<void> {
+    try {
+      const { MockPlayerBotService } = await import('./mock-player-bot.service.js');
+      await MockPlayerBotService.onRoundPending(roundId);
+    } catch {
+      // Bot not enabled / module not ready — round stays open for real players
+    }
   },
 
   /**

@@ -8,7 +8,8 @@ import { GameStatus, WinPattern } from '@mada/shared';
 import { MockPlayerBotService } from './mock-player-bot.service.js';
 import { getConfigInt, getConfigFloat, getConfigOrDefault, setConfig } from '../lib/config-cache.js';
 
-const STAKE_LEVELS = [10, 20, 50];
+// Default auto round stakes (comma-separated) used when `auto_round_stakes` config is unset
+const DEFAULT_AUTO_ROUND_STAKES = '10,20,50';
 const LEAD_TIME_MS = 40_000;
 const DEFAULT_MAX_PLAYERS = 800;
 const CHECK_INTERVAL_MS = 1_000;
@@ -19,6 +20,20 @@ const stakeLastEndedAt = new Map<number, number>();
 
 export function recordStakeEnded(stake: number): void {
   stakeLastEndedAt.set(stake, Date.now());
+}
+
+// Auto round stakes are config-driven (comma-separated, e.g. "10,20,50") so the
+// admin can enable/disable auto round creation per stake without a code deploy.
+// Falls back to the historical default when unset or invalid.
+async function getAutoRoundStakes(): Promise<number[]> {
+  const raw = await getConfigOrDefault('auto_round_stakes', DEFAULT_AUTO_ROUND_STAKES);
+  const parsed = raw
+    .split(',')
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const stakes = parsed.length ? parsed : [10, 20, 50];
+  // de-duplicate + sort ascending for deterministic creation order
+  return [...new Set(stakes)].sort((a, b) => a - b);
 }
 
 // Jackpot round: one daily round at a configured stake (default 100 Birr)
@@ -372,7 +387,9 @@ export const RoundScheduler = {
 
       const winning_pattern = JSON.stringify([WinPattern.any_line, WinPattern.corners]);
 
-      for (const stake of STAKE_LEVELS) {
+      const autoStakes = await getAutoRoundStakes();
+
+      for (const stake of autoStakes) {
         if (pendingStakes.has(stake)) continue;
         if (activeStakes.has(stake)) {
           console.log(`[Scheduler] Skipping round creation for stake=${stake} - a round is still active`);
