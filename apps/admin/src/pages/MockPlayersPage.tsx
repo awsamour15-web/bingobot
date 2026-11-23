@@ -726,6 +726,10 @@ export function MockPlayersPage() {
   const [creditTarget, setCreditTarget] = useState<MockPlayer | null>(null);
   const [renameTarget, setRenameTarget] = useState<MockPlayer | null>(null);
 
+  const [countdownSeconds, setCountdownSeconds] = useState(0);
+const [countdownActive, setCountdownActive] = useState(false);
+const [countdownInterval, setCountdownInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+
   const fetchPlayers = useCallback(async () => {
     setFetchErr(null);
     try {
@@ -757,6 +761,16 @@ export function MockPlayersPage() {
 
       {fetchErr && <Alert type="error">{fetchErr}</Alert>}
 
+      {/* Cartela selection countdown */}
+      {countdownActive && countdownSeconds > 0 && (
+        <Alert type="info">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 32, fontWeight: 700, color: '#f6e05e' }}>{countdownSeconds}</div>
+            <span>seconds until round starts</span>
+          </div>
+        </Alert>
+      )}
+
       <CreateRoundCard onCreated={fetchPlayers} />
       <CreateMockPlayerCard onCreated={fetchPlayers} />
       <BulkRenameCard playerCount={players.length} onDone={fetchPlayers} />
@@ -769,7 +783,7 @@ export function MockPlayersPage() {
       <BotConfigCard />
 
       {players.length > 0 && (
-        <JoinRoundCard players={players} onJoined={fetchPlayers} />
+        <JoinRoundCard players={players} onJoined={() => { fetchPlayers(); setCountdownActive(true); setCountdownSeconds(40); if (countdownInterval) clearInterval(countdownInterval); const newInterval = setInterval(() => setCountdownSeconds((s) => Math.max(0, s - 1)), 1000); setCountdownInterval(newInterval); }} />
       )}
 
       <Card>
