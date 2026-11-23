@@ -728,7 +728,16 @@ export function MockPlayersPage() {
 
   const [countdownSeconds, setCountdownSeconds] = useState(0);
 const [countdownActive, setCountdownActive] = useState(false);
-const [countdownInterval, setCountdownInterval] = useState<ReturnType<typeof setInterval> | null>(null);
+const [countdownRunning, setCountdownRunning] = useState(false);
+
+// Countdown effect — starts when the round join signals us to
+useEffect(() => {
+  if (!countdownRunning) return;
+  setCountdownActive(true);
+  setCountdownSeconds(40);
+  const interval = setInterval(() => setCountdownSeconds((s) => Math.max(0, s - 1)), 1000);
+  return () => clearInterval(interval);
+}, [countdownRunning]);
 
   const fetchPlayers = useCallback(async () => {
     setFetchErr(null);
@@ -783,7 +792,7 @@ const [countdownInterval, setCountdownInterval] = useState<ReturnType<typeof set
       <BotConfigCard />
 
       {players.length > 0 && (
-        <JoinRoundCard players={players} onJoined={() => { fetchPlayers(); setCountdownActive(true); setCountdownSeconds(40); if (countdownInterval) clearInterval(countdownInterval); const newInterval = setInterval(() => setCountdownSeconds((s) => Math.max(0, s - 1)), 1000); setCountdownInterval(newInterval); }} />
+        <JoinRoundCard players={players} onJoined={() => { fetchPlayers(); setCountdownRunning(true); }} />
       )}
 
       <Card>
