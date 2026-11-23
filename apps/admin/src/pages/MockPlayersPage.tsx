@@ -731,13 +731,24 @@ const [countdownActive, setCountdownActive] = useState(false);
 const [countdownRunning, setCountdownRunning] = useState(false);
 
 // Countdown effect — starts when the round join signals us to
+// Countdown effect — starts when the round join signals us to
 useEffect(() => {
-  if (!countdownRunning) return;
+  if (!countdownRunning) {
+    // When countdownRunning becomes false, clean up and hide the banner
+    setCountdownActive(false);
+    setCountdownSeconds(0);
+    return;
+  }
+  // New round join — start a fresh 40s countdown
   setCountdownActive(true);
   setCountdownSeconds(40);
   const interval = setInterval(() => setCountdownSeconds((s) => Math.max(0, s - 1)), 1000);
+  // When the timer reaches 0, automatically stop the countdown
+  if (countdownSeconds <= 0) {
+    setCountdownRunning(false);
+  }
   return () => clearInterval(interval);
-}, [countdownRunning]);
+}, [countdownRunning, countdownSeconds]);
 
   const fetchPlayers = useCallback(async () => {
     setFetchErr(null);
