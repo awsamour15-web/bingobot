@@ -731,7 +731,10 @@ export default function LiveGameScreen() {
 @keyframes lastCalledPulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
 @keyframes winnerPulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.15) rotate(5deg); } }
 @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }`}</style>
+@keyframes shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes revealUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes goldGlow { 0%, 100% { box-shadow: 0 0 22px rgba(247,200,77,0.35), inset 0 -6px 14px rgba(0,0,0,0.25); transform: scale(1); } 50% { box-shadow: 0 0 42px rgba(247,200,77,0.6), inset 0 -6px 14px rgba(0,0,0,0.25); transform: scale(1.05); } }
+@keyframes sweep { from { transform: translateX(-110%); } to { transform: translateX(210%); } }`}</style>
 
       {/* ── MAIN: LEFT board + RIGHT panel ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
@@ -1065,83 +1068,133 @@ export default function LiveGameScreen() {
           }
           return w;
         })();
+
+        // Staggered entrance helper
+        const anim = (delay: number) => ({ animation: `revealUp 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}s both` });
+        // Podium medals: gold / silver / bronze / slate
+        const medalBg = (i: number) =>
+          i === 0 ? 'linear-gradient(135deg,#ffe9a8,#f7c84d 55%,#c9971f)'
+            : i === 1 ? 'linear-gradient(135deg,#f1f5f9,#cbd5e1 55%,#94a3b8)'
+              : i === 2 ? 'linear-gradient(135deg,#f5c9a5,#d9915b 55%,#a86a35)'
+                : 'linear-gradient(135deg,#94a3b8,#64748b 55%,#475569)';
+        const medalFg = (i: number) => (i <= 2 ? '#2a2110' : '#fff');
+
         return (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 100,
-            background: 'radial-gradient(ellipse at 50% 0%, rgba(80,113,170,0.26) 0%, rgba(9,14,26,0.98) 48%, #070d18 100%)',
+            background: 'radial-gradient(120% 75% at 50% -5%, rgba(247,200,77,0.13) 0%, rgba(6,9,17,0.97) 42%, #04060c 100%)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            boxSizing: 'border-box',
-            color: '#f8fafc',
-            padding: '10px',
+            boxSizing: 'border-box', color: '#f8fafc', padding: '12px',
+            fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
           }}>
-            <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              }}>
+            <div style={{
+              width: '100%', maxWidth: 372, position: 'relative', overflow: 'hidden',
+              boxSizing: 'border-box', maxHeight: '96dvh', overflowY: 'auto',
+              background: 'linear-gradient(180deg, rgba(20,25,40,0.97) 0%, rgba(10,14,24,0.98) 100%)',
+              border: '1px solid rgba(247,200,77,0.22)',
+              borderRadius: 18,
+              boxShadow: '0 32px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.05)',
+              padding: '20px 16px 14px',
+              display: 'flex', flexDirection: 'column', gap: 11,
+            }}>
+              {/* Sweeping gold hairline along the card's top edge */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, overflow: 'hidden' }}>
                 <div style={{
-                  fontSize: 28, fontWeight: 900, lineHeight: 1,
-                  color: '#f7c84d', textShadow: '0 0 14px rgba(247,200,77,0.6)',
-                  marginBottom: 3,
-                }}>🏆 BINGO! 🏆</div>
+                  width: '55%', height: '100%',
+                  background: 'linear-gradient(90deg, transparent, #f7c84d, transparent)',
+                  animation: 'sweep 2.8s linear infinite',
+                }} />
+              </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 11, color: '#f8fafc' }}>
-                  <span>{wi.winnerCount} WINNER{wi.winnerCount !== 1 ? 'S' : ''}!</span>
+              {/* ── Emblem + title ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, ...anim(0) }}>
+                <div style={{
+                  width: 70, height: 70, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'radial-gradient(circle at 32% 26%, #fff3c9 0%, #f7c84d 45%, #c08a1c 100%)',
+                  boxShadow: '0 0 34px rgba(247,200,77,0.4), inset 0 -6px 14px rgba(0,0,0,0.25)',
+                  fontSize: 33, animation: 'goldGlow 2.4s ease-in-out infinite',
+                }}>🏆</div>
+                <div style={{
+                  fontSize: 29, fontWeight: 900, letterSpacing: 8, lineHeight: 1, paddingLeft: 8,
+                  background: 'linear-gradient(180deg, #fffdf5 10%, #f7c84d 90%)',
+                  WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+                }}>BINGO</div>
+                <div style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: 3.4, paddingLeft: 3.4,
+                  color: '#8ea3c0', textTransform: 'uppercase',
+                }}>
+                  {wi.winnerCount} Winner{wi.winnerCount !== 1 ? 's' : ''} Announced
                 </div>
               </div>
 
-              {wi.winners.map((winner) => (
-                <div key={winner.cartelaNumber} style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 6, padding: '5px 8px', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.2))',
-                  border: '1px solid rgba(96,165,250,0.4)', borderRadius: 7,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: 'linear-gradient(135deg, #d946ef, #ec4899)', fontWeight: 900, fontSize: 12,
-                      color: '#fff',
-                    }}>{(winner.username ?? '?')[0]?.toUpperCase()}</div>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.1 }}>{winner.username}</div>
-                      <div style={{ fontSize: 9, color: '#dbeafe' }}>Cartela #{winner.cartelaNumber}</div>
+              <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent)' }} />
+
+              {/* ── Winner rows ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...anim(0.12) }}>
+                {wi.winners.map((winner, idx) => (
+                  <div key={winner.cartelaNumber} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    padding: '8px 10px', borderRadius: 12,
+                    background: idx === 0
+                      ? 'linear-gradient(90deg, rgba(247,200,77,0.13), rgba(247,200,77,0.03))'
+                      : 'rgba(255,255,255,0.04)',
+                    border: idx === 0 ? '1px solid rgba(247,200,77,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                      <div style={{
+                        width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: medalBg(idx), color: medalFg(idx),
+                        fontWeight: 900, fontSize: 12,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                      }}>{idx + 1}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 13, fontWeight: 800, lineHeight: 1.15,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{winner.username}</div>
+                        <div style={{ fontSize: 9.5, color: '#93a7c4', fontWeight: 600 }}>Cartela #{winner.cartelaNumber}</div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{
+                        fontSize: 14, fontWeight: 900, lineHeight: 1.1,
+                        color: idx === 0 ? '#f7c84d' : '#e2e8f0',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>{winner.amount > 0 ? Math.round(winner.amount) : '—'}</div>
+                      <div style={{ fontSize: 8, color: '#8ea3c0', fontWeight: 700, letterSpacing: 0.6 }}>ETB</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 16 }}>🏆</div>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              <div style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '4px 8px', background: 'rgba(14, 50, 38, 0.7)',
-                border: '1.5px solid rgba(52,211,153,0.7)', borderRadius: 7,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 9, letterSpacing: 0.3, color: '#4ade80' }}>
-                  <span style={{ fontSize: 11 }}>🏆</span>
-                  <span>WINNING CARTELA</span>
-                </div>
-                <div style={{
-                  minWidth: 34, padding: '2px 5px', borderRadius: 4,
-                  background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.2)',
-                  color: '#fcd34d', fontWeight: 900, textAlign: 'center', fontSize: 9,
-                }}>#{winCartelaNum}</div>
+              {/* ── Winning cartela ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', ...anim(0.2) }}>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 2.2, color: '#8ea3c0', textTransform: 'uppercase' }}>
+                  Winning Cartela
+                </span>
+                <span style={{
+                  padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 900,
+                  background: 'rgba(247,200,77,0.14)', border: '1px solid rgba(247,200,77,0.4)',
+                  color: '#f7c84d', fontVariantNumeric: 'tabular-nums',
+                }}>#{winCartelaNum}</span>
               </div>
 
               {winGrid.length > 0 && (
                 <div style={{
-                  width: '100%', maxWidth: 320, margin: '0 auto',
-                  background: 'linear-gradient(180deg, rgba(17,25,44,0.9), rgba(12,20,34,0.9))',
-                  border: '1.5px solid rgba(52,211,153,0.6)', borderRadius: 8, overflow: 'hidden',
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 12, padding: '8px 8px 9px', ...anim(0.26),
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '3px 3px 0.5px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 2 }}>
                     {COLS.map((col, ci) => (
                       <div key={col} style={{
-                        textAlign: 'center', padding: '1px 0', borderRadius: 2,
-                        fontWeight: 700, fontSize: 8, background: HDR[ci], color: '#fff',
+                        textAlign: 'center', padding: '3px 0', borderRadius: 4,
+                        fontWeight: 800, fontSize: 9, background: HDR[ci], color: '#fff', letterSpacing: 0.5,
                       }}>{col}</div>
                     ))}
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 0.5, padding: '0.5px 3px 3px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2 }}>
                     {winGrid.map((val, idx) => {
                       const isFree = idx === 12;
                       const isM = isFree || (val !== 0 && marked.has(val));
@@ -1149,16 +1202,14 @@ export default function LiveGameScreen() {
                       return (
                         <div key={idx} style={{
                           aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderRadius: 3, fontWeight: isW ? 700 : isM ? 600 : 500,
-                          color: isW ? '#000' : isM ? '#f4f7ff' : '#9eabc0',
+                          borderRadius: 5, fontWeight: isW ? 900 : isM ? 700 : 600, fontSize: 13,
+                          color: isW ? '#2a2110' : isM ? '#f1f5f9' : '#7f8da6',
                           background: isW
-                            ? 'linear-gradient(135deg,#f59e0b,#d97706)'
-                            : isM
-                              ? '#5b21b6'
-                              : 'rgba(255,255,255,0.04)',
-                          border: isW ? '1px solid #fcd34d' : isM ? '1px solid rgba(76,145,230,0.55)' : '0.5px solid rgba(255,255,255,0.05)',
-                          boxShadow: isW ? '0 0 8px rgba(245,158,11,0.7)' : isM ? '0 0 4px rgba(59,130,246,0.35)' : 'none',
-                          fontSize: 13,
+                            ? 'linear-gradient(180deg,#ffe9a8,#f7c84d)'
+                            : isM ? 'rgba(255,255,255,0.11)' : 'rgba(255,255,255,0.045)',
+                          border: isW ? '1px solid #fff2c4'
+                            : isM ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(255,255,255,0.06)',
+                          boxShadow: isW ? '0 0 10px rgba(247,200,77,0.55)' : 'none',
                         }}>
                           {isFree ? '★' : val}
                         </div>
@@ -1168,63 +1219,78 @@ export default function LiveGameScreen() {
                 </div>
               )}
 
+              {/* ── Total payout ── */}
               {game.derash > 0 && (
                 <div style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 4, padding: '5px 8px',
-                  background: 'rgba(251,146,60,0.15)', border: '1.5px solid rgba(251,146,60,0.7)',
-                  borderRadius: 7,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 12px', borderRadius: 12,
+                  background: 'linear-gradient(90deg, rgba(247,200,77,0.10), rgba(247,200,77,0.02))',
+                  border: '1px solid rgba(247,200,77,0.25)', ...anim(0.32),
                 }}>
-                  <span style={{ fontSize: 13 }}>💰</span>
-                  <span style={{ fontSize: 16, fontWeight: 900, color: '#fbbf24', letterSpacing: 0.5 }}>{Math.round(game.derash)}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b' }}>Birr</span>
+                  <div>
+                    <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 1.8, color: '#c9a24a', textTransform: 'uppercase' }}>
+                      Total Payout
+                    </div>
+                    <div style={{ fontSize: 9, color: '#8ea3c0', fontWeight: 600, marginTop: 2 }}>Prize pool distributed</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: '#f7c84d', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                      {Math.round(game.derash)}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#c9a24a', marginLeft: 4 }}>ETB</span>
+                  </div>
                 </div>
               )}
 
-              {/* ── BONUS CARTELA WINNER ── */}
+              {/* ── Bonus cartela winner ── */}
               {game.bonusInfo && (() => {
                 const b = game.bonusInfo;
                 return (
                   <div style={{
-                    width: '100%', padding: '7px 10px', borderRadius: 8,
-                    background: 'linear-gradient(135deg, rgba(168,85,247,0.22), rgba(139,92,246,0.12))',
-                    border: '1.5px solid rgba(168,85,247,0.55)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    padding: '9px 11px', borderRadius: 12,
+                    background: 'linear-gradient(90deg, rgba(168,85,247,0.14), rgba(168,85,247,0.03))',
+                    border: '1px solid rgba(168,85,247,0.30)', ...anim(0.36),
                   }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
-                      🎁 Bonus Cartela Winner
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 9, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
+                        background: 'linear-gradient(135deg, rgba(168,85,247,0.35), rgba(139,92,246,0.18))',
+                        border: '1px solid rgba(168,85,247,0.45)',
+                      }}>🎁</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 1.6, color: '#c4b5fd', textTransform: 'uppercase' }}>
+                          Bonus Cartela
+                        </div>
                         <div style={{
-                          width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: 'linear-gradient(135deg, #a855f7, #7c3aed)', fontWeight: 900, fontSize: 13, color: '#fff',
-                        }}>{(b.username ?? '?')[0]?.toUpperCase()}</div>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: '#f3f4f6', lineHeight: 1.1 }}>{b.username}</div>
-                          <div style={{ fontSize: 9, color: '#c4b5fd' }}>Cartela #{b.cartelaNumber}</div>
+                          fontSize: 12, fontWeight: 800, color: '#f3f4f6', lineHeight: 1.2,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {b.username} <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: 10 }}>#{b.cartelaNumber}</span>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 16, fontWeight: 900, color: '#a78bfa', lineHeight: 1 }}>+{b.bonusAmount}</div>
-                        <div style={{ fontSize: 9, color: '#c4b5fd', fontWeight: 600 }}>Birr added</div>
-                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: '#c084fc', lineHeight: 1 }}>+{b.bonusAmount}</div>
+                      <div style={{ fontSize: 8, color: '#c4b5fd', fontWeight: 700 }}>ETB</div>
                     </div>
                   </div>
                 );
               })()}
 
-              {nextCountdown !== null && (
-                <div style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 4, padding: '5px 8px', borderRadius: 7,
-                  background: 'linear-gradient(135deg, rgba(30,64,175,0.3), rgba(59,130,246,0.15))',
-                  border: '1.5px solid rgba(96,165,250,0.6)', color: '#dbeafe', fontSize: 10, fontWeight: 700,
-                }}>
-                  <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 5px rgba(74,222,128,0.7)' }} />
-                  <span>Next in</span>
-                  <span style={{ color: '#f8fafc', fontWeight: 900 }}>{nextCountdown}s</span>
-                </div>
-              )}
+              {/* ── Next round countdown ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 2, ...anim(0.42) }}>
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: '#4ade80', boxShadow: '0 0 6px rgba(74,222,128,0.8)',
+                }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#8ea3c0', letterSpacing: 0.4 }}>
+                  {nextCountdown !== null
+                    ? <>Next round in <span style={{ color: '#f8fafc', fontWeight: 900 }}>{nextCountdown}s</span></>
+                    : 'Round complete'}
+                </span>
+              </div>
             </div>
           </div>
         );
