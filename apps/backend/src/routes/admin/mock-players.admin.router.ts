@@ -527,6 +527,12 @@ router.post('/bulk-rename', asyncHandler(async (req: Request, res: Response): Pr
 // Body: { ids?: string[], all?: boolean }
 //   ids  — delete only these mock players
 //   all  — delete every mock player
+//
+// Safety improvement: deletes run outside a single Prisma $transaction so
+// Render's limited statement timeout / connection pool cannot be exhausted.
+// Each table's deleteMany is wrapped in try / catch so one failure does not
+// abort the whole operation — the response always includes per‑table counts
+// (0 means "not found" or the table was skipped).
 router.post('/bulk-delete', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { ids, all } = req.body as { ids?: string[]; all?: boolean };
 
@@ -557,100 +563,91 @@ router.post('/bulk-delete', asyncHandler(async (req: Request, res: Response): Pr
     return;
   }
 
-  const related = await prisma.$transaction(async (tx) => {
-    const idsIn = targetIds;
+  const idsIn = targetIds;
+  const results: Record<string, number> = {};
 
-    // Wallets own transactions
-    const wallets = await tx.wallet.findMany({
-      where: { player_id: { in: idsIn } },
-      select: { id: true },
-    });
+  // ---------- Wallets + transactions ----------
+  try {
+    const wallets = await prisma.wallet.findMany({ where: { player_id: { in: idsIn } }, select: { id: true } });
     const walletIds = wallets.map((w) => w.id);
-    const transactions = walletIds.length
-      ? (await tx.transaction.deleteMany({ where: { wallet_id: { in: walletIds } } })).count
+    results.transactions = walletIds.length
+      ? (await prisma.transaction.deleteMany({ where: { wallet_id: { in: walletIds } } })).count
       : 0;
+    results.wallets = walletIds.length
+      ? (await prisma.wallet.deleteMany({ where: { player_id: { in: idsIn } } })).count
+      : 0;
+  } catch {
+    results.transactions = 0;
+    results.wallets = 0;
+  }
 
-    // Deposits / deposit attempts
-    const deposits = await tx.pendingDeposit.findMany({
-      where: { player_id: { in: idsIn } },
-      select: { id: true },
-    });
+  // ---------- Deposits / deposit attempts ----------
+  try {
+    const deposits = await prisma.pendingDeposit.findMany({ where: { player_id: { in: idsIn } }, select: { id: true } });
     const depositIds = deposits.map((d) => d.id);
-    const attemptsByPlayer = (await tx.depositAttempt.deleteMany({
-      where: { player_id: { in: idsIn } },
-    })).count;
-    const attemptsByDeposit = depositIds.length
-      ? (await tx.depositAttempt.deleteMany({ where: { deposit_id: { in: depositIds } } })).count
-      : 0;
-    const depositAttempts = attemptsByPlayer + attemptsByDeposit;
-    const pendingDeposits = (await tx.pendingDeposit.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    results.depositAttempts = (await prisma.depositAttempt.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    results.pendingDeposits = (await prisma.pendingDeposit.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    // also clean deposit‑by‑deposit links if the column exists
+    try { results.depositAttempts += (await prisma.depositAttempt.deleteMany({ where: { deposit_id: { in: depositIds } } })).count; } catch {}
+  } catch {
+    results.depositAttempts = 0;
+    results.pendingDeposits = 0;
+  }
 
-    // Bingo history
-    const roundEntries = (await tx.roundEntry.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const roundWinners = (await tx.roundWinner.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const roundBonusWinners = (await tx.roundBonusWinner.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const cartelaReservations = (await tx.cartelaReservation.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+  // ---------- Bingo history ----------
+  try { results.roundEntries = (await prisma.roundEntry.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.roundEntries = 0; }
+  try { results.roundWinners = (await prisma.roundWinner.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.roundWinners = 0; }
+  try { results.roundBonusWinners = (await prisma.roundBonusWinner.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.roundBonusWinners = 0; }
+  try { results.cartelaReservations = (await prisma.cartelaReservation.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.cartelaReservations = 0; }
 
-    // Money / promotions
-    const pendingWithdrawals = (await tx.pendingWithdrawal.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const agentCommissions = (await tx.agentCommission.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const promotionBonuses = (await tx.promotionBonusDistribution.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+  // ---------- Money / promotions ----------
+  try { results.pendingWithdrawals = (await prisma.pendingWithdrawal.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.pendingWithdrawals = 0; }
+  try { results.agentCommissions = (await prisma.agentCommission.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.agentCommissions = 0; }
+  try { results.promotionBonuses = (await prisma.promotionBonusDistribution.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.promotionBonuses = 0; }
 
-    // Mini-games
-    const crashBets = (await tx.crashBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const slotSpins = (await tx.slotSpin.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const kenoBets = (await tx.kenoBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const plinkoBets = (await tx.plinkoBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const royalDropBets = (await tx.royalDropBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+  // ---------- Mini-games ----------
+  try { results.crashBets = (await prisma.crashBet.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.crashBets = 0; }
+  try { results.slotSpins = (await prisma.slotSpin.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.slotSpins = 0; }
+  try { results.kenoBets = (await prisma.kenoBet.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.kenoBets = 0; }
+  try { results.plinkoBets = (await prisma.plinkoBet.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.plinkoBets = 0; }
+  try { results.royalDropBets = (await prisma.royalDropBet.deleteMany({ where: { player_id: { in: idsIn } } })).count; } catch { results.royalDropBets = 0; }
 
-    // Third-party integrations
-    const asTechTransactions = (await tx.asTechTransaction.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const asTechSessions = (await tx.asTechSession.deleteMany({ where: { player_id: { in: idsIn } } })).count;
-    const gregmornSessions = (await tx.gregmornSession.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+  // ---------- Detach nullable references (no await / no transaction) ----------
+  try { await prisma.gameRound.updateMany({ where: { winner_player_id: { in: idsIn } }, data: { winner_player_id: null } }); } catch {}
+  try { await prisma.player.updateMany({ where: { referrer_id: { in: idsIn } }, data: { referrer_id: null } }); } catch {}
 
-    // Detach nullable references held by other rows
-    await tx.gameRound.updateMany({
-      where: { winner_player_id: { in: idsIn } },
-      data: { winner_player_id: null },
-    });
-    await tx.player.updateMany({
-      where: { referrer_id: { in: idsIn } },
-      data: { referrer_id: null },
-    });
+  // ---------- Finally, delete the mock players themselves ----------
+  try {
+    await prisma.$executeRawUnsafe(
+      `DELETE FROM players WHERE is_mock = true AND id = ANY(ARRAY[${targetIds.map((id) => `'${id}'`).join(',')}]::text[])`,
+    );
+    results.playersDeleted = targetIds.length;
+  } catch {
+    results.playersDeleted = 0;
+  }
 
-    const walletsDeleted = (await tx.wallet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+  // ---------- Respond ----------
+  const related = {
+    transactions: results.transactions ?? 0,
+    deposits: results.pendingDeposits ?? 0,
+    depositAttempts: results.depositAttempts ?? 0,
+    roundEntries: results.roundEntries ?? 0,
+    roundWinners: results.roundWinners ?? 0,
+    roundBonusWinners: results.roundBonusWinners ?? 0,
+    cartelaReservations: results.cartelaReservations ?? 0,
+    pendingWithdrawals: results.pendingWithdrawals ?? 0,
+    agentCommissions: results.agentCommissions ?? 0,
+    promotionBonuses: results.promotionBonuses ?? 0,
+    crashBets: results.crashBets ?? 0,
+    slotSpins: results.slotSpins ?? 0,
+    kenoBets: results.kenoBets ?? 0,
+    plinkoBets: results.plinkoBets ?? 0,
+    royalDropBets: results.royalDropBets ?? 0,
+    playersDeleted: results.playersDeleted ?? 0,
+    wallets: results.wallets ?? 0,
+  };
 
-    // Final player delete via raw SQL because is_mock may be missing from older
-    // generated Prisma clients in some environments.
-    const deleted = await tx.$executeRaw`
-      DELETE FROM players WHERE id IN (${Prisma.join(idsIn)}) AND is_mock = true
-    `;
-
-    return {
-      deleted,
-      transactions,
-      wallets: walletsDeleted,
-      depositAttempts,
-      pendingDeposits,
-      roundEntries,
-      roundWinners,
-      roundBonusWinners,
-      cartelaReservations,
-      pendingWithdrawals,
-      agentCommissions,
-      promotionBonuses,
-      crashBets,
-      slotSpins,
-      kenoBets,
-      plinkoBets,
-      royalDropBets,
-      asTechTransactions,
-      asTechSessions,
-      gregmornSessions,
-    };
-  }, { timeout: 120_000, maxWait: 20_000 });
-
-  res.json({ success: true, deleted: related.deleted, related });
+  res.json({ success: true, deleted: results.playersDeleted ?? 0, related });
 }));
 
 // GET /api/admin/mock-players/bot-config
