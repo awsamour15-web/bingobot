@@ -808,6 +808,28 @@ export function renameMockPlayer(id: string, username: string): Promise<{ succes
   return adminApiRequest('PATCH', `/api/admin/mock-players/${id}/rename`, { username });
 }
 
+export interface MockBulkRenameResult {
+  success: boolean;
+  renamed: number;
+  totalMockPlayers: number;
+  unusedUsernames: number;
+  players: Array<{ id: string; from: string; to: string }>;
+}
+
+export function bulkRenameMockPlayers(usernames: string[]): Promise<MockBulkRenameResult> {
+  return adminApiRequest<MockBulkRenameResult>('POST', '/api/admin/mock-players/bulk-rename', { usernames });
+}
+
+export interface MockBulkDeleteResult {
+  success: boolean;
+  deleted: number;
+  related: Record<string, number>;
+}
+
+export function bulkDeleteMockPlayers(opts: { ids?: string[]; all?: boolean }): Promise<MockBulkDeleteResult> {
+  return adminApiRequest<MockBulkDeleteResult>('POST', '/api/admin/mock-players/bulk-delete', opts);
+}
+
 // ---------------------------------------------------------------------------
 // Games Stats
 // ---------------------------------------------------------------------------

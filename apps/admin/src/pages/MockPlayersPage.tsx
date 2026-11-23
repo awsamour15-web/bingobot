@@ -3,7 +3,8 @@ import type { AdminRound } from '@mada/shared';
 import { WIN_PATTERN_LABELS, WinPattern } from '@mada/shared';
 import {
   getMockPlayers, seedMockPlayers, creditMockPlayer,
-  joinRoundWithMockPlayers, renameMockPlayer, createRound, createMockPlayers, type MockPlayer,
+  joinRoundWithMockPlayers, renameMockPlayer, createRound, createMockPlayers,
+  bulkRenameMockPlayers, bulkDeleteMockPlayers, type MockPlayer,
 } from '../lib/api';
 import { adminApiRequest } from '../lib/api';
 import { getAdminRounds } from '../lib/api';
@@ -157,6 +158,114 @@ function CreateMockPlayerCard({ onCreated }: { onCreated: () => void }) {
           <Btn type="submit" disabled={loading}>{loading ? 'Creating…' : '+ Create Mock Players'}</Btn>
         </div>
       </form>
+    </Card>
+  );
+}
+
+// ─── Bulk Rename Card ─────────────────────────────────────────────────────────
+
+function BulkRenameCard({ playerCount, onDone }: { playerCount: number; onDone: () => void }) {
+  const [namesText, setNamesText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const names = namesText.split('\n').map(s => s.trim()).filter(Boolean);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null); setMsg(null);
+    if (!names.length) { setErr('Paste at least one username'); return; }
+    if (!playerCount) { setErr('No mock players exist yet'); return; }
+    setLoading(true);
+    try {
+      const res = await bulkRenameMockPlayers(names);
+      const extra = res.unusedUsernames > 0
+        ? ` · ${res.unusedUsernames} name(s) unused (fewer mock players than names)`
+        : '';
+      setMsg(`✅ Renamed ${res.renamed} of ${res.totalMockPlayers} mock players${extra}`);
+      onDone();
+    } catch (ex: unknown) {
+      setErr((ex as Error).message ?? 'Bulk rename failed');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20 }}>
+      <CardHeader
+        title="Bulk Rename"
+        subtitle="Rename all mock players from an ordered list — oldest player gets the first name"
+      />
+      {err && <Alert type="error">{err}</Alert>}
+      {msg && <Alert type="success">{msg}</Alert>}
+      <form onSubmit={handleSubmit}>
+        <Field label={`Usernames (one per line) — ${names.length} name(s) · ${playerCount} mock player(s)`}>
+          <textarea
+            style={{ ...inputCss, minHeight: 140, resize: 'vertical', fontFamily: 'monospace' }}
+            value={namesText}
+            onChange={e => setNamesText(e.target.value)}
+            placeholder={'Abdi_k7\nMura23\nTesh_x9\n…'}
+            spellCheck={false}
+          />
+        </Field>
+        <div style={{ marginTop: 12 }}>
+          <Btn type="submit" disabled={loading || !names.length}>
+            {loading ? 'Renaming…' : `🔤 Bulk Rename ${names.length || ''}`}
+          </Btn>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+// ─── Danger Zone ──────────────────────────────────────────────────────────────
+
+function DangerZoneCard({ playerCount, onDone }: { playerCount: number; onDone: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirmText, setConfirmText] = useState('');
+
+  const confirmed = confirmText.trim().toUpperCase() === 'DELETE';
+
+  async function handleDelete() {
+    setErr(null); setMsg(null);
+    if (!playerCount) { setErr('There are no mock players to delete'); return; }
+    if (!confirmed) { setErr('Type DELETE to confirm'); return; }
+    setLoading(true);
+    try {
+      const res = await bulkDeleteMockPlayers({ all: true });
+      setMsg(`🗑 Deleted ${res.deleted} mock player(s) and all related records.`);
+      setConfirmText('');
+      onDone();
+    } catch (ex: unknown) {
+      setErr((ex as Error).message ?? 'Bulk delete failed');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 20, borderColor: 'rgba(239,68,68,0.45)' }}>
+      <CardHeader
+        title="Danger Zone"
+        subtitle="Permanently delete ALL mock players and their wallets, game history and bets"
+      />
+      {err && <Alert type="error">{err}</Alert>}
+      {msg && <Alert type="success">{msg}</Alert>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12, marginBottom: 16 }}>
+        <Field label={`Type DELETE to confirm (${playerCount} mock player(s))`}>
+          <input
+            style={inputCss}
+            type="text"
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder="DELETE"
+            autoComplete="off"
+          />
+        </Field>
+      </div>
+      <Btn variant="danger" onClick={handleDelete} disabled={loading || !playerCount || !confirmed}>
+        {loading ? 'Deleting…' : `🗑 Delete All ${playerCount} Mock Players`}
+      </Btn>
     </Card>
   );
 }
@@ -650,9 +759,12 @@ export function MockPlayersPage() {
 
       <CreateRoundCard onCreated={fetchPlayers} />
       <CreateMockPlayerCard onCreated={fetchPlayers} />
+      <BulkRenameCard playerCount={players.length} onDone={fetchPlayers} />
       <SeedCard onSeeded={fetchPlayers} />
 
       <ResetBalancesCard onDone={fetchPlayers} />
+
+      <DangerZoneCard playerCount={players.length} onDone={fetchPlayers} />
 
       <BotConfigCard />
 

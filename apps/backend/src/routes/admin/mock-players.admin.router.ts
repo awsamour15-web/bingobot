@@ -426,6 +426,233 @@ router.patch('/:id/rename', async (req: Request, res: Response): Promise<void> =
   res.json({ success: true, username: trimmed });
 });
 
+// POST /api/admin/mock-players/bulk-rename
+// Rename mock players in bulk from an ordered list of usernames.
+// Players are matched in creation order (oldest first); name #1 goes to the
+// oldest mock player, name #2 to the next, and so on.
+// Body: { usernames: string[] }
+router.post('/bulk-rename', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { usernames } = req.body as { usernames?: string[] };
+
+  if (!Array.isArray(usernames) || usernames.length === 0) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'usernames array is required' });
+    return;
+  }
+
+  const cleaned = usernames
+    .map((u) => (typeof u === 'string' ? u.trim() : ''))
+    .filter(Boolean);
+
+  if (!cleaned.length) {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Provide at least one non-empty username' });
+    return;
+  }
+
+  // Reject duplicates inside the submitted list (case-insensitive)
+  const seen = new Set<string>();
+  const dupes = new Set<string>();
+  for (const name of cleaned) {
+    const key = name.toLowerCase();
+    if (seen.has(key)) dupes.add(name);
+    seen.add(key);
+  }
+  if (dupes.size) {
+    res.status(400).json({
+      error: 'DUPLICATE_USERNAMES',
+      message: `Duplicate username(s) in list: ${[...dupes].join(', ')}`,
+    });
+    return;
+  }
+
+  // Fetch mock players in a stable order (oldest first)
+  const players = await prisma.$queryRaw<Array<{ id: string; username: string }>>`
+    SELECT id, username FROM players WHERE is_mock = true ORDER BY created_at ASC, id ASC
+  `;
+
+  if (!players.length) {
+    res.status(404).json({ error: 'NOT_FOUND', message: 'No mock players found' });
+    return;
+  }
+
+  const count = Math.min(players.length, cleaned.length);
+  const targets = players.slice(0, count);
+  const names = cleaned.slice(0, count);
+
+  // Make sure no target name already belongs to a non-selected player
+  const selectedIds = new Set(targets.map((p) => p.id));
+  const allPlayers = await prisma.$queryRaw<Array<{ id: string; username: string }>>`
+    SELECT id, username FROM players
+  `;
+  const takenByOthers = new Set(
+    allPlayers.filter((p) => !selectedIds.has(p.id)).map((p) => p.username.toLowerCase()),
+  );
+  const conflicts = names.filter((n) => takenByOthers.has(n.toLowerCase()));
+  if (conflicts.length) {
+    res.status(409).json({
+      error: 'USERNAME_TAKEN',
+      message: `Username(s) already used by other players: ${conflicts.join(', ')}`,
+    });
+    return;
+  }
+
+  // Two-phase rename: move every target to a temporary unique name first so
+  // swapping/reusing existing usernames can never trip a unique constraint.
+  const tmpPrefix = `__bulk_tmp_${Date.now()}_`;
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < targets.length; i++) {
+      await tx.player.update({
+        where: { id: targets[i]!.id },
+        data: { username: `${tmpPrefix}${i}` },
+      });
+    }
+    for (let i = 0; i < targets.length; i++) {
+      await tx.player.update({
+        where: { id: targets[i]!.id },
+        data: { username: names[i]! },
+      });
+    }
+  }, { timeout: 120_000, maxWait: 20_000 });
+
+  res.json({
+    success: true,
+    renamed: targets.length,
+    totalMockPlayers: players.length,
+    unusedUsernames: cleaned.length - count,
+    players: targets.map((p, i) => ({ id: p.id, from: p.username, to: names[i]! })),
+  });
+}));
+
+// POST /api/admin/mock-players/bulk-delete
+// Permanently delete mock players and every record that references them.
+// Body: { ids?: string[], all?: boolean }
+//   ids  — delete only these mock players
+//   all  — delete every mock player
+router.post('/bulk-delete', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { ids, all } = req.body as { ids?: string[]; all?: boolean };
+
+  let targetIds: string[];
+
+  if (Array.isArray(ids) && ids.length > 0) {
+    const unique = [...new Set(ids.filter((id) => typeof id === 'string' && id.trim()))];
+    if (!unique.length) {
+      res.status(400).json({ error: 'BAD_REQUEST', message: 'ids must contain valid player IDs' });
+      return;
+    }
+    const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM players WHERE is_mock = true AND id IN (${Prisma.join(unique)})
+    `;
+    targetIds = rows.map((r) => r.id);
+  } else if (all === true) {
+    const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM players WHERE is_mock = true
+    `;
+    targetIds = rows.map((r) => r.id);
+  } else {
+    res.status(400).json({ error: 'BAD_REQUEST', message: 'Provide ids or set all=true' });
+    return;
+  }
+
+  if (!targetIds.length) {
+    res.json({ success: true, deleted: 0, related: {} });
+    return;
+  }
+
+  const related = await prisma.$transaction(async (tx) => {
+    const idsIn = targetIds;
+
+    // Wallets own transactions
+    const wallets = await tx.wallet.findMany({
+      where: { player_id: { in: idsIn } },
+      select: { id: true },
+    });
+    const walletIds = wallets.map((w) => w.id);
+    const transactions = walletIds.length
+      ? (await tx.transaction.deleteMany({ where: { wallet_id: { in: walletIds } } })).count
+      : 0;
+
+    // Deposits / deposit attempts
+    const deposits = await tx.pendingDeposit.findMany({
+      where: { player_id: { in: idsIn } },
+      select: { id: true },
+    });
+    const depositIds = deposits.map((d) => d.id);
+    const attemptsByPlayer = (await tx.depositAttempt.deleteMany({
+      where: { player_id: { in: idsIn } },
+    })).count;
+    const attemptsByDeposit = depositIds.length
+      ? (await tx.depositAttempt.deleteMany({ where: { deposit_id: { in: depositIds } } })).count
+      : 0;
+    const depositAttempts = attemptsByPlayer + attemptsByDeposit;
+    const pendingDeposits = (await tx.pendingDeposit.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+
+    // Bingo history
+    const roundEntries = (await tx.roundEntry.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const roundWinners = (await tx.roundWinner.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const roundBonusWinners = (await tx.roundBonusWinner.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const cartelaReservations = (await tx.cartelaReservation.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+
+    // Money / promotions
+    const pendingWithdrawals = (await tx.pendingWithdrawal.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const agentCommissions = (await tx.agentCommission.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const promotionBonuses = (await tx.promotionBonusDistribution.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+
+    // Mini-games
+    const crashBets = (await tx.crashBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const slotSpins = (await tx.slotSpin.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const kenoBets = (await tx.kenoBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const plinkoBets = (await tx.plinkoBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const royalDropBets = (await tx.royalDropBet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+
+    // Third-party integrations
+    const asTechTransactions = (await tx.asTechTransaction.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const asTechSessions = (await tx.asTechSession.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+    const gregmornSessions = (await tx.gregmornSession.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+
+    // Detach nullable references held by other rows
+    await tx.gameRound.updateMany({
+      where: { winner_player_id: { in: idsIn } },
+      data: { winner_player_id: null },
+    });
+    await tx.player.updateMany({
+      where: { referrer_id: { in: idsIn } },
+      data: { referrer_id: null },
+    });
+
+    const walletsDeleted = (await tx.wallet.deleteMany({ where: { player_id: { in: idsIn } } })).count;
+
+    // Final player delete via raw SQL because is_mock may be missing from older
+    // generated Prisma clients in some environments.
+    const deleted = await tx.$executeRaw`
+      DELETE FROM players WHERE id IN (${Prisma.join(idsIn)}) AND is_mock = true
+    `;
+
+    return {
+      deleted,
+      transactions,
+      wallets: walletsDeleted,
+      depositAttempts,
+      pendingDeposits,
+      roundEntries,
+      roundWinners,
+      roundBonusWinners,
+      cartelaReservations,
+      pendingWithdrawals,
+      agentCommissions,
+      promotionBonuses,
+      crashBets,
+      slotSpins,
+      kenoBets,
+      plinkoBets,
+      royalDropBets,
+      asTechTransactions,
+      asTechSessions,
+      gregmornSessions,
+    };
+  }, { timeout: 120_000, maxWait: 20_000 });
+
+  res.json({ success: true, deleted: related.deleted, related });
+}));
+
 // GET /api/admin/mock-players/bot-config
 router.get('/bot-config', async (_req: Request, res: Response): Promise<void> => {
   const keys = ['mock_bot_enabled', 'mock_bot_count', 'mock_bot_balance', 'mock_bot_win_enabled', 'mock_bot_stakes'];
