@@ -1184,13 +1184,14 @@ export default function LiveGameScreen() {
               {winGrid.length > 0 && (
                 <div style={{
                   background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 12, padding: '8px 8px 9px', ...anim(0.26),
+                  borderRadius: 12, padding: '6px 6px 7px',
+                  width: '70%', margin: '0 auto', ...anim(0.26),
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 2, marginBottom: 2 }}>
                     {COLS.map((col, ci) => (
                       <div key={col} style={{
-                        textAlign: 'center', padding: '3px 0', borderRadius: 4,
-                        fontWeight: 800, fontSize: 9, background: HDR[ci], color: '#fff', letterSpacing: 0.5,
+                        textAlign: 'center', padding: '2px 0', borderRadius: 3,
+                        fontWeight: 800, fontSize: 7, background: HDR[ci], color: '#fff', letterSpacing: 0.5,
                       }}>{col}</div>
                     ))}
                   </div>
@@ -1202,7 +1203,7 @@ export default function LiveGameScreen() {
                       return (
                         <div key={idx} style={{
                           aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          borderRadius: 5, fontWeight: isW ? 900 : isM ? 700 : 600, fontSize: 13,
+                          borderRadius: 4, fontWeight: isW ? 900 : isM ? 700 : 600, fontSize: 10,
                           color: isW ? '#2a2110' : isM ? '#f1f5f9' : '#7f8da6',
                           background: isW
                             ? 'linear-gradient(180deg,#ffe9a8,#f7c84d)'
